@@ -1,223 +1,275 @@
 # Pontos a validar — APR e OS digitais
 
-> Questões que a [especificação](apr-om-digital.md) e o [fluxo](fluxo-solucao.md) ainda não respondem. Cada uma traz uma recomendação para não travar o desenvolvimento: se ninguém discordar, ela vale.
+> Questões que a [especificação](especificacao.md) ainda não responde. Cada uma traz uma recomendação para não travar o desenvolvimento: se ninguém discordar, ela vale.
+>
+> **Atualizado em 10/10/2026**, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
+>
+> **Todas as questões abertas seguem com a recomendação adotada** na [especificação](especificacao.md) (seção "Suposições adotadas"), para a implementação não esperar. Elas continuam listadas aqui para a confirmação com o Iago, o Mario e o time; se a resposta for outra, o ajuste é restrito ao que a especificação cita. As questões 22–46 estavam só no [contexto da sessão](../contexto/contexto-sessao-2026-10-10.md) e entram aqui; as 47–54 são novas.
 
 **Impacto**
-- 🔴 **Schema**: muda tabelas ou o contrato de sincronização. Decidir antes de travar o schema (dias 1–2).
+- 🔴 **Schema**: muda tabelas ou o contrato de sincronização. Decidir antes de travar o schema.
 - 🟡 **MVP**: muda uma tela ou regra da demo. Decidir antes de implementar a fatia.
 - 🟢 **Depois**: não afeta a demo.
 
 **Quem decide**: **Time** (nós) ou **Iago/Mario** (operação e segurança do trabalho).
 
-## Resumo
+## Situação em números
 
-| # | Questão | Impacto | Quem decide |
-|---|---|---|---|
-| 1 | APR bloqueada bloqueia todas as OS cobertas? | 🔴 | Iago/Mario |
-| 2 | Interrupção numa OS para as demais OS da mesma APR? | 🔴 | Iago/Mario |
-| 3 | Uma OS pode exigir mais de um modelo de APR? | 🔴 | Iago/Mario |
-| 4 | Pull por cursor ou snapshot completo no MVP? | 🔴 | Time |
-| 5 | Como uma OS cancelada no SAP sai do sistema? | 🔴 | Iago |
-| 6 | Como desfazer uma execução iniciada por engano? | 🔴 | Time + Iago |
-| 7 | Execução iniciada e nunca encerrada | 🟡 | Time |
-| 8 | Validade da APR: dia do calendário ou janela de horas? | 🟡 | Iago/Mario |
-| 9 | Resposta "NA" em item eliminatório | 🟡 | Mario |
-| 10 | Quem pode ser encarregado e executor? | 🟡 | Iago/Mario |
-| 11 | Quem assina o encerramento numa dupla? | 🟡 | Iago |
-| 12 | OS manual e OS de apoio: como entram no SAP? | 🟡 | Iago |
-| 13 | Exportar também OS bloqueadas para o SAP? | 🟡 | Iago |
-| 14 | Reimportação muda a data de uma OS já reprogramada | 🟡 | Time |
-| 15 | PDF por OS ou por APR? | 🟡 | Iago |
-| 16 | Limite e compressão de fotos | 🟡 | Time |
-| 17 | Relógio do aparelho errado | 🟢 | Time |
-| 18 | Esqueci a senha / troca de senha com login offline | 🟢 | Time |
-| 19 | Local manual que depois chega do SAP com outro código | 🟢 | Time |
-| 20 | Quais alertas também vão por e-mail? | 🟢 | Iago |
-| 21 | Analista pode reprogramar? | 🟢 | Iago |
+| Situação | Questões |
+|---|---|
+| Respondidas ou sem objeto | 1, 2, 11, 15, 23, 30, 31, 32, 34, 37 (protótipo), 42 |
+| Adotadas com a recomendação, a confirmar | todas as demais (seção 1), mais 45 e 51 (seção 6) |
 
-## Questões
+## 1. Adotadas com a recomendação, a confirmar
 
-### 1. APR bloqueada bloqueia todas as OS cobertas? 🔴
+| # | Questão | Impacto | Quem decide | O que mudou |
+|---|---|---|---|---|
+| 3 | Uma OS pode exigir mais de um modelo de APR? | 🔴 | Iago/Mario | continua aberta; o modelo agora vem do tipo de atividade |
+| 4 | Pull por cursor ou snapshot completo no MVP? | 🔴 | Time | passa a carregar o histórico de APRs da OS pendente |
+| 5 | Como uma OS cancelada no SAP sai do sistema? | 🔴 | Iago | com a API simulada, o status pode vir da API |
+| 6 | Como desfazer uma execução iniciada por engano? | 🔴 | Time + Iago | continua; existe pausar, mas não cancelar |
+| 24 | Técnico sem e-mail e o Supabase Auth | 🔴 | Time | o Supabase Auth foi confirmado, então a questão vale |
+| 29 | A OS só executa depois de liberada no SAP | 🔴 | Iago | com a API, o status vem de lá |
+| 43 | Contrato da API real do SAP | 🔴 | Iago | **reformulada**: a API existe; falta o contrato |
+| 7 | Execução iniciada e nunca encerrada | 🟡 | Time | agora há cronômetro e atividades de vários dias |
+| 8 | Validade da APR | 🟡 | Iago/Mario | **reformulada**: por sessão de execução |
+| 9 | Resposta "NA" em item eliminatório | 🟡 | Mario | igual |
+| 10 | Quem pode ser participante da APR | 🟡 | Iago/Mario | **reduzida**: o líder é quem preenche; restam os de fora da equipe |
+| 12 | OS manual e de apoio: como entram no SAP | 🟡 | Iago | igual |
+| 13 | Exportar também as OS pendentes | 🟡 | Iago | "bloqueada" virou "pendente" |
+| 14 | Reimportação desfaz a reprogramação | 🟡 | Time | reprogramar agora é opcional |
+| 16 | Limite e compressão de fotos | 🟡 | Time | igual |
+| 22 | OS de apoio para outra equipe | 🟡 | Time | igual |
+| 25 | PDF gerado fora da sincronização | 🟡 | Time | o PDF passa a ser do back-end Node |
+| 27 | Justificar a interrupção à pessoa solicitante | 🟡 | Iago | **rebaixada de 🔴**: o solicitante costuma ficar em branco |
+| 28 | Contatos de emergência e observações gerais na APR | 🟡 | Mario | igual |
+| 33 | APR 09 (almoxarifado) é do módulo MM | 🟡 | Iago | igual |
+| 35 | Celular em área classificada | 🟡 | Mario | igual |
+| 36 | Terceiros usam o app? | 🟡 | Iago | igual |
+| 39 | Atraso conta do início ou do fim programado | 🟡 | Time | igual |
+| 40 | Colunas da planilha de saída para a baixa no SAP | 🟡 | Time + Iago | ligada à 51 |
+| 44 | Painel pessoal do funcionário | 🟡 | Time | protótipo já tem Perfil e histórico |
+| 46 | Evidência em PDF além da foto | 🟡 | Time | evidência é foto **ou texto**, por item |
+| **47** | PDF tem 3 vagas de executante; a APR pode ter 10 pessoas | 🟡 | Iago | nova |
+| **48** | Preventiva pendente do ciclo anterior × OS nova do mês | 🟡 | Iago | nova |
+| **49** | Ciência do supervisor: quando e onde assina | 🟡 | Iago | nova |
+| **50** | Quais itens aceitam justificativa em texto no lugar de foto | 🟡 | Mario | nova |
+| **52** | Tabela real de tipo de atividade → modelo de APR | 🟡 | Iago | nova |
+| **53** | Pausa exige motivo? | 🟡 | Time + Iago | nova |
+| **54** | API simulada do SAP: contrato e base fictícia | 🟡 | Time | nova |
+| 17 | Relógio do aparelho errado | 🟢 | Time | agora afeta também o cronômetro |
+| 18 | Esqueci a senha / senha offline | 🟢 | Time | o reset passa a ser do Supabase Auth |
+| 19 | Local manual que depois chega do SAP | 🟢 | Time | igual |
+| 20 | Quais alertas vão por e-mail | 🟢 | Iago | o envio passa a ser do back-end Node |
+| 21 | Analista pode reprogramar | 🟢 | Iago | menos urgente: reprogramar é opcional |
+| 26 | Volume: ~390 ou ~900 OS por mês | 🟢 | Iago | igual |
+| 38 | Assinatura desenhada vale para auditoria | 🟢 | Iago | o Iago perguntou por "rubrica ou assinatura digital" |
+| 41 | Aparelhos do piloto | 🟢 | Time | igual |
 
-**Contexto:** uma APR cobre várias OS do mesmo local, modelo e dia. A especificação foi corrigida para que o bloqueio leve **todas** as OS cobertas a `bloqueada`, com a tabela `apr_os` registrando quais são.
+## 2. Detalhe das adotadas com impacto no schema (🔴)
 
-**Opções:**
-- (a) Bloqueia todas.
-- (b) O técnico escolhe quais OS o impedimento afeta.
+### 3. Uma OS pode exigir mais de um modelo de APR?
 
-**Recomendação:** (a). O impedimento é do local (rede sem bloqueio, caixa alagada), então afeta todas. É a regra já adotada; falta só confirmar.
+**Contexto:** hoje o modelo vem do tipo de atividade da OS (questão 52), um por OS. Na prática uma manutenção pode exigir a APR 03 e também a APR 06 (altura e espaço confinado). A reunião disse que "cada tipo de atividade tem um tipo de APR" (37:22), sem tratar o caso de dois.
+**Opções:** (a) um modelo por OS; (b) lista de modelos por OS, e a execução só libera com todas aprovadas.
+**Recomendação:** (a) no MVP. Confirmar com o Mario se o caso existe. Se existir, (b) muda `os` e a regra de início da execução.
 
-### 2. Interrupção numa OS para as demais OS da mesma APR? 🔴
+### 4. Pull por cursor ou snapshot completo no MVP?
 
-**Contexto:** a APR foi aprovada para 3 OS. Na primeira aparece um risco e o técnico interrompe. A especificação não diz se as outras 2 continuam liberadas para execução com a mesma APR.
+**Contexto:** o volume atual comporta o snapshot, e o contrato mantém `cursor?` opcional. Novo: o snapshot precisa levar também o **histórico de APRs** das OS pendentes e não pode apagar do aparelho uma OS com evento local pendente.
+**Recomendação:** snapshot no MVP, cursor depois.
 
-**Opções:**
-- (a) Só a OS interrompida fica `bloqueada`; as outras seguem.
-- (b) A interrupção invalida a APR e bloqueia todas as OS cobertas ainda não encerradas.
-- (c) O técnico escolhe.
+### 5. Como uma OS cancelada no SAP sai do sistema?
 
-**Recomendação:** (b). Se surgiu risco no local, a análise de risco do dia deixou de valer. Isso exige um campo de invalidação na `apr` ou uma regra derivada ("APR com execução interrompida não cobre novas execuções").
+**Contexto:** a leitura só cria e atualiza. Uma ordem cancelada no SAP continuaria liberada no app.
+**Opções:** (a) o status do SAP vem na API (ou na planilha) e vira `cancelada`; (b) ação "Cancelar OS" na web, com justificativa; (c) ordem ausente é considerada cancelada.
+**Recomendação:** (a), já que a API simulada pode devolver o status; (b) como plano B. (c) é perigoso: uma leitura parcial cancelaria ordens válidas.
 
-### 3. Uma OS pode exigir mais de um modelo de APR? 🔴
+### 6. Como desfazer uma execução iniciada por engano?
 
-**Contexto:** `os.modelo_apr_codigo` guarda um modelo só. Na prática uma manutenção pode exigir a APR 03 (operação/manutenção) e também a APR 06 (altura e espaço confinado).
+**Contexto:** não há cancelamento. Agora existem Pausar e "Interromper por risco", mas nenhum dos dois serve para o toque na OS errada.
+**Opções:** (a) evento `execucao_cancelada`, só sem fotos e em até N minutos; (b) sem desfazer, interrompendo com o motivo "iniciada por engano".
+**Recomendação:** (a). Para a demo, (b) funciona.
 
-**Opções:**
-- (a) Um modelo por OS. Se precisar de outro, a web troca o modelo.
-- (b) Lista de modelos por OS. A execução só libera com todas as APRs aprovadas.
+### 24. Técnico sem e-mail e o Supabase Auth
 
-**Recomendação:** (a) no MVP, mas confirmar com o Mario se o caso existe. Se existir, (b) muda `os`, `apr_os` e a regra de início da execução, e precisa ser decidido antes do schema.
+**Contexto:** o Supabase Auth exige e-mail e a decisão de usá-lo está tomada. `POST /usuarios` não tem senha.
+**Recomendação:** login por matrícula, com e-mail interno gerado e senha inicial definida pelo administrador, trocada no 1º acesso.
 
-### 4. Pull por cursor ou snapshot completo no MVP? 🔴
+### 29. A OS só executa depois de liberada no SAP
 
-**Contexto:** a especificação define pull incremental por cursor (`os.atualizada_em`). O snapshot completo (baixar tudo da equipe a cada sync) é mais simples e suficiente para o volume atual (~390 OS por mês somando todas as equipes).
+**Contexto:** na Reunião 1 a OS só podia ser executada depois de liberada pelo analista no SAP. A importação marca tudo como `liberada`. O Iago citou o status "liberada e impressa" (55:44).
+**Recomendação:** ler o status do SAP e só levar ao aplicativo as OS liberadas; as demais ficam de fora com o motivo registrado.
 
-**Opções:**
-- (a) Cursor desde o início.
-- (b) Snapshot no MVP e cursor depois. O contrato `POST /sync/pull` mantém o `cursor?` opcional, então a troca não quebra o app.
+### 43. Contrato da API real do SAP
 
-**Recomendação:** (b). Menos risco no maior risco de prazo do projeto. O cuidado é que o snapshot não pode apagar do aparelho uma OS que ainda tem evento local pendente.
+**Contexto:** o time decidiu simular a API com dados fictícios, no mesmo contrato da real, e trocar só o endereço e as credenciais. Falta o contrato: campos, autenticação, paginação, e **quem chama quem** (nosso back-end consulta, ou o SAP envia). Na Reunião 1 a API não existia; na 2 o time disse que existe, e o Iago não contrariou.
+**Recomendação:** o back-end consulta a API, com um adaptador. Pedir ao Iago o contrato e a planilha de 2025 que ele prometeu (45:21).
 
-### 5. Como uma OS cancelada no SAP sai do sistema? 🔴
+## 3. Detalhe das adotadas com impacto na demo (🟡)
 
-**Contexto:** a importação só cria e atualiza. Se o SAP cancelar ou encerrar uma ordem por outro caminho, ela continua `liberada` no app e no painel para sempre.
+### 7. Execução iniciada e nunca encerrada
 
-**Opções:**
-- (a) A planilha traz o status SAP, e uma ordem cancelada vira um novo status `cancelada`.
-- (b) A web ganha a ação "Cancelar OS" (com justificativa).
-- (c) Ordem ausente da nova importação é considerada cancelada.
+**Contexto:** o técnico esquece de encerrar ou o aparelho quebra. Agora também há atividades de vários dias, com troca de executor (15:54–16:13), e cronômetro.
+**Recomendação:** o técnico pausa ao fim do expediente; o painel destaca execuções sem registro há mais de 12 h. Nada de encerramento automático, que forjaria um registro de campo.
 
-**Recomendação:** (b) no MVP e (a) quando o export do Iago mostrar a coluna de status. (c) é perigoso, porque uma importação parcial cancelaria ordens válidas. Qualquer opção acrescenta `cancelada` ao ciclo de status.
+### 8. Validade da APR
 
-### 6. Como desfazer uma execução iniciada por engano? 🔴
+**Contexto:** "sempre que alguém chega para executar, o primeiro documento é a APR" (16:44), e as respostas são refeitas toda vez (34:40). Então a pergunta deixou de ser dia ou janela de horas.
+**Recomendação:** a APR vale para uma **sessão de execução**. Pausa curta (café, almoço) não exige APR nova; retomar depois de interrupção por risco, em outro dia ou por outra pessoa exige. Confirmar com o Iago e o Mario.
 
-**Contexto:** o técnico toca "Iniciar execução" na OS errada. A especificação não tem cancelamento: a OS fica `em_execucao` e o único caminho é interromper, o que gera alerta de bloqueio falso.
+### 9. Resposta "NA" em item eliminatório
 
-**Opções:**
-- (a) Novo evento `execucao_cancelada`, permitido só sem fotos e em até N minutos; a OS volta a `liberada`.
-- (b) Sem desfazer; interromper com o motivo "iniciada por engano".
+**Contexto:** a APR 04 tem coluna NA. O Iago disse que as respostas são sim ou não (34:58); entre os modelos conferidos, só a APR 04 tem a coluna NA.
+**Recomendação:** NA passa, mas exige observação, e só aparece nos itens com `permite_na`. Confirmar com o Mario.
 
-**Recomendação:** (a). É um evento a mais no contrato de sync, por isso é 🔴. Se ficar para depois, (b) funciona na demo.
+### 10. Quem pode ser participante da APR
 
-### 7. Execução iniciada e nunca encerrada 🟡
+**Contexto:** já respondido: quem preenche a APR é o líder (22:22), e os participantes vêm da **equipe da OS** (DesignDoc). Falta: o técnico logado precisa ser participante? Alguém de fora da equipe (apoio, terceiro) pode participar?
+**Recomendação:** o técnico logado é sempre participante; participantes de fora da equipe ficam para depois.
 
-**Contexto:** o técnico esquece de encerrar ou o aparelho quebra. A OS fica `em_execucao` indefinidamente.
+### 12. OS manual e OS de apoio: como entram no SAP?
 
-**Recomendação:** o painel destaca execuções abertas há mais de 12 h, e o supervisor resolve com o técnico. Não criar encerramento automático, porque ele forjaria um registro de campo.
-
-### 8. Validade da APR: dia do calendário ou janela de horas? 🟡
-
-**Contexto:** a APR vale "no mesmo dia". Um serviço noturno que começa às 22h e termina às 2h cruza a meia-noite, e a segunda OS da madrugada exigiria uma APR nova.
-
-**Opções:**
-- (a) Dia do calendário.
-- (b) Janela fixa (por exemplo, 12 h desde a conclusão).
-- (c) Turno.
-
-**Recomendação:** (b), mas é decisão da segurança do trabalho.
-
-### 9. Resposta "NA" em item eliminatório 🟡
-
-**Contexto:** a APR 04 tem coluna NA (`permite_na`). A especificação não diz se NA num item eliminatório conta como bloqueio, passa ou exige justificativa.
-
-**Recomendação:** NA passa, mas exige observação, e só é oferecido nos itens marcados com `permite_na`. Confirmar com o Mario.
-
-### 10. Quem pode ser encarregado e executor? 🟡
-
-**Contexto:** o encarregado da APR é escolhido no app entre os usuários da equipe. Não está definido:
-- se qualquer técnico pode ser encarregado ou só alguns;
-- se um usuário de outra equipe (apoio, terceirizado) pode participar;
-- se o técnico logado precisa ser um dos participantes.
-
-**Recomendação:**
-- Qualquer usuário ativo da equipe pode ser encarregado.
-- O técnico logado é obrigatoriamente participante.
-- Participantes de fora da equipe ficam para depois. Para entrar, eles teriam de ser baixados no pull.
-
-### 11. Quem assina o encerramento numa dupla? 🟡
-
-**Contexto:** `execucao.assinatura_path` guarda uma assinatura só, a do executor. Na APR todos os participantes assinam. Não está claro se o encerramento exige a assinatura dos dois nem se o cliente assina (conversão de clientes, APR 05).
-
-**Recomendação:** no MVP, uma assinatura (a do executor). Perguntar ao Iago se o papel atual tem assinatura do cliente. Se tiver, é um campo a mais, mas não muda o fluxo.
-
-### 12. OS manual e OS de apoio: como entram no SAP? 🟡
-
-**Contexto:** uma OS manual não tem `numero_ordem`. Na exportação o Iago não tem onde dar baixa.
-
-**Opções:**
-- (a) A exportação inclui essas OS numa aba separada, e o Iago cria a ordem no SAP depois.
-- (b) A OS manual exige que a ordem seja aberta no SAP antes, e o número é preenchido em seguida.
-- (c) Ficam fora da exportação.
-
+**Contexto:** uma OS manual não tem `numero_ordem`; o Iago não teria onde dar baixa.
+**Opções:** (a) aba separada na exportação, e o Iago cria a ordem depois; (b) a ordem é aberta no SAP antes; (c) ficam fora.
 **Recomendação:** (a). Perguntar ao Iago qual é o procedimento hoje para corretivas urgentes.
 
-### 13. Exportar também OS bloqueadas para o SAP? 🟡
+### 13. Exportar também as OS pendentes?
 
-**Contexto:** a exportação traz só as `encerrada`. Pode ser que o SAP também precise registrar o impedimento (atraso justificado), sobretudo para as preventivas.
+**Contexto:** a exportação traz só as encerradas. O SAP pode precisar registrar o impedimento (atraso justificado).
+**Recomendação:** perguntar ao Iago. Se precisar, uma segunda aba "Impedimentos", com o motivo e as evidências.
 
-**Recomendação:** perguntar ao Iago. Se precisar, é uma segunda aba "Impedimentos" com o motivo e a justificativa.
+### 14. A reimportação desfaz a reprogramação?
 
-### 14. Reimportação muda a data de uma OS já reprogramada 🟡
+**Contexto:** o supervisor reprogramou a OS para o dia 20; depois o SAP traz a data original. Reprogramar agora é opcional, mas o conflito continua possível.
+**Recomendação:** a leitura não sobrescreve a data de uma OS com reprogramação registrada; a linha conta em `ignoradas` com o motivo "reprogramada no sistema".
 
-**Contexto:** o supervisor reprogramou a OS para dia 20 na web. Depois o SAP reimporta a mesma ordem com a data original, dia 15. Pela Decisão-chave 8, a importação atualiza as colunas de planejamento e, com isso, desfaz a reprogramação.
+### 16. Limite e compressão de fotos
 
-**Opções:**
-- (a) A importação não sobrescreve a data de uma OS com reprogramação registrada.
-- (b) O SAP sempre vence.
+**Recomendação:** comprimir no app para ~1600 px e qualidade 70% (~300 KB); mínimo de 1 e máximo de 10 fotos por execução; apagar do aparelho após a confirmação do envio.
 
-**Recomendação:** (a), com a linha contando em `ignoradas` e o motivo "reprogramada no sistema".
+### 22. OS de apoio para outra equipe
 
-### 15. PDF por OS ou por APR? 🟡
+**Contexto:** o supervisor cria a OS de apoio "para outra equipe", mas o perfil dele só age na própria. O Iago elogiou o vínculo (43:17) porque a equipe que calibra não é a que resolve o problema.
+**Recomendação:** permitir OS de apoio para qualquer equipe.
 
-**Contexto:** com uma APR cobrindo 3 OS, cada PDF de OS repete a APR inteira. Isso é o que a especificação define, mas convém confirmar como o Iago anexa no SAP: um anexo por ordem é o esperado.
+### 25. PDF gerado fora da sincronização
 
-**Recomendação:** um PDF por OS, repetindo a APR. Confirmar com o Iago.
+**Contexto:** o diagrama gera o PDF dentro do envio da fila, mas a especificação prevê nova tentativa automática. O PDF é gerado pelo back-end Node.
+**Recomendação:** gerar de forma assíncrona (fila ou gatilho), fora da sincronização.
 
-### 16. Limite e compressão de fotos 🟡
+### 27. Justificar a interrupção à pessoa solicitante
 
-**Contexto:** fotos de câmera têm de 3 a 8 MB. Com várias fotos por OS e sincronização no 4G, o envio fica lento e o aparelho enche.
+**Contexto:** na Reunião 1 a interrupção também seria justificada ao solicitante. Na 2 o Iago disse que o campo "solicitante" costuma ficar em branco (59:12).
+**Recomendação:** campo opcional na OS; o PDF mostra o solicitante quando existir. Não bloqueia nada.
 
-**Recomendação:**
-- Comprimir no app para ~1600 px e qualidade 70% (~300 KB).
-- Mínimo de 1 e máximo de 10 fotos por execução.
-- Apagar do aparelho após a confirmação do envio.
+### 28, 33, 35, 36, 39, 40, 44, 46 (sem mudança relevante)
 
-### 17. Relógio do aparelho errado 🟢
+| # | Recomendação |
+|---|---|
+| 28 | Acrescentar contatos de emergência e observações gerais ao modelo e ao PDF, se o Mario confirmar |
+| 33 | Perguntar ao Iago se OS do módulo MM entram no export de manutenção; senão, a APR 09 fica sem OS |
+| 35 | Registrar o risco de fagulha; o Mario diz se o aparelho precisa ser intrinsecamente seguro |
+| 36 | Terceiros fora do app no MVP |
+| 39 | Atraso pela data de fim programado quando existir; senão, a de início |
+| 40 | Pedir ao Iago um exemplo da planilha de saída, junto com o export de entrada (ligada à 51) |
+| 44 | Já existe a tela Perfil e histórico no protótipo, com as OS do próprio técnico; exige baixar também as encerradas dele no pull |
+| 46 | Evidência é foto **ou texto**, por item; anexar PDF fica para depois |
 
-**Contexto:** `ocorrido_em` usa o relógio do aparelho, que pode estar errado ou ter sido alterado. O PDF e a auditoria mostram esse horário.
+### 47. O PDF tem 3 vagas de executante, mas a APR pode ter 10 pessoas (nova)
 
-**Recomendação:** guardar os dois horários (já existe `recebido_em`), e o painel sinaliza quando `ocorrido_em` for posterior a `recebido_em` ou anterior à data de download da OS.
+**Contexto:** o Iago disse que ninguém executa com mais de 3 (1:00:02), mas citou uma movimentação de carga com 10 pessoas na APR (22:22).
+**Recomendação:** o PDF lista todos os presentes; as 3 vagas são do papel, não do sistema.
 
-### 18. Esqueci a senha / troca de senha com login offline 🟢
+### 48. Preventiva pendente do ciclo anterior × OS nova do mês (nova)
 
-**Contexto:** a senha é conferida localmente por 7 dias. Se ela for trocada na web, o aparelho continua aceitando a antiga até o próximo login online. Esquecer a senha em campo, sem sinal, impede o trabalho.
+**Contexto:** o Mario propôs fechar a OS pendente e vinculá-la à nova (13:38–13:54); o Iago disse que a ordem não deve ser encerrada, para não gerar redundância (13:01). A transcrição não deixa claro quem cedeu.
+**Recomendação:** sem vínculo automático; o histórico por local e equipamento mostra as duas. Nenhum usuário fecha a OS de outro.
 
-**Recomendação:** aceitar no MVP. No próximo sync com sinal, o app invalida a senha antiga. O reset de senha é sempre online, pela web.
+### 49. Ciência do supervisor: quando e onde assina (nova)
 
-### 19. Local manual que depois chega do SAP com outro código 🟢
+**Contexto:** o supervisor assina só para ciência de que foi executado (1:02:38).
+**Recomendação:** na web, com um botão "Ciente" depois do encerramento; não segura o PDF.
 
-**Contexto:** o analista cadastra um local à mão para uma corretiva urgente. Depois o mesmo local chega pelo SAP com outro código e vira um segundo registro, o que divide o histórico.
+### 50. Quais itens aceitam justificativa em texto no lugar de foto (nova)
 
-**Recomendação:** aceitar a duplicidade no MVP. Mais tarde, criar uma ação "mesclar locais" na web.
+**Contexto:** condição psicológica não se comprova com foto; o direito de recusa permite não executar e justificar depois (21:22–22:05). Hoje só o item 1 do protótipo é assim.
+**Recomendação:** campo no item do modelo, definido pela Segurança do Trabalho.
 
-### 20. Quais alertas também vão por e-mail? 🟢
+### 52. Tabela real de tipo de atividade → modelo de APR (nova)
 
-**Contexto:** a especificação define e-mail só para `bloqueio`. Os alertas `conflito_planejamento`, `execucao_duplicada` e `apoio_encerrado` ficam só no painel.
+**Contexto:** o modelo é definido pelo tipo de atividade (1:12:15). O Iago consegue gerar a tabela no SAP, mas ela ainda não foi aprovada e os códigos vão mudar (1:10:47–1:11:30).
+**Recomendação:** tabela editável no sistema (já está no protótipo, com exemplos fictícios). Uma OS com tipo de atividade sem modelo mapeado não é levada ao aplicativo e aparece na leitura como ignorada, com o motivo.
 
-**Recomendação:** manter assim e perguntar ao Iago se o `apoio_encerrado` merece e-mail, já que é ele que destrava a reprogramação.
+### 53. Pausa exige motivo? (nova)
 
-### 21. Analista pode reprogramar? 🟢
+**Contexto:** a pausa serve para saber, por exemplo, quanto tempo de almoço a pessoa leva (24:35–25:11).
+**Recomendação:** motivo opcional, escolhido numa lista curta (almoço, descanso, outro); o tempo de pausa entra nos indicadores.
 
-**Contexto:** pelos perfis definidos, só o supervisor reprograma e cria OS de apoio, e só na própria equipe. O analista vê tudo, mas não age. Se o supervisor estiver de férias, ninguém destrava as OS bloqueadas.
+### 54. API simulada do SAP: contrato e base fictícia (nova)
 
-**Recomendação:** o analista pode reprogramar e criar OS de apoio para qualquer equipe.
+**Contexto:** a API simulada nasce no back-end, com o mesmo contrato da real. A base fictícia deveria sair da planilha de OS de 2025 do Iago, mais cerca de 50 usuários fictícios; ela ainda não chegou.
+**Recomendação:** começar pelo PDF de exemplo da OS 4023470 e trocar quando a planilha chegar.
 
-## Já decidido nesta revisão
+## 4. Adotadas de baixo impacto (🟢)
 
-Registrado na [especificação](apr-om-digital.md) como correção ou suposição adotada:
+| # | Recomendação |
+|---|---|
+| 17 | Guardar `ocorrido_em` e `recebido_em`; o painel sinaliza quando `ocorrido_em` for posterior ao recebimento. Vale também para o cronômetro |
+| 18 | Aceitar no MVP: o app invalida a senha antiga no próximo sync com sinal. O reset é sempre online, pelo Supabase Auth |
+| 19 | Aceitar a duplicidade no MVP; depois, ação "mesclar locais" |
+| 20 | E-mail só para bloqueio; perguntar ao Iago se `apoio_encerrado` também merece e-mail. O envio é do back-end Node |
+| 21 | O analista pode reprogramar e criar OS de apoio para qualquer equipe |
+| 26 | Confirmar com o Iago se o volume é ~390 ou ~900 OS por mês |
+| 38 | Confirmar com o Iago se a rubrica desenhada vale para auditoria; ele sugeriu "rubrica ou assinatura digital" (26:13) |
+| 41 | Definir antes do piloto quem fornece os aparelhos e a versão mínima do Android |
 
-- **Vínculo APR ↔ OS:** a tabela `apr_os` registra as OS que cada APR cobre, e o evento `apr_concluida` leva a lista `os_ids`.
+## 5. Respondidas ou sem objeto
+
+| # | Questão | Resposta | Fonte |
+|---|---|---|---|
+| 1 | APR bloqueada bloqueia todas as OS cobertas? | **Sem objeto:** a APR cobre uma OS só | 28:09–28:26 |
+| 2 | A interrupção afeta as demais OS da APR? | **Sem objeto:** idem | 28:09–28:26 |
+| 11 | Quem assina o encerramento numa dupla? | **Todos os executantes**, ao fim da atividade; o supervisor dá ciência (ver 49) | 59:25–1:00:08 |
+| 15 | PDF por OS ou por APR? | **Um PDF por OS**, em 2 páginas: a APR e a OS | 53:48 |
+| 23 | `os.modelo_apr_codigo` obrigatório × `equipe.modelo_apr_codigo` opcional | **O modelo vem do tipo de atividade** (ver 52), não da equipe | 1:12:15 |
+| 30 | Status "Pendente" e "Imprimida" | **"Pendente"** é a OS com APR negativa; "impressa" é do SAP e não se usa | 9:06–15:30 |
+| 31 | Designar a OS a um usuário, com aceite | **A OS é designada à equipe** | 40:55–41:17 |
+| 32 | Não existe APR 08 | **"Só existem esses 8"**; falta só saber se a numeração pula o 08 de propósito | 1:10:05–1:10:20 |
+| 34 | "Parâmetros exóticos" (respostas que não são Sim/Não) | **As respostas são sim ou não** | 34:58–35:23 |
+| 37 | Dados reais num Supabase fora do ambiente corporativo | **No protótipo, só dados fictícios**; o aval da empresa fica para o piloto | 1:28–1:56 |
+| 42 | "APR 1 - 1 OS" × uma APR para várias OS | **1:1**, confirmado pelos mentores | 28:09–28:26 |
+
+## 6. Antes adiadas, agora adotadas
+
+| # | Questão | Por quê |
+|---|---|---|
+| 45 | Catálogo de serviço, escaneamento de papéis antigos, intervalo das preventivas: entram no MVP? | **Adotado: ficam fora do MVP**, junto com o chatbot e a gamificação; o time escolhe depois quais ideias guardar para a apresentação final |
+| 51 | O encerramento da OS atualiza o status no SAP? (o Iago descreve o status mudando para encerrada, 25:27–25:43) | **Adotado: a baixa segue por planilha**, com as colunas da aba `Encerradas`; o Iago confirma se o SAP espera outra coisa |
+
+## 7. Já decidido
+
+Registrado na [especificação](especificacao.md) como correção ou suposição adotada:
+
 - **Equipe sem supervisor:** o alerta vai para cada analista ativo.
 - **Cadastro de locais:** `POST /locais`, usado na criação de OS manual.
-- **Encarregado ≠ supervisor:** a função de campo na APR passa a se chamar `encarregado`. O `supervisor` é só o perfil de gestão na web.
-- **Fim da OS de apoio:** encerrar a OS de apoio gera o alerta `apoio_encerrado`, e a OS original continua `bloqueada` até ser reprogramada manualmente.
+- **Fim da OS de apoio:** encerrar a OS de apoio gera o alerta `apoio_encerrado`.
+
+Decidido em 10/10/2026 (já refletido na especificação):
+
+- **APR 1:1 com a OS:** a tabela `apr_os` sai; o evento `apr_concluida` leva `os_id`.
+- **Papel de campo:** "responsável" (líder que preenche a APR) no lugar de "encarregado".
+- **Checklist:** preenchido por inteiro e validado no fim; evidência por item reprovado.
+- **Retomada:** a OS com APR negativa fica pendente, e qualquer pessoa da equipe pode fazer uma APR nova, sem esperar reprogramação.
+- **Fonte das OS:** API do SAP simulada, com dados fictícios, e planilha como alternativa.
+- **Stack:** web em .NET, mobile em React Native, back-end em Node, banco, autenticação e armazenamento no Supabase; PDF e e-mail no back-end Node (premissa a confirmar).
+
+## 8. Insumos prometidos na Reunião 2
+
+| Quem | O quê | Liga com |
+|---|---|---|
+| Iago | Planilha do SAP com o pacote de OS de 2025 | 43, 54 |
+| Iago | Documento de arquitetura (SharePoint e Power Apps) | — |
+| Iago | Tabela de tipos de manutenção × APR (ainda não aprovada) | 52 |
+| Mario | Tabela de equipes | 54 |
+| Marcos | Novo desafio sobre APR por tipo de ordem | 52 |
