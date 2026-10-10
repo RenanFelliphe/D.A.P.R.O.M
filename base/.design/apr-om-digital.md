@@ -50,12 +50,12 @@ O registro central é a OS importada do SAP; cada tentativa de executá-la é um
 | Fatia | Entrega | Status |
 |---|---|---|
 | [Usuário e Equipe](#usuário-e-equipe) | perfis, equipes, login online e offline | aberta — 2 suposições adotadas; 2 RFC fora da demo |
-| [Importação SAP](#importação-sap) | OS entram por planilha do SAP ou cadastro manual | aberta — 1 suposição adotada |
+| [Importação SAP](#importação-sap) | OS entram por planilha do SAP ou cadastro manual | aberta — 2 suposições adotadas |
 | [Modelo de APR](#modelo-de-apr) | editor versionado e os 8 modelos de `base/` cadastrados | aberta — 1 suposição adotada |
 | [Sincronização](#sincronização) | download dos dados da equipe e envio idempotente da fila offline | definida |
 | [APR](#apr) | checklist sequencial offline com bloqueio | definida |
 | [Execução](#execução) | execução com fotos, assinatura, interrupção e PDF | definida |
-| [Impedimento](#impedimento) | alerta ao supervisor, reprogramação e OS de apoio | aberta — 1 suposição adotada |
+| [Impedimento](#impedimento) | alerta ao supervisor, reprogramação e OS de apoio | aberta — 2 suposições adotadas |
 | [Painel](#painel) | quadro, histórico, criticidade, indicadores e exportação SAP | aberta — 1 suposição adotada |
 
 Ordem: Usuário e Equipe → Importação SAP → Modelo de APR (só a carga inicial) → Sincronização → APR → Execução → Impedimento → Painel → Modelo de APR (editor). Sincronização é o maior risco de prazo e vem antes das telas de campo; o editor de modelos fica por último porque a carga inicial já destrava a demo.
@@ -87,7 +87,7 @@ Tabelas `equipe`, `usuario`.
 | `equipe.id` | uuid | não | | |
 | `equipe.nome` | text | não | | ex.: Serviços Especiais, Instrumentação, Atendimento Residencial |
 | `equipe.centro_trabalho` | text | não | | código SAP (`SERV_ESP`); unique; usado pela importação |
-| `equipe.supervisor_id` | uuid | sim | `usuario.id` | destinatário dos alertas |
+| `equipe.supervisor_id` | uuid | sim | `usuario.id` | destinatário dos alertas; sem supervisor, os alertas vão aos analistas ativos (ver [Impedimento](#impedimento)) |
 | `equipe.modelo_apr_codigo` | text | sim | | modelo padrão das OS da equipe (`APR 03`) |
 | `usuario.id` | uuid | não | | = id do Supabase Auth |
 | `usuario.nome` | text | não | | |
@@ -97,7 +97,7 @@ Tabelas `equipe`, `usuario`.
 | `usuario.equipe_id` | uuid | sim | `equipe.id` | |
 | `usuario.ativo` | boolean | não | | padrão true |
 
-Perfis: `tecnico` usa o app; `supervisor` reprograma e cria OS de apoio para a sua equipe; `analista` importa, exporta e vê tudo; `seguranca` edita modelos de APR; `admin` gerencia usuários e equipes.
+Perfis: `tecnico` usa o app; `supervisor` reprograma e cria OS de apoio para a sua equipe e recebe os alertas dela (é o perfil de gestão na web — não confundir com o `encarregado` que lidera a APR em campo); `analista` importa, exporta e vê tudo; `seguranca` edita modelos de APR; `admin` gerencia usuários e equipes.
 
 1. Janela de login offline — 7 dias desde o último login online.
 2. Funções de campo (gazista, instrumentista, eletricista) — ficam no texto da equipe e não viram perfil; perfil só controla acesso.
@@ -118,9 +118,12 @@ Perfis: `tecnico` usa o app; `supervisor` reprograma e cria OS de apoio para a s
 | Linha sem número de ordem | linha ignorada | listada em `ignoradas` |
 | Arquivo que não é o export esperado | nada é gravado | `422` "Colunas obrigatórias ausentes: …" |
 | Corretiva urgente fora do SAP | analista ou supervisor cria OS manual | `201` |
+| OS manual num local que nunca veio do SAP | analista ou supervisor cadastra o local antes, no mesmo formulário da OS | `201` |
+| Local com código já existente | nada é gravado | `409` "Local já cadastrado" |
 
 `POST /importacoes` `multipart: arquivo .xlsx` → `201` `{importacao_id, criadas, atualizadas, ignoradas: [{linha, motivo}]}`
 `POST /os` `{numero_ordem?, tipo, descricao, local_instalacao_id, equipe_id, data_inicio_prog, prioridade, os_origem_id?}` → `201` `{id}`
+`POST /locais` `{codigo, endereco?, plus_code?, cliente?}` → `201` `{id}`
 
 Tabelas `os`, `local_instalacao`, `importacao`.
 
@@ -160,6 +163,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 Índices: `os(equipe_id, status)`, `os(local_instalacao_id)`, `os(atualizada_em)`.
 
 1. Mapeamento de colunas — usar os campos do PDF da OS 4023470 (ordem, nota, tipo, centro de trabalho, local de instalação, equipamento, datas programadas, prioridade, endereço) até chegar o export que o Iago vai enviar; ajustar o mapeamento quando ele chegar.
+2. Locais fora do SAP — a importação continua criando locais automaticamente pelo código; o cadastro manual existe só para a OS manual. Se o mesmo local chegar depois pelo SAP com outro código, vira um local diferente (ver [pontos-a-validar.md](pontos-a-validar.md)).
 
 ### Modelo de APR
 
@@ -215,7 +219,7 @@ Tabelas `modelo_apr`, `item_modelo_apr`.
 `POST /sync/pull` `{cursor?}` → `200` `{os[], locais[], modelos_apr[], usuarios[], cursor}`
 `POST /sync/push` `{eventos: [{id, tipo, os_id?, payload, ocorrido_em}]}` → `200` `{confirmados: [id], alertas: [id]}`
 
-Tipos de evento: `apr_concluida`, `execucao_iniciada`, `execucao_encerrada`, `execucao_interrompida`. Fotos e assinaturas sobem ao Storage antes do evento que as referencia; um evento cujo arquivo ainda não subiu continua pendente.
+Tipos de evento: `apr_concluida` (aprovada ou bloqueada; o payload leva a APR completa e a lista `os_ids` das OS que ela cobre), `execucao_iniciada`, `execucao_encerrada`, `execucao_interrompida`. Fotos e assinaturas sobem ao Storage antes do evento que as referencia; um evento cujo arquivo ainda não subiu continua pendente.
 
 Tabela `evento_campo`.
 
@@ -277,18 +281,18 @@ Alternativas consideradas: replicação genérica com mesclagem campo a campo �
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Iniciar APR | técnico escolhe uma ou mais OS do mesmo local e do mesmo modelo para o dia (Decisão-chave 7) | modelo publicado mais recente da OS |
+| Iniciar APR | técnico escolhe uma ou mais OS do mesmo local e do mesmo modelo para o dia (Decisão-chave 7); as OS escolhidas ficam registradas em `apr_os` | modelo publicado mais recente da OS |
 | OS de locais ou modelos diferentes juntas | recusado | "APR cobre só OS do mesmo local e modelo" |
-| Menos de 2 participantes ou sem supervisor | não avança (ninguém trabalha sozinho) | "Defina supervisor e ao menos um executor" |
+| Menos de 2 participantes ou sem encarregado | não avança (ninguém trabalha sozinho) | "Defina o encarregado e ao menos um executor" |
 | Responder item | o próximo só libera depois do atual (Decisão-chave 5) | próxima pergunta |
-| Resposta bloqueante em item `eliminatorio` | APR termina `bloqueada`; observação e ao menos 1 foto obrigatórias; vira evento na fila | "Atividade impedida — supervisor será avisado" |
+| Resposta bloqueante em item `eliminatorio` | APR termina `bloqueada`; observação e ao menos 1 foto obrigatórias; **todas as OS em `apr_os` ficam `bloqueada`**; vira evento na fila | "Atividade impedida — supervisor será avisado" |
 | Resposta bloqueante em item `alerta` | segue; o item fica marcado | aviso amarelo; aparece no PDF e no painel |
 | Todos os itens respondidos sem bloqueio | APR `aprovada`, assinada pelos participantes | botão "Iniciar execução" nas OS cobertas |
 | App fechado no meio | rascunho local retomado; nada sobe até concluir | "Continuar APR" |
 | APR aprovada de outro dia | não cobre execução nova | exige APR nova |
 | Tentar mudar uma APR bloqueada | impossível (Decisão-chave 4) | só leitura |
 
-Tabelas `apr`, `apr_participante`, `apr_resposta`. Todos os IDs nascem no aparelho.
+Tabelas `apr`, `apr_os`, `apr_participante`, `apr_resposta`. Todos os IDs nascem no aparelho.
 
 | Coluna | Tipo | Nulo | Referência | Nota |
 |---|---|---|---|---|
@@ -301,9 +305,11 @@ Tabelas `apr`, `apr_participante`, `apr_resposta`. Todos os IDs nascem no aparel
 | `apr.item_bloqueante_id` | uuid | sim | `item_modelo_apr.id` | obrigatório se `bloqueada` |
 | `apr.observacao` | text | sim | | obrigatório se `bloqueada` |
 | `apr.concluida_em` | timestamptz | não | | |
+| `apr_os.apr_id` | uuid | não | `apr.id` | PK composta com `os_id` |
+| `apr_os.os_id` | uuid | não | `os.id` | OS cobertas pela APR; é o que define "APR que cobre a OS" |
 | `apr_participante.apr_id` | uuid | não | `apr.id` | |
 | `apr_participante.usuario_id` | uuid | não | `usuario.id` | |
-| `apr_participante.funcao` | text | não | | `supervisor` \| `executor`; exatamente um supervisor |
+| `apr_participante.funcao` | text | não | | `encarregado` \| `executor`; exatamente um encarregado. Não confundir com o perfil `supervisor` |
 | `apr_participante.assinatura_path` | text | não | | imagem no Storage |
 | `apr_resposta.apr_id` | uuid | não | `apr.id` | |
 | `apr_resposta.item_id` | uuid | não | `item_modelo_apr.id` | unique com `apr_id` |
@@ -315,6 +321,8 @@ erDiagram
   modelo_apr ||--o{ item_modelo_apr : contem
   modelo_apr ||--o{ apr : "versao usada"
   local_instalacao ||--o{ apr : "local"
+  apr ||--|{ apr_os : cobre
+  os ||--o{ apr_os : "coberta por"
   apr ||--|{ apr_participante : assinam
   apr ||--o{ apr_resposta : responde
   apr ||--o{ execucao : ampara
@@ -330,7 +338,7 @@ erDiagram
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Iniciar sem APR aprovada que cubra a OS | recusado (Decisão-chave 4) | "Preencha a APR antes de iniciar" |
+| Iniciar sem APR aprovada do dia que cubra a OS (registro em `apr_os`) | recusado (Decisão-chave 4) | "Preencha a APR antes de iniciar" |
 | Iniciar | grava o início com hora do aparelho | OS "Em execução" |
 | Condição de risco durante a execução | "Interromper": motivo e foto obrigatórios; Execução `interrompida` | "Atividade interrompida — supervisor será avisado" |
 | Encerrar sem foto ou sem assinatura | recusado | "Foto e assinatura obrigatórias" |
@@ -372,11 +380,13 @@ Alternativas consideradas: gerar o PDF no aparelho — ganha se o técnico preci
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Bloqueio ou interrupção chega ao servidor | OS `bloqueada`; `alerta` `bloqueio` para o supervisor da equipe, no painel e por e-mail | e-mail com nº da OS, local, técnico, item ou motivo, observação e foto |
+| Bloqueio ou interrupção chega ao servidor | OS `bloqueada` (no bloqueio de APR, todas as OS em `apr_os`); `alerta` `bloqueio` para o supervisor da equipe, no painel e por e-mail | e-mail com nº da OS, local, técnico, item ou motivo, observação e foto |
 | Supervisor sem e-mail | só o alerta no painel | |
+| Equipe sem supervisor cadastrado | um `alerta` para cada analista ativo | alerta no painel dos analistas |
 | Supervisor reprograma | nova data, equipe ou justificativa; OS volta a `liberada` e exige APR nova (Decisão-chave 4) | `200` |
 | Reprogramar sem justificativa | recusado | `422` "Justificativa obrigatória" |
 | Precisa de outra equipe antes (caixa de válvula cheia d'água → civil drena) | supervisor cria OS de apoio para a outra equipe, ligada à original; a original continua `bloqueada` | `201` |
+| OS de apoio encerrada | a original continua `bloqueada`; `alerta` `apoio_encerrado` para o supervisor da original, que então a reprograma | alerta no painel |
 | OS bloqueada passa da data programada | conta como atrasada **justificada** | ver [Painel](#painel) |
 | Supervisor marca alerta como lido | `lido_em` preenchido | some da lista de pendentes |
 
@@ -388,9 +398,9 @@ Tabela `alerta`.
 | Coluna | Tipo | Nulo | Referência | Nota |
 |---|---|---|---|---|
 | `alerta.id` | uuid | não | | |
-| `alerta.tipo` | text | não | | `bloqueio` \| `conflito_planejamento` \| `execucao_duplicada` |
+| `alerta.tipo` | text | não | | `bloqueio` \| `conflito_planejamento` \| `execucao_duplicada` \| `apoio_encerrado` |
 | `alerta.os_id` | uuid | não | `os.id` | |
-| `alerta.destinatario_id` | uuid | não | `usuario.id` | supervisor da equipe |
+| `alerta.destinatario_id` | uuid | não | `usuario.id` | supervisor da equipe; sem supervisor, um alerta por analista ativo |
 | `alerta.detalhe` | text | não | | |
 | `alerta.email_enviado_em` | timestamptz | sim | | |
 | `alerta.lido_em` | timestamptz | sim | | |
@@ -398,7 +408,8 @@ Tabela `alerta`.
 
 Tabela `reprogramacao`: `id`, `os_id` → `os.id`, `usuario_id` → `usuario.id`, `data_anterior`, `data_nova`, `justificativa` (text, not null), `criada_em`. É o histórico das justificativas que o indicador e a auditoria leem.
 
-1. Destinatários — só o supervisor da equipe da OS; a cópia para a segurança do trabalho (SESMT) fica de fora até alguém pedir.
+1. Destinatários — só o supervisor da equipe da OS; se a equipe não tiver supervisor, os analistas ativos. A cópia para a segurança do trabalho (SESMT) fica de fora até alguém pedir.
+2. Fim da OS de apoio — encerrar a OS de apoio não libera a original sozinho; gera o alerta `apoio_encerrado` e a reprogramação continua manual, com justificativa.
 
 ### Painel
 
