@@ -57,3 +57,6 @@ Status de OS
 Site (https://esgasplanomanutencao.lovable.app/controle)
 
 - Registro da assinatura do funcionário para validar
+
+
+ 
