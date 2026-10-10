@@ -1,21 +1,130 @@
-# Desafio 4 — APR e OM em papel, não!
+# D.A.P.R.O.M
 
-**Evento:** Maratona TIVIT – RPV
+**APR e Ordens de Manutenção sem papel.**
 
-## Problema
+D.A.P.R.O.M é uma proposta de digitalização do fluxo de Ordens de Manutenção (OM/OS) e Análises Preliminares de Risco (APR), do planejamento à execução em campo. A solução foi concebida para combinar uma experiência móvel para equipes operacionais com um painel web para gestão, mantendo o histórico, as evidências e as assinaturas associados a cada atividade.
 
-As Ordens de Manutenção ainda são registradas em papel, planilhas e documentos dispersos, causando:
+> **Estado atual:** este repositório contém um protótipo navegável feito com HTML, CSS e JavaScript, além de especificações e materiais de referência. Não contém ainda o backend, o aplicativo React Native ou o painel .NET de produção. As telas e os registros apresentados na demonstração usam dados fictícios e não se conectam ao SAP nem a serviços externos.
 
-- Retrabalho e documentos perdidos ou ilegíveis.
-- Dificuldade nas auditorias.
-- Falta de indicadores em tempo real.
-- Possibilidade de iniciar serviços sem a devida análise de riscos.
+## Contexto e objetivo
 
-## Objetivo
+O processo que motivou o projeto depende de ordens impressas, formulários APR preenchidos em papel e posterior digitalização. Isso aumenta o retrabalho, dificulta auditorias e o acompanhamento das atividades e não oferece uma barreira digital confiável contra o início de um serviço sem análise de risco aprovada.
 
-Construir uma solução mobile e web, pensada para smartphones Android, que torne a APR (Análise Preliminar de Riscos) e a OM (Ordem de Manutenção) 100% digitais, da criação à execução.
+O objetivo é apoiar a operação para que cada OS tenha sua própria APR, a execução só comece após a aprovação dos requisitos de segurança, e os dados produzidos em campo possam ser rastreados, consultados e apresentados em um registro digital. O sistema complementa o SAP: a geração e a gestão oficial das ordens permanecem nele.
 
-## Mentores
+## Fluxo operacional especificado
 
-- Iago Raich
-- Mario Stevan
+1. **Receber a OS:** as ordens são originadas no SAP e chegam à plataforma por uma API de leitura ou, como alternativa, por importação de planilha. A equipe indicada na ordem é usada para apresentar os participantes; os dados de atribuição não são recriados manualmente como regra geral.
+2. **Analisar os riscos:** antes de executar, a equipe realiza uma APR nova, exclusiva para aquela OS e para aquela tentativa. As respostas não são copiadas nem pré-preenchidas a partir de outra APR. O modelo é selecionado a partir do tipo/código da atividade e mantido em uma tabela editável pela Segurança do Trabalho.
+3. **Validar a APR:** o checklist é respondido por inteiro antes da validação. Respostas reprovadas em itens eliminatórios impedem a execução; todos os itens reprovados devem ser documentados, com foto quando se tratar de um obstáculo físico ou justificativa em texto quando a evidência visual não for adequada, como no direito de recusa.
+4. **Manter a OS pendente quando houver impedimento:** a APR bloqueada é preservada no histórico, a OS continua pendente e o supervisor é avisado. A equipe pode retomar a OS com uma APR totalmente nova, sem duplicar a ordem nem depender de reprogramação prévia.
+5. **Registrar a execução:** uma APR aprovada libera o início. A execução registra horários, quantidade de pessoas, descrição do serviço, pausas e evidências. Pausar uma atividade por intervalo é diferente de interrompê-la por risco; cada nova retomada da OS exige uma nova APR.
+6. **Encerrar e documentar:** quem executa encerra a atividade após as confirmações e assinaturas dos participantes. O registro previsto é um PDF de duas páginas: APR e OS no formato de referência do SAP. O supervisor dá ciência pelo painel.
+
+## O que a demonstração apresenta
+
+O protótipo reúne telas de campo, gestão e documento em uma única página navegável:
+
+### Experiência de campo (referência Android)
+
+- Entrada ilustrativa e informação de acesso offline temporário.
+- Lista de OS da equipe com filtros por status e detalhes de atividade, local, criticidade, prioridade, equipamento e materiais.
+- Abertura de APR vinculada a uma OS, seleção dos participantes e indicação do responsável.
+- Checklist de 18 itens demonstrativos, respondido por completo e validado somente ao final, com diferenciação entre itens eliminatórios e alertas.
+- Registro demonstrativo de justificativa e evidência fotográfica para itens reprovados, tela de APR bloqueada e tela de APR aprovada.
+- Confirmação das assinaturas dos participantes antes de iniciar a execução.
+- Tela de execução com pausa/continuação, descrição e exemplos de evidências.
+- Perfil com histórico de OS e assinatura cadastrada de exemplo.
+- Fila de sincronização ilustrativa.
+
+### Painel de gestão (referência web)
+
+- Quadro de OS por estado, com indicadores, filtros e criticidade.
+- Detalhe e histórico da ordem, alertas de impedimento e acompanhamento de OS de apoio.
+- Telas ilustrativas para importação do SAP, indicadores/exportação, modelos de APR e administração de equipes e usuários.
+
+### Documento
+
+- Visualização de referência do PDF de duas páginas, com uma página para a APR e outra para a OS.
+
+**As telas são uma demonstração de fluxo e interface, não módulos funcionais conectados.** A importação, sincronização, notificações, login, armazenamento de fotos, edição de modelos, geração/baixa de documentos e indicadores reais não são executados por serviços de backend neste repositório. Interações como câmera, criação de OS e algumas exportações são representadas visualmente ou por mensagens de demonstração.
+
+## Regras de negócio centrais
+
+- A relação é **uma OS para uma APR por tentativa de execução**; não se reutiliza uma APR entre ordens.
+- O checklist completo é analisado antes de se decidir se a atividade pode prosseguir.
+- Alertas não eliminatórios são registrados, mas não bloqueiam automaticamente a OS.
+- APRs bloqueadas e tentativas anteriores permanecem no histórico da OS.
+- A OS pendente pode ser retomada por alguém da equipe mediante uma APR nova.
+- A execução só é liberada após uma APR aprovada; quem executa é responsável pelo encerramento.
+- Pausa, suspensão por fim de expediente e interrupção por risco são situações diferentes.
+- Dados de campo produzidos offline devem ser sincronizados sem descartar registros; conflitos de planejamento devem gerar alertas.
+- O protótipo e os testes de demonstração devem usar somente dados fictícios.
+
+## Arquitetura prevista
+
+A arquitetura abaixo é a direção registrada na especificação; **não está implementada neste repositório**:
+
+| Componente planejado | Tecnologia | Responsabilidade |
+|---|---|---|
+| Aplicativo de campo para Android | React Native, com armazenamento local SQLite | APR, execução e operação offline |
+| Painel web | .NET 10 com Blazor | Planejamento, gestão, modelos, indicadores e exportações |
+| API/backend | Node.js com TypeScript | Regras de negócio, autorização, integrações, sincronização, PDF e e-mail |
+| Persistência e serviços gerenciados | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso mediado pelo backend |
+| Implantação | Coolify e Docker | Deploy das aplicações do monorepo |
+
+O monorepo planejado terá as pastas `/backend`, `/frontend` e `/mobile`, com Dockerfile para cada aplicação. A integração SAP deve permitir alternar entre uma API simulada, com contrato compatível e dados fictícios, e a API real por configuração de endereço e credenciais. A planilha continua sendo uma alternativa de leitura.
+
+A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramento deve poder ser exportado para baixa manual. MFA/SSO corporativo e associação de dispositivos também permanecem como decisões a validar antes de uma implantação real.
+
+## Executar o protótipo
+
+Não é necessário instalar dependências nem compilar o projeto:
+
+1. Abra a pasta `src`.
+2. Abra `index.html` em um navegador moderno.
+3. Use os controles do cabeçalho para alternar entre **App Android**, **Painel web** e **PDF**, ou navegue pelo roteiro lateral.
+
+Atalhos de teclado:
+
+- **Seta para a direita/esquerda:** próxima/anterior tela no roteiro.
+- **M:** mostrar ou ocultar o roteiro.
+- **F:** alternar tela cheia.
+
+O protótipo importa as fontes IBM Plex do Google Fonts quando há conexão; sem acesso à internet, usa fontes alternativas disponíveis no sistema.
+
+## Estrutura do repositório
+
+```text
+.
+├── README.md
+├── DesignDoc.md
+├── src/
+│   ├── index.html              # Telas da demonstração
+│   ├── styles.css              # Estilos e layouts responsivos
+│   └── app.js                  # Navegação e interações simuladas
+└── base/
+    ├── .design/
+    │   ├── especificacao.md    # Escopo, regras, contratos e decisões técnicas
+    │   └── pontos-a-validar.md # Questões e decisões pendentes
+    ├── apr-examples/           # Planilhas-modelo de APR usadas como referência
+    ├── os-examples/            # Exemplos de documentos de OS
+    ├── contexto/               # Contexto da sessão de especificação
+    └── reunioes/               # Transcrições e resumo das correções
+```
+
+As oito planilhas de referência de APR correspondem aos modelos de operação, instrumentação, operação/manutenção, construção de rede de distribuição de gás natural, conversão de clientes, trabalho em altura e espaço confinado, inspeção de rede e movimentação de almoxarifado. Os modelos oficiais e seu conteúdo devem ser mantidos e homologados pela área de Segurança do Trabalho.
+
+## Documentação de referência
+
+- [DesignDoc.md](./DesignDoc.md) — definições e visão do produto.
+- [Especificação funcional e técnica](./base/.design/especificacao.md) — escopo, regras de negócio, arquitetura proposta, contratos e decisões.
+- [Pontos a validar](./base/.design/pontos-a-validar.md) — questões que ainda dependem de confirmação.
+- [Resumo das correções da reunião 2](./base/reunioes/correcoes-reuniao-2-resumo.md) — decisões recentes sobre APR, execução, integração e stack.
+- [Materiais de APR](./base/apr-examples/) e [exemplos de OS](./base/os-examples/) — referências de processo e formato.
+
+## Limites e próximos passos
+
+Para avançar do protótipo para um piloto, ainda será necessário implementar e validar as três aplicações, contratos e API simulada do SAP, autenticação e permissões, armazenamento offline e sincronização idempotente, persistência de evidências, geração real do PDF, notificações, exportação de encerramentos e testes do fluxo de ponta a ponta. A integração real e as decisões de segurança corporativa devem ser confirmadas com as áreas responsáveis; dados reais não devem ser conectados ao protótipo atual.
+
+Funcionalidades sugeridas para depois do MVP — como catálogo de serviços, digitalização de documentos antigos, acompanhamento do intervalo entre ciclos preventivos, chatbot e gamificação — não fazem parte da demonstração nem do escopo prioritário atual.
