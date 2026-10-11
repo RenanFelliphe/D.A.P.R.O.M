@@ -13,7 +13,8 @@
     "db:test": "node db/tests/schema.mjs && tsx db/tests/carga-inicial.ts",
     "typecheck": "tsc --noEmit",
     "db:gerar-seed": "node src/db/seed/gerar-modelos-apr.mjs",
-    "admin:criar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/criar-admin.ts"
+    "admin:criar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/criar-admin.ts",
+    "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",

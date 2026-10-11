@@ -37,6 +37,10 @@ O que não dá para provar com as versões em memória: Auth, Storage e Postgres
 6. **Roteiro de conferência**: o técnico faz a APR aprovada → executa (pausa, foto, assinaturas) → encerra; no Supabase, conferir as linhas em `evento_campo`, `apr`, `execucao` e os arquivos nos buckets; o supervisor dá ciência; o analista exporta a planilha; repetir com uma APR bloqueada e ver o alerta (e o e-mail, se `SMTP_URL` estiver configurado).
 7. **Docker**: com o `.env` preenchido, `docker compose up --build` (api em 3333, web em 3000) e repetir o roteiro. Com um Supabase local (`supabase start`), use `host.docker.internal` nas URLs do `.env`.
 
+## Dados de demonstração
+
+`pnpm demo:popular` (com a `api` já iniciada uma vez e o `.env` apontando para o banco) cria dados **fictícios** para testar os fluxos: equipes, usuários (`sup2`, `tec3`, `tec4`, `tec5`, e os que faltarem), locais (alguns críticos, de clientes como Vale e Suzano) e 30 OS em todos os estados: liberadas (algumas atrasadas, uma reprogramada), em execução (uma em pausa), pendentes (APR bloqueada com fotos, bloqueada por condição pessoal, suspensa, interrompida por risco com OS de apoio), encerradas com e sem ciência (com PDF), uma execução esquecida há mais de 12 h, uma OS cancelada e OS manuais. Tudo passa pelas regras da `api` (`processarEventos`), com a hora de cada evento no passado. Não duplica: se já houver OS `5100xxx`, não faz nada. O código está em [`src/db/seed/demo.ts`](src/db/seed/demo.ts) e é coberto por `test/demo.test.ts`.
+
 ## Estrutura
 
 | Pasta | O que tem |
