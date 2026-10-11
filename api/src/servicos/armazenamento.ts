@@ -1,4 +1,5 @@
 import { ErroApi } from "../http/erros";
+import { cabecalhosDeServico } from "./auth";
 
 export const BUCKETS = ["fotos", "assinaturas", "pdfs", "importacoes"] as const;
 export type Bucket = (typeof BUCKETS)[number];
@@ -23,7 +24,7 @@ export class ArmazenamentoSupabase implements Armazenamento {
   ) {}
 
   private cabecalhos(extra: Record<string, string> = {}) {
-    return { apikey: this.chave, Authorization: `Bearer ${this.chave}`, ...extra };
+    return { ...cabecalhosDeServico(this.chave), ...extra };
   }
   private rota(bucket: Bucket, caminho: string, prefixo = "") {
     return `${this.url}/storage/v1/object/${prefixo}${bucket}/${caminho.split("/").map(encodeURIComponent).join("/")}`;

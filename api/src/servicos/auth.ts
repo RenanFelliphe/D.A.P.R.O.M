@@ -28,6 +28,12 @@ export interface ProvedorAuth {
   restaurar(id: string): Promise<void>;
 }
 
+
+/** Chave de serviço: a `service_role` legada é um JWT e vai também em `Authorization`; as chaves novas (`sb_secret_…`) não são JWT e vão só em `apikey`. */
+export function cabecalhosDeServico(chave: string): Record<string, string> {
+  return chave.startsWith("eyJ") ? { apikey: chave, Authorization: `Bearer ${chave}` } : { apikey: chave };
+}
+
 export const emailInterno = (matricula: string) => `${matricula.trim().toLowerCase()}@daprom.local`;
 
 /** Supabase Auth (GoTrue) pela API REST, com a chave de serviço: só a `api` a tem. */
@@ -40,7 +46,7 @@ export class AuthSupabase implements ProvedorAuth {
   private async chamar(caminho: string, init: { method: string; body?: unknown }) {
     const resposta = await fetch(`${this.url}/auth/v1${caminho}`, {
       method: init.method,
-      headers: { apikey: this.chave, Authorization: `Bearer ${this.chave}`, "Content-Type": "application/json" },
+      headers: { ...cabecalhosDeServico(this.chave), "Content-Type": "application/json" },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
     });
     const texto = await resposta.text();
