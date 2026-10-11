@@ -1,8 +1,8 @@
-import { Button } from "@/components/ui/Button";
-import { Icon } from "@/components/ui/Icon";
+import { NovoUsuario } from "./NovoUsuario";
+import type { OpcaoEquipe } from "./FormularioUsuario";
 
 /** Título da tela e botão de novo usuário. */
-export function CabecalhoUsuarios() {
+export function CabecalhoUsuarios({ equipes }: { equipes: OpcaoEquipe[] }) {
   return (
     <div className="row between wrap" style={{ alignItems: "flex-end" }}>
       <div className="stack g4">
@@ -11,10 +11,7 @@ export function CabecalhoUsuarios() {
           O administrador cria as contas e define perfil e equipe. Não há autocadastro.
         </span>
       </div>
-      <Button variant="p" sm aviso="Abriria o formulário de novo usuário, com matrícula, perfil, equipe e senha inicial.">
-        <Icon name="plus" size={16} />
-        Novo usuário
-      </Button>
+      <NovoUsuario equipes={equipes} />
     </div>
   );
 }

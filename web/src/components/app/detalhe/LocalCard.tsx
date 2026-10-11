@@ -1,19 +1,27 @@
-import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import type { LocalDaOs } from "@/lib/os-app";
 
-/** Card com o endereço do local da OS e o botão "Mapa". */
-export function LocalCard() {
+/** Card com o local da OS (código, endereço e plus code) e o link "Mapa". */
+export function LocalCard({ local }: { local: LocalDaOs }) {
+  const consulta = local.plus_code ?? local.endereco ?? local.codigo;
   return (
     <div className="card row" style={{ alignItems: "flex-start", gap: 12 }}>
       <Icon name="pin" size={22} style={{ color: "var(--brand)", marginTop: 2 }} />
       <div className="grow stack" style={{ gap: 2 }}>
-        <strong>ERP Serra — Estação de Redução Primária</strong>
-        <span style={{ fontSize: 14, color: "var(--ink3)" }}>Rod. BR-101, km 262 — Serra/ES</span>
-        <span className="mono small">Plus code M4R7+QG Serra</span>
+        <strong>{local.codigo}</strong>
+        {local.cliente && <span style={{ fontSize: 14, color: "var(--ink3)" }}>{local.cliente}</span>}
+        {local.endereco && <span style={{ fontSize: 14, color: "var(--ink3)" }}>{local.endereco}</span>}
+        {local.plus_code && <span className="mono small">Plus code {local.plus_code}</span>}
       </div>
-      <Button variant="line" sm aviso="Abriria o mapa com a rota até o local." style={{ color: "var(--brand)" }}>
+      <a
+        className="btn btn-line btn-sm"
+        style={{ color: "var(--brand)" }}
+        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(consulta)}`}
+        target="_blank"
+        rel="noreferrer"
+      >
         Mapa
-      </Button>
+      </a>
     </div>
   );
 }

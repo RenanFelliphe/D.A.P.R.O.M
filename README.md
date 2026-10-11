@@ -4,7 +4,7 @@
 
 D.A.P.R.O.M é uma proposta de digitalização do fluxo de Ordens de Manutenção (OM/OS) e Análises Preliminares de Risco (APR), do planejamento à execução em campo. A solução foi concebida para combinar uma experiência móvel para equipes operacionais com um painel web para gestão, mantendo o histórico, as evidências e as assinaturas associados a cada atividade.
 
-> **Estado atual:** este repositório contém um protótipo navegável das telas, feito em Next.js (React + TypeScript) na pasta `web`, além de especificações e materiais de referência. Não contém ainda a `api`, o aplicativo `mobile` (React Native) nem a versão funcional do painel `web`, que hoje é só a interface com dados simulados. As telas e os registros apresentados na demonstração usam dados fictícios e não se conectam ao SAP nem a serviços externos.
+> **Estado atual:** o repositório tem a `api` (rotas, regras, banco, PDF e tarefas, testada) e o `web` (área do técnico e painel de gestão, ligados à `api`), além das especificações e dos materiais de referência. O aplicativo `mobile` (React Native, com o modo offline) ainda não foi iniciado. Nada aqui roda com dados reais da empresa: o SAP é simulado e o desenvolvimento usa só dados fictícios.
 
 ## Contexto e objetivo
 
@@ -77,17 +77,16 @@ O monorepo tem as pastas `api`, `web` e `mobile`; `api` e `web` já têm Dockerf
 
 A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramento deve poder ser exportado para baixa manual. MFA/SSO corporativo e associação de dispositivos também permanecem como decisões a validar antes de uma implantação real.
 
-## Executar o protótipo
+## Executar
 
-O protótipo agora é a aplicação Next.js da pasta [`web`](./web) (React + TypeScript, só desktop, com dados fictícios):
+Sem Supabase nem Docker, a `api` tem um modo local (banco, autenticação e arquivos em memória, SAP simulado, usuários de exemplo com a senha `daprom123`):
 
 ```bash
-cd web
-pnpm install
-pnpm dev        # http://localhost:3000, abre em /app/entrar
+cd api && pnpm install && pnpm dev:local    # http://localhost:3333
+cd web && pnpm install && pnpm dev          # http://localhost:3000, abre na tela de entrada (matrícula tec1, sup1, ana, seg ou adm)
 ```
 
-A área do técnico fica em `/app/*`, o painel de gestão em `/web/*` e o PDF da OS executada em `/doc/pdf`. Mais detalhes em [web/README.md](./web/README.md).
+A área do técnico fica em `/app/*` e o painel de gestão em `/web/*`; o perfil define o que cada pessoa vê. Detalhes em [web/README.md](./web/README.md) e [api/README.md](./api/README.md).
 
 ### Com Docker (`api` + `web`)
 

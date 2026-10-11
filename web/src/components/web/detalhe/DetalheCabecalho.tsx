@@ -1,46 +1,55 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { rotas } from "@/lib/telas";
+import { aparenciaDoStatus } from "@/components/web/quadro/ColunaQuadro";
+import type { OsDetalhe } from "@/data/detalhe";
+import { rotas } from "@/lib/rotas";
+import { rotuloDoStatus } from "@/lib/tipos";
 
-/** Breadcrumb, identificação da OS e ações de histórico e PDF. */
-export function DetalheCabecalho() {
+/** Trilha, identificação da OS (número, status, tipo, criticidade, atraso) e o atalho para o PDF. */
+export function DetalheCabecalho({ os }: { os: OsDetalhe }) {
+  const numero = os.numero_ordem ?? "sem número";
+  const a = aparenciaDoStatus[os.status];
   return (
     <>
       <div className="crumb">
         <Link href={rotas.web.quadro} style={{ fontWeight: 500 }}>
           Quadro de OS
         </Link>{" "}
-        / <span className="mono">OS 4031187</span>
+        / <span className="mono">OS {numero}</span>
       </div>
       <div className="row between wrap" style={{ alignItems: "flex-end" }}>
         <div className="stack g6">
           <div className="row wrap g8">
             <span className="mono" style={{ fontSize: 15, fontWeight: 600 }}>
-              OS 4031187
+              OS {numero}
             </span>
-            <Badge tone="enc">
-              <Icon name="check" size={13} />
-              Encerrada
+            <Badge tone={a.tom}>
+              {os.status === "encerrada" && <Icon name="check" size={13} />}
+              {rotuloDoStatus[os.status]}
             </Badge>
-            <Badge tone="neu">Preventiva · YBA2</Badge>
-            <Badge tone="crit">Local crítico</Badge>
+            <Badge tone="neu">
+              {os.tipo === "preventiva" ? "Preventiva" : "Corretiva"}
+              {os.tipo_atividade ? ` · ${os.tipo_atividade}` : ""}
+            </Badge>
+            {os.origem === "manual" && <Badge tone="neu">OS manual</Badge>}
+            {os.local_instalacao.critico && <Badge tone="crit">Local crítico</Badge>}
+            {os.atrasada && <Badge tone="blq">Atrasada</Badge>}
           </div>
-          <h1>Inspeção de corrosão em válvulas da ERP</h1>
+          <h1>{os.titulo}</h1>
           <span className="muted" style={{ fontSize: 14 }}>
-            ERP Serra — Rod. BR-101, km 262, Serra/ES · Serviços Especiais
+            {os.local_instalacao.codigo}
+            {os.local_instalacao.endereco ? ` — ${os.local_instalacao.endereco}` : ""} · {os.equipe.nome}
           </span>
         </div>
-        <div className="row g8">
-          <Button variant="line" sm aviso="Mostraria as execuções anteriores deste local e equipamento.">
-            Histórico do local
-          </Button>
-          <LinkButton variant="p" sm href={rotas.doc.pdf}>
-            <Icon name="download" size={16} />
-            Ver PDF
-          </LinkButton>
-        </div>
+        {os.status === "encerrada" && (
+          <div className="row g8">
+            <Link className="btn btn-p btn-sm" href={rotas.doc.os(os.id)}>
+              <Icon name="file" size={16} />
+              Ver PDF
+            </Link>
+          </div>
+        )}
       </div>
     </>
   );

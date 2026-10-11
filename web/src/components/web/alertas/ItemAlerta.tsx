@@ -1,38 +1,38 @@
+import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import type { Alerta } from "@/data/alertas";
+import { diaMes, hora } from "@/lib/formatar";
+import { rotuloDoAlerta, type Alerta } from "./tipos";
 
-/** Item da lista de alertas (botão de uma listbox). */
-export function ItemAlerta({
-  alerta,
-  selecionado,
-  aoSelecionar,
-}: {
-  alerta: Alerta;
-  selecionado: boolean;
-  aoSelecionar: () => void;
-}) {
-  const bloqueio = alerta.natureza === "bloq";
+/** Item da lista de alertas: um link que abre o alerta no painel da direita (`?alerta=<id>`). */
+export function ItemAlerta({ alerta, selecionado, href }: { alerta: Alerta; selecionado: boolean; href: string }) {
+  const bloqueio = alerta.tipo === "bloqueio";
+  const naoLido = alerta.lido_em === null;
   return (
-    <button
-      className={alerta.naoLido ? "aitem unread" : "aitem"}
-      type="button"
+    <Link
+      href={href}
+      scroll={false}
+      className={naoLido ? "aitem unread" : "aitem"}
       role="option"
       aria-selected={selecionado}
-      onClick={aoSelecionar}
+      style={{ textDecoration: "none" }}
     >
       <span className={bloqueio ? "ic red" : "ic blue"}>
         <Icon name={bloqueio ? "octagon" : "refresh"} size={16} />
       </span>
       <span className="stack" style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <span className="tp">
-          <b style={{ color: bloqueio ? "var(--blq)" : "var(--brand)" }}>{alerta.tipo}</b>
-          <span>{alerta.quando}</span>
+          <b style={{ color: bloqueio ? "var(--blq)" : "var(--brand)" }}>{rotuloDoAlerta(alerta)}</b>
+          <span>
+            {diaMes(alerta.criado_em)} {hora(alerta.criado_em)}
+          </span>
         </span>
         <span className="os">
-          <span className="mono">{alerta.os}</span> · {alerta.local}
+          <span className="mono">{alerta.numero_ordem ?? "OS manual"}</span> · {alerta.titulo}
         </span>
-        <span className="rs">{alerta.resumo}</span>
+        <span className="rs" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {alerta.detalhe}
+        </span>
       </span>
-    </button>
+    </Link>
   );
 }

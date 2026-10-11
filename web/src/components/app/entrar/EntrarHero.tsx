@@ -1,6 +1,6 @@
 import { Icon } from "@/components/ui/Icon";
 
-const destaques = ["Android", "Funciona sem sinal", "Zero papel"];
+const destaques = ["Web e Android", "Online primeiro", "Zero papel"];
 
 /** Painel escuro de boas-vindas, ao lado do formulário de entrada. */
 export function EntrarHero() {

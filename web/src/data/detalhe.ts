@@ -1,106 +1,197 @@
-import type { PessoaAssinatura } from "@/components/ui/Assinatura";
+import "server-only";
 
-export interface DadoSap {
-  rotulo: string;
-  valor: string;
-  mono?: boolean;
+import { api, apiOuNulo } from "@/lib/api";
+import type { OsStatus, Paginacao } from "@/lib/tipos";
+
+export interface LocalDaOs {
+  id: string;
+  codigo: string;
+  endereco: string | null;
+  plus_code: string | null;
+  cliente: string | null;
+  critico: boolean;
 }
 
-export const dadosSap: DadoSap[] = [
-  { rotulo: "Ordem", valor: "4031187", mono: true },
-  { rotulo: "Nota", valor: "10018842", mono: true },
-  { rotulo: "Tipo de atividade", valor: "Z02-Manutenção Preventiva" },
-  { rotulo: "Centro de trabalho", valor: "SERV_ESP", mono: true },
-  { rotulo: "Equipamento", valor: "VLV-ERP01-012", mono: true },
-  { rotulo: "Prioridade", valor: "Muito alto" },
-  { rotulo: "Início programado", valor: "13/10/2026" },
-  { rotulo: "Fim programado", valor: "15/10/2026" },
-  { rotulo: "Origem", valor: "Importação nº 12 · 01/10" },
-];
+/** A OS no detalhe: a linha inteira do banco mais o local, a equipe e os campos derivados. */
+export interface OsDetalhe {
+  id: string;
+  numero_ordem: string | null;
+  numero_nota: string | null;
+  tipo: "preventiva" | "corretiva";
+  tipo_atividade: string | null;
+  codigo_atividade: string | null;
+  titulo: string;
+  descricao: string | null;
+  equipamento: string | null;
+  local_instalacao_id: string;
+  equipe_id: string;
+  plano_manutencao: string | null;
+  item_manutencao: string | null;
+  prioridade: string | null;
+  data_inicio_prog: string;
+  data_fim_prog: string | null;
+  status: OsStatus;
+  data_ordem: string | null;
+  criado_por_sap: string | null;
+  status_sap: string | null;
+  solicitante: string | null;
+  os_origem_id: string | null;
+  origem: "sap" | "manual";
+  pdf_path: string | null;
+  pdf_em: string | null;
+  ciencia_por: string | null;
+  ciencia_em: string | null;
+  exportada_sap_em: string | null;
+  cancelada_em: string | null;
+  cancelada_por: string | null;
+  justificativa_cancelamento: string | null;
+  local_instalacao: LocalDaOs;
+  equipe: { id: string; nome: string; centro_trabalho: string; supervisor_id: string | null };
+  ciencia_por_nome: string | null;
+  pdf_pronto: boolean;
+  execucao_aberta_ha_horas: number | null;
+  atrasada: boolean;
+  /** Eventos cujo horário do aparelho está à frente do servidor (relógio do aparelho adiantado). */
+  eventos_com_relogio_suspeito: number;
+}
 
 export interface ParticipanteApr {
-  iniciais: string;
+  usuario_id: string;
   nome: string;
-  detalhe: string;
-  /** Variante de cor do avatar (.av2). */
-  alternativo?: boolean;
+  matricula: string;
+  funcao: "responsavel" | "executor";
+  assinatura_path: string | null;
+  assinada_em: string | null;
 }
 
-export const participantesApr: ParticipanteApr[] = [
-  { iniciais: "CM", nome: "Carlos Menezes", detalhe: "Responsável · mat. 10482 · assinou 09:24" },
-  { iniciais: "DR", nome: "Diego Rocha", detalhe: "Executor · mat. 12077 · assinou 09:24", alternativo: true },
-];
+export interface FotoDeEvidencia {
+  id: string;
+  foto_path: string;
+  capturada_em: string;
+  latitude: number | null;
+  longitude: number | null;
+}
 
-export interface ItemAprResumo {
-  numero: string;
-  item: string;
+export interface RespostaApr {
+  item_id: string;
+  secao: string;
+  ordem: number;
+  texto: string;
+  tipo: "eliminatorio" | "alerta" | "informativo" | string;
+  evidencia: string | null;
+  resposta_bloqueante: string | null;
+  risco_id: string | null;
+  resposta: "sim" | "nao" | "na";
+  observacao: string | null;
+  respondida_em: string;
+  reprovado: boolean;
+  alerta_marcado: boolean;
+}
+
+export interface AprDaOs {
+  id: string;
+  os_id: string;
+  resultado: "aprovada" | "bloqueada";
+  observacao_geral: string | null;
+  concluida_em: string;
+  preenchida_por: { id: string; nome: string };
+  modelo: { codigo: string; versao: number; titulo: string };
+  participantes: ParticipanteApr[];
+  riscos: { id: string; classificacao: string; nome: string }[];
+  respostas: RespostaApr[];
+  itens_reprovados: {
+    item_id: string;
+    texto: string;
+    resposta: string;
+    observacao: string | null;
+    tipo: string;
+    evidencia: string | null;
+    fotos: FotoDeEvidencia[];
+  }[];
+}
+
+export interface ExecucaoDaOs {
+  id: string;
+  apr_id: string;
+  executor: { id: string; nome: string; matricula: string };
+  numero_pessoas: number;
+  inicio: string;
+  fim: string | null;
+  resultado: "encerrada" | "interrompida" | "suspensa" | "cancelada" | null;
+  descricao_atividade: string | null;
+  motivo: string | null;
+  dados_inspecao: unknown;
+  tempo_liquido_min: number | null;
+  pausa_min: number | null;
+  pausas: { id: string; inicio: string; fim: string | null; motivo: string | null }[];
+  assinaturas: { usuario_id: string; nome: string; matricula: string; assinatura_path: string | null; assinada_em: string }[];
+  fotos: FotoDeEvidencia[];
+}
+
+export interface AlertaDaOs {
+  id: string;
   tipo: string;
-  resposta: string;
-  /** Item de alerta: linha e resposta ganham o tom de alerta. */
-  alerta?: boolean;
-}
-
-export const itensApr: ItemAprResumo[] = [
-  { numero: "1", item: "Todos os participantes estão em boas condições físicas e psicológicas?", tipo: "Eliminatório", resposta: "Sim" },
-  { numero: "4", item: "Os participantes estão sem adornos (anéis, correntes, relógio)?", tipo: "Eliminatório", resposta: "Sim" },
-  { numero: "5", item: "Há necessidade de iluminação auxiliar?", tipo: "Alerta", resposta: "Sim · alerta", alerta: true },
-  { numero: "7", item: "A equipe está apta a realizar um resgate de emergência no local?", tipo: "Eliminatório", resposta: "Sim" },
-  { numero: "9", item: "Existe algum impedimento para realizar a atividade?", tipo: "Eliminatório", resposta: "Não" },
-  { numero: "11", item: "Usar detector de gás calibrado durante toda a atividade", tipo: "Medida preventiva", resposta: "Sim" },
-];
-
-export interface MedidaExecucao {
-  rotulo: string;
-  valor: string;
-}
-
-export const medidasExecucao: MedidaExecucao[] = [
-  { rotulo: "Início", valor: "13/10 · 09:31" },
-  { rotulo: "Fim", valor: "13/10 · 11:18" },
-  { rotulo: "Tempo total", valor: "1h47" },
-  { rotulo: "Pausas", valor: "0h12 · 1 pausa" },
-  { rotulo: "Tempo líquido", valor: "1h35" },
-  { rotulo: "Pessoas", valor: "2" },
-  { rotulo: "Recebida no servidor", valor: "13/10 · 12:40" },
-];
-
-export interface FotoExecucao {
-  hora: string;
-  legenda: string;
-}
-
-export const fotosExecucao: FotoExecucao[] = [
-  { hora: "09:52", legenda: "V-104 · -20,1834 / -40,2712" },
-  { hora: "10:07", legenda: "V-109 · -20,1835 / -40,2709" },
-  { hora: "10:41", legenda: "Inibidor aplicado" },
-];
-
-export interface AssinaturaExecucao {
-  papel: string;
-  pessoa: PessoaAssinatura;
-  legenda: string;
-}
-
-export const assinaturasExecucao: AssinaturaExecucao[] = [
-  { papel: "Executante · responsável", pessoa: "carlos", legenda: "Carlos Menezes · mat. 10482 · 11:18" },
-  { papel: "Executante", pessoa: "diego", legenda: "Diego Rocha · mat. 12077 · 11:18" },
-];
-
-export interface EventoLinhaDoTempo {
-  quando: string;
-  titulo: string;
   detalhe: string;
-  cor: string;
+  destinatario_id: string;
+  destinatario_nome: string;
+  email_enviado_em: string | null;
+  lido_em: string | null;
+  criado_em: string;
 }
 
-export const linhaDoTempo: EventoLinhaDoTempo[] = [
-  { quando: "01/10 08:02", titulo: "Importada do SAP", detalhe: "Importação nº 12 · Ana Ribeiro, analista", cor: "#9AA29A" },
-  { quando: "12/10 14:05", titulo: "APR #A-2198 bloqueada", detalhe: "OS ficou pendente · supervisor avisado", cor: "#D03B3B" },
-  { quando: "13/10 07:58", titulo: "Baixada no aparelho", detalhe: "Celular de Carlos Menezes", cor: "#9AA29A" },
-  { quando: "13/10 09:24", titulo: "APR #A-2210 aprovada", detalhe: "Nova APR; a #A-2198 fica no histórico", cor: "#0CA30C" },
-  { quando: "13/10 09:31", titulo: "Execução iniciada", detalhe: "Horário do aparelho", cor: "#C98500" },
-  { quando: "13/10 10:15", titulo: "Pausa de 12 min", detalhe: "Retomada às 10:27 · não entra no tempo líquido", cor: "#C98500" },
-  { quando: "13/10 11:18", titulo: "Execução encerrada", detalhe: "3 fotos e assinatura", cor: "#0CA30C" },
-  { quando: "13/10 12:40", titulo: "Recebida no servidor", detalhe: "Sincronização após 4h26 sem sinal", cor: "#1C5CAB" },
-  { quando: "13/10 12:41", titulo: "PDF gerado", detalhe: "OS-4031187.pdf", cor: "#1C5CAB" },
-];
+export interface ReprogramacaoDaOs {
+  id: string;
+  usuario_id: string;
+  usuario_nome: string;
+  data_anterior: string;
+  data_nova: string;
+  equipe_anterior_id: string | null;
+  equipe_anterior_nome: string | null;
+  equipe_nova_id: string | null;
+  equipe_nova_nome: string | null;
+  justificativa: string;
+  criada_em: string;
+}
+
+export interface EventoDaLinhaDoTempo {
+  em: string;
+  tipo: string;
+  descricao: string;
+}
+
+export interface DetalheDaOs {
+  os: OsDetalhe;
+  aprs: AprDaOs[];
+  execucoes: ExecucaoDaOs[];
+  alertas: AlertaDaOs[];
+  reprogramacoes: ReprogramacaoDaOs[];
+  linha_do_tempo: EventoDaLinhaDoTempo[];
+}
+
+/** `GET /os/{id}`; `null` quando a OS não existe ou é de outra equipe (a `api` responde 404). */
+export function carregarDetalhe(id: string): Promise<DetalheDaOs | null> {
+  return apiOuNulo<DetalheDaOs>(`/os/${encodeURIComponent(id)}`);
+}
+
+export interface ExecucaoDoHistorico {
+  id: string;
+  os: { id: string; numero_ordem: string | null; titulo: string; equipamento: string | null };
+  executor: { id: string; nome: string };
+  inicio: string;
+  fim: string | null;
+  descricao_atividade: string | null;
+  tempo_liquido_min: number | null;
+}
+
+export interface RespostaHistorico extends Paginacao {
+  execucoes: ExecucaoDoHistorico[];
+}
+
+export const TAMANHO_DO_HISTORICO = 10;
+
+/** Execuções encerradas do local (e, se informado, do equipamento), da mais recente para a mais antiga. */
+export function carregarHistorico(localId: string, equipamento: string | null, pagina: number): Promise<RespostaHistorico> {
+  return api<RespostaHistorico>("/historico", {
+    consulta: { local_instalacao_id: localId, equipamento, pagina, tamanho: TAMANHO_DO_HISTORICO },
+  });
+}

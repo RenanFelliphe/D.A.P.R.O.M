@@ -1,49 +1,28 @@
-/** Dados fictícios da tela de equipes e usuários. */
+/** Tipos e textos da tela de equipes e usuários. Os dados vêm da `api` (`GET /usuarios`, `GET /equipes`). */
 
-export interface Usuario {
-  nome: string;
-  matricula: string;
-  perfil: string;
-  equipe: string;
-  situacao: string;
-}
+import type { Perfil } from "@/lib/tipos";
 
-export const usuarios: Usuario[] = [
-  { nome: "Carlos Menezes", matricula: "10482", perfil: "Técnico", equipe: "Serviços Especiais", situacao: "Ativo" },
-  { nome: "Diego Rocha", matricula: "12077", perfil: "Técnico", equipe: "Serviços Especiais", situacao: "Ativo" },
-  { nome: "Fernanda Lopes", matricula: "11350", perfil: "Técnico", equipe: "Serviços Especiais", situacao: "Ativo" },
-  { nome: "Paulo Ribeiro", matricula: "11893", perfil: "Técnico", equipe: "Serviços Especiais", situacao: "Ativo" },
-  { nome: "Marcos Tavares", matricula: "9034", perfil: "Supervisor", equipe: "Serviços Especiais", situacao: "Ativo" },
-  { nome: "Ana Ribeiro", matricula: "9120", perfil: "Analista", equipe: "Todas", situacao: "Ativo" },
-  { nome: "Luciana Prado", matricula: "9277", perfil: "Segurança do Trabalho", equipe: "Todas", situacao: "Ativo" },
-  { nome: "Renato Alves", matricula: "8801", perfil: "Administrador", equipe: "Todas", situacao: "Ativo" },
-];
-
-export interface Equipe {
-  nome: string;
-  /** Centro de trabalho do SAP que define a equipe. */
-  centro: string;
-  tecnicos: number;
-  supervisor?: string;
-}
-
-export const equipes: Equipe[] = [
-  { nome: "Serviços Especiais", centro: "SERV_ESP", tecnicos: 9, supervisor: "Marcos Tavares" },
-  { nome: "Instrumentação", centro: "INSTRUM", tecnicos: 11 },
-  { nome: "Manutenção Civil", centro: "MAN_CIV", tecnicos: 14 },
-  { nome: "Inspeção de Rede", centro: "INSP_RD", tecnicos: 8 },
-  { nome: "Atendimento Residencial", centro: "ATD_RES", tecnicos: 6 },
-];
-
-export interface Perfil {
-  nome: string;
+export interface DescricaoPerfil {
+  perfil: Perfil;
   descricao: string;
 }
 
-export const perfis: Perfil[] = [
-  { nome: "Técnico", descricao: "usa o app" },
-  { nome: "Supervisor", descricao: "acompanha a equipe" },
-  { nome: "Analista", descricao: "importa, exporta e vê tudo" },
-  { nome: "Segurança do Trabalho", descricao: "edita os modelos de APR" },
-  { nome: "Administrador", descricao: "gerencia usuários e equipes" },
+/** O que cada perfil pode fazer (tabela de perfis e permissões da especificação). */
+export const descricaoDosPerfis: DescricaoPerfil[] = [
+  { perfil: "tecnico", descricao: "aplica APR e executa as OS da equipe, no app ou na web" },
+  { perfil: "supervisor", descricao: "acompanha a equipe, dá ciência da execução e recebe os alertas" },
+  { perfil: "analista", descricao: "importa, exporta e vê todas as equipes" },
+  { perfil: "seguranca", descricao: "edita os modelos de APR e a tabela de atividades" },
+  { perfil: "admin", descricao: "gerencia usuários e equipes" },
 ];
+
+export const ordemDosPerfis: Perfil[] = ["tecnico", "supervisor", "analista", "seguranca", "admin"];
+
+/** Resposta de `GET /equipes` com a contagem de técnicos que a tela soma. */
+export interface EquipeComTecnicos {
+  id: string;
+  nome: string;
+  centro_trabalho: string;
+  supervisor_id: string | null;
+  tecnicos: number;
+}

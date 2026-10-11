@@ -1,37 +1,50 @@
-"use client";
-
 import Link from "next/link";
-import type { MouseEvent } from "react";
-import { modelosApr } from "@/data/modelos";
-import { rotas } from "@/lib/telas";
-import { useToast } from "@/state/toast";
+import type { ResumoModelo } from "@/data/modelos";
+import { rotas } from "@/lib/rotas";
 
-/** Lista lateral de modelos de APR; só a APR 03 é detalhada nesta demonstração. */
-export function ListaModelos() {
-  const exibirAviso = useToast();
+export interface GrupoModelo {
+  codigo: string;
+  titulo: string;
+  versoes: ResumoModelo[];
+}
 
-  function aoEscolher(evento: MouseEvent<HTMLAnchorElement>, atual?: boolean) {
-    evento.preventDefault();
-    if (!atual) exibirAviso("Esta demonstração detalha apenas a APR 03.");
+/** Agrupa as versões (já ordenadas por código e versão decrescente) por código do modelo. */
+export function agruparModelos(modelos: ResumoModelo[]): GrupoModelo[] {
+  const grupos = new Map<string, GrupoModelo>();
+  for (const m of modelos) {
+    const grupo = grupos.get(m.codigo);
+    if (grupo) grupo.versoes.push(m);
+    else grupos.set(m.codigo, { codigo: m.codigo, titulo: m.titulo, versoes: [m] });
   }
+  return [...grupos.values()];
+}
 
+/** Lista lateral de modelos de APR: um item por código, com a versão em uso e o rascunho, se houver. */
+export function ListaModelos({ grupos, atual }: { grupos: GrupoModelo[]; atual?: string }) {
+  if (grupos.length === 0) return <p className="muted">Nenhum modelo de APR cadastrado.</p>;
   return (
     <div className="alist mlist" id="ml-list">
-      {modelosApr.map((m) => (
-        <Link
-          key={m.numero}
-          href={rotas.web.modelos}
-          aria-current={m.atual ? "true" : undefined}
-          onClick={(evento) => aoEscolher(evento, m.atual)}
-        >
-          <span className="tp">
-            <b>{`APR ${m.numero}`}</b>
-            <span>{m.versao}</span>
-          </span>
-          <span className="tt">{m.titulo}</span>
-          <span className="small">{`${m.perguntas} perguntas`}</span>
-        </Link>
-      ))}
+      {grupos.map((g) => {
+        const publicada = g.versoes.find((v) => !v.rascunho);
+        const rascunho = g.versoes.find((v) => v.rascunho);
+        const versoes = [publicada ? `v${publicada.versao}` : null, rascunho ? `rascunho v${rascunho.versao}` : null]
+          .filter(Boolean)
+          .join(" · ");
+        return (
+          <Link
+            key={g.codigo}
+            href={`${rotas.web.modelos}?codigo=${encodeURIComponent(g.codigo)}`}
+            aria-current={g.codigo === atual ? "true" : undefined}
+          >
+            <span className="tp">
+              <b>{g.codigo}</b>
+              <span>{versoes}</span>
+            </span>
+            <span className="tt">{g.titulo}</span>
+            <span className="small">{`${(publicada ?? rascunho!).itens_total} itens`}</span>
+          </Link>
+        );
+      })}
     </div>
   );
 }

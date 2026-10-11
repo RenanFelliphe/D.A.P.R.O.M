@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
-import { rotas } from "@/lib/telas";
+import { usuarioAtual } from "@/lib/api";
+import { inicioDoPerfil } from "@/lib/inicio";
 
-/** A entrada do sistema é a tela de login. */
-export default function Home() {
-  redirect(rotas.app.entrar);
+/** Quem já tem sessão vai para o início do perfil; sem sessão, `usuarioAtual` leva à tela de entrada. */
+export default async function Home() {
+  const { usuario } = await usuarioAtual();
+  redirect(inicioDoPerfil(usuario.perfil));
 }

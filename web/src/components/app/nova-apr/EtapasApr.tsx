@@ -1,5 +1,6 @@
 import { cx } from "@/lib/cx";
-import { etapasApr } from "@/data/nova-apr-app";
+
+const etapasApr = ["1 · Participantes e riscos", "2 · Checklist", "3 · Assinaturas"];
 
 /** Indicador das 3 etapas da APR; `atual` é o índice (base 0) da etapa em andamento. */
 export function EtapasApr({ atual = 0 }: { atual?: number }) {

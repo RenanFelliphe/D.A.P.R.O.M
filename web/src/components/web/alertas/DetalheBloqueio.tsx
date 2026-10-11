@@ -1,85 +1,99 @@
-import { Icon } from "@/components/ui/Icon";
-import type { AlertaBloqueio } from "@/data/alertas";
-import { BotaoMarcarComoLido } from "./BotaoMarcarComoLido";
-import { CartaoApoio } from "./CartaoApoio";
-import { CartaoReprogramar } from "./CartaoReprogramar";
+import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
+import { dataHora } from "@/lib/formatar";
+import type { AprDaOs, ExecucaoDaOs, FotoDaOs } from "./tipos";
 
 const rotuloBloqueio = { color: "#6B2A23" } as const;
+const respostaEscrita = { sim: "Sim", nao: "Não", na: "Não se aplica" } as const;
 
-/** Corpo do detalhe de um impedimento: contexto, evidência e decisão do supervisor. */
-export function DetalheBloqueio({ alerta }: { alerta: AlertaBloqueio }) {
+function Fotos({ fotos }: { fotos: FotoDaOs[] }) {
+  if (fotos.length === 0) return null;
   return (
-    <>
-      <dl className="dl" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
-        <div>
-          <dt>Local</dt>
-          <dd>{alerta.endereco}</dd>
-        </div>
-        <div>
-          <dt>Equipe em campo</dt>
-          <dd>{alerta.equipe}</dd>
-        </div>
-        <div>
-          <dt>Quando</dt>
-          <dd>{alerta.quandoDetalhe}</dd>
-        </div>
-        <div>
-          <dt>Aviso</dt>
-          <dd>Painel e e-mail ao supervisor</dd>
-        </div>
-      </dl>
-      <div className="blockbox">
-        <div className="stack g8" style={{ flex: 1, minWidth: 0 }}>
+    <div className="row g8 wrap">
+      {fotos.map((f) => (
+        <figure key={f.id} className="stack g4" style={{ margin: 0 }}>
+          <ImagemArquivo
+            id={f.foto_path}
+            alt="Foto do impedimento"
+            className="photo"
+            style={{ display: "block", height: 120, width: 160, objectFit: "cover", borderRadius: 8 }}
+          />
+          <figcaption className="small">{dataHora(f.capturada_em)}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
+/** Uma APR bloqueada: quem preencheu, os itens reprovados com a observação do técnico e as fotos. */
+function AprBloqueada({ apr }: { apr: AprDaOs }) {
+  const nomes = apr.participantes.map((p) => p.nome).join(", ");
+  return (
+    <div className="blockbox" style={{ flexDirection: "column" }}>
+      <div className="small" style={rotuloBloqueio}>
+        APR bloqueada · {apr.modelo.codigo} · {dataHora(apr.concluida_em)}
+        {nomes ? ` · equipe: ${nomes}` : ""}
+      </div>
+      {apr.itens_reprovados.length === 0 && <span style={{ fontSize: 14.5 }}>Sem item reprovado registrado.</span>}
+      {apr.itens_reprovados.map((item) => (
+        <div key={item.item_id} className="stack g8" style={{ minWidth: 0 }}>
           <div>
             <div className="small" style={rotuloBloqueio}>
-              {alerta.itemRotulo}
+              Item que bloqueou
             </div>
             <div style={{ fontSize: 14.5, fontWeight: 600 }}>
-              {alerta.item.texto}
-              {alerta.item.destaque && (
-                <>
-                  {" "}
-                  <span style={{ color: "var(--blq)" }}>{alerta.item.destaque}</span>
-                </>
-              )}
+              {item.texto} <span style={{ color: "var(--blq)" }}>{respostaEscrita[item.resposta]}</span>
             </div>
           </div>
-          <div>
-            <div className="small" style={rotuloBloqueio}>
-              Observação do técnico
+          {item.observacao && (
+            <div>
+              <div className="small" style={rotuloBloqueio}>
+                Observação do técnico
+              </div>
+              <div style={{ fontSize: 14.5 }}>“{item.observacao}”</div>
             </div>
-            <div style={{ fontSize: 14.5 }}>“{alerta.observacao}”</div>
-          </div>
+          )}
+          <Fotos fotos={item.fotos} />
         </div>
-        <figure className="stack g4" style={{ margin: 0, flex: "0 0 170px" }}>
-          <div
-            className="photo"
-            role="img"
-            aria-label="Foto do impedimento"
-            style={{ height: 120, alignItems: "center", justifyContent: "center" }}
-          >
-            <Icon name="image" size={24} />
+      ))}
+      {apr.observacao_geral && apr.observacao_geral !== "Sem observações" && (
+        <div>
+          <div className="small" style={rotuloBloqueio}>
+            Observação geral
           </div>
-          <figcaption className="small">
-            <span className="mono">{alerta.foto}</span> · com GPS
-          </figcaption>
-        </figure>
-      </div>
-      <div className="stack g4">
-        <h3 style={{ fontSize: 16, fontWeight: 600 }}>O que fazer com a OS</h3>
-        <p className="muted">
-          A OS fica pendente. A equipe pode fazer uma nova APR a qualquer momento; você acompanha e pode reprogramar ou
-          abrir uma OS de apoio. Nada feito em campo é apagado.
-        </p>
-      </div>
-      <div className="decide">
-        <CartaoApoio apoio={alerta.apoio} />
-        <CartaoReprogramar />
-      </div>
-      <div className="row between wrap" style={{ paddingTop: 4, borderTop: "1px solid var(--line2)" }}>
-        <span className="muted">{alerta.nota}</span>
-        <BotaoMarcarComoLido />
-      </div>
-    </>
+          <div style={{ fontSize: 14.5 }}>{apr.observacao_geral}</div>
+        </div>
+      )}
+    </div>
   );
+}
+
+/** Uma execução interrompida por condição de risco: motivo e fotos. */
+function ExecucaoInterrompida({ execucao }: { execucao: ExecucaoDaOs }) {
+  return (
+    <div className="blockbox" style={{ flexDirection: "column" }}>
+      <div className="small" style={rotuloBloqueio}>
+        Execução interrompida · {dataHora(execucao.fim)} · {execucao.executor.nome}
+      </div>
+      <div>
+        <div className="small" style={rotuloBloqueio}>
+          Motivo da interrupção
+        </div>
+        <div style={{ fontSize: 14.5, fontWeight: 600 }}>{execucao.motivo ?? "Sem motivo registrado."}</div>
+      </div>
+      <Fotos fotos={execucao.fotos} />
+    </div>
+  );
+}
+
+/** O que causou o impedimento: as APRs bloqueadas e as execuções interrompidas da OS, da mais recente para a mais antiga. */
+export function CausaDoBloqueio({ aprs, execucoes }: { aprs: AprDaOs[]; execucoes: ExecucaoDaOs[] }) {
+  const causas = [
+    ...aprs.filter((a) => a.resultado === "bloqueada").map((a) => ({ em: a.concluida_em, no: <AprBloqueada key={a.id} apr={a} /> })),
+    ...execucoes
+      .filter((e) => e.resultado === "interrompida")
+      .map((e) => ({ em: e.fim ?? "", no: <ExecucaoInterrompida key={e.id} execucao={e} /> })),
+  ].sort((a, b) => (a.em < b.em ? 1 : -1));
+
+  if (causas.length === 0) return <p className="muted">Não há APR bloqueada nem execução interrompida registrada nesta OS.</p>;
+  return <div className="stack g8">{causas.map((c) => c.no)}</div>;
 }

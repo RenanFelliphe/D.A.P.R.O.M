@@ -1,11 +1,18 @@
-/** Card com o modelo de APR definido pelo tipo de atividade da OS. */
-export function ModeloAprCard() {
+import { data } from "@/lib/formatar";
+import type { ModeloCompleto } from "@/lib/apr";
+
+/** Card com o modelo de APR que vale para esta APR: o publicado mais recente. */
+export function ModeloAprCard({ modelo, daAtividade }: { modelo: Pick<ModeloCompleto, "codigo" | "titulo" | "versao" | "publicado_em">; daAtividade: boolean }) {
   return (
     <div className="card stack" style={{ gap: 2 }}>
       <span className="lbl">Modelo</span>
-      <strong style={{ fontSize: 16 }}>APR 03 — Operação e manutenção</strong>
+      <strong style={{ fontSize: 16 }}>
+        {modelo.codigo} — {modelo.titulo}
+      </strong>
       <span className="muted">
-        Versão 4 · publicada em 02/09/2026 pela Segurança do Trabalho · definido pelo tipo de atividade da OS
+        Versão {modelo.versao}
+        {modelo.publicado_em ? ` · publicada em ${data(modelo.publicado_em)} pela Segurança do Trabalho` : ""}
+        {daAtividade ? " · definido pelo tipo de atividade da OS" : " · escolhido por você"}
       </span>
     </div>
   );

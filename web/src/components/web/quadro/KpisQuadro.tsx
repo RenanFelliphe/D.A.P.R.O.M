@@ -1,31 +1,26 @@
-import { Icon } from "@/components/ui/Icon";
 import { Kpi } from "@/components/web/Panel";
-import { kpisQuadro, type KpiQuadro } from "@/data/quadro";
+import type { ContagemPorStatus } from "@/data/quadro";
 
-const estiloSub = {
-  blq: { color: "var(--blq)", fontWeight: 500 },
-  enc: { color: "var(--enc)", fontWeight: 500 },
-} as const;
-
-function marcador({ cor, icone }: KpiQuadro) {
-  if (icone) return <Icon name={icone} size={13} style={{ color: "var(--blq)" }} />;
-  return <i style={{ background: cor }}></i>;
-}
-
-/** Faixa de cinco indicadores do quadro. */
-export function KpisQuadro() {
+/** Totais por status (já com os filtros aplicados, menos o próprio status). */
+export function KpisQuadro({ contagem, periodo }: { contagem: ContagemPorStatus; periodo: string }) {
   return (
-    <div className="kpis">
-      {kpisQuadro.map((kpi) => (
-        <Kpi
-          key={kpi.rotulo}
-          label={kpi.rotulo}
-          marker={marcador(kpi)}
-          value={kpi.valor}
-          sub={kpi.sub}
-          subStyle={kpi.subTom ? estiloSub[kpi.subTom] : undefined}
-        />
-      ))}
+    <div className="kpis k4">
+      <Kpi label="Liberadas" marker={<i style={{ background: "#1C5CAB" }}></i>} value={contagem.liberada} sub="aguardam APR e execução" />
+      <Kpi label="Em execução" marker={<i style={{ background: "#C98500" }}></i>} value={contagem.em_execucao} sub="em campo agora" />
+      <Kpi
+        label="Pendentes"
+        marker={<i style={{ background: "#D03B3B" }}></i>}
+        value={contagem.pendente}
+        sub="aguardam nova APR"
+        subStyle={contagem.pendente > 0 ? { color: "var(--blq)", fontWeight: 500 } : undefined}
+      />
+      <Kpi
+        label="Encerradas"
+        marker={<i style={{ background: "#0CA30C" }}></i>}
+        value={contagem.encerrada}
+        sub={periodo}
+        subStyle={{ color: "var(--enc)", fontWeight: 500 }}
+      />
     </div>
   );
 }

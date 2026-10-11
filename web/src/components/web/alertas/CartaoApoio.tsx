@@ -1,20 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
-import { useToast } from "@/state/toast";
+import type { Equipe } from "@/lib/tipos";
+import { FormularioNovaOs } from "@/components/web/os-nova/FormularioNovaOs";
+import type { Atividade, LocalEscolhido } from "@/components/web/os-nova/tipos";
 
-const rotulo = { fontSize: 12 } as const;
+interface CartaoApoioProps {
+  osId: string;
+  numeroOrdem: string | null;
+  tituloDaOs: string;
+  local: LocalEscolhido;
+  equipes: Equipe[];
+  atividades: Atividade[];
+  hoje: string;
+  /** Equipe do usuário, se ele é supervisor: só ele abre OS da própria equipe pelo link da confirmação. */
+  equipeDoSupervisor: string | null;
+}
 
-/** Cartão de decisão "Abrir OS de apoio" (destaque principal). */
-export function CartaoApoio({ apoio }: { apoio: string }) {
-  const exibirAviso = useToast();
-  const [equipe, setEquipe] = useState("Manutenção Civil");
-  const [data, setData] = useState("14/10/2026");
-  const [descricao, setDescricao] = useState(apoio);
-
+/** Cartão de decisão "Abrir OS de apoio" (destaque principal): `POST /os` com `os_origem_id` apontando para a OS do alerta. */
+export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, local, equipes, atividades, hoje, equipeDoSupervisor }: CartaoApoioProps) {
+  const referencia = numeroOrdem ? `OS ${numeroOrdem}` : "OS de origem";
   return (
     <div className="dcard main">
       <div className="hd">
@@ -26,33 +31,19 @@ export function CartaoApoio({ apoio }: { apoio: string }) {
       <p className="muted">
         Outra equipe resolve antes. A OS original continua pendente e você recebe um aviso quando o apoio terminar.
       </p>
-      <Field label="Equipe de apoio" htmlFor="ap-eq" labelStyle={rotulo}>
-        <select className="select" id="ap-eq" value={equipe} onChange={(evento) => setEquipe(evento.target.value)}>
-          <option>Manutenção Civil</option>
-          <option>Instrumentação</option>
-        </select>
-      </Field>
-      <Field label="Data programada" htmlFor="ap-dt" labelStyle={rotulo}>
-        <input className="select" id="ap-dt" value={data} onChange={(evento) => setData(evento.target.value)} />
-      </Field>
-      <Field label="O que a equipe de apoio deve fazer" htmlFor="ap-ds" labelStyle={rotulo}>
-        <textarea
-          className="textarea"
-          id="ap-ds"
-          rows={2}
-          style={{ fontSize: 14 }}
-          value={descricao}
-          onChange={(evento) => setDescricao(evento.target.value)}
-        />
-      </Field>
-      <Button
-        variant="p"
-        sm
-        style={{ height: 44 }}
-        onClick={() => exibirAviso(`OS de apoio criada para ${equipe}. A original continua pendente.`)}
-      >
-        Criar OS de apoio
-      </Button>
+      <FormularioNovaOs
+        prefixo="ap"
+        equipes={equipes}
+        atividades={atividades}
+        osOrigemId={osId}
+        localInicial={local}
+        tituloInicial={`Apoio à ${referencia}: ${tituloDaOs}`}
+        descricaoInicial={`Apoio para liberar a ${referencia}.`}
+        hoje={hoje}
+        rotuloEnviar="Criar OS de apoio"
+        mensagemCriada="OS de apoio criada. A original continua pendente."
+        podeAbrirOs={(equipeId) => equipeDoSupervisor === null || equipeId === equipeDoSupervisor}
+      />
     </div>
   );
 }

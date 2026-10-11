@@ -1,11 +1,13 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
-import { perfisWeb, rotas, tecnicoLogado, telaPorPathname } from "@/lib/telas";
-import { useAlertas } from "@/state/alertas";
-import { useSincronizacao } from "@/state/sincronizacao";
+import { sair } from "@/lib/acoes-sessao";
+import { rotas } from "@/lib/rotas";
+
+export interface UsuarioDaBarra {
+  iniciais: string;
+  nome: string;
+  cargo: string;
+}
 
 function Marca({ subtitulo }: { subtitulo: string }) {
   return (
@@ -18,7 +20,7 @@ function Marca({ subtitulo }: { subtitulo: string }) {
   );
 }
 
-function Usuario({ iniciais, nome, cargo }: { iniciais: string; nome: string; cargo: string }) {
+function Usuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
   return (
     <div className="who-u">
       <span className="av">{iniciais}</span>
@@ -26,48 +28,49 @@ function Usuario({ iniciais, nome, cargo }: { iniciais: string; nome: string; ca
         <strong>{nome}</strong>
         <small>{cargo}</small>
       </span>
+      <form action={sair}>
+        <button className="btn btn-ghost btn-sm" type="submit" title="Sair deste navegador">
+          Sair
+        </button>
+      </form>
     </div>
   );
 }
 
 /** Barra superior do painel de gestão: marca, busca por ordem, alertas e usuário. */
-export function BarraGestao() {
-  const perfil = perfisWeb[telaPorPathname(usePathname())?.perfil ?? "sup"];
-  const { naoLidos } = useAlertas();
+export function BarraGestao({ usuario, naoLidos }: { usuario: UsuarioDaBarra; naoLidos: number }) {
   return (
     <header className="topbar">
       <Marca subtitulo="Painel de gestão" />
-      <div className="searchbox">
+      <form className="searchbox" action={rotas.web.quadro} method="get" role="search">
         <Icon name="search" />
         <label className="sr" htmlFor="busca">
           Buscar pelo número da ordem
         </label>
-        <input id="busca" type="search" placeholder="Buscar nº da ordem" />
-      </div>
+        <input id="busca" name="busca" type="search" placeholder="Buscar nº da ordem" />
+      </form>
       <div className="right">
         <Link className="bell" href={rotas.web.alertas} aria-label="Alertas">
           <Icon name="bell" size={18} />
           {naoLidos > 0 && <b>{naoLidos}</b>}
         </Link>
-        <Usuario {...perfil} />
+        <Usuario {...usuario} />
       </div>
     </header>
   );
 }
 
-/** Barra superior da área do técnico: marca, situação do sinal e usuário. */
-export function BarraTecnico() {
-  const { estado } = useSincronizacao();
-  const sincronizado = estado.situacao === "concluida";
+/** Barra superior da área do técnico: marca, situação da conexão e usuário. */
+export function BarraTecnico({ usuario }: { usuario: UsuarioDaBarra }) {
   return (
     <header className="topbar">
       <Marca subtitulo="Técnico em campo" />
       <div className="right">
-        <Link className={sincronizado ? "net on" : "net off"} href={rotas.app.sync}>
-          <Icon name={sincronizado ? "check" : "wifioff"} size={16} />
-          {sincronizado ? "Sincronizado" : "Offline"}
-        </Link>
-        <Usuario {...tecnicoLogado} />
+        <span className="net on">
+          <Icon name="check" size={16} />
+          Online
+        </span>
+        <Usuario {...usuario} />
       </div>
     </header>
   );

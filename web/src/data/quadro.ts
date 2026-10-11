@@ -1,128 +1,129 @@
-import type { BadgeTone } from "@/components/ui/Badge";
-import type { IconName } from "@/components/ui/Icon";
-import { rotas } from "@/lib/telas";
+import "server-only";
 
-/** Indicador do topo do quadro. `cor` gera a bolinha; `icone` substitui a bolinha. */
-export interface KpiQuadro {
-  rotulo: string;
-  cor?: string;
-  icone?: IconName;
-  valor: string;
-  sub: string;
-  /** Tom do texto de apoio (vermelho de bloqueio ou verde de encerrada). */
-  subTom?: "blq" | "enc";
-}
+import { api, apiOuNulo } from "@/lib/api";
+import type { Equipe, OsStatus, Paginacao, Perfil } from "@/lib/tipos";
 
-export const kpisQuadro: KpiQuadro[] = [
-  { rotulo: "Liberadas", cor: "#1C5CAB", valor: "18", sub: "7 em locais críticos" },
-  { rotulo: "Em execução", cor: "#C98500", valor: "4", sub: "último registro de campo 12:38" },
-  { rotulo: "Pendentes", cor: "#D03B3B", valor: "3", sub: "3 aguardam nova APR", subTom: "blq" },
-  { rotulo: "Encerradas no mês", cor: "#0CA30C", valor: "41", sub: "+6 vs. setembro", subTom: "enc" },
-  { rotulo: "Preventivas atrasadas", icone: "clock", valor: "5", sub: "2 sem justificativa", subTom: "blq" },
-];
-
-export interface FiltroQuadro {
+/** OS como a `api` a devolve em `GET /os` (quadro). */
+export interface OsDoQuadro {
   id: string;
-  rotulo: string;
-  opcoes: string[];
-}
-
-export const filtrosQuadro: FiltroQuadro[] = [
-  { id: "f-eq", rotulo: "Equipe", opcoes: ["Serviços Especiais", "Instrumentação", "Manutenção Civil"] },
-  { id: "f-tp", rotulo: "Tipo", opcoes: ["Todos", "Preventiva", "Corretiva"] },
-  { id: "f-cr", rotulo: "Criticidade", opcoes: ["Todas", "Só críticas"] },
-  { id: "f-pe", rotulo: "Período", opcoes: ["Outubro de 2026", "Setembro de 2026"] },
-];
-
-export interface OsQuadro {
-  os: string;
-  tipo: "Preventiva" | "Corretiva";
-  critico?: boolean;
+  numero_ordem: string | null;
+  tipo: "preventiva" | "corretiva";
   titulo: string;
-  local: string;
-  /** Linha de detalhe sob o local. */
-  detalhe: string;
-  /** Cor/peso da linha de detalhe. */
-  detalheTom?: "exe" | "enc" | "ink2";
-  detalheIcone?: IconName;
-  /** Selo no rodapé do cartão (OS pendentes). */
-  selo?: string;
-  /** Destino do cartão; sem destino o cartão é um botão. */
-  href?: string;
-  /** Mensagem mostrada ao clicar num cartão sem destino. */
-  aviso?: string;
+  status: OsStatus;
+  equipe_id: string;
+  equipe_nome: string;
+  local_instalacao: { id: string; codigo: string; critico: boolean };
+  equipamento: string | null;
+  prioridade: string | null;
+  data_inicio_prog: string;
+  data_fim_prog: string | null;
+  pdf_pronto: boolean;
+  ciencia_em: string | null;
+  /** Há quantas horas a execução em andamento está aberta, só quando passa do limite da `api` (12 h). */
+  execucao_aberta_ha_horas: number | null;
+  atrasada: boolean;
 }
 
-export interface ColunaQuadroDados {
-  id: string;
-  titulo: string;
-  icone: IconName;
-  iconeCheio?: boolean;
-  /** Variável CSS de cor do ícone do cabeçalho. */
-  iconeCor: string;
-  tomBadge: BadgeTone;
-  total: string;
-  cartoes: OsQuadro[];
-  /** Texto "Mais N OS" ao final da coluna. */
-  mais?: string;
+export type ContagemPorStatus = Record<OsStatus, number>;
+
+export interface RespostaOs extends Paginacao {
+  os: OsDoQuadro[];
+  contagem_por_status: ContagemPorStatus;
 }
 
-export const colunasQuadro: ColunaQuadroDados[] = [
-  {
-    id: "liberada",
-    titulo: "Liberada",
-    icone: "lock",
-    iconeCor: "var(--lib)",
-    tomBadge: "lib",
-    total: "18",
-    cartoes: [
-      { os: "4031204", tipo: "Preventiva", aviso: "Esta OS está na área de demonstração do app (ERP Serra).", critico: true, titulo: "Teste de estanqueidade do filtro F-201", local: "ERP Serra", detalhe: "Prog. 13/10 · APR 03 ainda não feita" },
-      { os: "4031230", tipo: "Preventiva", aviso: "Fora do roteiro desta demonstração.", critico: true, titulo: "Inspeção do sistema de odorização", local: "PR Cariacica", detalhe: "Prog. 14/10 · APR 03" },
-      { os: "4031241", tipo: "Corretiva", aviso: "Fora do roteiro desta demonstração.", critico: true, titulo: "Troca de manômetro com leitura instável", local: "ERS Vila Velha 02", detalhe: "Prog. 14/10 · APR 03" },
-      { os: "4031255", tipo: "Preventiva", aviso: "Fora do roteiro desta demonstração.", titulo: "Pintura de identificação da tubulação", local: "Rede Vitória Centro", detalhe: "Prog. 16/10 · APR 03" },
-    ],
-    mais: "Mais 14 OS",
-  },
-  {
-    id: "execucao",
-    titulo: "Em execução",
-    icone: "play",
-    iconeCheio: true,
-    iconeCor: "var(--exe)",
-    tomBadge: "exe",
-    total: "4",
-    cartoes: [
-      { os: "4031190", tipo: "Preventiva", aviso: "Em execução no campo, sem registro novo até a próxima sincronização.", critico: true, titulo: "Calibração da PSV da linha 2", local: "ERP Serra", detalhe: "Iniciada 11:26 · Carlos Menezes", detalheTom: "exe" },
-      { os: "4031012", tipo: "Corretiva", aviso: "Em execução no campo.", critico: true, titulo: "Vazamento em conexão do medidor industrial", local: "Mineração Atlântica", detalhe: "Iniciada 08:41 · Fernanda Lopes", detalheTom: "exe" },
-      { os: "4031176", tipo: "Preventiva", aviso: "Em execução no campo.", titulo: "Inspeção de proteção catódica", local: "Rede Serra Norte", detalhe: "Iniciada 10:05 · Paulo Ribeiro", detalheTom: "exe" },
-    ],
-    mais: "Mais 1 OS",
-  },
-  {
-    id: "pendente",
-    titulo: "Pendente",
-    icone: "octagon",
-    iconeCor: "var(--blq)",
-    tomBadge: "blq",
-    total: "3",
-    cartoes: [
-      { os: "4030877", tipo: "Corretiva", titulo: "DCV Desobstrução de caixa de válvula", local: "Rede Vila Velha", detalhe: "Caixa de válvula alagada · desde 12/10", detalheTom: "ink2", selo: "Aguardando nova APR", href: rotas.web.alertas },
-      { os: "4030655", tipo: "Preventiva", critico: true, titulo: "Inspeção de válvula na área industrial", local: "Celulose Capixaba", detalhe: "Dedetização concluída pela OS de apoio", detalheTom: "ink2", selo: "Apoio concluído", href: rotas.web.alertas },
-      { os: "4030990", tipo: "Corretiva", titulo: "Reparo em válvula de bloqueio", local: "Rede Serra Norte", detalhe: "Execução interrompida: odor de gás · hoje 10:52", detalheTom: "ink2", selo: "Aguardando nova APR", href: rotas.web.alertas },
-    ],
-  },
-  {
-    id: "encerrada",
-    titulo: "Encerrada",
-    icone: "check",
-    iconeCor: "var(--enc)",
-    tomBadge: "enc",
-    total: "41",
-    cartoes: [
-      { os: "4031187", tipo: "Preventiva", critico: true, titulo: "Inspeção de corrosão em válvulas da ERP", local: "ERP Serra", detalhe: "Hoje 11:18 · PDF pronto", detalheTom: "enc", detalheIcone: "file", href: rotas.web.detalhe },
-      { os: "4030951", tipo: "Preventiva", aviso: "Já exportada ao SAP em 12/10.", critico: true, titulo: "Pintura anticorrosiva de suportes", local: "ERS Vila Velha 02", detalhe: "12/10 · exportada ao SAP", detalheTom: "enc" },
-      { os: "4030934", tipo: "Corretiva", aviso: "Já exportada ao SAP em 11/10.", titulo: "Limpeza de filtro cesto", local: "Rede Vila Velha", detalhe: "11/10 · exportada ao SAP", detalheTom: "enc" },
-    ],
-    mais: "Mais 38 OS",
-  },
-];
+/** Filtros do quadro, como vêm da URL. */
+export interface FiltrosDoQuadro {
+  equipe_id?: string;
+  tipo?: "preventiva" | "corretiva";
+  critica?: boolean;
+  periodo?: string;
+  busca?: string;
+  /** Quando presente, o quadro mostra só esse status, paginado. */
+  status?: OsStatus;
+  pagina?: number;
+}
+
+/** As quatro colunas do quadro, na ordem do protótipo. `cancelada` fica fora e aparece como um link de contagem. */
+export const STATUS_DO_QUADRO = ["liberada", "pendente", "em_execucao", "encerrada"] as const;
+
+/** Quantos cartões cada coluna mostra antes do "Ver todas". */
+export const CARTOES_POR_COLUNA = 8;
+/** Tamanho da página quando só um status é mostrado. */
+export const TAMANHO_DA_LISTA = 24;
+
+const consultaDe = (f: FiltrosDoQuadro) => ({
+  equipe_id: f.equipe_id,
+  tipo: f.tipo,
+  critica: f.critica,
+  periodo: f.periodo,
+  busca: f.busca,
+});
+
+export interface DadosDoQuadro {
+  /** Uma entrada por coluna (sem `status`) ou uma só, paginada (com `status`). */
+  colunas: { status: OsStatus; os: OsDoQuadro[]; total: number }[];
+  contagem: ContagemPorStatus;
+  pagina: number;
+  tamanho: number;
+}
+
+/** Carrega o quadro: quatro consultas em paralelo (uma por coluna) ou, com `status`, a lista paginada dele. */
+export async function carregarQuadro(filtros: FiltrosDoQuadro): Promise<DadosDoQuadro> {
+  const base = consultaDe(filtros);
+  if (filtros.status) {
+    const pagina = filtros.pagina ?? 1;
+    const r = await api<RespostaOs>("/os", { consulta: { ...base, status: filtros.status, pagina, tamanho: TAMANHO_DA_LISTA } });
+    return { colunas: [{ status: filtros.status, os: r.os, total: r.contagem_por_status[filtros.status] }], contagem: r.contagem_por_status, pagina: r.pagina, tamanho: r.tamanho };
+  }
+  const respostas = await Promise.all(STATUS_DO_QUADRO.map((status) => api<RespostaOs>("/os", { consulta: { ...base, status, tamanho: CARTOES_POR_COLUNA } })));
+  return {
+    colunas: STATUS_DO_QUADRO.map((status, i) => ({ status, os: respostas[i]!.os, total: respostas[i]!.contagem_por_status[status] })),
+    contagem: respostas[0]!.contagem_por_status,
+    pagina: 1,
+    tamanho: CARTOES_POR_COLUNA,
+  };
+}
+
+/** Id da OS cujo número de ordem é exatamente `busca`, se houver uma só (a busca da barra superior vai direto ao detalhe). */
+export async function osPorNumeroExato(busca: string): Promise<string | null> {
+  const r = await api<RespostaOs>("/os", { consulta: { numero_ordem: busca.trim(), tamanho: 2 } });
+  return r.os.length === 1 ? r.os[0]!.id : null;
+}
+
+/** Alertas não lidos do usuário (supervisor e analista) ou de todos (admin e Segurança, só leitura). Os demais perfis não têm alertas. */
+export async function totalDeAlertasNaoLidos(perfil: Perfil): Promise<number> {
+  if (perfil === "tecnico") return 0;
+  const r = await apiOuNulo<{ total: number }>("/alertas", { consulta: { lido: false, tamanho: 1 } });
+  return r?.total ?? 0;
+}
+
+/** A última leitura automática do SAP terminou com erro (só analista e admin enxergam `GET /importacoes`). */
+export async function leituraDoSapFalhou(perfil: Perfil): Promise<boolean> {
+  if (perfil !== "analista" && perfil !== "admin") return false;
+  const r = await apiOuNulo<{ ultima_leitura_com_erro: boolean }>("/importacoes", { consulta: { tamanho: 1 } });
+  return r?.ultima_leitura_com_erro ?? false;
+}
+
+export async function listarEquipes(): Promise<Equipe[]> {
+  return (await api<{ equipes: Equipe[] }>("/equipes", { consulta: { tamanho: 200 } })).equipes;
+}
+
+/** Meses para o seletor de período: do mês atual para trás (12) e dois à frente, no fuso de São Paulo. */
+export function mesesDoSeletor(hoje: string, extra?: string): { valor: string; rotulo: string }[] {
+  const [a, m] = hoje.split("-").map(Number) as [number, number];
+  const valores: string[] = [];
+  for (let i = -2; i <= 12; i++) {
+    const total = a * 12 + (m - 1) - i;
+    valores.push(`${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`);
+  }
+  if (extra && !valores.includes(extra)) valores.push(extra);
+  return valores.sort().reverse().map((valor) => ({ valor, rotulo: rotuloDoMes(valor) }));
+}
+
+const NOMES_DOS_MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+
+/** `2026-10` → `outubro de 2026`. */
+export function rotuloDoMes(mes: string): string {
+  const [a, m] = mes.split("-");
+  return `${NOMES_DOS_MESES[Number(m) - 1] ?? m} de ${a}`;
+}
