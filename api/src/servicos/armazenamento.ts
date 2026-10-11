@@ -29,6 +29,21 @@ export class ArmazenamentoSupabase implements Armazenamento {
     return `${this.url}/storage/v1/object/${prefixo}${bucket}/${caminho.split("/").map(encodeURIComponent).join("/")}`;
   }
 
+  /** Cria os buckets privados que ainda não existem (idempotente); roda na subida da api. */
+  async garantirBuckets() {
+    for (const nome of BUCKETS) {
+      const r = await fetch(`${this.url}/storage/v1/bucket`, {
+        method: "POST",
+        headers: this.cabecalhos({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ id: nome, name: nome, public: false }),
+      });
+      if (r.ok) continue;
+      const corpo: any = await r.json().catch(() => ({}));
+      if (r.status === 409 || String(corpo.statusCode) === "409" || /already exists/i.test(String(corpo.message ?? corpo.error ?? ""))) continue;
+      throw new ErroApi(502, "armazenamento_indisponivel", `Não foi possível criar o bucket ${nome}`);
+    }
+  }
+
   async existe(bucket: Bucket, caminho: string) {
     const r = await fetch(this.rota(bucket, caminho, "info/"), { headers: this.cabecalhos() });
     if (r.status === 404 || r.status === 400) return false;

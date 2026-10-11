@@ -25,6 +25,18 @@ Na subida ([`src/servidor.ts`](src/servidor.ts)) a `api` aplica as migrações s
 
 [`Dockerfile`](Dockerfile): imagem única, sem etapa de build (o TypeScript roda com o `tsx`, dependência de produção). Copia `src`, `db/migrations` e `fixtures` (o simulador do SAP importa o JSON em tempo de execução); a porta vem de `PORT` e o `HEALTHCHECK` consulta `GET /saude`, que só responde depois das migrações. Para subir `api` e `web` juntos, use o [`docker-compose.yml`](../docker-compose.yml) da raiz com o `.env` copiado de [`.env.example`](../.env.example).
 
+## Teste com Supabase real
+
+O que não dá para provar com as versões em memória: Auth, Storage e Postgres de verdade. Roteiro com um projeto Supabase de teste (dados só fictícios):
+
+1. **Projeto Supabase** (supabase.com, plano gratuito). Em *Project Settings*: a URL do projeto (`SUPABASE_URL`), a chave `service_role` (*API Keys*; `SUPABASE_SERVICE_ROLE_KEY`) e a string de conexão do Postgres (*Database › Connection string*; `DATABASE_URL`). Use a conexão **Session pooler** (porta 5432 do pooler) ou a direta, nunca a Transaction pooler (6543): as migrações usam trava de sessão (`pg_advisory_lock`). A conexão direta é só IPv6; sem IPv6, use o Session pooler.
+2. **`.env` na raiz** (copie de `.env.example`) com essas três variáveis. `SUPABASE_JWT_SECRET` só é preciso se o projeto usa o segredo legado (HS256); com chaves assimétricas a `api` confere o token pelo JWKS do projeto.
+3. **Subir a `api`**: `cd api && pnpm dev` (lê o `.env` da raiz). Ela aplica as migrações, carrega os 8 modelos de APR, cria os 4 buckets privados (`fotos`, `assinaturas`, `pdfs`, `importacoes`) e abre a porta; `curl localhost:3333/saude` deve dar `{"banco":"ok"}`. Com `SAP_SIMULADO=true` e `SAP_API_URL=http://localhost:3333/sap-simulado`, as OS do simulador entram em até 15 minutos (ou pelo botão "Ler agora").
+4. **Primeiro admin**: `pnpm admin:criar -- --matricula adm --nome "Administrador" --senha "senha-inicial-123"` (a conta nasce com senha provisória).
+5. **Subir o `web`**: `cd web && pnpm dev`, entrar em http://localhost:3000 com `adm` (será pedida a senha nova) e, em *Equipes e usuários*, criar a equipe (centro de trabalho `SERV_ESP`, o das OS do simulador), um supervisor (com e-mail), dois técnicos e um analista.
+6. **Roteiro de conferência**: o técnico faz a APR aprovada → executa (pausa, foto, assinaturas) → encerra; no Supabase, conferir as linhas em `evento_campo`, `apr`, `execucao` e os arquivos nos buckets; o supervisor dá ciência; o analista exporta a planilha; repetir com uma APR bloqueada e ver o alerta (e o e-mail, se `SMTP_URL` estiver configurado).
+7. **Docker**: com o `.env` preenchido, `docker compose up --build` (api em 3333, web em 3000) e repetir o roteiro. Com um Supabase local (`supabase start`), use `host.docker.internal` nas URLs do `.env`.
+
 ## Estrutura
 
 | Pasta | O que tem |

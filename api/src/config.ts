@@ -10,7 +10,8 @@ const esquema = z.object({
   DATABASE_URL: z.string().min(1),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  SUPABASE_JWT_SECRET: z.string().min(1),
+  /** Só para projetos com o segredo JWT legado (HS256); projetos com chaves assimétricas não precisam dele. */
+  SUPABASE_JWT_SECRET: z.string().default(""),
   SAP_API_URL: z.string().default(""),
   SAP_API_TOKEN: z.string().default(""),
   SAP_SIMULADO: booleano,

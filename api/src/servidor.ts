@@ -24,11 +24,14 @@ async function main() {
   const email = config.smtpUrl ? new EmailSmtp(config.smtpUrl, config.emailRemetente) : new EmailEmMemoria();
   if (!config.smtpUrl) console.warn("SMTP_URL vazio: os e-mails de alerta não serão enviados.");
 
+  const armazenamento = new ArmazenamentoSupabase(config.supabaseUrl, config.supabaseServiceRoleKey);
+  await armazenamento.garantirBuckets().catch((erro) => console.warn(`Buckets do Storage não verificados: ${erro.message}`));
+
   const deps = {
     db,
     config,
     auth: new AuthSupabase(config.supabaseUrl, config.supabaseServiceRoleKey),
-    armazenamento: new ArmazenamentoSupabase(config.supabaseUrl, config.supabaseServiceRoleKey),
+    armazenamento,
     email,
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     agora: () => new Date(),

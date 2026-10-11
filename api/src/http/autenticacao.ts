@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { jwtVerify } from "jose";
+import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify } from "jose";
 import type { MiddlewareHandler } from "hono";
 import type { Deps } from "../deps";
 import { usuario, type Perfil } from "../db/schema";
@@ -41,6 +41,9 @@ export interface OpcoesAutenticacao {
 
 export function criarAutenticacao(deps: Deps) {
   const segredo = new TextEncoder().encode(deps.config.supabaseJwtSecret);
+  // Projetos novos do Supabase assinam o JWT com chave assimétrica (ES256/RS256); as chaves públicas ficam no JWKS do projeto.
+  let chavesPublicas: ReturnType<typeof createRemoteJWKSet> | undefined;
+  const jwks = () => (chavesPublicas ??= createRemoteJWKSet(new URL(`${deps.config.supabaseUrl}/auth/v1/.well-known/jwks.json`)));
 
   /** JWT válido (assinado pelo Supabase) + usuário cadastrado, ativo e sem senha provisória. 401 / 403 antes de qualquer leitura. */
   const autenticar = (opcoes: OpcoesAutenticacao = {}): MiddlewareHandler<Ambiente> => async (c, proximo) => {
@@ -50,7 +53,12 @@ export function criarAutenticacao(deps: Deps) {
 
     let id: string;
     try {
-      const { payload } = await jwtVerify(token, segredo, { algorithms: ["HS256"], currentDate: deps.agora() });
+      const hs = decodeProtectedHeader(token).alg === "HS256";
+      if (hs && !deps.config.supabaseJwtSecret) throw new Error("sem segredo HS256");
+      const opcoes = { currentDate: deps.agora() };
+      const { payload } = hs
+        ? await jwtVerify(token, segredo, { ...opcoes, algorithms: ["HS256"] })
+        : await jwtVerify(token, jwks(), { ...opcoes, algorithms: ["ES256", "RS256", "EdDSA"] });
       if (!payload.sub) throw new Error("sem sub");
       id = payload.sub;
     } catch {
