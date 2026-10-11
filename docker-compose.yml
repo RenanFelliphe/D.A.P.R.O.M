@@ -1,11 +1,15 @@
 # Desenvolvimento: sobe a `api` e o `web`. O banco, a autenticação e os arquivos ficam no Supabase (na nuvem ou local),
-# configurado no `.env` da raiz (copie de `.env.example`). O `mobile` não entra: o app é gerado como APK, fora daqui.
+# configurado no `.env` ou no `.env.local` da raiz (copie de `.env.example`). O `mobile` não entra: o app é gerado como APK, fora daqui.
 #
 #   docker compose up --build        # api em http://localhost:3333, web em http://localhost:3000
 services:
   api:
     build: ./api
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: false
     environment:
       PORT: 3333
       # O simulador do SAP vive na própria api; sobrescreva no .env para apontar para outro endereço.

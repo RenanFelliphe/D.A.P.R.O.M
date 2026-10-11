@@ -43,7 +43,10 @@ export function criarAutenticacao(deps: Deps) {
   const segredo = new TextEncoder().encode(deps.config.supabaseJwtSecret);
   // Projetos novos do Supabase assinam o JWT com chave assimétrica (ES256/RS256); as chaves públicas ficam no JWKS do projeto.
   let chavesPublicas: ReturnType<typeof createRemoteJWKSet> | undefined;
-  const jwks = () => (chavesPublicas ??= createRemoteJWKSet(new URL(`${deps.config.supabaseUrl}/auth/v1/.well-known/jwks.json`)));
+  const jwks = () => (chavesPublicas ??= createRemoteJWKSet(new URL(`${deps.config.supabaseUrl}/auth/v1/.well-known/jwks.json`), {
+      // O endpoint de chaves públicas do Supabase exige o cabeçalho `apikey`.
+      headers: { apikey: deps.config.supabaseServiceRoleKey },
+    }));
 
   /** JWT válido (assinado pelo Supabase) + usuário cadastrado, ativo e sem senha provisória. 401 / 403 antes de qualquer leitura. */
   const autenticar = (opcoes: OpcoesAutenticacao = {}): MiddlewareHandler<Ambiente> => async (c, proximo) => {

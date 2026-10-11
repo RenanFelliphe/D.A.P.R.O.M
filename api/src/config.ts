@@ -44,7 +44,8 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     porta: e.PORT,
     versao: process.env.npm_package_version ?? "0.1.0",
     databaseUrl: e.DATABASE_URL,
-    supabaseUrl: e.SUPABASE_URL.replace(/\/$/, ""),
+    // Só a origem: quem copia a URL do painel costuma trazer `/rest/v1` ou barra no fim.
+    supabaseUrl: new URL(e.SUPABASE_URL).origin,
     supabaseServiceRoleKey: e.SUPABASE_SERVICE_ROLE_KEY,
     supabaseJwtSecret: e.SUPABASE_JWT_SECRET,
     sapApiUrl: e.SAP_API_URL.replace(/\/$/, ""),

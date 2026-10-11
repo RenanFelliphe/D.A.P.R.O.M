@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch --env-file-if-exists=../.env src/servidor.ts",
+    "dev": "tsx watch --env-file-if-exists=../.env --env-file-if-exists=../.env.local src/servidor.ts",
     "dev:local": "tsx src/local.ts",
-    "start": "tsx --env-file-if-exists=../.env src/servidor.ts",
+    "start": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local src/servidor.ts",
     "test": "node --import tsx --test --test-concurrency=4 \"test/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:test": "node db/tests/schema.mjs && tsx db/tests/carga-inicial.ts",
     "typecheck": "tsc --noEmit",
     "db:gerar-seed": "node src/db/seed/gerar-modelos-apr.mjs",
-    "admin:criar": "tsx --env-file-if-exists=../.env scripts/criar-admin.ts"
+    "admin:criar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/criar-admin.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",
