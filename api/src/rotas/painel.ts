@@ -29,6 +29,7 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
         critica: booleanoDaConsulta,
         periodo: mes.optional(),
         status: z.enum(OS_STATUS).optional(),
+        exportada: booleanoDaConsulta,
         numero_ordem: z.string().trim().min(1).optional(),
         busca: z.string().trim().min(1).optional(),
       }),

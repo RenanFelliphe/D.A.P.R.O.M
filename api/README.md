@@ -12,7 +12,10 @@ pnpm install
 pnpm typecheck
 pnpm test        # roda tudo num Postgres embutido (PGlite), sem Supabase
 pnpm dev         # precisa das variáveis abaixo e de um Supabase (nuvem ou local)
+pnpm dev:local   # sem Supabase: banco em memória (PGlite), auth e arquivos em memória, SAP simulado e usuários de exemplo
 ```
+
+**Modo local (`pnpm dev:local`, [`src/local.ts`](src/local.ts)):** a `api` inteira num só processo, para desenvolver o `web` e o `mobile`. Cria as equipes Serviços Especiais, Instrumentação e Laboratório Químico e um usuário por perfil, todos com a senha `daprom123` (`adm`, `ana`, `seg`, `sup1`, `sup2`, `tec1`, `tec2`, `tec3`), lê as 11 OS das fixtures pelo simulador do SAP e serve as fotos em `/arquivos-locais`. Tudo some quando o processo termina; nunca é para produção.
 
 Variáveis de ambiente (todas lidas em [`src/config.ts`](src/config.ts)): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_SIMULADO` (`true` liga o simulador em `/sap-simulado`), `SAP_LEITURA_INTERVALO_MIN` (padrão 15), `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`, `PORT` (padrão 3333). Com `SAP_SIMULADO=true`, aponte `SAP_API_URL` para `http://localhost:3333/sap-simulado` e `SAP_API_TOKEN` para o token que o simulador exige.
 
@@ -45,7 +48,7 @@ Na subida ([`src/servidor.ts`](src/servidor.ts)) a `api` aplica as migrações s
 | Fatia | Rotas | Módulo |
 |---|---|---|
 | Plataforma | `GET /saude`, `PUT /arquivos/{id}`, `GET /arquivos/{id}/url` | `saude`, `arquivos` |
-| Usuário e Equipe | `POST /auth/login`, `/auth/refresh`, `/auth/trocar-senha`, `GET /me`, `PUT /me/assinatura`, `/usuarios` (criar, editar, listar, `redefinir-senha`), `/equipes` | `auth`, `me`, `usuarios`, `equipes` |
+| Usuário e Equipe | `POST /auth/login`, `/auth/refresh`, `/auth/trocar-senha`, `GET /me`, `PUT /me/assinatura`, `GET /me/historico` (execuções que o usuário encerrou nos últimos 60 dias), `GET /me/execucoes-abertas`, `/usuarios` (criar, editar, listar, `redefinir-senha`), `/equipes` | `auth`, `me`, `usuarios`, `equipes` |
 | Integração SAP | `POST /sap/leituras`, `POST/GET /importacoes`, `POST /os`, `/locais`, simulador `/sap-simulado/*` | `sap`, `sap-simulado` |
 | Modelo de APR | `/modelos-apr`, `/modelos-apr/{codigo}/versoes/...`, `/atividades` | `modelos-apr` |
 | Eventos, APR e Execução | `POST /eventos`, `POST /sync/pull` | `eventos` |

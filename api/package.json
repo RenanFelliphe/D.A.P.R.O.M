@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/servidor.ts",
+    "dev:local": "tsx src/local.ts",
     "start": "tsx src/servidor.ts",
     "test": "node --import tsx --test --test-concurrency=4 \"test/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",

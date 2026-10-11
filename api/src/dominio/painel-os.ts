@@ -1,9 +1,10 @@
-import { and, asc, desc, eq, gte, ilike, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
 import {
   alerta,
   apr,
+  atividade,
   aprParticipante,
   aprResposta,
   aprRisco,
@@ -49,6 +50,8 @@ export interface FiltrosOs extends Paginacao {
   critica?: boolean;
   periodo?: string;
   status?: OsStatus;
+  /** `true`: já exportada para o SAP; `false`: ainda não (a pré-visualização da exportação). */
+  exportada?: boolean;
   numero_ordem?: string;
   busca?: string;
 }
@@ -68,6 +71,7 @@ function condicoesDoQuadro(eu: UsuarioAutenticado, f: FiltrosOs, comStatus: bool
     f.critica === undefined ? undefined : eq(localInstalacao.critico, f.critica),
     periodo,
     comStatus && f.status ? eq(os.status, f.status) : undefined,
+    f.exportada === undefined ? undefined : f.exportada ? isNotNull(os.exportadaSapEm) : isNull(os.exportadaSapEm),
     f.numero_ordem ? eq(os.numeroOrdem, f.numero_ordem.trim()) : undefined,
     busca
       ? or(
@@ -185,11 +189,13 @@ async function osVisivel(db: Db, eu: UsuarioAutenticado, osId: string) {
       equipeCentro: equipe.centroTrabalho,
       equipeSupervisorId: equipe.supervisorId,
       cienciaPorNome: cienciaPor.nome,
+      modeloAprCodigo: atividade.modeloAprCodigo,
     })
     .from(os)
     .innerJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
     .innerJoin(equipe, eq(equipe.id, os.equipeId))
     .leftJoin(cienciaPor, eq(cienciaPor.id, os.cienciaPor))
+    .leftJoin(atividade, eq(atividade.codigo, os.codigoAtividade))
     .where(eq(os.id, osId));
   if (!linha || !podeVerEquipe(eu, linha.os.equipeId)) throw naoEncontrado("OS não encontrada");
   return linha;
@@ -407,7 +413,7 @@ async function carregarExecucoes(db: Db, osId: string) {
 
 /** Detalhe da OS: dados do SAP, APRs, execuções, alertas, reprogramações e a linha do tempo que une tudo. */
 export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, agora: Date) {
-  const { os: o, local, equipeNome, equipeCentro, equipeSupervisorId, cienciaPorNome } = await osVisivel(db, eu, osId);
+  const { os: o, local, equipeNome, equipeCentro, equipeSupervisorId, cienciaPorNome, modeloAprCodigo } = await osVisivel(db, eu, osId);
 
   const equipeAnterior = alias(equipe, "equipe_anterior");
   const equipeNova = alias(equipe, "equipe_nova");
@@ -464,6 +470,8 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
       localInstalacao: local,
       equipe: { id: o.equipeId, nome: equipeNome, centroTrabalho: equipeCentro, supervisorId: equipeSupervisorId },
       cienciaPorNome,
+      /** Modelo de APR da atividade da OS; `null` quando a OS não tem atividade mapeada (o técnico escolhe o modelo). */
+      modeloAprCodigo: modeloAprCodigo ?? null,
       pdfPronto: o.pdfPath !== null,
       execucaoAbertaHaHoras: abertas.get(osId) ?? null,
       atrasada: estaAtrasada(o, diaNoFuso(agora)),

@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import {
   alerta,
   apr,
+  atividade,
   aprParticipante,
   aprResposta,
   aprRisco,
@@ -372,6 +373,20 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.deepEqual(equipeBcontagem.contagem_por_status, { liberada: 1, pendente: 0, em_execucao: 0, encerrada: 0, cancelada: 0 });
     });
 
+    it("exportada separa as OS já exportadas para o SAP das que ainda não foram (pré-visualização da exportação)", async () => {
+      const exportada = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4095", status: "encerrada", inicio: "2026-10-05", comPdf: true });
+      try {
+        await amb.db.update(os).set({ exportadaSapEm: h("2026-10-10T10:00:00Z") }).where(eq(os.id, exportada.id));
+        const consulta = async (q: Record<string, string>) => numerosDe(await amb.esperar(200, "GET", "/os", { como: analista, consulta: q })).sort();
+        assert.deepEqual(await consulta({ status: "encerrada", exportada: "false" }), ["4007"]);
+        assert.deepEqual(await consulta({ status: "encerrada", exportada: "true" }), ["4095"]);
+        assert.deepEqual(await consulta({ status: "encerrada" }), ["4007", "4095"]);
+        assert.equal((await amb.req("GET", "/os", { como: analista, consulta: { exportada: "talvez" } })).status, 422);
+      } finally {
+        await amb.db.delete(os).where(eq(os.id, exportada.id));
+      }
+    });
+
     it("pagina a lista", async () => {
       const p1 = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { tamanho: 3, pagina: 1 } });
       const p3 = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { tamanho: 3, pagina: 3 } });
@@ -498,6 +513,22 @@ describe("Painel: quadro, detalhe e ciência", () => {
       const encerrada = await amb.esperar(200, "GET", `/os/${osEncerrada.id}`, { como: tecA });
       assert.equal(encerrada.os.pdf_pronto, true);
       assert.equal(encerrada.execucoes[0].tempo_liquido_min, 120);
+    });
+
+    it("traz o código do modelo de APR da atividade da OS, ou null sem atividade mapeada", async () => {
+      await amb.db.insert(atividade).values([
+        { codigo: "ATV-COM-MODELO", descricao: "Atividade mapeada", modeloAprCodigo: "APR 03" },
+        { codigo: "ATV-SEM-MODELO", descricao: "Atividade sem modelo", modeloAprCodigo: null },
+      ]);
+      const mapeada = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4090", inicio: "2026-10-21" });
+      const semModelo = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4091", inicio: "2026-10-21" });
+      await amb.db.update(os).set({ codigoAtividade: "ATV-COM-MODELO" }).where(eq(os.id, mapeada.id));
+      await amb.db.update(os).set({ codigoAtividade: "ATV-SEM-MODELO" }).where(eq(os.id, semModelo.id));
+
+      assert.equal((await amb.esperar(200, "GET", `/os/${mapeada.id}`, { como: tecA })).os.modelo_apr_codigo, "APR 03");
+      assert.equal((await amb.esperar(200, "GET", `/os/${semModelo.id}`, { como: tecA })).os.modelo_apr_codigo, null);
+      // OS sem atividade alguma
+      assert.equal((await amb.esperar(200, "GET", `/os/${osLiberada.id}`, { como: tecA })).os.modelo_apr_codigo, null);
     });
 
     it("OS sem APR, execução, alerta nem reprogramação devolve listas vazias", async () => {

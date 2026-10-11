@@ -71,6 +71,8 @@ export class ArmazenamentoSupabase implements Armazenamento {
 /** Armazenamento em memória, para testes e execução sem Supabase. */
 export class ArmazenamentoEmMemoria implements Armazenamento {
   readonly arquivos = new Map<string, { bytes: Uint8Array; tipoMime: string }>();
+  /** Endereço que `urlAssinada` devolve; o modo local o serve em `GET /arquivos-locais/{bucket}/{id}`. */
+  constructor(private readonly baseUrl = "https://storage.local") {}
   private chave = (bucket: Bucket, caminho: string) => `${bucket}/${caminho}`;
 
   async gravar(bucket: Bucket, caminho: string, bytes: Uint8Array, tipoMime: string, opcoes: { sobrescrever?: boolean } = {}) {
@@ -87,6 +89,6 @@ export class ArmazenamentoEmMemoria implements Armazenamento {
     return this.arquivos.get(this.chave(bucket, caminho))?.bytes ?? null;
   }
   async urlAssinada(bucket: Bucket, caminho: string, segundos = 600) {
-    return `https://storage.local/${bucket}/${caminho}?expira=${segundos}`;
+    return `${this.baseUrl}/${bucket}/${caminho}?expira=${segundos}`;
   }
 }
