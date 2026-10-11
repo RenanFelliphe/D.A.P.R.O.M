@@ -4,7 +4,7 @@
 
 D.A.P.R.O.M é uma proposta de digitalização do fluxo de Ordens de Manutenção (OM/OS) e Análises Preliminares de Risco (APR), do planejamento à execução em campo. A solução foi concebida para combinar uma experiência móvel para equipes operacionais com um painel web para gestão, mantendo o histórico, as evidências e as assinaturas associados a cada atividade.
 
-> **Estado atual:** este repositório contém um protótipo navegável feito com HTML, CSS e JavaScript, além de especificações e materiais de referência. Não contém ainda o backend, o aplicativo React Native ou o painel .NET de produção. As telas e os registros apresentados na demonstração usam dados fictícios e não se conectam ao SAP nem a serviços externos.
+> **Estado atual:** este repositório contém um protótipo navegável das telas, feito em Next.js (React + TypeScript) na pasta `web`,, além de especificações e materiais de referência. Não contém ainda o backend, o aplicativo React Native ou o painel .NET de produção. As telas e os registros apresentados na demonstração usam dados fictícios e não se conectam ao SAP nem a serviços externos.
 
 ## Contexto e objetivo
 
@@ -79,19 +79,15 @@ A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramen
 
 ## Executar o protótipo
 
-Não é necessário instalar dependências nem compilar o projeto:
+O protótipo agora é a aplicação Next.js da pasta [`web`](./web) (React + TypeScript, só desktop, com dados fictícios):
 
-1. Abra a pasta `src`.
-2. Abra `index.html` em um navegador moderno.
-3. Use os controles do cabeçalho para alternar entre **App Android**, **Painel web** e **PDF**, ou navegue pelo roteiro lateral.
+```bash
+cd web
+pnpm install
+pnpm dev        # http://localhost:3000, abre em /app/entrar
+```
 
-Atalhos de teclado:
-
-- **Seta para a direita/esquerda:** próxima/anterior tela no roteiro.
-- **M:** mostrar ou ocultar o roteiro.
-- **F:** alternar tela cheia.
-
-O protótipo importa as fontes IBM Plex do Google Fonts quando há conexão; sem acesso à internet, usa fontes alternativas disponíveis no sistema.
+A área do técnico fica em `/app/*`, o painel de gestão em `/web/*` e o PDF da OS executada em `/doc/pdf`. Mais detalhes em [web/README.md](./web/README.md).
 
 ## Estrutura do repositório
 
@@ -99,10 +95,9 @@ O protótipo importa as fontes IBM Plex do Google Fonts quando há conexão; sem
 .
 ├── README.md
 ├── DesignDoc.md
-├── src/
-│   ├── index.html              # Telas da demonstração
-│   ├── styles.css              # Estilos e layouts responsivos
-│   └── app.js                  # Navegação e interações simuladas
+├── api/                        # Backend (ainda não iniciado)
+├── web/                        # Telas do painel e do técnico em Next.js + React + TypeScript
+├── mobile/                     # Aplicativo de campo (ainda não iniciado)
 └── base/
     ├── .design/
     │   ├── especificacao.md    # Escopo, regras, contratos e decisões técnicas
