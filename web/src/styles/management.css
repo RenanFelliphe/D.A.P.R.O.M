@@ -1,0 +1,374 @@
+/* Painel de gestão: alertas, importação SAP, indicadores e modelos de APR. */
+
+/* ===== Alertas e impedimentos ===== */
+
+.alist {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column
+}
+
+.aitem {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line2);
+  background: #fff;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  color: inherit
+}
+
+.aitem:hover {
+  background: var(--surface2)
+}
+
+.aitem[aria-selected="true"] {
+  background: #F2F8FA;
+  box-shadow: inset 4px 0 0 var(--brand)
+}
+
+.aitem .ic {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center
+}
+
+.aitem .ic.red {
+  background: var(--blq-bg);
+  color: var(--blq)
+}
+
+.aitem .ic.blue {
+  background: var(--brand-bg);
+  color: var(--brand)
+}
+
+.aitem .tp {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px
+}
+
+.aitem .tp b {
+  font-weight: 600
+}
+
+.aitem .tp span {
+  color: var(--ink4)
+}
+
+.aitem .os {
+  font-size: 14px
+}
+
+.aitem .rs {
+  font-size: 13px;
+  color: var(--ink3);
+  line-height: 1.35
+}
+
+.aitem.unread .os {
+  font-weight: 600
+}
+
+.decide {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px
+}
+
+.dcard {
+  border: 1px solid var(--line3);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px
+}
+
+.dcard.main {
+  border: 2px solid var(--brand)
+}
+
+.dcard .hd {
+  display: flex;
+  align-items: center;
+  gap: 10px
+}
+
+.dcard .hd .ic {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--chip);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center
+}
+
+.dcard.main .hd .ic {
+  background: var(--brand-bg);
+  color: var(--brand)
+}
+
+.dcard h4 {
+  font-size: 15.5px;
+  font-weight: 600
+}
+
+.blockbox {
+  display: flex;
+  gap: 16px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #FDF3F1;
+  border: 1px solid #F0C9C3
+}
+
+/* ===== Importação SAP ===== */
+
+.drop {
+  background: #fff;
+  border: 1.5px dashed var(--dash);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center
+}
+
+.drop .ic {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--brand-bg);
+  color: var(--brand);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center
+}
+
+.result3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px
+}
+
+.result3>div {
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--line2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px
+}
+
+.result3 .v {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.15
+}
+
+.result3 .warn {
+  background: #FFF8E0;
+  border-color: var(--al-bd)
+}
+
+/* ===== Indicadores ===== */
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 6px
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px
+}
+
+.bar-row .nm {
+  flex: 0 0 170px;
+  font-size: 13.5px;
+  color: var(--ink2);
+  text-align: right
+}
+
+.bar-row .tr {
+  flex: 1;
+  border-left: 1px solid #C3C2B7;
+  background-image: linear-gradient(#E1E0D9, #E1E0D9), linear-gradient(#E1E0D9, #E1E0D9), linear-gradient(#E1E0D9, #E1E0D9);
+  background-size: 1px 100%;
+  background-position: 33.33% 0, 66.67% 0, 100% 0;
+  background-repeat: no-repeat
+}
+
+.bar-row .st {
+  display: flex;
+  gap: 2px;
+  height: 20px
+}
+
+.bar-row .st i {
+  display: block;
+  height: 20px;
+  cursor: default
+}
+
+.bar-row .st i:last-child {
+  border-radius: 0 4px 4px 0
+}
+
+.bar-row .tot {
+  flex: 0 0 40px;
+  font-size: 13.5px;
+  font-weight: 600
+}
+
+.axis {
+  display: flex;
+  gap: 12px
+}
+
+.axis .sp {
+  flex: 0 0 170px
+}
+
+.axis .ax {
+  flex: 1;
+  position: relative;
+  height: 16px;
+  font-size: 11.5px;
+  color: var(--ink4)
+}
+
+.axis .ax span {
+  position: absolute;
+  transform: translateX(-50%)
+}
+
+.axis .sp2 {
+  flex: 0 0 40px
+}
+
+.legend {
+  display: flex;
+  gap: 6px 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink2);
+  margin: 0;
+  padding: 0;
+  list-style: none
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px
+}
+
+.legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: block
+}
+
+/* ===== Modelos de APR ===== */
+
+.mlist a {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line2);
+  text-decoration: none;
+  color: var(--ink)
+}
+
+.mlist a:hover {
+  background: var(--surface2)
+}
+
+.mlist a[aria-current="true"] {
+  background: #F2F8FA;
+  box-shadow: inset 4px 0 0 var(--brand)
+}
+
+.mlist .tp {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px
+}
+
+.mlist .tp b {
+  font-family: var(--mono);
+  color: var(--brand)
+}
+
+.mlist .tt {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600
+}
+
+.pill.line {
+  border: 1px solid var(--line3);
+  background: #fff
+}
+
+.pill.elim {
+  background: var(--blq-bg);
+  color: var(--blq)
+}
+
+.pill.alt {
+  background: var(--al-bg);
+  color: var(--al)
+}
+
+.checks {
+  display: flex;
+  gap: 8px 20px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--line2);
+  font-size: 13.5px
+}
+
+.checks span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--enc);
+  font-weight: 500
+}

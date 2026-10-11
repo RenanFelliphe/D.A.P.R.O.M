@@ -1,0 +1,80 @@
+/* Autenticação: tela de entrada (login). */
+
+.login {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(420px, 5fr) 7fr
+}
+
+.login-hero {
+  background: var(--dark);
+  color: #fff;
+  padding: 72px 64px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 24px
+}
+
+.login-hero h1 {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1.1
+}
+
+.login-hero .tagline {
+  font-size: 17px;
+  color: var(--dark-txt);
+  max-width: 420px
+}
+
+.login-hero .badge {
+  background: #26323E;
+  color: #E3E8EC;
+  font-weight: 500;
+  font-size: 13px;
+  padding: 5px 12px
+}
+
+.login-hero .logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px
+}
+
+.login-side {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 48px;
+  gap: 20px
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px
+}
+
+.login-card h2 {
+  font-size: 22px;
+  font-weight: 600
+}
+
+.login-foot {
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--ink4)
+}

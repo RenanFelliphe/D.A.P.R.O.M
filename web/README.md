@@ -51,7 +51,7 @@ npm run lint
 src/
 ├── app/
 │   ├── layout.tsx            # fontes, sprite de ícones e providers de estado
-│   ├── globals.css           # tokens e estilos, organizados por seção
+│   ├── globals.css           # só importa os arquivos de src/styles, na ordem
 │   ├── app/
 │   │   ├── entrar/           # login (fora da casca)
 │   │   └── (portal)/         # layout com a casca do técnico + uma pasta por tela
@@ -65,8 +65,23 @@ src/
 │   └── pdf/                  # páginas e blocos do PDF
 ├── data/                     # dados fictícios tipados usados pelas telas
 ├── lib/                      # registro de telas e utilitários
+├── styles/                   # CSS agrupado por função (não por página), importado por globals.css
 └── state/                    # estado compartilhado (checklist, sincronização, alertas, exportação, aviso)
 ```
+
+### Estilos
+
+`src/styles` agrupa o CSS por função, e `globals.css` apenas importa os arquivos. A ordem dos imports é a ordem da cascata:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `variables.css` | variáveis de design: cores, fontes e medidas |
+| `base.css` | reset, tipografia, ícones, casca (barra superior e menu lateral) e utilitários de layout |
+| `components.css` | componentes reutilizáveis: botões, formulários, avisos/selos/toast, cartões e painéis, fotos e assinaturas, tabelas e PDF |
+| `auth.css` | tela de entrada |
+| `os.css` | lista de OS, quadro de gestão, detalhe da OS, execução e fila de sincronização |
+| `apr.css` | etapas, checklist e resultado da APR |
+| `management.css` | painel de gestão: alertas, importação SAP, indicadores e modelos de APR |
 
 Cada `page.tsx` é fina: define o título e compõe componentes. Dados repetitivos (linhas de tabela, cartões, perguntas) ficam em `src/data` e são renderizados com `.map`.
 

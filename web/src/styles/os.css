@@ -1,0 +1,416 @@
+/* Ordens de serviço: telas do técnico e do painel de gestão. */
+
+/* ===== Lista de OS, quadro de gestão e detalhe da OS ===== */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px
+}
+
+.chips button {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line3);
+  background: #fff;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer
+}
+
+.chips button:hover {
+  border-color: var(--brand)
+}
+
+.chips button[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+  font-weight: 600
+}
+
+.os-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 22px
+}
+
+.os-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 12px
+}
+
+.os-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer
+}
+
+.os-card:hover {
+  border-color: var(--brand);
+  box-shadow: 0 2px 10px rgba(23, 33, 43, .1)
+}
+
+.os-card .t {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3
+}
+
+.os-card .m {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink3)
+}
+
+.group-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px
+}
+
+.group-h h2 {
+  font-size: 16px;
+  font-weight: 600
+}
+
+button.os-card {
+  font: inherit;
+  text-align: left;
+  width: 100%
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px
+}
+
+.kpis.k4 {
+  grid-template-columns: repeat(4, 1fr)
+}
+
+.kpi {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px
+}
+
+.kpi .l {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink3)
+}
+
+.kpi .l i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: block
+}
+
+.kpi .v {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.15
+}
+
+.kpi .s {
+  font-size: 12.5px;
+  color: var(--ink3)
+}
+
+.alert-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--blq-bd)
+}
+
+.alert-strip .ic {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--blq-bg);
+  color: var(--blq);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center
+}
+
+.filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap
+}
+
+.filters .field label {
+  font-size: 12px
+}
+
+.filters .select {
+  min-width: 170px
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start
+}
+
+.bcol {
+  background: var(--col);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px
+}
+
+.bcol-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 2px
+}
+
+.bcol-h h2 {
+  flex: 1;
+  font-size: 14px
+}
+
+.bcol-h .badge {
+  padding: 1px 8px;
+  font-weight: 700
+}
+
+.bcard {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer
+}
+
+.bcard:hover {
+  border-color: var(--brand);
+  box-shadow: 0 2px 10px rgba(23, 33, 43, .1)
+}
+
+.bcard .top {
+  display: flex;
+  align-items: center;
+  gap: 8px
+}
+
+.bcard .top .t {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ink3)
+}
+
+.bcard .tt {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3
+}
+
+.bcard .m {
+  font-size: 12.5px;
+  color: var(--ink3);
+  display: flex;
+  align-items: center;
+  gap: 5px
+}
+
+button.bcard {
+  font: inherit;
+  text-align: left;
+  width: 100%
+}
+
+.more {
+  padding: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center
+}
+
+.dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px 24px;
+  margin: 0
+}
+
+.dl dt {
+  font-size: 12px;
+  color: var(--ink4)
+}
+
+.dl dd {
+  margin: 0;
+  font-size: 14px
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column
+}
+
+.timeline li {
+  display: flex;
+  gap: 12px
+}
+
+.timeline .dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center
+}
+
+.timeline .dot i {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  display: block
+}
+
+.timeline .dot b {
+  flex: 1;
+  width: 2px;
+  background: #E3E5DE;
+  margin-top: 3px
+}
+
+.timeline .tx {
+  padding-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.35
+}
+
+.timeline .tx .w {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink4)
+}
+
+.timeline .tx strong {
+  font-size: 13.5px
+}
+
+.timeline .tx span.d {
+  font-size: 12.5px;
+  color: var(--ink3)
+}
+
+.medidas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px 16px
+}
+
+.medidas strong {
+  white-space: nowrap
+}
+
+/* ===== Execução e fila de sincronização ===== */
+
+.sync-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line2);
+  transition: background .3s
+}
+
+.sync-row:last-child {
+  border-bottom: 0
+}
+
+.sync-ic {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--ink3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center
+}
+
+.sync-row[data-s="enviando"] {
+  background: #F2F8FA
+}
+
+.sync-row[data-s="enviando"] .sync-ic {
+  background: var(--brand-bg);
+  color: var(--brand)
+}
+
+.sync-row[data-s="ok"] .sync-ic {
+  background: var(--enc-bg);
+  color: var(--enc)
+}
+
+.sync-row[data-s="ok"] .st {
+  color: var(--enc)
+}
+
+.sync-row[data-s="enviando"] .st {
+  color: var(--brand)
+}
+
+.sync-row .st {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink3)
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px
+}
+
+.stat .big {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2
+}

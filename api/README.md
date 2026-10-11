@@ -1,6 +1,6 @@
 # api
 
-Backend do D.A.P.R.O.M (regras de negócio, autorização, integração com o SAP, sincronização, geração de PDF e e-mail).
+Backend do D.A.P.R.O.M (regras de negócio, autorização, integração com o SAP, eventos de campo (online e fila offline), geração de PDF e e-mail).
 
 > **Ainda não iniciado.** O foco atual é a interface do painel web em [`../web`](../web). Esta pasta reserva o lugar da API no monorepo (`api`, `web`, `mobile`).
 

@@ -1,14 +1,14 @@
 # APR e OS digitais — D.A.P.R.O.M
 
 > Planeje a partir deste documento. Cada fatia abaixo traz o próprio formato — copie, não re-derive.
-> Status: confirmado por Renan Felliphe, 2026-10-03; revisado em 2026-10-10 com a Reunião 2, as decisões do time (stack, API do SAP simulada, retomada da OS) e a recomendação adotada para todas as questões que estavam em aberto.
+> Status: confirmado por Renan Felliphe, 2026-10-03; revisado em 2026-10-10 com a Reunião 2, as decisões do time (stack, API do SAP simulada, retomada da OS) e a recomendação adotada para todas as questões que estavam em aberto; revisado de novo em 2026-10-10 para corrigir um mal-entendido: o sistema é online, e o modo offline é um recurso adicional de contingência para o campo sem sinal, não a base da arquitetura. Web e app atendem todos os perfis.
 
 ## Situação
 
-- Projeto: em construção — o repositório tem o protótipo navegável (`src/`), esta especificação e o material de base; nenhum código de produção.
+- Projeto: em construção — o repositório é um monorepo com as pastas `api`, `web` e `mobile`; hoje só o `web` tem código, e é a interface das telas com dados e estado simulados; além dele há esta especificação e o material de base; nenhum código de produção.
 - Decisão: assumida pelo Desafio 4 ("tornar a APR e a OM 100% digitais, da criação à execução", mobile Android + web) e pelas Reuniões 1 e 2. Na Reunião 2 os mentores Iago Raich e Mario Stevan validaram o fluxo.
-- Em andamento: copia do site de controle já existente (Lovable) a ideia de ler as OS do SAP e os filtros por equipe e status; o próprio site, o BI que a ES Gás está construindo e o SAP ficam fora e não são tocados. O protótipo `src/` é referência de layout e fluxo, não código reaproveitável.
-- O que está em jogo: protótipo de maratona — errar custa refazer partes do protótipo, não dados de produção; a exceção é o contrato de sincronização, que fica caro de mudar assim que houver celulares com fila pendente. O protótipo roda só com dados fictícios, nunca com dados reais da empresa.
+- Em andamento: copia do site de controle já existente (Lovable) a ideia de ler as OS do SAP e os filtros por equipe e status; o próprio site, o BI que a ES Gás está construindo e o SAP ficam fora e não são tocados. A interface em `web/` é a referência de layout e fluxo; seus dados e seu estado são simulados e serão trocados por chamadas à `api`.
+- O que está em jogo: protótipo de maratona — errar custa refazer partes do protótipo, não dados de produção; a exceção é o contrato de eventos de campo (a idempotência de cada registro), que fica caro de mudar assim que houver aparelhos com fila offline pendente. O protótipo roda só com dados fictícios, nunca com dados reais da empresa.
 
 ## Problema
 
@@ -18,27 +18,27 @@ Volume: ~390 OS encerradas no mês passado, variando de ~200 a 409 por mês (Reu
 
 ## Sucesso
 
-- Deu certo se: num piloto com uma equipe, 100% das OS encerradas têm uma APR aprovada, própria da OS, registrada antes do início da execução e nenhuma OS dessa equipe passa por impressão ou scanner; na demo, o caminho ler OS → sincronizar → APR → executar → PDF roda num Android em modo avião e chega ao painel web quando o sinal volta.
-- Sinal de que está dando errado: a fila offline não sincroniza de forma confiável até o meio do prazo (sem isso não há demo do caso de campo), ou os técnicos do piloto voltam ao papel "porque é mais rápido" — sinal de que preencher uma APR por OS está longo demais.
+- Deu certo se: num piloto com uma equipe, 100% das OS encerradas têm uma APR aprovada, própria da OS, registrada antes do início da execução e nenhuma OS dessa equipe passa por impressão ou scanner; na demo, o caminho ler OS → APR → executar → PDF roda online, no app Android e no navegador, e a OS encerrada aparece no painel web na hora; como contingência, o mesmo caminho roda num Android em modo avião e chega ao painel quando o sinal volta.
+- Sinal de que está dando errado: o fluxo online de APR e execução não está estável até o meio do prazo (sem ele não há o que demonstrar), ou o modo offline não envia a fila de forma confiável (sem isso não há demo do campo sem sinal), ou os técnicos do piloto voltam ao papel "porque é mais rápido" — sinal de que preencher uma APR por OS está longo demais.
 - Revisão: próximo encontro presencial da maratona — Iago Raich e Mario Stevan.
 
 ## Escopo
 
-Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por planilha, e criação manual de OS; app Android offline (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); sincronização; PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP.
+Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por planilha, e criação manual de OS; aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP.
 
-Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova chega na próxima sincronização. iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Catálogo de serviço, escaneamento de OS e APR antigas, monitoramento do intervalo entre preventivas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP. Mesclar locais duplicados. Substituir o BI ou o site Lovable — são de outra equipe.
+Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Catálogo de serviço, escaneamento de OS e APR antigas, monitoramento do intervalo entre preventivas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP. Mesclar locais duplicados. Substituir o BI ou o site Lovable — são de outra equipe.
 
 Não muda: SAP (continua gerando, liberando e encerrando as ordens); site Lovable de controle; o conteúdo das APRs continua sendo da segurança do trabalho.
 
 ## Formato
 
-O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Execução amparada por exatamente uma APR própria, e a OS guarda o histórico de todas as APRs e execuções. O app Android trabalha offline sobre uma cópia dos dados da equipe e devolve ao back-end eventos de campo idempotentes; o back-end Node é o único a falar com o Supabase (Postgres, Auth e Storage), e a web em .NET planeja, acompanha e exporta. A decisão de difícil volta é o contrato de sincronização junto com a divisão de posse campo/web: mudá-lo depois de haver aparelhos com fila pendente exige migrar dados em celulares que não controlamos. A alternativa mais pesada, um motor de replicação genérico com mesclagem campo a campo, só compensa se campo e web passarem a editar o mesmo dado offline, e a Decisão-chave 2 impede exatamente isso.
+O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Execução amparada por exatamente uma APR própria, e a OS guarda o histórico de todas as APRs e execuções. O sistema é online: o app Android e a web falam com a `api` (Node), que é a única a falar com o Supabase (Postgres, Auth e Storage). Web e app servem a todos os perfis, e o que cada pessoa pode fazer depende do perfil, não da plataforma. Todo registro de campo (APR, execução, pausa, evidência, assinatura) chega à `api` como um evento idempotente, e esse é o único caminho de escrita: online, o cliente envia o evento na hora; sem sinal, o app guarda os eventos numa fila local e os envia quando o sinal volta. O modo offline é um recurso adicional, para a APR e a execução no campo sem sinal, e não muda o fluxo do sistema. A decisão de difícil volta é o contrato dos eventos (idempotência e divisão de posse dos dados): mudá-lo depois de haver aparelhos com fila offline pendente exige migrar dados em celulares que não controlamos. A alternativa mais pesada, um motor de replicação genérico com mesclagem campo a campo, só compensa se dois clientes passarem a editar o mesmo dado offline, e a Decisão-chave 2 impede exatamente isso.
 
 ## Decisões-chave
 
-1. **Monorepo com três aplicações e um único ponto de acesso aos dados.** `/backend` (Node e TypeScript), `/frontend` (.NET 10, Blazor) e `/mobile` (React Native, Android, SQLite local), cada uma com Dockerfile; backend e frontend sobem no Coolify. O Supabase fornece Postgres, Auth e Storage, mas só o back-end fala com ele: nenhum cliente recebe a chave do Supabase, as tabelas ficam com RLS ligado e sem políticas e os buckets são privados. Assim a autorização vive em um lugar só e o app offline conhece uma única API. O PWA único voltaria a ganhar se o time não conseguir sustentar três codebases até a demo.
-2. **O campo é dono da execução e a web é dona do planejamento; a sincronização nunca descarta dado de campo.** Campo grava APR, respostas, participantes, Execução, pausas, evidências e assinaturas; a web grava equipe, datas programadas, prioridade e criticidade; o SAP, por leitura, grava os dados da ordem. Quando um evento de campo chega para uma OS que a web mudou nesse meio-tempo (reatribuída, reprogramada, outra equipe já executou), ele é aplicado mesmo assim e gera um `alerta` para o supervisor — conflito vira alerta, nunca sobrescrita.
-3. **Todo registro de campo nasce com ID gerado no aparelho, e reenviar não tem efeito; o `status` da OS é derivado no servidor, nenhum cliente o grava direto.** Isso torna a fila offline segura contra reenvio, queda no meio do envio e duplo toque no "Sincronizar". As transições ficam no diagrama de [Sincronização](#sincronização).
+1. **Monorepo com três aplicações e um único ponto de acesso aos dados.** `api` (Node e TypeScript), `web` (Next.js, React e TypeScript) e `mobile` (React Native, Android, com SQLite local para o modo offline), cada uma com Dockerfile; `api` e `web` sobem no Coolify. O Supabase fornece Postgres, Auth e Storage, mas só a `api` fala com ele: nenhum cliente recebe a chave do Supabase, as tabelas ficam com RLS ligado e sem políticas e os buckets são privados. Assim a autorização vive em um lugar só e web e app conhecem uma única API. O PWA único voltaria a ganhar se o time não conseguir sustentar três codebases até a demo.
+2. **Quem executa é dono da execução e quem planeja é dono do planejamento, em qualquer plataforma; a sincronização nunca descarta dado de campo.** Os registros de campo (APR, respostas, participantes, Execução, pausas, evidências e assinaturas) vêm dos eventos de quem aplica a APR e executa a OS, pelo app ou pela web; equipe, datas programadas, prioridade e criticidade são gravadas por quem planeja; o SAP, por leitura, grava os dados da ordem. Quando um evento de campo chega para uma OS que o planejamento mudou nesse meio-tempo (reatribuída, reprogramada, outra equipe já executou), ele é aplicado mesmo assim e gera um `alerta` para o supervisor — conflito vira alerta, nunca sobrescrita. Online, o intervalo para isso acontecer é curto; no modo offline, pode durar horas.
+3. **Todo registro de campo nasce com ID gerado no cliente, e reenviar não tem efeito; o `status` da OS é derivado no servidor, nenhum cliente o grava direto.** Isso torna o envio seguro contra rede instável, reenvio e duplo toque, online ou pela fila offline. As transições ficam no diagrama de [Eventos e modo offline](#eventos-e-modo-offline).
 4. **Uma APR vale para uma única OS e ampara uma única Execução; nenhuma Execução começa sem a APR aprovada, do dia, da própria OS; uma APR bloqueada é imutável.** A relação é 1:1, como o Iago e o Mario confirmaram (a mesma APR para várias OS foi descartada porque os riscos de cada atividade são diferentes). Toda nova tentativa, mesmo no mesmo local e na mesma hora, exige uma APR nova, e as respostas nunca são pré-preenchidas nem copiadas de outra APR. O registro das APRs bloqueadas fica para auditoria e para o indicador de atraso justificado.
 5. **A APR é respondida por inteiro e só então validada; cada item do modelo define `resposta_bloqueante`, `tipo` e `evidencia`.** O técnico responde todos os itens, em qualquer ordem, e volta a corrigir enquanto não concluir; ao concluir, o resultado é `bloqueada` se qualquer item `eliminatorio` tiver a resposta bloqueante, e todos os itens reprovados são registrados, cada um com observação e, quando o item pede foto, ao menos 1 foto. O servidor recalcula o resultado a partir das respostas e da versão do modelo; o valor enviado pelo aparelho é só conferido.
 6. **Um modelo de APR publicado é imutável; editar cria versão nova, e toda APR aponta para a versão exata que respondeu.** O modelo de uma OS não é escolhido pela equipe: sai da tabela `atividade` (código do plano de manutenção do SAP → código do modelo), que a Segurança do Trabalho mantém. APRs antigas e PDFs continuam reproduzíveis depois de uma revisão, e uma APR preenchida offline numa versão anterior é aceita com a versão que usou.
@@ -50,18 +50,18 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 | Fatia | Entrega | Status |
 |---|---|---|
 | [Plataforma](#plataforma) | monorepo, imagens, migrações, acesso ao Supabase, arquivos e tarefas | definida |
-| [Usuário e Equipe](#usuário-e-equipe) | perfis, equipes, login por matrícula online e offline, assinatura do perfil | aberta — 4 suposições adotadas; 2 RFC fora da demo |
+| [Usuário e Equipe](#usuário-e-equipe) | perfis, equipes, login por matrícula (com login offline de contingência), assinatura do perfil | aberta — 4 suposições adotadas; 2 RFC fora da demo |
 | [Integração SAP](#integração-sap) | OS entram pela API simulada ou por planilha; OS manual e de apoio | aberta — 6 suposições adotadas |
 | [Modelo de APR](#modelo-de-apr) | modelos versionados, atividade → modelo e os 8 modelos de `base/apr-examples/` | aberta — 4 suposições adotadas |
-| [Sincronização](#sincronização) | download dos dados da equipe e envio idempotente da fila offline | definida |
+| [Eventos e modo offline](#eventos-e-modo-offline) | envio idempotente dos eventos de campo (online e pela fila offline) e cópia local da equipe para o campo sem sinal | definida |
 | [APR](#apr) | checklist respondido por inteiro, evidência e validação | definida |
 | [Execução](#execução) | execução com pausa, assinaturas, interrupção e PDF de 2 páginas | definida |
 | [Impedimento](#impedimento) | OS pendente, alerta ao supervisor, reprogramação e OS de apoio | aberta — 3 suposições adotadas |
 | [Painel](#painel) | quadro, histórico, ciência, indicadores e planilha para o SAP | aberta — 3 suposições adotadas |
 
-Ordem: Plataforma → Usuário e Equipe → Integração SAP → Modelo de APR (só a carga inicial) → Sincronização → APR → Execução → Impedimento → Painel → Modelo de APR (editor). Sincronização é o maior risco de prazo e vem antes das telas de campo; o editor de modelos fica por último porque a carga inicial já destrava a demo.
+Ordem: Plataforma → Usuário e Equipe → Integração SAP → Modelo de APR (só a carga inicial) → Eventos (o envio online) → APR → Execução → Impedimento → Painel → Modelo de APR (editor) → Modo offline. O fluxo online de APR e execução é a base e vem primeiro; o contrato de eventos precisa existir antes das telas de campo, porque elas o usam. O modo offline (fila local, cópia da equipe e login sem sinal) entra por último e é o maior risco de prazo do recurso adicional: ele só reaproveita o contrato de eventos. O editor de modelos fica depois do painel porque a carga inicial já destrava a demo.
 
-Derivável do repositório, fica para o plano: textos de erro (`{erro: {codigo, mensagem}}` em pt-BR), ordenação de listas, máscaras de data e hora em pt-BR, layout das telas (o protótipo `src/` é a referência), fuso `America/Sao_Paulo` para "dia" e hora exibida com os instantes guardados em UTC, paginação por `pagina` e `tamanho` — o primeiro CRUD (Usuário e Equipe) fixa a convenção e os demais seguem como ele.
+Derivável do repositório, fica para o plano: textos de erro (`{erro: {codigo, mensagem}}` em pt-BR), ordenação de listas, máscaras de data e hora em pt-BR, layout das telas (a interface em `web/` é a referência), fuso `America/Sao_Paulo` para "dia" e hora exibida com os instantes guardados em UTC, paginação por `pagina` e `tamanho` — o primeiro CRUD (Usuário e Equipe) fixa a convenção e os demais seguem como ele.
 
 Todas as questões que estavam abertas em [pontos-a-validar.md](pontos-a-validar.md) entram aqui com a solução recomendada; a seção [Suposições adotadas](#suposições-adotadas) diz quem as confirma. Nenhuma delas bloqueia a implementação.
 
@@ -71,18 +71,18 @@ Todas as questões que estavam abertas em [pontos-a-validar.md](pontos-a-validar
 
 | Pasta | Conteúdo | Imagem |
 |---|---|---|
-| `/backend` | API REST em Node e TypeScript; migrações SQL em `db/migrations`; fixtures do SAP simulado em `fixtures/sap` | `Dockerfile`; aplicação do Coolify |
-| `/frontend` | painel web em ASP.NET Core 10, Blazor em modo servidor; o token do usuário fica na sessão do servidor, nunca no navegador | `Dockerfile`; aplicação do Coolify |
-| `/mobile` | app React Native para Android, SQLite local, câmera e captura de assinatura | `Dockerfile` de build que gera o APK; não é publicado no Coolify |
-| raiz | `docker-compose.yml` para subir backend e frontend no desenvolvimento; `README.md` com os comandos | — |
+| `api` | API REST em Node e TypeScript; migrações SQL em `db/migrations`; fixtures do SAP simulado em `fixtures/sap` | `Dockerfile`; aplicação do Coolify |
+| `web` | aplicação Next.js (React e TypeScript) para todos os perfis: telas de campo (OS da equipe, APR, execução) e de gestão (quadro, alertas, importação, indicadores, modelos, usuários); o token do usuário fica em cookie `httpOnly`, fora do alcance do JavaScript | `Dockerfile`; aplicação do Coolify |
+| `mobile` | app React Native para Android, câmera, captura de assinatura e SQLite local para o modo offline | `Dockerfile` de build que gera o APK; não é publicado no Coolify |
+| raiz | `docker-compose.yml` para subir `api` e `web` no desenvolvimento; `README.md` com os comandos | — |
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Subir o backend | aplica as migrações pendentes sob trava de sessão e só então abre a porta; migração que falha impede a subida | `GET /saude` responde `200` só depois |
+| Subir a `api` | aplica as migrações pendentes sob trava de sessão e só então abre a porta; migração que falha impede a subida | `GET /saude` responde `200` só depois |
 | Requisição sem JWT válido | recusada antes de qualquer leitura | `401` |
 | Perfil sem permissão para a rota | recusada | `403` |
 | Cliente tenta falar com o Supabase direto | impossível: nenhum cliente tem a chave, RLS sem políticas, buckets privados | — |
-| Envio de arquivo | gravado no bucket com o id do aparelho; reenviar o mesmo id e conteúdo não tem efeito | `200` `{id}` |
+| Envio de arquivo | gravado no bucket com o id gerado no cliente (app ou navegador); reenviar o mesmo id e conteúdo não tem efeito | `200` `{id}` |
 | Leitura de arquivo | o back-end devolve uma URL assinada de 10 minutos, depois de checar o perfil | `200` `{url}` |
 | Tarefa em segundo plano falha | nova tentativa com espera crescente (1, 5 e 15 minutos, no máximo 5 tentativas); depois fica `falhou` e aparece no painel | "PDF pendente" ou "E-mail não enviado" |
 
@@ -105,7 +105,7 @@ Tabela `tarefa`.
 | `tarefa.erro` | text | sim | | última mensagem |
 | `tarefa.criada_em` | timestamptz | não | | |
 
-Variáveis de ambiente do back-end: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_SIMULADO` (`true` liga as rotas do simulador), `SAP_LEITURA_INTERVALO_MIN` (padrão 15), `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`. Do front-end: `API_URL`. Do app: o endereço da API no momento do build.
+Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_SIMULADO` (`true` liga as rotas do simulador), `SAP_LEITURA_INTERVALO_MIN` (padrão 15), `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`. Do `web`: `API_URL`. Do app: o endereço da API no momento do build.
 
 1. Banco, autenticação e arquivos — Supabase, na nuvem para a demo; o mesmo código funciona com o Supabase hospedado no Coolify, só trocando as variáveis.
 2. PDF e e-mail — gerados pelo back-end Node (o Supabase não gera PDF): biblioteca de PDF declarativa para as 2 páginas e envio por SMTP configurável.
@@ -115,23 +115,23 @@ Variáveis de ambiente do back-end: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SE
 
 ### Usuário e Equipe
 
-**Entrega** cadastro de usuários e equipes na web, com perfis, e login por matrícula no app, que continua funcionando sem sinal. **Status: aberta.**
+**Entrega** cadastro de usuários e equipes na web, com perfis, e login por matrícula no app e na web. O login normal é online; no app, uma sessão já aberta no aparelho também entra sem sinal, como contingência do modo offline. **Status: aberta.**
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
 | Admin cria usuário | usuário com matrícula única, perfil, equipe e senha inicial; no Supabase Auth ele nasce com o e-mail interno `<matrícula>@daprom.local` | `201` |
 | Matrícula repetida | nada é gravado | `409` "Matrícula já cadastrada" |
 | Primeiro login com senha inicial | entra, mas só consegue trocar a senha | tela "Defina sua senha" |
-| Primeiro login no aparelho | exige sinal; o app guarda a sessão, um hash salgado da senha e os dados da equipe | `200` |
-| Login sem sinal, já logou neste aparelho em até 7 dias | entra com a senha conferida contra o hash local | app abre na lista de OS |
-| Login sem sinal, passou de 7 dias ou nunca logou aqui | recusado | "Conecte-se para entrar" |
+| Login com sinal (web ou app) | confere a senha na `api` e abre a sessão; no app, guarda também um hash salgado da senha e os dados da equipe para o modo offline | `200` |
+| Modo offline: login no app sem sinal, já logou neste aparelho em até 7 dias | entra com a senha conferida contra o hash local | app abre na lista de OS |
+| Modo offline: login no app sem sinal, passou de 7 dias ou nunca logou aqui | recusado | "Conecte-se para entrar" |
 | Senha trocada na web enquanto o aparelho está offline | o aparelho aceita a antiga até o próximo login online; então a invalida | — |
 | Esqueci a senha | só online: o admin redefine e a pessoa recebe nova senha inicial | "Procure o administrador" |
 | Usuário desativado enquanto estava offline | a fila pendente ainda sobe na próxima sincronização; depois a sessão é revogada | "Acesso revogado" após enviar |
 | Logout com fila pendente | recusado | "Há N registros não enviados" |
 | Pessoa sem assinatura no perfil confirma uma assinatura | desenha na hora e a assinatura fica cadastrada no perfil | — |
 | Refazer a assinatura do perfil | vale para as próximas assinaturas; as já feitas guardam a imagem que usaram | `200` |
-| Dupla em campo | todos assinam no aparelho de quem está logado, sem login próprio | lista de participantes vinda da equipe da OS |
+| Dupla em campo | todos assinam no app ou no navegador de quem está logado, sem login próprio | lista de participantes vinda da equipe da OS |
 
 `POST /auth/login` `{matricula, senha}` → `200` `{access_token, refresh_token, expira_em, usuario, senha_provisoria}`
 `POST /auth/refresh` `{refresh_token}` → `200` `{access_token, expira_em}`
@@ -169,8 +169,9 @@ Perfis e permissões:
 
 | Ação | `tecnico` | `supervisor` | `analista` | `seguranca` | `admin` |
 |---|---|---|---|---|---|
-| Sincronizar e usar o app | sim | não | não | não | não |
-| Quadro, detalhe e histórico | — | própria equipe | todas | todas (leitura) | todas |
+| Aplicar APR e executar OS (app ou web) | sim | não | não | não | não |
+| OS da equipe, detalhe e histórico | própria equipe | própria equipe | todas | todas (leitura) | todas |
+| Quadro por status | — | própria equipe | todas | todas (leitura) | todas |
 | Ler o SAP, importar planilha e exportar | — | — | sim | — | sim |
 | Criar OS manual | — | própria equipe | sim | — | sim |
 | Criar OS de apoio | — | qualquer equipe | qualquer equipe | — | sim |
@@ -182,7 +183,9 @@ Perfis e permissões:
 | Usuários e equipes | — | — | — | — | sim |
 | Indicadores | — | própria equipe | todas | todas | todas |
 
-`supervisor` é o perfil de gestão na web — não confundir com o `responsavel` que lidera a APR em campo, e que o modelo em papel chama de "Supervisor da Atividade".
+O perfil define o que a pessoa pode fazer; a plataforma não. Web e app aceitam qualquer perfil: o técnico pode usar a web e o gestor pode usar o app. As telas de campo (OS da equipe, APR, execução, perfil) existem nos dois; quais telas de gestão o app oferece fica em aberto (questão 55). Quem pode aplicar APR e executar além do `tecnico` também (questão 56): por enquanto, só ele.
+
+`supervisor` é o perfil de gestão — não confundir com o `responsavel` que lidera a APR em campo, e que o modelo em papel chama de "Supervisor da Atividade".
 
 1. Janela de login offline — 7 dias desde o último login online.
 2. Funções de campo (gazista, instrumentista, eletricista) — ficam no texto da equipe e não viram perfil; perfil só controla acesso.
@@ -212,7 +215,7 @@ O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio ba
 | Ordem nova com outro status no SAP | linha ignorada | `ignoradas`, motivo "Status SAP diferente de liberada" |
 | Reler a mesma ordem | atualiza só as colunas de planejamento; nunca duplica (Decisão-chave 7) | conta em `atualizadas` |
 | Ordem já `encerrada` ou `pendente` no app reaparece | planejamento atualizado; status e execução intocados | conta em `atualizadas` |
-| Ordem cancelada ou encerrada no SAP, sem execução em andamento | a OS vira `cancelada` e sai do aparelho na próxima sincronização | conta em `atualizadas` |
+| Ordem cancelada ou encerrada no SAP, sem execução em andamento | a OS vira `cancelada` e deixa de aparecer para a equipe (no modo offline, ao sincronizar) | conta em `atualizadas` |
 | Ordem cancelada no SAP com execução em andamento | a execução segue; `alerta` `conflito_planejamento` | alerta no painel |
 | Ordem com reprogramação registrada no sistema e data diferente | linha ignorada, para não desfazer a reprogramação | `ignoradas`, motivo "Reprogramada no sistema" |
 | Centro de trabalho sem equipe cadastrada | linha ignorada | `ignoradas`, com o motivo |
@@ -249,7 +252,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.prioridade` | text | sim | | como vem do SAP (`Muito alto`) |
 | `os.data_inicio_prog` | date | não | | planejamento (web) |
 | `os.data_fim_prog` | date | sim | | planejamento (web) |
-| `os.status` | text | não | | `liberada` \| `pendente` \| `em_execucao` \| `encerrada` \| `cancelada`; derivado no servidor (Decisão-chave 3) — ver [Sincronização](#sincronização) |
+| `os.status` | text | não | | `liberada` \| `pendente` \| `em_execucao` \| `encerrada` \| `cancelada`; derivado no servidor (Decisão-chave 3) — ver [Eventos e modo offline](#eventos-e-modo-offline) |
 | `os.status_sap` | text | sim | | último status lido do SAP |
 | `os.solicitante` | text | sim | | geralmente vazio; aparece no PDF quando existe |
 | `os.os_origem_id` | uuid | sim | `os.id` | preenchido em OS de apoio |
@@ -259,7 +262,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.ciencia_por` | uuid | sim | `usuario.id` | supervisor que deu ciência |
 | `os.ciencia_em` | timestamptz | sim | | |
 | `os.exportada_sap_em` | timestamptz | sim | | preenchida pela exportação do [Painel](#painel) |
-| `os.atualizada_em` | timestamptz | não | | cursor da sincronização |
+| `os.atualizada_em` | timestamptz | não | | cursor do snapshot do modo offline |
 | `local_instalacao.id` | uuid | não | | |
 | `local_instalacao.codigo` | text | não | | unique; ex.: `VILA VELHA/REDE VILA VELHA` |
 | `local_instalacao.endereco` | text | sim | | |
@@ -298,7 +301,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | Publicar com item de verificação sem resposta bloqueante | recusado | `422` "Todo item de verificação precisa de resposta bloqueante" |
 | APR offline respondida na versão anterior chega | aceita, gravada com a versão que usou | |
 | Segurança liga um código de atividade a um modelo | as OS que estavam ignoradas por falta de modelo entram na próxima leitura | `200` |
-| Segurança troca o modelo de um código | vale para as APRs novas; as OS já no aparelho usam o modelo novo na próxima sincronização | `200` |
+| Segurança troca o modelo de um código | vale para as APRs novas; as OS já abertas usam o modelo novo ao atualizar a lista (no modo offline, na próxima sincronização) | `200` |
 
 `POST /modelos-apr/{codigo}/versoes` `{titulo, pae?, itens: [{secao, grupo, ordem, texto, resposta_bloqueante, tipo, evidencia, permite_na}]}` → `201` `{id, versao}`
 `POST /modelos-apr/{codigo}/versoes/{versao}/publicar` → `200` `{id, versao, publicado_em}`
@@ -337,25 +340,31 @@ Tabelas `modelo_apr`, `item_modelo_apr`, `atividade`.
 3. Resposta "NA" — passa, exige observação, e só é oferecida nos itens com `permite_na` (questão 9).
 4. Tabela de atividades — editável pela Segurança do Trabalho; o código real do SAP ainda não foi confirmado e o plano de manutenção está em revisão, então os códigos vão mudar (questões 3 e 52). Um modelo por OS.
 
-### Sincronização
+### Eventos e modo offline
 
-**Entrega** a cópia offline dos dados da equipe no celular e o envio idempotente da fila de campo. **Status: definida.** É a decisão de difícil volta (ver Formato).
+**Entrega** o envio idempotente dos eventos de campo, que é o único caminho de escrita do sistema e funciona do mesmo jeito no app e na web, e, por cima dele, o modo offline de contingência: a cópia local dos dados da equipe e a fila de eventos do app. **Status: definida.** O contrato dos eventos é a decisão de difícil volta (ver Formato).
+
+Com sinal, a aplicação da APR e a realização da OS não passam por fila nem por sincronização: cada ação gera um evento que o cliente envia na hora para `POST /eventos`, e a tela já mostra o resultado calculado pela `api` (APR aprovada ou bloqueada, status da OS). A web envia o evento direto. O app o grava antes na fila local e o envia em seguida; se não houver sinal, o evento fica na fila e sobe depois. Tudo abaixo sobre fila, snapshot e sinal descreve esse modo de contingência.
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Abrir o app com sinal | sincroniza sozinho: envia os arquivos, depois a fila, depois baixa as mudanças | indicador "Sincronizado hh:mm" |
+| Ação de campo com sinal (app ou web) | o evento é enviado na hora; a `api` o aplica e devolve o resultado | a tela atualiza, sem espera de sincronização |
+| Abrir o app com sinal | envia o que sobrou na fila (os arquivos primeiro, depois os eventos) e baixa o snapshot da equipe | indicador "Sincronizado hh:mm" |
+| Ação de campo sem sinal | o evento fica na fila local; o app segue funcionando sobre a cópia local | "Sem conexão — N registros pendentes" |
 | Botão "Sincronizar" sem sinal | nada sai; a fila fica intacta | "Sem conexão — N registros pendentes" |
 | Envio cai no meio | o que chegou fica aplicado; o reenvio não tem efeito (Decisão-chave 3) | pendentes diminuem só pelo que foi confirmado |
 | Mesmo evento enviado duas vezes | aplicado uma vez | confirmado nas duas |
 | Evento cujo arquivo ainda não subiu | continua pendente | pendente |
-| OS reatribuída ou reprogramada na web enquanto o técnico estava offline | execução de campo aplicada; `alerta` `conflito_planejamento` (Decisão-chave 2) | a OS aparece com o novo planejamento após a próxima sincronização |
+| OS reatribuída ou reprogramada enquanto o técnico estava offline | execução de campo aplicada; `alerta` `conflito_planejamento` (Decisão-chave 2) | a OS aparece com o novo planejamento após a próxima sincronização |
 | Duas pessoas executam a mesma OS offline | as duas Execuções são guardadas; vale a primeira encerrada; `alerta` `execucao_duplicada` | |
 | OS removida do escopo da equipe | sai do celular na próxima sincronização, a menos que tenha execução local pendente | |
-| Dados baixados por uma equipe | OS `liberada`, `pendente` e `em_execucao` da equipe, com o resumo das APRs e execuções de cada uma; as OS `encerrada` do próprio técnico nos últimos 60 dias (para o histórico do perfil); modelos publicados; tabela de atividades; locais dessas OS; usuários da equipe | |
+| Dados do snapshot de uma equipe | OS `liberada`, `pendente` e `em_execucao` da equipe, com o resumo das APRs e execuções de cada uma; as OS `encerrada` do próprio técnico nos últimos 60 dias (para o histórico do perfil); modelos publicados; tabela de atividades; locais dessas OS; usuários da equipe | |
 | Snapshot em vez de cursor | o snapshot nunca apaga do aparelho uma OS com evento local pendente | |
 
-`POST /sync/pull` `{cursor?}` → `200` `{os[], aprs[], execucoes[], locais[], atividades[], modelos_apr[], usuarios[], cursor}`
-`POST /sync/push` `{eventos: [{id, tipo, os_id, payload, ocorrido_em}]}` → `200` `{confirmados: [id], alertas: [id]}`
+`POST /eventos` `{eventos: [{id, tipo, os_id, payload, ocorrido_em}]}` → `200` `{confirmados: [id], alertas: [id], aprs?: [{id, resultado}], os?: [{id, status}]}` — o canal único de escrita de campo, usado por web e app; online, o cliente manda um evento por vez e usa `aprs` e `os` da resposta para mostrar o resultado
+`POST /sync/pull` `{cursor?}` → `200` `{os[], aprs[], execucoes[], locais[], atividades[], modelos_apr[], usuarios[], cursor}` — só do modo offline: baixa a cópia local da equipe
+
+No modo online, a lista de OS e o detalhe vêm de `GET /os` e `GET /os/{id}` (ver [Painel](#painel)); o técnico só vê a própria equipe.
 
 Tipos de evento e o que cada `payload` leva:
 
@@ -388,11 +397,11 @@ O painel sinaliza quando `ocorrido_em` for posterior a `recebido_em` ou anterior
 
 ```mermaid
 sequenceDiagram
-  participant A as App (fila SQLite)
-  participant S as API (back-end Node)
+  participant A as Cliente (web, ou app com fila SQLite)
+  participant S as api (Node)
   participant DB as Postgres (Supabase)
   A->>S: PUT /arquivos (fotos e assinaturas)
-  A->>S: push {eventos}
+  A->>S: POST /eventos {eventos}
   alt sessão inválida ou usuário desativado sem eventos
     S-->>A: 401 — nada lido
   end
@@ -413,7 +422,7 @@ sequenceDiagram
       S-->>A: confirmado
     end
   end
-  A->>S: pull {cursor?}
+  A->>S: pull {cursor?} (só no modo offline)
   S-->>A: snapshot da equipe
 ```
 
@@ -436,14 +445,15 @@ stateDiagram-v2
   cancelada --> [*]
 ```
 
-Alternativas consideradas: replicação genérica com mesclagem campo a campo — ganha se campo e web editarem a mesma coluna offline, o que a Decisão-chave 2 proíbe.
+Alternativas consideradas: replicação genérica com mesclagem campo a campo — ganha se dois clientes (app e web, ou dois apps) editarem a mesma coluna offline, o que a Decisão-chave 2 proíbe.
 
 1. Pull por snapshot no MVP e cursor depois — o contrato `POST /sync/pull` mantém o `cursor?` opcional (questão 4).
-2. Relógio do aparelho — guardam-se `ocorrido_em` e `recebido_em`, e o painel sinaliza a diferença (questão 17).
+2. Relógio do aparelho — guardam-se `ocorrido_em` e `recebido_em`, e o painel sinaliza a diferença (questão 17). Online a diferença é de segundos; ela só importa de fato no modo offline.
+3. Online primeiro — o app e a web usam o mesmo `POST /eventos` e a mesma resposta; o app só acrescenta a fila local antes do envio. Por isso o modo offline pode ser a última fatia sem alterar as telas de campo nem os contratos das demais fatias.
 
 ### APR
 
-**Entrega** o checklist no celular, offline, respondido por inteiro, com evidência por item reprovado e validação no fim, que aprova ou bloqueia uma OS. **Status: definida.**
+**Entrega** o checklist no app e na web, respondido por inteiro, com evidência por item reprovado e validação no fim, que aprova ou bloqueia uma OS. **Status: definida.**
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
@@ -457,18 +467,18 @@ Alternativas consideradas: replicação genérica com mesclagem campo a campo �
 | "NA" em item sem `permite_na` | não é oferecido | — |
 | "NA" em item com `permite_na` | passa, com observação obrigatória | campo de observação |
 | Concluir e validar, sem item reprovado | APR `aprovada` | tela "APR aprovada" |
-| Concluir e validar, com item reprovado | APR `bloqueada`, com **todos** os itens reprovados registrados, cada um com a sua evidência; a OS fica `pendente`; vira evento na fila | "Atividade impedida — supervisor será avisado" |
+| Concluir e validar, com item reprovado | APR `bloqueada`, com **todos** os itens reprovados registrados, cada um com a sua evidência; a OS fica `pendente`; vira o evento `apr_concluida` (enviado na hora, ou pela fila no modo offline) | "Atividade impedida — supervisor será avisado" |
 | Concluir com evidência faltando | recusado | "Falta evidência em N item(ns)" |
-| APR aprovada | cada participante confirma a assinatura do perfil, no aparelho de quem está logado | "Confirmar assinatura" |
+| APR aprovada | cada participante confirma a assinatura do perfil, no app ou no navegador de quem está logado | "Confirmar assinatura" |
 | Assinaturas confirmadas | a execução é liberada | botão "Iniciar execução" |
-| App fechado no meio | rascunho local retomado; nada sobe até concluir | "Continuar APR" |
+| App ou página fechados no meio | rascunho local retomado (no app, no SQLite; na web, no navegador); nada é enviado até concluir | "Continuar APR" |
 | APR aprovada de outro dia, ou já usada por uma Execução | não ampara execução nova | exige APR nova |
 | Observação geral | texto opcional, vai ao PDF | campo "Observações" |
 | Tentar mudar uma APR bloqueada | impossível (Decisão-chave 4) | só leitura |
 
 `GET /os/{id}/aprs` → `200` `{aprs[]}` (histórico da OS, para a web)
 
-Tabelas `apr`, `apr_participante`, `apr_resposta`. Todos os IDs nascem no aparelho.
+Tabelas `apr`, `apr_participante`, `apr_resposta`. Todos os IDs nascem no cliente (app ou navegador).
 
 | Coluna | Tipo | Nulo | Referência | Nota |
 |---|---|---|---|---|
@@ -522,7 +532,7 @@ Uma Execução é um trecho de trabalho amparado por uma APR. Uma atividade de v
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
 | Iniciar sem APR aprovada do dia, da própria OS e ainda não usada | recusado (Decisão-chave 4) | "Preencha a APR antes de iniciar" |
-| Iniciar | informa o número de pessoas (padrão: os participantes da APR); grava o início com hora do aparelho; a OS fica `em_execucao` | cronômetro rodando |
+| Iniciar | informa o número de pessoas (padrão: os participantes da APR); grava o início com a hora do dispositivo; a OS fica `em_execucao` | cronômetro rodando |
 | Pausar | abre uma pausa, com motivo opcional (almoço, descanso, outro); a pausa não entra no tempo líquido | "Em pausa" |
 | Continuar | fecha a pausa; só vale na mesma Execução, no mesmo dia e pelo mesmo usuário | cronômetro rodando |
 | Continuar noutro dia, ou por outra pessoa | não existe: a Execução anterior é suspensa e é preciso uma APR nova | "Faça uma APR nova para retomar" |
@@ -719,10 +729,12 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 50 | `evidencia` no item do modelo, definida pela Segurança do Trabalho | Mario |
 | 52 | tabela `atividade` editável; OS sem modelo mapeado fica ignorada com o motivo | Iago |
 | 53 | motivo da pausa opcional, em lista curta | time e Iago |
+| 55 | o app oferece as telas de campo e o `web` oferece as de campo e as de gestão; quais telas de gestão entram no app fica para depois da demo | time |
+| 56 | só o perfil `tecnico` aplica APR e executa OS; gestor que também executa usa um usuário `tecnico` | Iago |
 
 ## Protótipo
 
-O protótipo navegável em `src/` é a referência de layout e fluxo. Ele ainda difere desta especificação em:
+A interface em `web/` (migrada do protótipo HTML original, que ficou no histórico do git) é a referência de layout e fluxo. Ela ainda difere desta especificação em:
 
 - falta a ação "Suspender (fim do expediente)" e o cancelamento por engano na tela de execução;
 - o motivo da pausa não é pedido;

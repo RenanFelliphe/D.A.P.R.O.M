@@ -1,0 +1,635 @@
+/* Componentes reutilizáveis: botões, formulários, avisos, cartões, evidências, tabelas e o PDF. */
+
+/* ===== Botões ===== */
+
+.btn {
+  height: 48px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  font-family: inherit;
+  padding: 0 20px;
+  white-space: nowrap
+}
+
+.btn-p {
+  background: var(--brand);
+  color: #fff
+}
+
+.btn-p:hover {
+  background: var(--brand-d)
+}
+
+.btn-d {
+  background: var(--blq);
+  color: #fff
+}
+
+.btn-o {
+  background: #fff;
+  border: 1.5px solid var(--ink);
+  color: var(--ink)
+}
+
+.btn-od {
+  background: #fff;
+  border: 2px solid var(--blq);
+  color: var(--blq)
+}
+
+.btn-line {
+  background: #fff;
+  border: 1px solid var(--line3);
+  color: var(--ink)
+}
+
+.btn-line:hover {
+  border-color: var(--brand)
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--brand);
+  border: 0
+}
+
+.btn-sm {
+  height: 42px;
+  font-size: 14px;
+  padding: 0 16px
+}
+
+.btn-block {
+  width: 100%
+}
+
+.btn[disabled] {
+  opacity: .5;
+  cursor: not-allowed
+}
+
+.is-off {
+  opacity: .5;
+  cursor: not-allowed
+}
+
+/* ===== Formulários ===== */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink3)
+}
+
+.input,
+.textarea,
+.select {
+  border: 1px solid var(--line3);
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 14px;
+  font-size: 14.5px;
+  color: var(--ink);
+  width: 100%
+}
+
+.input {
+  height: 44px
+}
+
+.textarea {
+  padding: 12px;
+  line-height: 1.45;
+  resize: vertical;
+  font-size: 14.5px
+}
+
+.select {
+  height: 40px;
+  padding: 0 10px;
+  font-size: 14px
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px
+}
+
+.req {
+  font-weight: 500;
+  color: var(--blq)
+}
+
+/* ===== Retorno ao usuário: avisos, selos, etiquetas, progresso e toast ===== */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 34px;
+  transform: translate(-50%, 20px);
+  background: #E7ECF0;
+  color: #10161C;
+  padding: 11px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: .25s;
+  z-index: 50;
+  max-width: 80vw;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35)
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0)
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap
+}
+
+.b-lib {
+  background: var(--lib-bg);
+  color: var(--lib)
+}
+
+.b-exe {
+  background: var(--exe-bg);
+  color: var(--exe)
+}
+
+.b-blq {
+  background: var(--blq-bg);
+  color: var(--blq)
+}
+
+.b-enc {
+  background: var(--enc-bg);
+  color: var(--enc)
+}
+
+.b-neu {
+  background: var(--chip);
+  color: var(--ink3);
+  font-weight: 500
+}
+
+.b-al {
+  background: var(--al-bg);
+  color: var(--al)
+}
+
+.b-crit {
+  background: var(--crit-bg);
+  color: var(--crit);
+  border: 1px solid var(--crit-bd)
+}
+
+.b-dark {
+  background: var(--dark);
+  color: #fff
+}
+
+.b-brand {
+  background: var(--brand);
+  color: #fff
+}
+
+.tag {
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  font-size: 12.5px
+}
+
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  line-height: 1.4
+}
+
+.n-off {
+  background: var(--off-bg);
+  border: 1px solid var(--off-bd);
+  color: var(--off)
+}
+
+.n-info {
+  background: var(--brand-bg);
+  color: var(--brand-ink)
+}
+
+.n-al {
+  background: #FFF8E0;
+  border: 1px solid var(--al-bd);
+  color: #4D3800
+}
+
+.n-ok {
+  background: var(--enc-bg);
+  border: 1px solid #A9D3B5;
+  color: #1F3D29
+}
+
+.n-blq {
+  background: var(--blq-bg);
+  border: 1px solid var(--blq-bd);
+  color: #5A1510
+}
+
+.notice .i {
+  margin-top: 2px
+}
+
+.progress {
+  height: 8px;
+  border-radius: 4px;
+  background: #E3E5DE;
+  overflow: hidden
+}
+
+.progress>i {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--brand);
+  transition: width .4s
+}
+
+/* ===== Superfícies: cartões, painéis, listas e avatares ===== */
+
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px
+}
+
+.list-box {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line2)
+}
+
+.list-row:last-child {
+  border-bottom: 0
+}
+
+.list-row input[type=checkbox] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--brand);
+  flex: none
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--dark);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600
+}
+
+.av2 {
+  background: var(--ink3)
+}
+
+.av3 {
+  background: var(--line3);
+  color: var(--ink)
+}
+
+/* ===== Evidências e assinaturas: fotos e caixas de assinatura ===== */
+
+.photo {
+  border-radius: 8px;
+  background: #CED6D8;
+  color: #2C3742;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 8px;
+  font-size: 11.5px;
+  font-weight: 600
+}
+
+.photo.sq {
+  aspect-ratio: 1/1;
+  padding: 6px
+}
+
+.photo-add {
+  border-radius: 8px;
+  border: 1.5px dashed var(--dash);
+  background: #fff;
+  color: var(--brand);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer
+}
+
+.photo-add:hover {
+  border-color: var(--brand);
+  background: var(--brand-bg)
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 128px));
+  gap: 10px
+}
+
+.sig {
+  background: #fff;
+  border: 1px solid var(--line3);
+  border-radius: 8px;
+  padding: 8px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px
+}
+
+.sig .who {
+  border-top: 1px solid var(--line3);
+  padding-top: 4px;
+  font-size: 12.5px;
+  color: var(--ink3)
+}
+
+.sig-box {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--line3);
+  border-radius: 6px;
+  padding: 0 8px;
+  height: 64px;
+  display: flex;
+  align-items: center
+}
+
+.sig-box svg {
+  width: 100%;
+  height: 56px
+}
+
+.sig-box.pend {
+  opacity: .35
+}
+
+/* ===== Tabelas de dados ===== */
+
+table.tb {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px
+}
+
+.tbw {
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  overflow: hidden
+}
+
+.tb th {
+  background: var(--surface2);
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink3)
+}
+
+.tb td,
+.tb tbody th {
+  padding: 9px 12px;
+  border-top: 1px solid var(--line2);
+  text-align: left;
+  font-weight: 400;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: transparent
+}
+
+.tb .r {
+  text-align: right;
+  font-variant-numeric: tabular-nums
+}
+
+.tb tr.al td {
+  background: #FFF8E0
+}
+
+.tb tr.nw td {
+  background: #F2F8FA
+}
+
+/* ===== PDF da OS executada (folha A4) ===== */
+
+.pdf-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0
+}
+
+.pdf-tabs {
+  display: flex;
+  gap: 2px;
+  background: #1B242D;
+  border-radius: 9px;
+  padding: 3px
+}
+
+.pdf-tabs button {
+  border: 0;
+  background: transparent;
+  color: #B7C3CD;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer
+}
+
+.pdf-tabs button[aria-pressed="true"] {
+  background: #E7ECF0;
+  color: #10161C
+}
+
+.pdf {
+  width: 794px;
+  height: 1123px;
+  overflow: hidden;
+  background: #fff;
+  color: var(--ink);
+  padding: 36px 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  font-family: var(--sans);
+  box-shadow: 0 4px 24px rgba(23, 33, 43, .18)
+}
+
+.pdf.off {
+  display: none
+}
+
+.pdf h2 {
+  margin: 0;
+  padding: 4px 8px;
+  background: var(--chip);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase
+}
+
+.pdf-h {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ink)
+}
+
+.pdf .cells {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--line3);
+  border-left: 1px solid var(--line3)
+}
+
+.pdf .cells.c3 {
+  grid-template-columns: repeat(3, 1fr)
+}
+
+.pdf .cell {
+  padding: 5px 8px;
+  border-right: 1px solid var(--line3);
+  border-bottom: 1px solid var(--line3);
+  display: flex;
+  flex-direction: column
+}
+
+.pdf .cell span {
+  font-size: 9.5px;
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: .04em
+}
+
+.pdf .cell b {
+  font-weight: 600
+}
+
+.pdf table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px
+}
+
+.pdf th,
+.pdf td {
+  padding: 3px 6px;
+  border: 1px solid var(--line3);
+  text-align: left
+}
+
+.pdf th {
+  background: var(--surface2);
+  font-size: 10px
+}
+
+.pdf .al td {
+  background: #FFF4C7
+}
+
+.pdf .sec {
+  display: flex;
+  flex-direction: column;
+  gap: 6px
+}
+
+.pdf .sigb {
+  border: 1px solid var(--line3);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px
+}
+
+.pdf .ph {
+  height: 96px;
+  background: #DDE2E3;
+  border: 1px solid var(--line3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink3)
+}

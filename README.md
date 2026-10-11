@@ -23,11 +23,11 @@ O objetivo é apoiar a operação para que cada OS tenha sua própria APR, a exe
 
 ## O que a demonstração apresenta
 
-O protótipo reúne telas de campo, gestão e documento em uma única página navegável:
+A aplicação `web` reúne as telas de campo, de gestão e do documento:
 
 ### Experiência de campo (referência Android)
 
-- Entrada ilustrativa e informação de acesso offline temporário.
+- Entrada ilustrativa e informação de que o acesso offline temporário é uma contingência, não o modo normal.
 - Lista de OS da equipe com filtros por status e detalhes de atividade, local, criticidade, prioridade, equipamento e materiais.
 - Abertura de APR vinculada a uma OS, seleção dos participantes e indicação do responsável.
 - Checklist de 18 itens demonstrativos, respondido por completo e validado somente ao final, com diferenciação entre itens eliminatórios e alertas.
@@ -58,7 +58,7 @@ O protótipo reúne telas de campo, gestão e documento em uma única página na
 - A OS pendente pode ser retomada por alguém da equipe mediante uma APR nova.
 - A execução só é liberada após uma APR aprovada; quem executa é responsável pelo encerramento.
 - Pausa, suspensão por fim de expediente e interrupção por risco são situações diferentes.
-- Dados de campo produzidos offline devem ser sincronizados sem descartar registros; conflitos de planejamento devem gerar alertas.
+- O sistema é online e atende todos os perfis, no app e na web. O modo offline é um recurso adicional para o campo sem sinal: os dados produzidos offline devem ser sincronizados sem descartar registros, e conflitos de planejamento devem gerar alertas.
 - O protótipo e os testes de demonstração devem usar somente dados fictícios.
 
 ## Arquitetura prevista
@@ -67,7 +67,7 @@ A arquitetura abaixo é a direção registrada na especificação; **não está 
 
 | Componente planejado | Tecnologia | Responsabilidade |
 |---|---|---|
-| Aplicativo de campo para Android (`mobile`) | React Native, com armazenamento local SQLite | APR, execução e operação offline |
+| Aplicativo de campo para Android (`mobile`) | React Native, com armazenamento local SQLite | APR e execução em campo, com modo offline de contingência |
 | Painel web (`web`) | Next.js (React + TypeScript) | Planejamento, gestão, modelos, indicadores e exportações |
 | API (`api`) | Node.js com TypeScript | Regras de negócio, autorização, integrações, sincronização, PDF e e-mail |
 | Persistência e serviços gerenciados | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso mediado pela API |
@@ -120,6 +120,6 @@ As oito planilhas de referência de APR correspondem aos modelos de operação, 
 
 ## Limites e próximos passos
 
-Para avançar do protótipo para um piloto, ainda será necessário implementar e validar as três aplicações, contratos e API simulada do SAP, autenticação e permissões, armazenamento offline e sincronização idempotente, persistência de evidências, geração real do PDF, notificações, exportação de encerramentos e testes do fluxo de ponta a ponta. A integração real e as decisões de segurança corporativa devem ser confirmadas com as áreas responsáveis; dados reais não devem ser conectados ao protótipo atual.
+Para avançar do protótipo para um piloto, ainda será necessário implementar e validar as três aplicações, contratos e API simulada do SAP, autenticação e permissões, envio idempotente dos eventos de campo (base do modo offline e da fila local), persistência de evidências, geração real do PDF, notificações, exportação de encerramentos e testes do fluxo de ponta a ponta. A integração real e as decisões de segurança corporativa devem ser confirmadas com as áreas responsáveis; dados reais não devem ser conectados ao protótipo atual.
 
 Funcionalidades sugeridas para depois do MVP — como catálogo de serviços, digitalização de documentos antigos, acompanhamento do intervalo entre ciclos preventivos, chatbot e gamificação — não fazem parte da demonstração nem do escopo prioritário atual.

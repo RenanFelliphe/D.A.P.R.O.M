@@ -1,0 +1,47 @@
+/* Variáveis de design: cores, fontes e medidas. */
+
+:root {
+  --bg: #F2F2EE;
+  --surface: #fff;
+  --surface2: #F7F7F4;
+  --col: #E8E9E3;
+  --chip: #EDEEE9;
+  --line: #DCDDD6;
+  --line2: #ECEDE8;
+  --line3: #C5C7BE;
+  --dash: #9AA29A;
+  --ink: #17212B;
+  --ink2: #2C3742;
+  --ink3: #4A5561;
+  --ink4: #66707A;
+  --brand: #0F5C78;
+  --brand-d: #0B4A61;
+  --brand-bg: #E2EEF3;
+  --brand-bd: #B8D3DE;
+  --brand-ink: #0D3F52;
+  --dark: #17212B;
+  --dark2: #22303C;
+  --dark-txt: #C4CDD5;
+  --lib-bg: #E3EDF9;
+  --lib: #1C5CAB;
+  --exe-bg: #FFF0D4;
+  --exe: #8A4B00;
+  --blq-bg: #FBE4E1;
+  --blq: #A3241B;
+  --blq-bd: #EDB3AC;
+  --enc-bg: #E1F2E6;
+  --enc: #1E6236;
+  --al-bg: #FFF4C7;
+  --al: #6E4C00;
+  --al-bd: #E9CF6B;
+  --off-bg: #FFF6DC;
+  --off-bd: #E8C873;
+  --off: #4D3800;
+  --crit-bg: #FFF3EC;
+  --crit-bd: #E7B394;
+  --crit: #A3420D;
+  --sans: var(--font-plex-sans), 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --topbar-h: 64px;
+  --side-w: 256px;
+}

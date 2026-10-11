@@ -7,7 +7,7 @@
 > **Todas as questões abertas seguem com a recomendação adotada** na [especificação](especificacao.md) (seção "Suposições adotadas"), para a implementação não esperar. Elas continuam listadas aqui para a confirmação com o Iago, o Mario e o time; se a resposta for outra, o ajuste é restrito ao que a especificação cita. As questões 22–46 estavam só no [contexto da sessão](../contexto/contexto-sessao-2026-10-10.md) e entram aqui; as 47–54 são novas.
 
 **Impacto**
-- 🔴 **Schema**: muda tabelas ou o contrato de sincronização. Decidir antes de travar o schema.
+- 🔴 **Schema**: muda tabelas ou o contrato de eventos de campo. Decidir antes de travar o schema.
 - 🟡 **MVP**: muda uma tela ou regra da demo. Decidir antes de implementar a fatia.
 - 🟢 **Depois**: não afeta a demo.
 
@@ -211,6 +211,16 @@
 **Contexto:** a API simulada nasce no back-end, com o mesmo contrato da real. A base fictícia deveria sair da planilha de OS de 2025 do Iago, mais cerca de 50 usuários fictícios; ela ainda não chegou.
 **Recomendação:** começar pelo PDF de exemplo da OS 4023470 e trocar quando a planilha chegar.
 
+### 55. Quais telas de gestão o app oferece? (nova)
+
+**Contexto:** web e app atendem todos os perfis. As telas de campo (OS da equipe, APR, execução, perfil) existem nos dois, e as de gestão (quadro, alertas, importação, indicadores, modelos, usuários) existem hoje só na web.
+**Recomendação:** o app oferece as telas de campo e a lista de alertas de quem é supervisor ou analista; o resto fica na web até alguém pedir. Decidir depois da demo.
+
+### 56. Quem mais pode aplicar APR e executar OS? (nova)
+
+**Contexto:** o gestor pode usar o app e o funcionário pode usar a web, mas a especificação só deixa o perfil `tecnico` aplicar APR e executar. Se um supervisor também executa em campo, hoje precisaria de um segundo usuário.
+**Recomendação:** manter só o `tecnico`; se o Iago confirmar que gestores também executam, permitir a APR e a execução a outros perfis, sem mudar o schema (o perfil já é controlado por permissão).
+
 ## 4. Adotadas de baixo impacto (🟢)
 
 | # | Recomendação |
@@ -262,7 +272,8 @@ Decidido em 10/10/2026 (já refletido na especificação):
 - **Checklist:** preenchido por inteiro e validado no fim; evidência por item reprovado.
 - **Retomada:** a OS com APR negativa fica pendente, e qualquer pessoa da equipe pode fazer uma APR nova, sem esperar reprogramação.
 - **Fonte das OS:** API do SAP simulada, com dados fictícios, e planilha como alternativa.
-- **Stack:** web em .NET, mobile em React Native, back-end em Node, banco, autenticação e armazenamento no Supabase; PDF e e-mail no back-end Node (premissa a confirmar).
+- **Stack:** `web` em Next.js (React e TypeScript), `mobile` em React Native, `api` em Node, banco, autenticação e armazenamento no Supabase; PDF e e-mail na `api` (premissa a confirmar). O monorepo usa as pastas `api`, `web` e `mobile`.
+- **Online primeiro:** o sistema é online; o modo offline é um recurso adicional de contingência para o campo sem sinal. Web e app atendem todos os perfis, e o perfil, não a plataforma, define o que cada pessoa faz. Corrige o entendimento anterior de app offline-first e web só de gestão.
 
 ## 8. Insumos prometidos na Reunião 2
 
