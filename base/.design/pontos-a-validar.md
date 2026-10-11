@@ -221,6 +221,36 @@
 **Contexto:** o gestor pode usar o app e o funcionário pode usar a web, mas a especificação só deixa o perfil `tecnico` aplicar APR e executar. Se um supervisor também executa em campo, hoje precisaria de um segundo usuário.
 **Recomendação:** manter só o `tecnico`; se o Iago confirmar que gestores também executam, permitir a APR e a execução a outros perfis, sem mudar o schema (o perfil já é controlado por permissão).
 
+### 57. Formulário de inspeção das OS preventivas (nova)
+
+**Contexto:** a página 2 da OS 4019821 (preventiva) traz um "Checklist de Inspeção Técnica" com leituras por semana (horímetro, hora da coleta, tensão de entrada, de saída e de shunt, técnico) e conformidades por componente ("Conforme / Não conforme", "Operante", "Executado / Não necessário / Aguardando parada", "Íntegra / Comprometida / Sinais de umidade"), além de "Observações Gerais / Requisições de Ação Corretiva". Vem do texto longo da OS no SAP. A corretiva 4023470 não tem nada disso. Nenhuma fatia da especificação capturava esses dados.
+**Recomendação:** guardar o preenchimento em `execucao.dados_inspecao` (JSON) e definir com o Iago a estrutura do formulário por atividade; o texto do SAP (`os.descricao`) segue sendo exibido. Impacto 🟡.
+
+### 58. Como ligar a OS ao modelo de APR (nova, ajusta a 52)
+
+**Contexto:** a especificação supunha um código de atividade (`8.7.1`) vindo do SAP. Nos exemplos não vem: a corretiva 4023470 não tem plano, e a preventiva 4019821 traz Plano 10573, Item 10603 e o título "1.2 - Inspeção Funcional de Retificador", que não consta em nenhuma lista das APR (a APR 02 lista "8.1.2 - Inspeção Elétrica no Retificador"; a APR 03, "8.2.1 - Leitura Retificador"). As listas das APR 02 e 03 misturam códigos numéricos, faixas ("8.7.2/ 8.7.3/ 8.7.4/…") e nomes sem código ("CLB - Calibração PSV", "BOMBA EXTERNA – PÁTIO"). Nas abas ocultas há ainda uma lista de atividades da ES Gás por APR, sem código. O Iago disse que o plano está em revisão e os códigos vão mudar.
+**Recomendação:** `os.codigo_atividade` passa a ser opcional; a OS entra sempre; o técnico escolhe o modelo quando não há mapeamento. Confirmar com o Iago qual campo do SAP identifica a atividade (plano, item, título ou tipo). Impacto 🔴 (já refletido no schema).
+
+### 59. Medidas preventivas: todas ou só as dos riscos marcados? (nova)
+
+**Contexto:** a especificação dizia que a marcação "( )" do risco não vira item e que todas as medidas são respondidas. Nas APR 03 preenchidas dos exemplos, a equipe marca os riscos que existem e responde Sim/Não só às medidas deles; as dos riscos sem marca ficam em branco.
+**Recomendação:** o risco vira entidade do modelo, a marcação é gravada na APR e só as medidas dos riscos marcados são exigidas. Reduz o preenchimento e mantém o PDF fiel ao papel. Impacto 🔴 (já refletido no schema).
+
+### 60. Participantes das APR 04, 05 e 09 (nova)
+
+**Contexto:** as APR 01 a 03 e 06 têm "Supervisor da Atividade" e até 9 executores, com nome e matrícula. As APR 04 e 05 têm uma coluna "Função da atividade" e cerca de 40 linhas; a APR 09 tem 3 linhas, também com "Função". Pelo texto das instruções, o supervisor é destacado entre os nomes.
+**Recomendação:** manter `responsavel` e `executor`; a função de trabalho (soldador, etc.) fica fora do MVP. Impacto 🟢.
+
+### 61. Item condicional da APR 06 (nova)
+
+**Contexto:** o item 11 da APR 06 ("Em caso de espaço confinado foi realizado o teste de explosividade") só se aplica a espaço confinado, e a APR 06 não tem coluna NA.
+**Recomendação:** marcar esse item com `permite_na` na carga inicial. Impacto 🟡.
+
+### 62. Horário e assinatura por executante (nova)
+
+**Contexto:** a página 2 da OS tem três blocos "Executante", cada um com Data, Hora (Início) e Hora (Fim) próprios. Nos exemplos todos coincidem com a execução.
+**Recomendação:** um início e um fim por execução; horário individual fica fora do MVP. Impacto 🟢.
+
 ## 4. Adotadas de baixo impacto (🟢)
 
 | # | Recomendação |
