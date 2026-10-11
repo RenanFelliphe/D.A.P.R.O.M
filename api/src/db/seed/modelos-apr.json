@@ -1,0 +1,5995 @@
+{
+  "gerado_de": "base/apr-examples",
+  "criterio_de_bloqueio": "provisório: ponto de partida; a Segurança do Trabalho define por item no editor de modelos",
+  "modelos": [
+    {
+      "codigo": "APR 01",
+      "versao": 4,
+      "dataDocumento": "2026-07-24",
+      "titulo": "OPERAÇÃO",
+      "pae": {
+        "titulo": "Plano de atendimento a Emergências - PAE",
+        "subtitulo": "Rede de gás natural do Espirito Santo",
+        "fluxo": "Fluxo Interno para comunicação com a Estrutura Organizacional de Resposta",
+        "linhas": [
+          {
+            "rotulo": "Equipes de Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Cachoeiro e Anchieta"
+              },
+              {
+                "coluna": 3,
+                "texto": "Grande Vitória"
+              },
+              {
+                "coluna": 4,
+                "texto": "Colatina"
+              },
+              {
+                "coluna": 5,
+                "texto": "Linhares/ Sooretama"
+              },
+              {
+                "coluna": 6,
+                "texto": "São Mateus"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 3,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 4,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 5,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 6,
+                "texto": "Contato Operação:"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99248-2608"
+              },
+              {
+                "coluna": 3,
+                "texto": "(27) 99203-7765"
+              },
+              {
+                "coluna": 4,
+                "texto": "(27) 99888-8320"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99204-7152"
+              },
+              {
+                "coluna": 6,
+                "texto": "(27) 99203-4426"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99269-8763"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99223-8136"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "* R= Equipe residencial"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "*I= Equipe Industrial"
+              }
+            ]
+          },
+          {
+            "rotulo": "Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Líderes de apoio as Vítimas"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Franz Achatz (27) 99988- 6979"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenador de Ações de respostas",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              },
+              {
+                "coluna": 3,
+                "texto": "Coordenador de Ações de Logísticas"
+              },
+              {
+                "coluna": 5,
+                "texto": "Franz Achatz (27) 99203-9461"
+              }
+            ]
+          },
+          {
+            "rotulo": "Comando Geral",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Fábio Salu (11) 99954- 5331"
+              },
+              {
+                "coluna": 3,
+                "texto": "Comando Administrativo"
+              },
+              {
+                "coluna": 5,
+                "texto": "Paulo Junior (27) 99203-8177"
+              }
+            ]
+          },
+          {
+            "rotulo": "Gerência SS",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Renata Pires (27) 99961-6303"
+              },
+              {
+                "coluna": 3,
+                "texto": "Polyanna Breda ( 27) 99763-8396"
+              },
+              {
+                "coluna": 5,
+                "texto": "Kamilla Costa (27) 98861-8256"
+              }
+            ]
+          },
+          {
+            "rotulo": "Recuperação de instalações",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Luciano Ferreira (27) 99269-2677"
+              },
+              {
+                "coluna": 4,
+                "texto": "AMBIPAR 0800-117-2020; 0800-707-7022; 0800-707-1767 / Emergência Química de Odorante"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação Ativos",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Rodrigo Terasso (27) 99258-6618"
+              },
+              {
+                "coluna": 3,
+                "texto": "Joice de Almeida (27) 992030944"
+              },
+              {
+                "coluna": 5,
+                "texto": "Núcleo de Reportabilidade e Emergências ( 27) 3347-8977 / (27) 996962686"
+              }
+            ]
+          },
+          {
+            "rotulo": "Emergência ( Atendimento ao cliente)",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(85) 339 27899"
+              },
+              {
+                "coluna": 2,
+                "texto": "0800 5950197"
+              },
+              {
+                "coluna": 4,
+                "texto": "117 Opção 1"
+              }
+            ]
+          }
+        ]
+      },
+      "riscos": [
+        {
+          "classificacao": "Veicular",
+          "nome": "Condições gerais do veículo",
+          "ordem": 1
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insolação",
+          "ordem": 2
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Áreas molhadas",
+          "ordem": 3
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insetos e animais",
+          "ordem": 4
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Atropelamento /Invasão da área de trabalho",
+          "ordem": 5
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Trabalho noturno",
+          "ordem": 6
+        },
+        {
+          "classificacao": "Quedas do mesmo nível / Queda de objetos",
+          "nome": "Quedas do mesmo nível",
+          "ordem": 7
+        },
+        {
+          "classificacao": "Trabalho equipamentos pressurizados",
+          "nome": "Despressurização de tubulação/purga",
+          "ordem": 8
+        },
+        {
+          "classificacao": "Equipamentos/ Ferramentas",
+          "nome": "Separador de flange",
+          "ordem": 9
+        },
+        {
+          "classificacao": "Equipamentos/ Ferramentas",
+          "nome": "Medidas gerais de ferramentas manuais Ex: Chave de fenda, alicate, chave inglesa, etc.",
+          "ordem": 10
+        }
+      ],
+      "itens": [
+        {
+          "secao": "verificacao",
+          "ordem": 1,
+          "texto": "Os componentes da equipe estão informados sobre o serviço a ser realizado?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 2,
+          "texto": "Todos os participantes da atividade estão em boas condições físicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 3,
+          "texto": "Todos os participantes da atividade estão em boas condições psicológicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "texto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 4,
+          "texto": "Todos os membros da equipe estão sem adornos?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 5,
+          "texto": "Todos os componentes da equipe estão aptos para realizar resgate de emergência?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 6,
+          "texto": "Todos os participantes conhecem o local mais próximo para atendimento hospitalar?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 7,
+          "texto": "O(s) colaborador(es) esta(ao) com os treinamentos obrigatórios em dia?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 8,
+          "texto": "O veiculo está em boas condições?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 9,
+          "texto": "As condições climáticas estão favoráveis? (Chuva, risco de alagamento, vento, descargas atmosféricas)?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 10,
+          "texto": "O serviço requer uso de iluminação auxiliar (Refletor/lanterna)?",
+          "tipo": "alerta",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 11,
+          "texto": "Existe algum impedimento para executar a atividade?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 12,
+          "texto": "É possível estacionar o veiculo no sentido correto da via?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 13,
+          "texto": "Necessário sinalizar o veículo com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 14,
+          "texto": "Necessário manter veículo com sinalização de alerta?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 15,
+          "texto": "O veículo foi estacionado fora da área classificada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 16,
+          "texto": "Foi realizado o checklist de segurança veicular?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 17,
+          "texto": "Há possibilidade de parar o veiculo de ré para melhor condição de rota fuga?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 18,
+          "texto": "Faz uso do protetor solar?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 19,
+          "texto": "Necessário o uso de calça/capa de chuva e bota de PVC?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 20,
+          "texto": "A área está alagada ou com excesso de umidade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 21,
+          "texto": "É possivel verificar a profundidade do alagamento antes de seguir em trevessias alagadas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 22,
+          "texto": "Necessário usar perneira?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 23,
+          "texto": "Nas proximidades existem animais que oferecem risco de ataque?(Cobra, cachorro, outros).",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 24,
+          "texto": "Necessário uso repelente?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 25,
+          "texto": "Necessário sinalizar o local do trabalho com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 26,
+          "texto": "Necessário realizar fechamento parcial/integral da pista?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 27,
+          "texto": "Cones e fitas são suficientes?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 28,
+          "texto": "A iluminação é suciente para executar a atividade com segurança?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 6
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 29,
+          "texto": "Foi avaliado o risco de queda em função do nivelamento e buracos no solo do terreno?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 30,
+          "texto": "Necessário retirar objetos e/ou obstáculos no trajeto?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 31,
+          "texto": "A área de trabalho está limpa e organizada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 32,
+          "texto": "O equipamento está em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 33,
+          "texto": "Necessário utilizar o detector de gases?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 34,
+          "texto": "Necessário utilizar equipamentos de proteção idividual (capacete, protetor audicular/auditivo, luva adequada, oculos de proteção e fardamento/macação RF)?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 35,
+          "texto": "O equipamento está em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 36,
+          "texto": "Necessário utilizar capacete?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 37,
+          "texto": "Necessário utilizar protetor auricula/auditivor?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 38,
+          "texto": "Necessário utilizar luva adequada para operação?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 39,
+          "texto": "Necessário utilizar óculos de proteção?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 40,
+          "texto": "As ferramentas necessárias foram disponibilizadas para a atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 41,
+          "texto": "As ferramentas estão sendo usadas conforme manual fabricante?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 42,
+          "texto": "As ferramentas estao sendo usadas sem improvisamento?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 43,
+          "texto": "As ferramentas necessárias para a atividade estão em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 10
+        }
+      ]
+    },
+    {
+      "codigo": "APR 02",
+      "versao": 4,
+      "dataDocumento": "2026-07-24",
+      "titulo": "INSTRUMENTAÇÃO",
+      "pae": {
+        "titulo": "Plano de atendimento a Emergências - PAE",
+        "subtitulo": "Rede de gás natural do Espirito Santo",
+        "fluxo": "Fluxo Interno para comunicação com a Estrutura Organizacional de Resposta",
+        "linhas": [
+          {
+            "rotulo": "Equipes de Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Cachoeiro e Anchieta"
+              },
+              {
+                "coluna": 3,
+                "texto": "Grande Vitória"
+              },
+              {
+                "coluna": 4,
+                "texto": "Colatina"
+              },
+              {
+                "coluna": 5,
+                "texto": "Linhares/ Sooretama"
+              },
+              {
+                "coluna": 6,
+                "texto": "São Mateus"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 3,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 4,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 5,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 6,
+                "texto": "Contato Operação:"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99248-2608"
+              },
+              {
+                "coluna": 3,
+                "texto": "(27) 99203-7765"
+              },
+              {
+                "coluna": 4,
+                "texto": "(27) 99888-8320"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99204-7152"
+              },
+              {
+                "coluna": 6,
+                "texto": "(27) 99203-4426"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99269-8763"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99223-8136"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "* R= Equipe residencial"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "*I= Equipe Industrial"
+              }
+            ]
+          },
+          {
+            "rotulo": "Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Líderes de apoio as Vítimas"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Franz Achatz (27) 99988- 6979"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenador de Ações de respostas",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              },
+              {
+                "coluna": 3,
+                "texto": "Coordenador de Ações de Logísticas"
+              },
+              {
+                "coluna": 5,
+                "texto": "Franz Achatz (27) 99203-9461"
+              }
+            ]
+          },
+          {
+            "rotulo": "Comando Geral",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Fábio Salu (11) 99954- 5331"
+              },
+              {
+                "coluna": 3,
+                "texto": "Comando Administrativo"
+              },
+              {
+                "coluna": 5,
+                "texto": "Paulo Junior (27) 99203-8177"
+              }
+            ]
+          },
+          {
+            "rotulo": "Gerência SS",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Renata Pires (27) 99961-6303"
+              },
+              {
+                "coluna": 3,
+                "texto": "Polyanna Breda ( 27) 99763-8396"
+              },
+              {
+                "coluna": 5,
+                "texto": "Kamilla Costa (27) 98861-8256"
+              }
+            ]
+          },
+          {
+            "rotulo": "Recuperação de instalações",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Luciano Ferreira (27) 99269-2677"
+              },
+              {
+                "coluna": 4,
+                "texto": "AMBIPAR 0800-117-2020; 0800-707-7022; 0800-707-1767 / Emergência Química de Odorante"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação Ativos",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Rodrigo Terasso (27) 99258-6618"
+              },
+              {
+                "coluna": 3,
+                "texto": "Joice de Almeida (27) 992030944"
+              },
+              {
+                "coluna": 5,
+                "texto": "Núcleo de Reportabilidade e Emergências ( 27) 3347-8977 / (27) 996962686"
+              }
+            ]
+          },
+          {
+            "rotulo": "Emergência ( Atendimento ao cliente)",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(85) 339 27899"
+              },
+              {
+                "coluna": 2,
+                "texto": "0800 5950197"
+              },
+              {
+                "coluna": 4,
+                "texto": "117 Opção 1"
+              }
+            ]
+          }
+        ]
+      },
+      "riscos": [
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insolação",
+          "ordem": 1
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Áreas molhadas",
+          "ordem": 2
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insetos e animais",
+          "ordem": 3
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Atropelamento /Invasão da área de trabalho",
+          "ordem": 4
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Trabalho noturno",
+          "ordem": 5
+        },
+        {
+          "classificacao": "Quedas do mesmo nível/ Queda de objetos",
+          "nome": "Quedas do mesmo nível",
+          "ordem": 6
+        },
+        {
+          "classificacao": "Quedas do mesmo nível/ Queda de objetos",
+          "nome": "Queda de objetos",
+          "ordem": 7
+        },
+        {
+          "classificacao": "Equipamentos /Ferramentas",
+          "nome": "Bomba de calibração comparativa (timoneiro)/ Furadeira",
+          "ordem": 8
+        },
+        {
+          "classificacao": "Equipamentos /Ferramentas",
+          "nome": "Medidas gerais de ferramentasmanuais Ex: Chave de fenda, alicate.",
+          "ordem": 9
+        },
+        {
+          "classificacao": "Bloqueio e etiquetagem",
+          "nome": "Uso de cadeado de bloqueio e sinalização de advertência",
+          "ordem": 10
+        },
+        {
+          "classificacao": "Produtos químicos",
+          "nome": "Isabac Noseguard Scentinel e (t-butilmercaptano) Cloro Nitrogênio e hélio. Alcool isopropilico Desingripante (wd40) Limpa contato (solvente organico,gas propelente)",
+          "ordem": 11
+        }
+      ],
+      "itens": [
+        {
+          "secao": "verificacao",
+          "ordem": 1,
+          "texto": "Os componentes da equipe estão informados sobre o serviço a ser realizado?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 2,
+          "texto": "Todos os participantes da atividade estão em boas condições físicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 3,
+          "texto": "Todos os membros da equipe estão sem adornos?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 4,
+          "texto": "Todos os participantes da atividade estão em boas condições psicológicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "texto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 5,
+          "texto": "Todos os componentes da equipe estão aptos para realizar resgate de emergência?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 6,
+          "texto": "Todos os participantes conhecem o local mais próximo para atendimento hospitalar?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 7,
+          "texto": "O(s) colaborador(es) esta(ao) com os treinamentos obrigatórios em dia?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 8,
+          "texto": "O veiculo está em boas condições? (fez checklist veicular)",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 9,
+          "texto": "As condições climáticas estão favoráveis? (Chuva, risco de alagamento, vento, descargas atmosféricas)?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 10,
+          "texto": "O serviço requer uso de iluminação auxiliar (Refletor/lanterna)?",
+          "tipo": "alerta",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 11,
+          "texto": "Existe algum impedimento para executar a atividade?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 12,
+          "texto": "Faz uso do protetor solar?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 13,
+          "texto": "Necessário o uso de calça/capa de chuva e bota de PVC?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 14,
+          "texto": "A área está alagada ou com excesso de umidade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 15,
+          "texto": "Necessário usar perneira?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 16,
+          "texto": "Nas proximidades existem animais que oferecem risco de ataque?(Cobra, cachorro, outros).",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 17,
+          "texto": "São adotadas medidas para eliminar ou controlar os riscos de presença de animais peçonhentos e outros que possam afetar a segurança e saúde dos trabalhadores?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 18,
+          "texto": "Necessário sinalizar o local do trabalho com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 19,
+          "texto": "Necessário realizar fechamento parcial/integral da pista?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 20,
+          "texto": "Cones e fitas são suficientes?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 21,
+          "texto": "A iluminação é suciente para executar a atividade com segurança?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 22,
+          "texto": "Foi avaliado o risco de queda em função do nivelamento e buracos no solo do terreno?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 6
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 23,
+          "texto": "Necessário retirar objetos e/ou obstáculos no trajeto?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 6
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 24,
+          "texto": "A área de trabalho está limpa e organizada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 25,
+          "texto": "O equipamento está em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 26,
+          "texto": "Necessário utilizar capacete, protetor auricula/auditivor, luva adequada para operação, óculos de proteção?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 27,
+          "texto": "As ferramentas estão sendo usadas conforme manual fabricante?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 28,
+          "texto": "As ferramentas estao sendo usadas sem improvisamento?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 29,
+          "texto": "As ferramentas necessárias foram disponibilizadas para a atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 30,
+          "texto": "As ferramentas necessárias para a atividade estão em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 31,
+          "texto": "É necessário o uso de bloqueio e/ou etiquetagem?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 32,
+          "texto": "Foi feito o bloqueio e/ou etiquetagem?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 33,
+          "texto": "Necessário utilizar roupas de impermeáveis ou macacão de proteção? (Tyvec); preteção respiratoria, luvas impermeáveis, oculos de proteção e avental impermeável?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 11
+        }
+      ]
+    },
+    {
+      "codigo": "APR 03",
+      "versao": 4,
+      "dataDocumento": "2026-07-24",
+      "titulo": "OPERAÇÃO MANUTENÇÃO",
+      "pae": {
+        "titulo": "Plano de atendimento a Emergências - PAE",
+        "subtitulo": "Rede de gás natural do Espirito Santo",
+        "fluxo": "Fluxo Interno para comunicação com a Estrutura Organizacional de Resposta",
+        "linhas": [
+          {
+            "rotulo": "Equipes de Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Cachoeiro e Anchieta"
+              },
+              {
+                "coluna": 3,
+                "texto": "Grande Vitória"
+              },
+              {
+                "coluna": 4,
+                "texto": "Colatina"
+              },
+              {
+                "coluna": 5,
+                "texto": "Linhares/ Sooretama"
+              },
+              {
+                "coluna": 6,
+                "texto": "São Mateus"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 3,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 4,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 5,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 6,
+                "texto": "Contato Operação:"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99248-2608"
+              },
+              {
+                "coluna": 3,
+                "texto": "(27) 99203-7765"
+              },
+              {
+                "coluna": 4,
+                "texto": "(27) 99888-8320"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99204-7152"
+              },
+              {
+                "coluna": 6,
+                "texto": "(27) 99203-4426"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99269-8763"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99223-8136"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "* R= Equipe residencial"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "*I= Equipe Industrial"
+              }
+            ]
+          },
+          {
+            "rotulo": "Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Líderes de apoio as Vítimas"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Franz Achatz (27) 99988- 6979"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenador de Ações de respostas",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              },
+              {
+                "coluna": 3,
+                "texto": "Coordenador de Ações de Logísticas"
+              },
+              {
+                "coluna": 5,
+                "texto": "Franz Achatz (27) 99203-9461"
+              }
+            ]
+          },
+          {
+            "rotulo": "Comando Geral",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Fábio Salu (11) 99954- 5331"
+              },
+              {
+                "coluna": 3,
+                "texto": "Comando Administrativo"
+              },
+              {
+                "coluna": 5,
+                "texto": "Paulo Junior (27) 99203-8177"
+              }
+            ]
+          },
+          {
+            "rotulo": "Gerência SS",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Renata Pires (27) 99961-6303"
+              },
+              {
+                "coluna": 3,
+                "texto": "Polyanna Breda ( 27) 99763-8396"
+              },
+              {
+                "coluna": 5,
+                "texto": "Kamilla Costa (27) 98861-8256"
+              }
+            ]
+          },
+          {
+            "rotulo": "Recuperação de instalações",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Luciano Ferreira (27) 99269-2677"
+              },
+              {
+                "coluna": 4,
+                "texto": "AMBIPAR 0800-117-2020; 0800-707-7022; 0800-707-1767 / Emergência Química de Odorante"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação Ativos",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Rodrigo Terasso (27) 99258-6618"
+              },
+              {
+                "coluna": 3,
+                "texto": "Joice de Almeida (27) 992030944"
+              },
+              {
+                "coluna": 5,
+                "texto": "Núcleo de Reportabilidade e Emergências ( 27) 3347-8977 / (27) 996962686"
+              }
+            ]
+          },
+          {
+            "rotulo": "Emergência ( Atendimento ao cliente)",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(85) 339 27899"
+              },
+              {
+                "coluna": 2,
+                "texto": "0800 5950197"
+              },
+              {
+                "coluna": 4,
+                "texto": "117 Opção 1"
+              }
+            ]
+          }
+        ]
+      },
+      "riscos": [
+        {
+          "classificacao": "Veícular",
+          "nome": "Condições gerais do veículo",
+          "ordem": 1
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insolação",
+          "ordem": 2
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Áreas molhadas",
+          "ordem": 3
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insetos e animais",
+          "ordem": 4
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Atropelamento /Invasão da área de trabalho",
+          "ordem": 5
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Trabalho noturno",
+          "ordem": 6
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Roçagem",
+          "ordem": 7
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Pintura",
+          "ordem": 8
+        },
+        {
+          "classificacao": "Quedas do mesmo nível / Queda de objetos",
+          "nome": "Queda de mesmo nível",
+          "ordem": 9
+        },
+        {
+          "classificacao": "Quedas do mesmo nível / Queda de objetos",
+          "nome": "Queda de objetos",
+          "ordem": 10
+        },
+        {
+          "classificacao": "Equipamentos / Ferramentas / Máquinas rotativas",
+          "nome": "Medidas gerais de ferramentas/Furadeira Ex: Chave de fenda, alicate.",
+          "ordem": 11
+        }
+      ],
+      "itens": [
+        {
+          "secao": "verificacao",
+          "ordem": 1,
+          "texto": "Os componentes da equipe estão informados sobre o serviço a ser realizado?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 2,
+          "texto": "Todos os participantes da atividade estão em boas condições físicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 3,
+          "texto": "Todos os membros da equipe estão sem adornos?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 4,
+          "texto": "Todos os participantes da atividade estão em boas condições psicológicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "texto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 5,
+          "texto": "Todos os componentes da equipe estão aptos para realizar resgate de emergência?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 6,
+          "texto": "Todos os participantes conhecem o local mais próximo para atendimento hospitalar?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 7,
+          "texto": "O(s) colaborador(es) esta(ao) com os treinamentos obrigatórios em dia?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 8,
+          "texto": "O veiculo está em boas condições? (fez checklist veicular)",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 9,
+          "texto": "As condições climáticas estão favoráveis? (Chuva, risco de alagamento, vento, descargas atmosféricas)?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 10,
+          "texto": "O serviço requer uso de iluminação auxiliar (Refletor/lanterna)?",
+          "tipo": "alerta",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 11,
+          "texto": "Existe algum impedimento para executar a atividade?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 12,
+          "texto": "É possível estacionar o veiculo no sentido correto da via?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 13,
+          "texto": "Necessário sinalizar o veículo com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 14,
+          "texto": "Necessário manter veículo com sinalização de alerta?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 15,
+          "texto": "Faz uso do protetor solar?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 16,
+          "texto": "Necessário o uso de calça/capa de chuva e bota de PVC?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 17,
+          "texto": "A área está alagada ou com excesso de umidade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 18,
+          "texto": "Necessário usar perneira?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 19,
+          "texto": "Nas proximidades existem animais que oferecem risco de ataque?(Cobra, cachorro, outros).",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 20,
+          "texto": "São adotadas medidas para eliminar ou controlar os riscos de presença de animais peçonhentos e outros que possam afetar a segurança e saúde dos trabalhadores?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 21,
+          "texto": "Necessário sinalizar o local do trabalho com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 22,
+          "texto": "Necessário realizar fechamento parcial/integral da pista?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 23,
+          "texto": "Cones e fitas são suficientes?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 24,
+          "texto": "A iluminação é suciente para executar a atividade com segurança?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 6
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 25,
+          "texto": "Necessário utilizar protetor facial?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 26,
+          "texto": "Necessário utilizar calçados de segurança adequado?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 27,
+          "texto": "Necessário utilizar o protetor auditivo/auricular?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 28,
+          "texto": "A área está sinalizada e isolada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 29,
+          "texto": "Necessário utilizar Touca árabe/balaclava?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 30,
+          "texto": "Necessário utilizar luvas de proteção?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 31,
+          "texto": "Todos os membros da equipe estão sem adornos?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 32,
+          "texto": "Necessário utilizar o capacete e óculos de segurança",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 33,
+          "texto": "Necessário utilizar a tela de proteção/cerquite?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 34,
+          "texto": "Está sendo seguindo o plano de contenção de desrramamento de produtos químicos no solo?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 35,
+          "texto": "A área está adequada para a atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 36,
+          "texto": "Os Epis estão adequados para atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 37,
+          "texto": "O manuseio das tintas está sendo realizado de forma segura e adequada",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 38,
+          "texto": "A área está sinalizada e isolada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 39,
+          "texto": "Foi avaliado o risco de queda em função do nivelamento e buracos no solo do terreno?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 40,
+          "texto": "Necessário retirar objetos e/ou obstáculos no trajeto?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 41,
+          "texto": "A área de trabalho está limpa e organizada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 42,
+          "texto": "O equipamento está em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 11
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 43,
+          "texto": "Necessário utilizar capacete?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 11
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 44,
+          "texto": "Necessário utilizar luva adequada para operação?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 11
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 45,
+          "texto": "Necessário utilizar protetor auditivo/auricular?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 11
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 46,
+          "texto": "Necessário utilizar óculos de proteção?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 11
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 47,
+          "texto": "As ferramentas necessárias foram disponibilizadas para a atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 11
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 48,
+          "texto": "As ferramentas necessárias para a atividade estão em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 11
+        }
+      ]
+    },
+    {
+      "codigo": "APR 04",
+      "versao": 3,
+      "dataDocumento": "2026-07-07",
+      "titulo": "CONSTRUÇÃO DE REDE DE DISTRIBUIÇÃO DE GÁS NATURAL",
+      "pae": {
+        "titulo": "Plano de atendimento a Emergências - PAE",
+        "subtitulo": "Rede de gás natural do Espirito Santo",
+        "fluxo": "Fluxo Interno para comunicação com a Estrutura Organizacional de Resposta",
+        "linhas": [
+          {
+            "rotulo": "Equipes de Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Cachoeiro e Anchieta"
+              },
+              {
+                "coluna": 3,
+                "texto": "Grande Vitória"
+              },
+              {
+                "coluna": 4,
+                "texto": "Colatina"
+              },
+              {
+                "coluna": 5,
+                "texto": "Linhares/ Sooretama"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 3,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 4,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 5,
+                "texto": "Contato Operação:"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99248-2608"
+              },
+              {
+                "coluna": 3,
+                "texto": "(27) 99203-7765"
+              },
+              {
+                "coluna": 4,
+                "texto": "(27) 99888-8320"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99204-7152"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99269-8763"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99223-8136"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "* R= Equipe residencial"
+              },
+              {
+                "coluna": 5,
+                "texto": "São Mateus"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "*I= Equipe Industrial"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99203-4426"
+              }
+            ]
+          },
+          {
+            "rotulo": "Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Lideres de apoio as Vítimas"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Franz Achatz (27) 99988- 6979"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenador de Ações de respostas",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              },
+              {
+                "coluna": 3,
+                "texto": "Coordenador de Ações de Logísticas"
+              },
+              {
+                "coluna": 5,
+                "texto": "Franz Achatz (27) 99203-9461"
+              }
+            ]
+          },
+          {
+            "rotulo": "Comando Geral",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Fábio Salu (11) 99954- 5331"
+              },
+              {
+                "coluna": 3,
+                "texto": "Comando Administrativo"
+              },
+              {
+                "coluna": 5,
+                "texto": "Paulo Junior (27)99203-8177"
+              }
+            ]
+          },
+          {
+            "rotulo": "Gerência SS",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Renata Pires (27) 99961-6303"
+              },
+              {
+                "coluna": 3,
+                "texto": "Kamilla Costa (27) 98861-8256"
+              },
+              {
+                "coluna": 5,
+                "texto": "Polyanna Breda (27)99763-8396"
+              }
+            ]
+          },
+          {
+            "rotulo": "Recuperação de instalações",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Luciano Ferreira (27) 99269-2677"
+              },
+              {
+                "coluna": 4,
+                "texto": "AMBIPAR 0800-117-2020; 0800-707-7022; 0800-707-1767 / Emergência Química de Odorante"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação Ativos",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Rodrigo Terasso (27) 99258-6618"
+              },
+              {
+                "coluna": 3,
+                "texto": "Joice de Almeida (27) 992030944"
+              },
+              {
+                "coluna": 5,
+                "texto": "Núcleo de Reportabilidade e Emergências ( 27) 3347-8977 / (27) 996962686"
+              }
+            ]
+          },
+          {
+            "rotulo": "Emergência ( Atendimento ao cliente)",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(85) 339 27899"
+              },
+              {
+                "coluna": 2,
+                "texto": "0800 5950197"
+              },
+              {
+                "coluna": 4,
+                "texto": "117 Opção 1"
+              }
+            ]
+          }
+        ]
+      },
+      "riscos": [
+        {
+          "classificacao": "Veicular",
+          "nome": "Condições gerais dos veículos",
+          "ordem": 1
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insolação",
+          "ordem": 2
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Áreas molhadas",
+          "ordem": 3
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insetos e animais",
+          "ordem": 4
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Atropelamento/Invasão da área de trabalho",
+          "ordem": 5
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Trabalho noturno",
+          "ordem": 6
+        },
+        {
+          "classificacao": "Quedas do mesmo nível / Queda de objetos / Desmoronamento",
+          "nome": "Abertura de valas para construção de redes e ramais de distribuição de gás natural; Instalação e furo do T de serviço",
+          "ordem": 7
+        },
+        {
+          "classificacao": "Trabalho sobre rede gaseificada",
+          "nome": "Cruzamento na execução do furo direcional com uma rede existente; Escavação manual em cima de uma rede existente",
+          "ordem": 8
+        },
+        {
+          "classificacao": "Equipamentos e Ferramentas",
+          "nome": "Gerador; Serra Cliper; Rompedor; Compactador a combustão; Furadeira; Serra Marmore; Enxada; Pá; Chibanca; Picareta Máquina de solda eletrofusão; Esmirilhadeira; Solda.",
+          "ordem": 9
+        },
+        {
+          "classificacao": "Equipamentos e Ferramentas",
+          "nome": "Medidas gerais de ferramentas Ex: Chave de fenda, alicate, etc.",
+          "ordem": 10
+        }
+      ],
+      "itens": [
+        {
+          "secao": "verificacao",
+          "ordem": 1,
+          "texto": "Os componentes da equipe estão informados sobre o serviço a ser realizado?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 2,
+          "texto": "Todos os participantes da atividade estão em boas condições físicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 3,
+          "texto": "Todos os participantes da atividade estão em boas condições psicológicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "texto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 4,
+          "texto": "Todos os componentes da equipe estão aptos para realizar resgate de emergência?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 5,
+          "texto": "Todos os participantes conhecem o local mais próximo para atendimento hospitalar?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 6,
+          "texto": "O(s) colaborador(es) esta(ao) com os treinamentos obrigatórios em dia?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 7,
+          "texto": "Os veiculos estão em boas condições?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 8,
+          "texto": "As condições climáticas estão favoráveis? (Chuva, risco de alagamento, vento, descargas atmosféricas)?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 9,
+          "texto": "O serviço requer uso de iluminação auxiliar (Refletor/lanterna)?",
+          "tipo": "alerta",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 10,
+          "texto": "Existe algum impedimento para executar a atividade?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 11,
+          "texto": "É possível estacionar o veiculo no sentido correto da via?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 12,
+          "texto": "Necessário sinalizar o veículo com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 13,
+          "texto": "Check-List do veículo foi prenchido e está em dia?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 14,
+          "texto": "Faz uso do protetor solar?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 15,
+          "texto": "Necessário o uso de calça/capa de chuva e bota de PVC?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 16,
+          "texto": "A área está alagada ou com excesso de umidade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 17,
+          "texto": "Necessário usar perneira?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 18,
+          "texto": "Nas proximidades existem animais que oferecem risco de ataque?(Cobra, cachorro, outros).",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 19,
+          "texto": "São adotadas medidas para eliminar ou controlar os riscos de presença de animais peçonhentos e outros que possam afetar a segurança e saúde dos trabalhadores?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 20,
+          "texto": "Necessário sinalizar o local do trabalho com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 21,
+          "texto": "Necessário isolar o local de posicionamento da máquina de furo e valas abertas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 22,
+          "texto": "Necessário realizar fechamento parcial/integral da pista?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 23,
+          "texto": "Cones e fitas são suficientes?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 24,
+          "texto": "A iluminação e sinalização estão suficientes para executar a atividade com segurança?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 6
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 25,
+          "texto": "Foi avaliado o risco de queda em função do nivelamento e buracos no solo do terreno?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 26,
+          "texto": "Necessário retirar objetos e/ou obstáculos da borda das escavações?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 27,
+          "texto": "Escavações excedem profundidade além de 1,25 m e necessitam de escoramento e Laudo de Estabilidade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 28,
+          "texto": "Necessita de escada de acesso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 29,
+          "texto": "A área de trabalho está limpa e organizada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 30,
+          "texto": "Referente ao furo direcional a sonda foi devidamente aferida antes do início da atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 31,
+          "texto": "O equipamento (Digitrak) está em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 32,
+          "texto": "A equipe esta orientada quanto ao risco de executar escavação manual sobre rede gaseificada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 33,
+          "texto": "A equipe esta portando os EPI´s básicos para execução desta atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 34,
+          "texto": "Existe cadastro de outras interferências no local?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 35,
+          "texto": "A atividade está devidamente Licenciada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 36,
+          "texto": "Foi aberta a PT para a execução da atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 37,
+          "texto": "Os equipamentos estão em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 38,
+          "texto": "Os Check-Lists dos equipamentos estão em dia?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 39,
+          "texto": "A equipe faz utilização dos EPI´s durante a utilização destes equipamentos?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 40,
+          "texto": "As ferramentas necessárias foram disponibilizadas para a atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 41,
+          "texto": "As ferramentas necessárias para a atividade estão em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 10
+        }
+      ]
+    },
+    {
+      "codigo": "APR 05",
+      "versao": 3,
+      "dataDocumento": "2026-07-07",
+      "titulo": "CONVERSÃO E ATIVAÇÃO DE CLIENTES",
+      "pae": {
+        "titulo": "Plano de atendimento a Emergências - PAE",
+        "subtitulo": "Rede de gás natural do Espirito Santo",
+        "fluxo": "Fluxo Interno para comunicação com a Estrutura Organizacional de Resposta",
+        "linhas": [
+          {
+            "rotulo": "Equipes de Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Cachoeiro e Anchieta"
+              },
+              {
+                "coluna": 3,
+                "texto": "Grande Vitória"
+              },
+              {
+                "coluna": 4,
+                "texto": "Colatina"
+              },
+              {
+                "coluna": 5,
+                "texto": "Linhares/ Sooretama"
+              },
+              {
+                "coluna": 6,
+                "texto": "São Mateus"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 3,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 4,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 5,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 6,
+                "texto": "Contato Operação:"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99248-2608"
+              },
+              {
+                "coluna": 3,
+                "texto": "(27) 99203-7765"
+              },
+              {
+                "coluna": 4,
+                "texto": "(27) 99888-8320"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99204-7152"
+              },
+              {
+                "coluna": 6,
+                "texto": "(27) 99203-4426"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99269-8763"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99223-8136"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "* R= Equipe residencial"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "*I= Equipe Industrial"
+              }
+            ]
+          },
+          {
+            "rotulo": "Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Lideres de apoio as Vítimas"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Franz Achatz (27) 99988- 6979"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenador de Ações de respostas",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              },
+              {
+                "coluna": 3,
+                "texto": "Coordenador de Ações de Logísticas"
+              },
+              {
+                "coluna": 5,
+                "texto": "Franz Achatz (27) 99203-9461"
+              }
+            ]
+          },
+          {
+            "rotulo": "Comando Geral",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Fábio Salu (11) 99954- 5331"
+              },
+              {
+                "coluna": 3,
+                "texto": "Comando Administrativo"
+              },
+              {
+                "coluna": 5,
+                "texto": "Paulo Junior (27) 99203-8177"
+              }
+            ]
+          },
+          {
+            "rotulo": "Gerência SS",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Renata Pires (27) 99961-6303"
+              },
+              {
+                "coluna": 3,
+                "texto": "Kamilla Costa (27) 98861-8256"
+              },
+              {
+                "coluna": 5,
+                "texto": "Polyanna Breda ( 27) 99763-8396"
+              }
+            ]
+          },
+          {
+            "rotulo": "Recuperação de instalações",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Luciano Ferreira (27) 99269-2677"
+              },
+              {
+                "coluna": 4,
+                "texto": "AMBIPAR 0800-117-2020; 0800-707-7022; 0800-707-1767 / Emergência Química de Odorante"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação Ativos",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Rodrigo Terasso (27) 99258-6618"
+              },
+              {
+                "coluna": 3,
+                "texto": "Joice de Almeida (27) 992030944"
+              },
+              {
+                "coluna": 5,
+                "texto": "Núcleo de Reportabilidade e Emergências ( 27) 3347-8977 / (27) 996962686"
+              }
+            ]
+          },
+          {
+            "rotulo": "Emergência ( Atendimento ao cliente)",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(85) 339 27899"
+              },
+              {
+                "coluna": 2,
+                "texto": "0800 5950197"
+              },
+              {
+                "coluna": 4,
+                "texto": "117 Opção 1"
+              }
+            ]
+          }
+        ]
+      },
+      "riscos": [
+        {
+          "classificacao": "Veicular",
+          "nome": "Condições gerais dos veículos",
+          "ordem": 1
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insolação",
+          "ordem": 2
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Áreas molhadas",
+          "ordem": 3
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insetos e animais",
+          "ordem": 4
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Atropelamento/Invasão da área de trabalho",
+          "ordem": 5
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Trabalho noturno",
+          "ordem": 6
+        },
+        {
+          "classificacao": "Quedas do mesmo nível / Queda de objetos / Desmoronamento",
+          "nome": "Abertura de valas para construçãode redes e ramais de distribuição de gás natural",
+          "ordem": 7
+        },
+        {
+          "classificacao": "Construção e montagem de redes internas, adequação de instalações e conversão de aparelhos a gás",
+          "nome": "Projeção de materiais; Prensamento/corte de mãos; Vazamento de gás; Queimaduras; Asfixia por CO",
+          "ordem": 8
+        },
+        {
+          "classificacao": "Contato com produtos químicos",
+          "nome": "Nitrogênio Alcool isopropilico Desingripante (wd40) Acetileno",
+          "ordem": 9
+        },
+        {
+          "classificacao": "Equipamentos e Ferramentas",
+          "nome": "Equipamentos eletricos: furadeira, serra circular",
+          "ordem": 10
+        },
+        {
+          "classificacao": "Equipamentos e Ferramentas",
+          "nome": "Medidas gerais de ferramentas Ex: Chave de fenda, alicate, etc.",
+          "ordem": 11
+        }
+      ],
+      "itens": [
+        {
+          "secao": "verificacao",
+          "ordem": 1,
+          "texto": "Os componentes da equipe estão informados sobre o serviço a ser realizado?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 2,
+          "texto": "Todos os participantes da atividade estão em boas condições físicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 3,
+          "texto": "Todos os participantes da atividade estão em boas condições psicológicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "texto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 4,
+          "texto": "Todos os componentes da equipe estão aptos para realizar resgate de emergência?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 5,
+          "texto": "Todos os participantes conhecem o local mais próximo para atendimento hospitalar?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 6,
+          "texto": "O(s) colaborador(es) esta(ao) com os treinamentos obrigatórios em dia?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 7,
+          "texto": "Os veiculos estão em boas condições?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 8,
+          "texto": "As condições climáticas estão favoráveis? (Chuva, risco de alagamento, vento, descargas atmosféricas)?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 9,
+          "texto": "O serviço requer uso de iluminação auxiliar (Refletor/lanterna)?",
+          "tipo": "alerta",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 10,
+          "texto": "Existe algum impedimento para executar a atividade?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 11,
+          "texto": "É possível estacionar o veiculo no sentido correto da via?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 12,
+          "texto": "Necessário sinalizar o veículo com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 13,
+          "texto": "Necessário manter veículo com sinalização de alerta?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 14,
+          "texto": "Check-List do veículo foi prenchido e está em dia?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 15,
+          "texto": "Faz uso do protetor solar?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 16,
+          "texto": "Necessário o uso de calça/capa de chuva e bota de PVC?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 17,
+          "texto": "A área está alagada ou com excesso de umidade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 18,
+          "texto": "Necessário usar perneira?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 19,
+          "texto": "Nas proximidades existem animais que oferecem risco de ataque?(Cobra, cachorro, outros).",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 20,
+          "texto": "São adotadas medidas para eliminar ou controlar os riscos de presença de animais peçonhentos e outros que possam afetar a segurança e saúde dos trabalhadores?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 21,
+          "texto": "Necessário sinalizar o local do trabalho com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 22,
+          "texto": "Necessário isolar o local de posicionamento da máquina de furo e valas abertas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 23,
+          "texto": "Necessário realizar fechamento parcial/integral da pista?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 24,
+          "texto": "Cones e fitas são suficientes?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 25,
+          "texto": "A iluminação e sinalização estão suficientes para executar a atividade com segurança?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 6
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 26,
+          "texto": "Foi avaliado o risco de queda em função do nivelamento e buracos no solo do terreno?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 27,
+          "texto": "Necessário retirar objetos e/ou obstáculos da borda das escavações?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 28,
+          "texto": "Escavações excedem profundidade além de 1,25 m e necessitam de escoramento e Laudo de Estabilidade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 29,
+          "texto": "Necessita de escada de acesso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 30,
+          "texto": "A área de trabalho está limpa e organizada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 7
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 31,
+          "texto": "A equipe esta orientada quanto ao risco de executar escavação manual sobre rede gaseificada do cliente?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 32,
+          "texto": "A equipe esta portando os EPI´s básicos para execução desta atividade? ( (óculos, capacete, mascará, fardamento RF, luvas de proteção, botina, e demais de acordo com risco exposto)",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 33,
+          "texto": "o carregamento manual está sendo feito de forma adequada com objetos até 23 kg ou para objetos maiores maiores com auxilio de outro colaborador não ultrapassando total 46 kg?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 34,
+          "texto": "Os materiais usados na montagem estão armazenados no local correto, organizado, sem risco de queda, prenssamento ou corte nos colaboradores?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 35,
+          "texto": "Foi realizada a medição com o equipamento 4 gases (explosimetro) para verificar se possue algum vazamento de gás?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 36,
+          "texto": "Foi realizado o teste de estanqueidade da rede?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 37,
+          "texto": "Foi feita inspeção visual nas juntas e conexões no local da atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 38,
+          "texto": "Foi usado o analisador de combustao vera verificar se não possui vazamento de CO nas instalações dos aquecedores a gás?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 39,
+          "texto": "Durante teste de funcionamento dos aparelhos convertidos foi matida a distancia da chama evitando algum tipo queimadura?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 8
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 40,
+          "texto": "Necessário utilizar roupas de impermeáveis ou macacão de proteção? (Tyvec); preteção respiratoria, luvas impermeáveis, oculos de proteção e avental impermeável?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 41,
+          "texto": "A FDS está disponivel no local de trabalho?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 42,
+          "texto": "Necessário utilizar máscara de proteção respiratória?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 43,
+          "texto": "Necessário utilizar luvas impermeáveis?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 44,
+          "texto": "Necessário utilizar óculos de proteção?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 45,
+          "texto": "Necessário utilizar avental Impermeável?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 9
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 46,
+          "texto": "O colaborador que está usando os equipamentos eletricos estã com a viseira facial ?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 47,
+          "texto": "Os equipamentos estão em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 48,
+          "texto": "Os Check-Lists dos equipamentos estão em dia?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 49,
+          "texto": "A equipe faz utilização dos EPI´s durante a utilização destes equipamentos?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 10
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 50,
+          "texto": "As ferramentas necessárias foram disponibilizadas para a atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 11
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 51,
+          "texto": "As ferramentas necessárias para a atividade estão em boas condições de uso?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": 11
+        }
+      ]
+    },
+    {
+      "codigo": "APR 06",
+      "versao": 3,
+      "dataDocumento": "2026-07-01",
+      "titulo": "ESPAÇO CONFINADO E/OU TRABALHO EM ALTURA",
+      "pae": {
+        "titulo": "Plano de atendimento a Emergências - PAE",
+        "subtitulo": "Rede de gás natural do Espirito Santo",
+        "fluxo": "Fluxo Interno para comunicação com a Estrutura Organizacional de Resposta",
+        "linhas": [
+          {
+            "rotulo": "Equipes de Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Cachoeiro e Anchieta"
+              },
+              {
+                "coluna": 3,
+                "texto": "Grande Vitória"
+              },
+              {
+                "coluna": 4,
+                "texto": "Colatina"
+              },
+              {
+                "coluna": 5,
+                "texto": "Linhares/ Sooretama"
+              },
+              {
+                "coluna": 6,
+                "texto": "São Mateus"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 3,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 4,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 5,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 6,
+                "texto": "Contato Operação:"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99248-2608"
+              },
+              {
+                "coluna": 3,
+                "texto": "(27) 99203-7765"
+              },
+              {
+                "coluna": 4,
+                "texto": "(27) 99888-8320"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99204-7152"
+              },
+              {
+                "coluna": 6,
+                "texto": "(27) 99203-4426"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99269-8763"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99223-8136"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "* R= Equipe residencial"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "*I= Equipe Industrial"
+              }
+            ]
+          },
+          {
+            "rotulo": "Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Lider e apoio as Vítimas"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Franz Achatz (27) 99988- 6979"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenador de Ações de respostas",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              },
+              {
+                "coluna": 3,
+                "texto": "Coordenador de Ações de Logísticas"
+              },
+              {
+                "coluna": 5,
+                "texto": "Franz Achatz (27) 99203-9461"
+              }
+            ]
+          },
+          {
+            "rotulo": "Comando Geral",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Fábio Salu (11) 99954- 5331"
+              },
+              {
+                "coluna": 3,
+                "texto": "Comando Administrativo"
+              },
+              {
+                "coluna": 5,
+                "texto": "Paulo Junior (27) 99203-8177"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação SMS",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Renata Pires (27) 99961-6303"
+              },
+              {
+                "coluna": 3,
+                "texto": "Kamilla Costa (27) 98861-8256"
+              },
+              {
+                "coluna": 5,
+                "texto": "Polyanna Breda ( 27) 99763-8396"
+              }
+            ]
+          },
+          {
+            "rotulo": "Recuperação de instalações",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Luciano Ferreira (27) 99269-2677"
+              },
+              {
+                "coluna": 5,
+                "texto": "AMBIPAR 0800-117-2020; 0800-707-7022; 0800-707-1767 / Emergência Química de Odorante"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação Ativos",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Rodrigo Terasso (27) 99258-6618"
+              },
+              {
+                "coluna": 3,
+                "texto": "Joice de Almeida (27) 992030944"
+              }
+            ]
+          },
+          {
+            "rotulo": "Emergência ( Atendimento ao cliente)",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(85) 339 27899"
+              },
+              {
+                "coluna": 2,
+                "texto": "0800 5950197"
+              },
+              {
+                "coluna": 4,
+                "texto": "117 Opção 1"
+              },
+              {
+                "coluna": 5,
+                "texto": "Núcleo de Reportabilidade e Emergências ( 27) 3347-8977 / (27) 996962686"
+              }
+            ]
+          }
+        ]
+      },
+      "riscos": [
+        {
+          "classificacao": "Trabalho em altura",
+          "nome": "Atividades acima de 2 metros; Telhados; Utilização de cadeirinha em predios/Uso de PTA (Plataforma trabalho aérea)/cesto aéreo/cesto acoplado",
+          "ordem": 1
+        },
+        {
+          "classificacao": "Espaço Confinado",
+          "nome": "Área ou ambiente não projetado para ocupação humana contínua, que possua meios limitados de entrada e saída, cuja ventilação existente é insuficiente para remover contaminantes ou onde possa existir a deficiência ou enriquecimento de oxigênio.",
+          "ordem": 2
+        }
+      ],
+      "itens": [
+        {
+          "secao": "verificacao",
+          "ordem": 1,
+          "texto": "Os componentes da equipe estão informados sobre o serviço a ser realizado?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 2,
+          "texto": "Todos os participantes da atividade estão em boas condições físicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 3,
+          "texto": "Todos os membros da equipe estão sem adornos?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 4,
+          "texto": "Todos os participantes da atividade estão em boas condições psicológicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "texto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 5,
+          "texto": "Todos os componentes da equipe estão aptos para realizar resgate de emergência?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 6,
+          "texto": "Todos os participantes conhecem o local mais próximo para atendimento hospitalar?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 7,
+          "texto": "O(s) colaborador(es) esta(ao) com os treinamentos obrigatórios em dia?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 8,
+          "texto": "Os veiculos estão em boas condições?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 9,
+          "texto": "As condições climáticas estão favoráveis? (Chuva, risco de alagamento, vento, descargas atmosféricas)?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 10,
+          "texto": "O serviço requer uso de iluminação auxiliar (Refletor/lanterna)?",
+          "tipo": "alerta",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 11,
+          "texto": "Em caso de espaço confinado foi realizado o teste de explosividade",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": true,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 12,
+          "texto": "Existe algum impedimento para executar a atividade?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 13,
+          "texto": "Necessário utilização de cinto paraquedista; trava-quedas; linhas de vida?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 14,
+          "texto": "Foi estabelecido os sistemas e pontos de ancoragem?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 15,
+          "texto": "Possuem sistema de resgate?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 16,
+          "texto": "Foi disponibilizado sistema de comunicação?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 17,
+          "texto": "Necessário transporte de ferramentas em sacolas apropriadas?.",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 18,
+          "texto": "O peso de funcionários( Iindividual) na plataforma aérea é inferior 100 quilos conforme?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 19,
+          "texto": "Nos trabalhos em telhados, foram dispostos pranchas e/ou escadas adequadas e guarda-corpo?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 20,
+          "texto": "Nos trabalhos em tetos e telhados, foi analisada a resistência dos pisos evitando a concentração de cargas em um mesmo ponto sobre telhado ou cobertura?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 21,
+          "texto": "As escadas fixas dispõem de guarda-corpo e estão em bom estado de conservação (escadas de mão usadas apenas para acessos provisórios e serviços de pequeno porte)?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 22,
+          "texto": "O trabalho será realizado distante de linha de energia elétrica?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 23,
+          "texto": "Verificado se a PTA possui extintor de incêndio e com validade dentro do prazo?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 24,
+          "texto": "Realizado check-list na PTA/cesto aéreo/cesto acoplado antes de iniciar o serviço?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 25,
+          "texto": "Ambiente Confinado ventilado por insuflador, exaustor ou natural?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 26,
+          "texto": "Os equipamentos elétricos são adequados para ambiente confinado (blindado, isolado)?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 27,
+          "texto": "Disponibilizada iluminação de emergência?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 28,
+          "texto": "Os EPI estão em boas condições de uso ? (óculos, capacete, máscara, luvas de proteção, botina, e demais EPIs de acordo com o serviço executado no espaço confinado)",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 29,
+          "texto": "Instalada linha de vida? (tripé e monopé - Aplicável a espaço confinado com acesso vertical)",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 30,
+          "texto": "Disponibilizados acessos e saídas para emergência (escada, andaimes, dispositivo de içamento)?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 31,
+          "texto": "A PET está devidamente preenchida, com as devidas assinaturas e não apresenta rasuras?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 32,
+          "texto": "O cadastro do espaço confinado está atualizado e disponível?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 33,
+          "texto": "Designado vigia permanente e providenciado sistema de comunicação adequado?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        }
+      ]
+    },
+    {
+      "codigo": "APR 07",
+      "versao": 4,
+      "dataDocumento": "2026-07-24",
+      "titulo": "INSPEÇÃO E ACOMPANHAMENTO DE REDE DE GÁS",
+      "pae": {
+        "titulo": "Plano de atendimento a Emergências - PAE",
+        "subtitulo": "Rede de gás natural do Espirito Santo",
+        "fluxo": "Fluxo Interno para comunicação com a Estrutura Organizacional de Resposta",
+        "linhas": [
+          {
+            "rotulo": "Equipes de Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Cachoeiro e Anchieta"
+              },
+              {
+                "coluna": 3,
+                "texto": "Grande Vitória"
+              },
+              {
+                "coluna": 4,
+                "texto": "Colatina"
+              },
+              {
+                "coluna": 5,
+                "texto": "Linhares/ Sooretama"
+              },
+              {
+                "coluna": 6,
+                "texto": "São Mateus"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 3,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 4,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 5,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 6,
+                "texto": "Contato Operação:"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99248-2608"
+              },
+              {
+                "coluna": 3,
+                "texto": "(27) 99203-7765"
+              },
+              {
+                "coluna": 4,
+                "texto": "(27) 99888-8320"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99204-7152"
+              },
+              {
+                "coluna": 6,
+                "texto": "(27) 99203-4426"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99269-8763"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99223-8136"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "* R= Equipe residencial"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "*I= Equipe Industrial"
+              }
+            ]
+          },
+          {
+            "rotulo": "Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Líderes de apoio as Vítimas"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Franz Achatz (27) 99988- 6979"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenador de Ações de respostas",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              },
+              {
+                "coluna": 3,
+                "texto": "Coordenador de Ações de Logísticas"
+              },
+              {
+                "coluna": 5,
+                "texto": "Franz Achatz (27) 99203-9461"
+              }
+            ]
+          },
+          {
+            "rotulo": "Comando Geral",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Fábio Salu (11) 99954- 5331"
+              },
+              {
+                "coluna": 3,
+                "texto": "Comando Administrativo"
+              },
+              {
+                "coluna": 5,
+                "texto": "Paulo Junior (27) 99203-8177"
+              }
+            ]
+          },
+          {
+            "rotulo": "Gerência SS",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Renata Pires (27) 99961-6303"
+              },
+              {
+                "coluna": 3,
+                "texto": "Polyanna Breda ( 27) 99763-8396"
+              },
+              {
+                "coluna": 5,
+                "texto": "Kamilla Costa (27) 98861-8256"
+              }
+            ]
+          },
+          {
+            "rotulo": "Recuperação de instalações",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Luciano Ferreira (27) 99269-2677"
+              },
+              {
+                "coluna": 4,
+                "texto": "AMBIPAR 0800-117-2020; 0800-707-7022; 0800-707-1767 / Emergência Química de Odorante"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação Ativos",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Rodrigo Terasso (27) 99258-6618"
+              },
+              {
+                "coluna": 3,
+                "texto": "Joice de Almeida (27) 992030944"
+              },
+              {
+                "coluna": 5,
+                "texto": "Núcleo de Reportabilidade e Emergências ( 27) 3347-8977 / (27) 996962686"
+              }
+            ]
+          },
+          {
+            "rotulo": "Emergência ( Atendimento ao cliente)",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(85) 339 27899"
+              },
+              {
+                "coluna": 2,
+                "texto": "0800 5950197"
+              },
+              {
+                "coluna": 4,
+                "texto": "117 Opção 1"
+              }
+            ]
+          }
+        ]
+      },
+      "riscos": [
+        {
+          "classificacao": "Veícular",
+          "nome": "Condições gerais do veículo",
+          "ordem": 1
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insolação",
+          "ordem": 2
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Áreas molhadas",
+          "ordem": 3
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Insetos e animais",
+          "ordem": 4
+        },
+        {
+          "classificacao": "Ambiente de trabalho",
+          "nome": "Trabalho noturno",
+          "ordem": 5
+        },
+        {
+          "classificacao": "Quedas do mesmo nível / Queda de objetos",
+          "nome": "Quedas do mesmo nível",
+          "ordem": 6
+        },
+        {
+          "classificacao": "Comunicação",
+          "nome": "Atividade com terceiros",
+          "ordem": 7
+        }
+      ],
+      "itens": [
+        {
+          "secao": "verificacao",
+          "ordem": 1,
+          "texto": "Os componentes da equipe estão informados sobre o serviço a ser realizado?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 2,
+          "texto": "O(s) colaborador(es) esta(ao) usando os EPI adequado para a atividade? Regra de ouro nº03.",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 3,
+          "texto": "O(s) colaborador(es) da atividade estão em boas condições físicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 4,
+          "texto": "O(s) colaborador(es) da atividade estão em boas condições psicológicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "texto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 5,
+          "texto": "O(s) componente(es) da equipe estão aptos para realizar resgate de emergência?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 6,
+          "texto": "O(s) colaborador(es) conhecem o local mais próximo para atendimento hospitalar?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 7,
+          "texto": "O(s) colaborador(es) esta(ao) com os treinamentos obrigatórios em dia?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 8,
+          "texto": "O veiculo está em boas condições?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 9,
+          "texto": "As condições climáticas estão favoráveis? (Chuvas intensas, risco de alagamento, ventos fortes, descargas atmosféricas)?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 10,
+          "texto": "Existe algum impedimento para executar a atividade?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 11,
+          "texto": "É possível estacionar o veiculo no sentido correto da via?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 12,
+          "texto": "Necessário sinalizar o veículo com cones e fitas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 13,
+          "texto": "Necessário manter veículo com sinalização de alerta?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 14,
+          "texto": "O veículo foi estacionado fora da área classificada?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 15,
+          "texto": "Foi realizado o check list de segurança veicular?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 16,
+          "texto": "Faz uso do protetor solar? Não esquecer de se hidratar.",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 17,
+          "texto": "Necessário o uso de calça/capa de chuva e bota de PVC?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 18,
+          "texto": "A área está alagada ou com excesso de umidade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 19,
+          "texto": "É possível verificar a profundidade do alagamento antes de seguir em travessias alagadas?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 20,
+          "texto": "Necessário usar perneira?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 21,
+          "texto": "Nas proximidades existem animais que oferecem risco de ataque?(Cobra, cachorro, outros).",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 22,
+          "texto": "Necessário uso de repelente?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 4
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 23,
+          "texto": "A iluminação é suciente para executar a atividade com segurança?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 5
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 24,
+          "texto": "Foi avaliado o risco de queda em função do nivelamento e buracos no solo do terreno?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 6
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 25,
+          "texto": "Necessário retirar objetos e/ou obstáculos no trajeto?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 6
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 26,
+          "texto": "Os interferentes foram advertidos sobre os riscos de trabalho próximo a rede de gás?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 7
+        }
+      ]
+    },
+    {
+      "codigo": "APR 09",
+      "versao": 2,
+      "dataDocumento": "2026-07-24",
+      "titulo": "MOVIMENTAÇÃO ALMOXARIFADO",
+      "pae": {
+        "titulo": "Plano de atendimento a Emergências - PAE",
+        "subtitulo": "Rede de gás natural do Espirito Santo",
+        "fluxo": "Fluxo Interno para comunicação com a Estrutura Organizacional de Resposta",
+        "linhas": [
+          {
+            "rotulo": "Equipes de Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Cachoeiro e Anchieta"
+              },
+              {
+                "coluna": 3,
+                "texto": "Grande Vitória"
+              },
+              {
+                "coluna": 4,
+                "texto": "Colatina"
+              },
+              {
+                "coluna": 5,
+                "texto": "Linhares/ Sooretama"
+              },
+              {
+                "coluna": 6,
+                "texto": "São Mateus"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 3,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 4,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 5,
+                "texto": "Contato Operação:"
+              },
+              {
+                "coluna": 6,
+                "texto": "Contato Operação:"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99248-2608"
+              },
+              {
+                "coluna": 3,
+                "texto": "(27) 99203-7765"
+              },
+              {
+                "coluna": 4,
+                "texto": "(27) 99888-8320"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99204-7152"
+              },
+              {
+                "coluna": 6,
+                "texto": "(27) 99203-4426"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(27) 99269-8763"
+              },
+              {
+                "coluna": 5,
+                "texto": "(27) 99223-8136"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "* R= Equipe residencial"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 4,
+                "texto": "*I= Equipe Industrial"
+              }
+            ]
+          },
+          {
+            "rotulo": "Reconhecimento e Controle da emergência",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Líderes de apoio as Vítimas"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              }
+            ]
+          },
+          {
+            "rotulo": null,
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Franz Achatz (27) 99988- 6979"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenador de Ações de respostas",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Danilo Cavalcante (27) 99203-8882"
+              },
+              {
+                "coluna": 3,
+                "texto": "Coordenador de Ações de Logísticas"
+              },
+              {
+                "coluna": 5,
+                "texto": "Franz Achatz (27) 99203-9461"
+              }
+            ]
+          },
+          {
+            "rotulo": "Comando Geral",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Fábio Salu (11) 99954- 5331"
+              },
+              {
+                "coluna": 3,
+                "texto": "Comando Administrativo"
+              },
+              {
+                "coluna": 5,
+                "texto": "Paulo Junior (27) 99203-8177"
+              }
+            ]
+          },
+          {
+            "rotulo": "Gerência SS",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Renata Pires (27) 99961-6303"
+              },
+              {
+                "coluna": 3,
+                "texto": "Polyanna Breda ( 27) 99763-8396"
+              },
+              {
+                "coluna": 5,
+                "texto": "Kamilla Costa (27) 98861-8256"
+              }
+            ]
+          },
+          {
+            "rotulo": "Recuperação de instalações",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Luciano Ferreira (27) 99269-2677"
+              },
+              {
+                "coluna": 4,
+                "texto": "AMBIPAR 0800-117-2020; 0800-707-7022; 0800-707-1767 / Emergência Química de Odorante"
+              }
+            ]
+          },
+          {
+            "rotulo": "Coordenação Ativos",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "Rodrigo Terasso (27) 99258-6618"
+              },
+              {
+                "coluna": 3,
+                "texto": "Joice de Almeida (27) 992030944"
+              },
+              {
+                "coluna": 5,
+                "texto": "Núcleo de Reportabilidade e Emergências ( 27) 3347-8977 / (27) 996962686"
+              }
+            ]
+          },
+          {
+            "rotulo": "Emergência ( Atendimento ao cliente)",
+            "celulas": [
+              {
+                "coluna": 1,
+                "texto": "(85) 339 27899"
+              },
+              {
+                "coluna": 2,
+                "texto": "0800 5950197"
+              },
+              {
+                "coluna": 4,
+                "texto": "117 Opção 1"
+              }
+            ]
+          }
+        ]
+      },
+      "riscos": [
+        {
+          "classificacao": "PALETEIRA",
+          "nome": "Condições gerais",
+          "ordem": 1
+        },
+        {
+          "classificacao": "SINALIZAÇÃO",
+          "nome": "Local",
+          "ordem": 2
+        },
+        {
+          "classificacao": "TREINAMENTO",
+          "nome": "Próprio",
+          "ordem": 3
+        }
+      ],
+      "itens": [
+        {
+          "secao": "verificacao",
+          "ordem": 1,
+          "texto": "Os componentes da equipe estão informados sobre o serviço a ser realizado?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 2,
+          "texto": "O(s) colaborador(es) esta(ao) usando os EPI adequado para a atividade? Regra de ouro nº03.",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 3,
+          "texto": "O(s) colaborador(es) da atividade estão em boas condições físicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 4,
+          "texto": "O(s) colaborador(es) da atividade estão em boas condições psicológicas?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "texto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 5,
+          "texto": "O(s) colaborador(es) esta(ao) com os treinamentos obrigatórios em dia?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 6,
+          "texto": "As condições climáticas estão favoráveis? (Chuvas intensas, risco de alagamento, ventos fortes, descargas atmosféricas)?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "nao",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "verificacao",
+          "ordem": 7,
+          "texto": "Existe algum impedimento para executar a atividade?",
+          "tipo": "eliminatorio",
+          "respostaBloqueante": "sim",
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": null
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 8,
+          "texto": "Condição dos pneus - Apto?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 9,
+          "texto": "Condição da alavanca - Apta para realizar atividade?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 10,
+          "texto": "Condições da lança? Apto?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 1
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 11,
+          "texto": "Local sinalizado evitando passagem de pedestres?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 2
+        },
+        {
+          "secao": "medida_preventiva",
+          "ordem": 12,
+          "texto": "Colaboradores estão aptos com treinamento?",
+          "tipo": "alerta",
+          "respostaBloqueante": null,
+          "evidencia": "foto",
+          "permiteNa": false,
+          "risco": 3
+        }
+      ]
+    }
+  ],
+  "atividades": [
+    {
+      "codigo": "Medição",
+      "descricao": "Medição",
+      "modeloAprCodigo": "APR 01",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Pré-operação de estação de gás natural",
+      "descricao": "Pré-operação de estação de gás natural",
+      "modeloAprCodigo": "APR 01",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Pré-operação de gasodutos (purga de gás)",
+      "descricao": "Pré-operação de gasodutos (purga de gás)",
+      "modeloAprCodigo": "APR 01",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Ação em caso de urgência e emergências com odorante (mercaptana)",
+      "descricao": "Ação em caso de urgência e emergências com odorante (mercaptana)",
+      "modeloAprCodigo": "APR 02",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Lavagem de Estação",
+      "descricao": "Lavagem de Estação",
+      "modeloAprCodigo": "APR 03",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "roçagem",
+      "descricao": "roçagem",
+      "modeloAprCodigo": "APR 03",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Teste, manutenção e válvulas",
+      "descricao": "Teste, manutenção e válvulas",
+      "modeloAprCodigo": "APR 03",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Tratamento em corrosão e pintura",
+      "descricao": "Tratamento em corrosão e pintura",
+      "modeloAprCodigo": "APR 03",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Pré-montagem e montagem de tubulação",
+      "descricao": "Pré-montagem e montagem de tubulação",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Reparo em dutos em carga de aço e polietileno",
+      "descricao": "Reparo em dutos em carga de aço e polietileno",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Soldagem e trepanação em linha operando",
+      "descricao": "Soldagem e trepanação em linha operando",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "comissionamento da unidade usuária",
+      "descricao": "comissionamento da unidade usuária",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Furação de tê de serviço",
+      "descricao": "Furação de tê de serviço",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Pinçamento de tubulação de PE 100; emergencia com o gasista de 1º atendimento",
+      "descricao": "Pinçamento de tubulação de PE 100; emergencia com o gasista de 1º atendimento",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Pinçamento de tubulação de PE 100; programado",
+      "descricao": "Pinçamento de tubulação de PE 100; programado",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Soldagem",
+      "descricao": "Soldagem",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Trabalho a frio",
+      "descricao": "Trabalho a frio",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "trabalho a quente",
+      "descricao": "trabalho a quente",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Trabalho em equipamentos elétricos",
+      "descricao": "Trabalho em equipamentos elétricos",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Trabalho escavação",
+      "descricao": "Trabalho escavação",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Trabalho movimentação carga",
+      "descricao": "Trabalho movimentação carga",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Trabalho radiografia industrial",
+      "descricao": "Trabalho radiografia industrial",
+      "modeloAprCodigo": "APR 04",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Interligação do ramal de gás natural até a central de GLP",
+      "descricao": "Interligação do ramal de gás natural até a central de GLP",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Adequação das instalações internas da unidade usuária",
+      "descricao": "Adequação das instalações internas da unidade usuária",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Análise de combustão",
+      "descricao": "Análise de combustão",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Assistência técnica a consumidores residenciais e comerciais",
+      "descricao": "Assistência técnica a consumidores residenciais e comerciais",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Atendimento de chamadas operacionais e emergenciais",
+      "descricao": "Atendimento de chamadas operacionais e emergenciais",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Instalação de regulador de pressão acoplado com medidor de vazão",
+      "descricao": "Instalação de regulador de pressão acoplado com medidor de vazão",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Instalação e conversão de GLP para gás natural nos equipamentos de clientes residenciais e comerciais (incluindo fogões, fornos, máquinas de secar roupa, aquecedores de passagem e acumulação, e outros equipamentos comerciais)",
+      "descricao": "Instalação e conversão de GLP para gás natural nos equipamentos de clientes residenciais e comerciais (incluindo fogões, fornos, máquinas de secar roupa, aquecedores de passagem e acumulação, e outros equipamentos comerciais)",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Liberação de serviços de reparo ou acoplamento de ramal à rede em carga",
+      "descricao": "Liberação de serviços de reparo ou acoplamento de ramal à rede em carga",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Queima de GLP residual da rede interna",
+      "descricao": "Queima de GLP residual da rede interna",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Substituição e regulagem da pressão de operação em regulador primário e secundário",
+      "descricao": "Substituição e regulagem da pressão de operação em regulador primário e secundário",
+      "modeloAprCodigo": "APR 05",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Espaço confinado",
+      "descricao": "Espaço confinado",
+      "modeloAprCodigo": "APR 06",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Trabalho em altura",
+      "descricao": "Trabalho em altura",
+      "modeloAprCodigo": "APR 06",
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "Inspeção operacional em estação de gás natural",
+      "descricao": "Inspeção operacional em estação de gás natural",
+      "modeloAprCodigo": null,
+      "origem": "tabela dinâmica",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.2",
+      "descricao": "Nível de óleo da bomba Semestral",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.7",
+      "descricao": "Verificar nível do óleo",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.8",
+      "descricao": "Verificar Nível óleo medidor",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.4.1",
+      "descricao": "Manut. Prev. - Compressor Ar",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.4.2",
+      "descricao": "Compressão Insp. Semanal",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.4.3",
+      "descricao": "Descompressão - Drenagem de cond",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.4.4",
+      "descricao": "Integridade mangotes - Check-list",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.5.1",
+      "descricao": "Manutenção de filtros",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.5.2",
+      "descricao": "Manutenção de filtros",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.5.3",
+      "descricao": "Manut. válvula de bloq. manual",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.6.2",
+      "descricao": "Troca óleo lubrificante e Filtro",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.6",
+      "descricao": "Verif. Aquecedor Pequeno Porte",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.7",
+      "descricao": "Verif. Aquecedor Grande Porte",
+      "modeloAprCodigo": "APR 01",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.6.3",
+      "descricao": "Manutenção Externa Cromatógrafo",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.6.1",
+      "descricao": "Calibração AIT COGN",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.9",
+      "descricao": "Limpeza Painel Solar - Mensal",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.5",
+      "descricao": "Verificar presença de insetos",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.6",
+      "descricao": "Verificação da Odorização Mensal",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.1.2",
+      "descricao": "Inspeção Elétrica no Retificador",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.1",
+      "descricao": "Preventiva Bancos de Baterias",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.10",
+      "descricao": "Calibração Cromatógrafo Bimestral",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.11",
+      "descricao": "Verificação Cromatógrafo Mensal",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração PSV",
+      "descricao": "CLB - Calibração PSV",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.1.1",
+      "descricao": "Verificação elétrica",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.13",
+      "descricao": "Requalificação de Cilindros Est",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.3.4",
+      "descricao": "Troca da senha",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "BOMBA EXTERNA – PÁTIO",
+      "descricao": "BOMBA EXTERNA – PÁTIO",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CHECK LIST EQUIPAMENTOS ELÉTRICOS",
+      "descricao": "CHECK LIST EQUIPAMENTOS ELÉTRICOS",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração - CALIBRADOR DE PRESSÃO",
+      "descricao": "CLB - Calibração - CALIBRADOR DE PRESSÃO",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração - CALIBRADOR TEMPERATURA",
+      "descricao": "CLB - Calibração - CALIBRADOR TEMPERATURA",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração DETECTOR DUTOS",
+      "descricao": "CLB - Calibração DETECTOR DUTOS",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração Explosímetro Semestral",
+      "descricao": "CLB - Calibração Explosímetro Semestral",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração FI",
+      "descricao": "CLB - Calibração FI",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração FQIT",
+      "descricao": "CLB - Calibração FQIT",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração HAND-HELD I",
+      "descricao": "CLB - Calibração HAND-HELD I",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração Medidor",
+      "descricao": "CLB - Calibração Medidor",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração MEGÔMETRO DIGITAL",
+      "descricao": "CLB - Calibração MEGÔMETRO DIGITAL",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração MILIOHMÍMETRO DIGITAL",
+      "descricao": "CLB - Calibração MILIOHMÍMETRO DIGITAL",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração PDI",
+      "descricao": "CLB - Calibração PDI",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração PDIT",
+      "descricao": "CLB - Calibração PDIT",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração PI",
+      "descricao": "CLB - Calibração PI",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração PIT",
+      "descricao": "CLB - Calibração PIT",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração Pressostato",
+      "descricao": "CLB - Calibração Pressostato",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração PT",
+      "descricao": "CLB - Calibração PT",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração TE",
+      "descricao": "CLB - Calibração TE",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração TERROMETRO",
+      "descricao": "CLB - Calibração TERROMETRO",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração TERROMETRO DIGITAL",
+      "descricao": "CLB - Calibração TERROMETRO DIGITAL",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração TIT",
+      "descricao": "CLB - Calibração TIT",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração-CALIBRADOR DE PROCESSO",
+      "descricao": "CLB - Calibração-CALIBRADOR DE PROCESSO",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "CLB - Calibração-CALIBRADOR DIGITAL",
+      "descricao": "CLB - Calibração-CALIBRADOR DIGITAL",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "Manutenção Lava Olhos",
+      "descricao": "Manutenção Lava Olhos",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "PREV. PREDIAL - SPDA TRIANUAL",
+      "descricao": "PREV. PREDIAL - SPDA TRIANUAL",
+      "modeloAprCodigo": "APR 02",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.1",
+      "descricao": "Drenagem Caixa de Válvula",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.2",
+      "descricao": "Limpeza e Drenagem Caixa Válvula Anual",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.3",
+      "descricao": "Limpeza e Drenagem Caixa Válvula Anual",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.4",
+      "descricao": "Limpeza e Drenagem Caixa Válvula Anual",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.7",
+      "descricao": "Limpeza e Drenagem Caixa Válvula Anual",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.8",
+      "descricao": "Limpeza e Drenagem Caixa Válvula Anual",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.5",
+      "descricao": "Limpeza e Drenagem Caixa Válvula Trimestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.6",
+      "descricao": "Limpeza e Drenagem Caixa Válvula Semestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.9",
+      "descricao": "Limpeza e Drenagem Caixa Válvula Semestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.10",
+      "descricao": "Roçagem Semestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.11",
+      "descricao": "Roçagem Faixa Trimestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.12",
+      "descricao": "Roçagem Bimestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.13",
+      "descricao": "Lavagem Trimestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.14",
+      "descricao": "Lavagem Bimestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.7.15",
+      "descricao": "Drenagem Semestral",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.1",
+      "descricao": "Leitura Retificador",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.10",
+      "descricao": "Sistema de proteção catódica",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.11",
+      "descricao": "Insp.Dutos metálicos enterrados",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.12",
+      "descricao": "Inspeção visual com Rapel",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.2",
+      "descricao": "INSPEÇÃO SPC",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.3",
+      "descricao": "Inspeção Visual – Tubulação",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.4",
+      "descricao": "Inspeção Visual",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.5",
+      "descricao": "Inspeção Visual",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.8",
+      "descricao": "Inspeção em válvula enterrada",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.2.9",
+      "descricao": "Inspeção Visual – UMD",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "8.4.5",
+      "descricao": "NR-13-INSP VASO CATEGORIA III",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "Inspeção Visual Caixa de válvula de PEAD",
+      "descricao": "Inspeção Visual Caixa de válvula de PEAD",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    },
+    {
+      "codigo": "PMP 7.3.2",
+      "descricao": "Inspeção tubulação incêndio",
+      "modeloAprCodigo": "APR 03",
+      "origem": "plano SAP",
+      "provisorio": true
+    },
+    {
+      "codigo": "INSPEÇÃO E FAIXA ACOMPANHAMENTO DE OBRAS",
+      "descricao": "INSPEÇÃO E FAIXA ACOMPANHAMENTO DE OBRAS",
+      "modeloAprCodigo": "APR 07",
+      "origem": "plano SAP, sem código",
+      "provisorio": true
+    }
+  ]
+}

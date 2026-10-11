@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791687973924,
+      "tag": "0000_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791687976047,
+      "tag": "0001_gatilhos",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791717086723,
+      "tag": "0002_os_cancelamento",
+      "breakpoints": true
+    }
+  ]
+}

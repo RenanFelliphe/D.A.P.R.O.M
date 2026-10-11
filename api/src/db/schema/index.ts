@@ -1,0 +1,9 @@
+/** Schema completo do banco. As migrações em `db/migrations` são geradas a partir daqui (`pnpm db:generate`). */
+export * from "./plataforma";
+export * from "./usuarios";
+export * from "./modelos-apr";
+export * from "./sap";
+export * from "./apr";
+export * from "./execucao";
+export * from "./eventos";
+export * from "./impedimento";

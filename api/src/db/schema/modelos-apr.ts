@@ -1,0 +1,94 @@
+import { boolean, check, date, index, integer, jsonb, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { emLista, instante } from "./comum";
+
+export const ITEM_SECOES = ["verificacao", "medida_preventiva"] as const;
+export const ITEM_TIPOS = ["eliminatorio", "alerta"] as const;
+export const ITEM_EVIDENCIAS = ["foto", "texto"] as const;
+export const RESPOSTAS_BLOQUEANTES = ["sim", "nao"] as const;
+
+/** Um modelo publicado é imutável: editar cria versão nova (gatilho em `gatilhos.sql`). */
+export const modeloApr = pgTable(
+  "modelo_apr",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** APR 01 … APR 09. */
+    codigo: text().notNull(),
+    versao: integer().notNull(),
+    /** "DATA" do documento em papel. */
+    dataDocumento: date({ mode: "string" }),
+    titulo: text().notNull(),
+    /** Plano de atendimento a emergências: grupos de contatos. */
+    pae: jsonb(),
+    /** Nulo = rascunho. */
+    publicadoEm: instante(),
+  },
+  (t) => [unique("modelo_apr_codigo_versao_key").on(t.codigo, t.versao), check("modelo_apr_versao_check", sql`${t.versao} > 0`)],
+).enableRLS();
+
+/**
+ * A planilha das medidas preventivas tem três níveis: Classificação → Risco → Medida (Veicular → Insolação →
+ * "Faz uso do protetor solar?"). O risco é um campo que a equipe marca "( )" na APR; só as medidas dos riscos
+ * marcados são respondidas (as dos outros ficam em branco no papel). Imutável junto com o modelo publicado.
+ */
+export const riscoModeloApr = pgTable(
+  "risco_modelo_apr",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    modeloAprId: uuid()
+      .notNull()
+      .references(() => modeloApr.id, { onDelete: "cascade" }),
+    /** "Classificação" da planilha (Veicular, Ambiente de trabalho). */
+    classificacao: text().notNull(),
+    /** "Riscos" da planilha (Insolação, Áreas molhadas). */
+    nome: text().notNull(),
+    ordem: integer().notNull(),
+  },
+  (t) => [unique("risco_modelo_apr_modelo_apr_id_ordem_key").on(t.modeloAprId, t.ordem)],
+).enableRLS();
+
+export const itemModeloApr = pgTable(
+  "item_modelo_apr",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    modeloAprId: uuid()
+      .notNull()
+      .references(() => modeloApr.id, { onDelete: "cascade" }),
+    secao: text({ enum: ITEM_SECOES }).notNull(),
+    /** O risco que a medida controla; só as medidas preventivas têm, os itens de verificação não. */
+    riscoId: uuid().references(() => riscoModeloApr.id, { onDelete: "cascade" }),
+    /** Ordem da pergunta na tela. */
+    ordem: integer().notNull(),
+    texto: text().notNull(),
+    respostaBloqueante: text({ enum: RESPOSTAS_BLOQUEANTES }),
+    tipo: text({ enum: ITEM_TIPOS }).notNull(),
+    evidencia: text({ enum: ITEM_EVIDENCIAS }).notNull().default("foto"),
+    permiteNa: boolean().notNull().default(false),
+  },
+  (t) => [
+    unique("item_modelo_apr_modelo_apr_id_ordem_key").on(t.modeloAprId, t.ordem),
+    check("item_modelo_apr_secao_check", emLista(t.secao, ITEM_SECOES)),
+    check("item_modelo_apr_resposta_bloqueante_check", emLista(t.respostaBloqueante, RESPOSTAS_BLOQUEANTES)),
+    check("item_modelo_apr_tipo_check", emLista(t.tipo, ITEM_TIPOS)),
+    check("item_modelo_apr_evidencia_check", emLista(t.evidencia, ITEM_EVIDENCIAS)),
+    check("item_modelo_apr_risco_da_medida", sql`(${t.secao} = 'medida_preventiva') = (${t.riscoId} is not null)`),
+    index("item_modelo_apr_risco_idx").on(t.riscoId).where(sql`${t.riscoId} is not null`),
+  ],
+).enableRLS();
+
+/**
+ * Código do plano de manutenção do SAP → modelo de APR. `modeloAprCodigo` não é chave estrangeira
+ * porque o código do modelo só é único junto com a versão; a api valida que existe uma versão publicada.
+ */
+export const atividade = pgTable(
+  "atividade",
+  {
+    /** Ex.: 8.7.1. */
+    codigo: text().primaryKey(),
+    descricao: text().notNull(),
+    modeloAprCodigo: text(),
+    /** Código inventado na carga inicial, à espera do código real do SAP. */
+    provisorio: boolean().notNull().default(false),
+  },
+  (t) => [index("atividade_sem_modelo_idx").on(t.codigo).where(sql`${t.modeloAprCodigo} is null`)],
+).enableRLS();
