@@ -4,7 +4,7 @@
 
 D.A.P.R.O.M é uma proposta de digitalização do fluxo de Ordens de Manutenção (OM/OS) e Análises Preliminares de Risco (APR), do planejamento à execução em campo. A solução foi concebida para combinar uma experiência móvel para equipes operacionais com um painel web para gestão, mantendo o histórico, as evidências e as assinaturas associados a cada atividade.
 
-> **Estado atual:** este repositório contém um protótipo navegável das telas, feito em Next.js (React + TypeScript) na pasta `web`,, além de especificações e materiais de referência. Não contém ainda o backend, o aplicativo React Native ou o painel .NET de produção. As telas e os registros apresentados na demonstração usam dados fictícios e não se conectam ao SAP nem a serviços externos.
+> **Estado atual:** este repositório contém um protótipo navegável das telas, feito em Next.js (React + TypeScript) na pasta `web`, além de especificações e materiais de referência. Não contém ainda a `api`, o aplicativo `mobile` (React Native) nem a versão funcional do painel `web`, que hoje é só a interface com dados simulados. As telas e os registros apresentados na demonstração usam dados fictícios e não se conectam ao SAP nem a serviços externos.
 
 ## Contexto e objetivo
 
@@ -67,13 +67,13 @@ A arquitetura abaixo é a direção registrada na especificação; **não está 
 
 | Componente planejado | Tecnologia | Responsabilidade |
 |---|---|---|
-| Aplicativo de campo para Android | React Native, com armazenamento local SQLite | APR, execução e operação offline |
-| Painel web | .NET 10 com Blazor | Planejamento, gestão, modelos, indicadores e exportações |
-| API/backend | Node.js com TypeScript | Regras de negócio, autorização, integrações, sincronização, PDF e e-mail |
-| Persistência e serviços gerenciados | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso mediado pelo backend |
+| Aplicativo de campo para Android (`mobile`) | React Native, com armazenamento local SQLite | APR, execução e operação offline |
+| Painel web (`web`) | Next.js (React + TypeScript) | Planejamento, gestão, modelos, indicadores e exportações |
+| API (`api`) | Node.js com TypeScript | Regras de negócio, autorização, integrações, sincronização, PDF e e-mail |
+| Persistência e serviços gerenciados | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso mediado pela API |
 | Implantação | Coolify e Docker | Deploy das aplicações do monorepo |
 
-O monorepo planejado terá as pastas `/backend`, `/frontend` e `/mobile`, com Dockerfile para cada aplicação. A integração SAP deve permitir alternar entre uma API simulada, com contrato compatível e dados fictícios, e a API real por configuração de endereço e credenciais. A planilha continua sendo uma alternativa de leitura.
+O monorepo tem as pastas `api`, `web` e `mobile`, e cada aplicação terá seu Dockerfile. A integração SAP deve permitir alternar entre uma API simulada, com contrato compatível e dados fictícios, e a API real por configuração de endereço e credenciais. A planilha continua sendo uma alternativa de leitura.
 
 A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramento deve poder ser exportado para baixa manual. MFA/SSO corporativo e associação de dispositivos também permanecem como decisões a validar antes de uma implantação real.
 
