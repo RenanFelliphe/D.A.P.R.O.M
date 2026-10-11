@@ -73,7 +73,7 @@ A arquitetura abaixo é a direção registrada na especificação; **não está 
 | Persistência e serviços gerenciados | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso mediado pela API |
 | Implantação | Coolify e Docker | Deploy das aplicações do monorepo |
 
-O monorepo tem as pastas `api`, `web` e `mobile`, e cada aplicação terá seu Dockerfile. A integração SAP deve permitir alternar entre uma API simulada, com contrato compatível e dados fictícios, e a API real por configuração de endereço e credenciais. A planilha continua sendo uma alternativa de leitura.
+O monorepo tem as pastas `api`, `web` e `mobile`; `api` e `web` já têm Dockerfile e sobem juntos pelo `docker-compose.yml`, e o do `mobile` (que gera o APK) virá com o app. A integração SAP deve permitir alternar entre uma API simulada, com contrato compatível e dados fictícios, e a API real por configuração de endereço e credenciais. A planilha continua sendo uma alternativa de leitura.
 
 A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramento deve poder ser exportado para baixa manual. MFA/SSO corporativo e associação de dispositivos também permanecem como decisões a validar antes de uma implantação real.
 
@@ -89,14 +89,27 @@ pnpm dev        # http://localhost:3000, abre em /app/entrar
 
 A área do técnico fica em `/app/*`, o painel de gestão em `/web/*` e o PDF da OS executada em `/doc/pdf`. Mais detalhes em [web/README.md](./web/README.md).
 
+### Com Docker (`api` + `web`)
+
+A `api` precisa de um Supabase (Postgres, Auth e Storage), na nuvem ou local. Copie `.env.example` para `.env`, preencha as quatro variáveis obrigatórias e suba:
+
+```bash
+cp .env.example .env
+docker compose up --build   # api em http://localhost:3333 (GET /saude), web em http://localhost:3000
+```
+
+A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta, e o simulador do SAP já vem ligado. Detalhes e a lista de rotas em [api/README.md](./api/README.md). O `mobile` não entra no compose: é gerado como APK.
+
 ## Estrutura do repositório
 
 ```text
 .
 ├── README.md
 ├── DesignDoc.md
-├── api/                        # Backend (ainda não iniciado)
-├── web/                        # Telas do painel e do técnico em Next.js + React + TypeScript
+├── api/                        # Backend (rotas, regras, banco, PDF e tarefas), com Dockerfile
+├── docker-compose.yml          # Sobe api e web no desenvolvimento
+├── .env.example                # Variáveis da api para o compose
+├── web/                        # Telas do painel e do técnico em Next.js + React + TypeScript, com Dockerfile
 ├── mobile/                     # Aplicativo de campo (ainda não iniciado)
 └── base/
     ├── .design/
