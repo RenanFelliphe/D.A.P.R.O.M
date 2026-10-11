@@ -69,7 +69,15 @@ export class AuthSupabase implements ProvedorAuth {
 
   async criarConta(email: string, senha: string) {
     const r = await this.chamar("/admin/users", { method: "POST", body: { email, password: senha, email_confirm: true } });
-    if (!r.ok) throw new ErroApi(502, "auth_indisponivel", "Não foi possível criar a conta de acesso");
+    if (r.status === 422 || r.status === 400) {
+      // Regra do Supabase Auth (senha fraca, e-mail já usado…): a mensagem dele serve ao usuário.
+      const motivo = r.corpo?.msg ?? r.corpo?.message ?? r.corpo?.error_description;
+      throw new ErroApi(422, "conta_recusada", motivo ? `O serviço de acesso recusou a conta: ${motivo}` : "O serviço de acesso recusou a conta");
+    }
+    if (!r.ok) {
+      console.error(`Supabase Auth: criar conta falhou (${r.status})`, r.corpo);
+      throw new ErroApi(502, "auth_indisponivel", "Não foi possível criar a conta de acesso");
+    }
     return { id: r.corpo.id as string };
   }
 

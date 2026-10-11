@@ -13,7 +13,7 @@ import { conectar } from "../src/db/conexao";
 import { usuario } from "../src/db/schema";
 import { AuthSupabase, emailInterno } from "../src/servicos/auth";
 
-const { values } = parseArgs({ options: { matricula: { type: "string" }, nome: { type: "string" }, senha: { type: "string" } }, allowPositionals: true });
+const { values } = parseArgs({ args: process.argv.slice(2).filter((a) => a !== "--"), options: { matricula: { type: "string" }, nome: { type: "string" }, senha: { type: "string" } }, allowPositionals: true });
 const { matricula, nome, senha } = values;
 const { DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 if (!matricula || !nome || !senha || !DATABASE_URL || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -36,7 +36,7 @@ try {
     console.error(`A matrícula ${matricula} já está cadastrada.`);
     process.exit(1);
   }
-  const auth = new AuthSupabase(SUPABASE_URL.replace(/\/$/, ""), SUPABASE_SERVICE_ROLE_KEY);
+  const auth = new AuthSupabase(new URL(SUPABASE_URL).origin, SUPABASE_SERVICE_ROLE_KEY);
   const conta = await auth.criarConta(emailInterno(matricula), senha);
   try {
     await db.insert(usuario).values({ id: conta.id, nome, matricula, perfil: "admin", senhaProvisoria: true });

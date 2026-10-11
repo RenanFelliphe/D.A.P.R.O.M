@@ -48,8 +48,9 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     supabaseUrl: new URL(e.SUPABASE_URL).origin,
     supabaseServiceRoleKey: e.SUPABASE_SERVICE_ROLE_KEY,
     supabaseJwtSecret: e.SUPABASE_JWT_SECRET,
-    sapApiUrl: e.SAP_API_URL.replace(/\/$/, ""),
-    sapApiToken: e.SAP_API_TOKEN,
+    // Com o simulador ligado, o endereço e o token têm padrão: a própria api responde em /sap-simulado.
+    sapApiUrl: e.SAP_API_URL.replace(/\/$/, "") || (e.SAP_SIMULADO ? `http://127.0.0.1:${e.PORT}/sap-simulado` : ""),
+    sapApiToken: e.SAP_API_TOKEN || (e.SAP_SIMULADO ? "token-de-desenvolvimento" : ""),
     sapSimulado: e.SAP_SIMULADO,
     sapLeituraIntervaloMin: e.SAP_LEITURA_INTERVALO_MIN,
     smtpUrl: e.SMTP_URL,
