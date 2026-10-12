@@ -28,7 +28,7 @@ export default async function PdfDaOsPage({ params }: PageProps<"/doc/os/[id]">)
     <Screen>
       <nav className="crumb" aria-label="Você está em">
         <Link href={rotas.web.quadro} style={{ fontWeight: 500 }}>
-          Quadro de OS
+          Ordem de Serviço
         </Link>{" "}
         /{" "}
         <Link href={rotas.web.os(os.id)} className="mono" style={{ fontWeight: 500 }}>

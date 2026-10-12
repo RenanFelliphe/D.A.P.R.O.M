@@ -1,7 +1,9 @@
-import Link from "next/link";
+import type { Alerta } from "@/components/web/alertas/tipos";
 import { Icon } from "@/components/ui/Icon";
 import { sair } from "@/lib/acoes-sessao";
-import { rotas } from "@/lib/rotas";
+import { BuscaBarra } from "./BuscaBarra";
+import { MenuUsuario } from "./MenuUsuario";
+import { SinoAlertas } from "./SinoAlertas";
 
 export interface UsuarioDaBarra {
   iniciais: string;
@@ -15,7 +17,10 @@ function Marca({ subtitulo }: { subtitulo: string }) {
       <span className="logo">
         <Icon name="shield" size={18} />
       </span>
-      D.A.P.R.O.M <small>{subtitulo}</small>
+      <span className="brand-txt">
+        D.A.P.R.O.M
+        <small>{subtitulo}</small>
+      </span>
     </div>
   );
 }
@@ -37,34 +42,34 @@ function Usuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
   );
 }
 
-/** Barra superior do painel de gestão: marca, busca por ordem, alertas e usuário. */
-export function BarraGestao({ usuario, naoLidos }: { usuario: UsuarioDaBarra; naoLidos: number }) {
+/** Barra superior do painel de gestão: marca, busca global, alertas e usuário. */
+export function BarraGestao({
+  usuario,
+  naoLidos,
+  recentes,
+}: {
+  usuario: UsuarioDaBarra;
+  naoLidos: number;
+  recentes: Alerta[];
+}) {
   return (
     <header className="topbar">
       <Marca subtitulo="Painel de gestão" />
-      <form className="searchbox" action={rotas.web.quadro} method="get" role="search">
-        <Icon name="search" />
-        <label className="sr" htmlFor="busca">
-          Buscar pelo número da ordem
-        </label>
-        <input id="busca" name="busca" type="search" placeholder="Buscar nº da ordem" />
-      </form>
+      <BuscaBarra area="web" />
       <div className="right">
-        <Link className="bell" href={rotas.web.alertas} aria-label="Alertas">
-          <Icon name="bell" size={18} />
-          {naoLidos > 0 && <b>{naoLidos}</b>}
-        </Link>
-        <Usuario {...usuario} />
+        <SinoAlertas naoLidos={naoLidos} recentes={recentes} />
+        <MenuUsuario {...usuario} />
       </div>
     </header>
   );
 }
 
-/** Barra superior da área do técnico: marca, situação da conexão e usuário. */
+/** Barra superior da área do técnico: marca, busca global, situação da conexão e usuário. */
 export function BarraTecnico({ usuario }: { usuario: UsuarioDaBarra }) {
   return (
     <header className="topbar">
       <Marca subtitulo="Técnico em campo" />
+      <BuscaBarra area="app" />
       <div className="right">
         <span className="net on">
           <Icon name="check" size={16} />

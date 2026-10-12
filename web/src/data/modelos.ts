@@ -1,11 +1,14 @@
-/** Tipos e rótulos da tela de modelos de APR (formato das respostas de `GET /modelos-apr` e `GET /atividades`). */
+/** Tipos e rótulos da seção APR (formato das respostas de `GET /modelos-apr` e `GET /atividades`). */
+
+import type { Agrupamento } from "@/components/web/importacao/tipos";
+import type { OsStatus } from "@/lib/tipos";
 
 export type RespostaBloqueante = "sim" | "nao";
 export type TipoItem = "eliminatorio" | "alerta";
 export type EvidenciaItem = "foto" | "texto";
 export type SecaoItem = "verificacao" | "medida_preventiva";
 
-/** Resumo de uma versão (`GET /modelos-apr`). */
+/** Resumo de uma versão (`GET /modelos-apr` e `GET /modelos-apr/{codigo}`). */
 export interface ResumoModelo {
   id: string;
   codigo: string;
@@ -13,8 +16,95 @@ export interface ResumoModelo {
   titulo: string;
   data_documento: string | null;
   publicado_em: string | null;
+  /** Modelo excluído depois de publicado: vale para todas as versões do código. */
+  arquivado_em: string | null;
   rascunho: boolean;
   itens_total: number;
+  /** APRs respondidas nesta versão. */
+  aprs_total: number;
+  /** Atividades do SAP ligadas ao código (igual em todas as versões). */
+  atividades_total: number;
+}
+
+/** `GET /modelos-apr/{codigo}`: o modelo e todas as versões dele, da mais nova à mais antiga. */
+export interface DetalheModelo {
+  codigo: string;
+  titulo: string;
+  arquivado_em: string | null;
+  versoes: ResumoModelo[];
+}
+
+/** `GET /modelos-apr/{codigo}/uso`: por onde as OS chegam ao modelo e o que já foi respondido nele. */
+export interface UsoDoModelo {
+  codigo: string;
+  atividades: { codigo: string; descricao: string; provisorio: boolean }[];
+  os_abertas: {
+    total: number;
+    recentes: { id: string; numero_ordem: string | null; titulo: string; status: OsStatus; codigo_atividade: string | null; data_inicio_prog: string; equipe: string }[];
+  };
+  aprs: { total: number; bloqueadas: number; ultima_em: string | null };
+}
+
+/** Item reprovado num ranking do Diagnóstico: quantas vezes recebeu a resposta que o modelo marca. */
+export interface ItemReprovado {
+  modelo: string;
+  texto: string;
+  secao: SecaoItem;
+  total: number;
+}
+
+/** `GET /aprs/resumo`: o dashboard de APR no período (o filtro comum dos dashboards). */
+export interface ResumoDasAprs {
+  periodo: string;
+  agrupamento: Agrupamento;
+  de: string;
+  ate: string;
+  totais: { aprs: number; aprovadas: number; bloqueadas: number; alertas: number; sem_modelo_ligado: number };
+  anterior: { aprs: number; bloqueadas: number };
+  serie: { inicio: string; fim: string; aprovadas: number; bloqueadas: number }[];
+  itens_que_bloqueiam: ItemReprovado[];
+  alertas_registrados: ItemReprovado[];
+  por_modelo: { codigo: string; titulo: string; aprs: number; bloqueadas: number }[];
+  por_equipe: { id: string; nome: string; aprs: number; bloqueadas: number }[];
+}
+
+/** As versões de um código, com a em uso (publicada mais recente) e o rascunho à mão. */
+export interface GrupoModelo {
+  codigo: string;
+  /** Título da versão em uso; num modelo que ainda não foi publicado, o do rascunho. */
+  titulo: string;
+  versoes: ResumoModelo[];
+  emUso?: ResumoModelo;
+  rascunho?: ResumoModelo;
+  arquivadoEm: string | null;
+  aprsTotal: number;
+  atividadesTotal: number;
+}
+
+/** Agrupa as versões (já ordenadas por código e versão decrescente) por código do modelo. */
+export function agruparModelos(modelos: ResumoModelo[]): GrupoModelo[] {
+  const porCodigo = new Map<string, ResumoModelo[]>();
+  for (const m of modelos) porCodigo.set(m.codigo, [...(porCodigo.get(m.codigo) ?? []), m]);
+  return [...porCodigo.entries()].map(([codigo, versoes]) => {
+    const emUso = versoes.find((v) => !v.rascunho);
+    const rascunho = versoes.find((v) => v.rascunho);
+    return {
+      codigo,
+      titulo: (emUso ?? versoes[0]!).titulo,
+      versoes,
+      emUso,
+      rascunho,
+      arquivadoEm: versoes[0]!.arquivado_em,
+      aprsTotal: versoes.reduce((soma, v) => soma + v.aprs_total, 0),
+      atividadesTotal: versoes[0]!.atividades_total,
+    };
+  });
+}
+
+/** Próximo código livre no padrão dos documentos (`APR 10`), contando os modelos excluídos. */
+export function proximoCodigo(codigos: string[]): string {
+  const numeros = codigos.map((c) => /^APR\s*0*(\d+)$/i.exec(c.trim())?.[1]).filter(Boolean).map(Number);
+  return `APR ${String(Math.max(0, ...numeros) + 1).padStart(2, "0")}`;
 }
 
 export interface RiscoModelo {
@@ -55,6 +145,7 @@ export interface ModeloCompleto {
   data_documento: string | null;
   pae: Pae | null;
   publicado_em: string | null;
+  arquivado_em: string | null;
   rascunho: boolean;
   riscos: RiscoModelo[];
   itens: ItemModelo[];

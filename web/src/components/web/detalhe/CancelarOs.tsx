@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { chamar } from "@/lib/cliente-api";
 
-/** Cancela a OS manual (`POST /os/{id}/cancelar`): pede a justificativa e confirma. Só aparece para OS manual liberada ou pendente. */
+/** Cancela a OS de apoio (`POST /os/{id}/cancelar`): pede a justificativa e confirma. Só aparece para OS de apoio liberada ou pendente. */
 export function CancelarOs({ osId }: { osId: string }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
@@ -32,7 +32,7 @@ export function CancelarOs({ osId }: { osId: string }) {
   if (!aberto) {
     return (
       <button className="btn btn-od btn-sm" type="button" onClick={() => setAberto(true)} style={{ alignSelf: "flex-start" }}>
-        Cancelar OS manual
+        Cancelar OS de apoio
       </button>
     );
   }

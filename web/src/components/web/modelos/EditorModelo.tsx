@@ -216,11 +216,12 @@ function LinhaItem({ item, numero, total, verificacao, aoMudar, aoMover, aoRemov
 // ---- Editor -----------------------------------------------------------------------------------------------------
 
 /**
- * Editor do rascunho de uma versão do modelo (só a Segurança do Trabalho chega aqui). Edita título, itens (texto, tipo,
- * resposta bloqueante, evidência, NA), riscos e medidas; o PAE fica como está, com um campo JSON para quem precisar
- * ajustá-lo. "Salvar" faz o `PUT` que substitui o conteúdo do rascunho; "Publicar" salva o que falta e publica.
+ * Editor do rascunho de uma versão do modelo (só a Segurança do Trabalho e o administrador chegam aqui). Edita título,
+ * itens (texto, tipo, resposta bloqueante, evidência, NA), riscos e medidas; o PAE fica como está, com um campo JSON
+ * para quem precisar ajustá-lo. "Salvar" faz o `PUT` que substitui o conteúdo do rascunho; "Publicar" salva o que falta
+ * e publica. `temPublicada` diz se o modelo já tem uma versão publicada: sem ela, descartar o rascunho apaga o modelo.
  */
-export function EditorModelo({ modelo }: { modelo: ModeloCompleto }) {
+export function EditorModelo({ modelo, temPublicada }: { modelo: ModeloCompleto; temPublicada: boolean }) {
   const router = useRouter();
   const exibirAviso = useToast();
   const [estado, setEstado] = useState<Estado>(() => paraEstado(modelo));
@@ -273,11 +274,14 @@ export function EditorModelo({ modelo }: { modelo: ModeloCompleto }) {
     });
 
   const descartar = () => {
-    if (!window.confirm(`Descartar o rascunho v${modelo.versao} da ${modelo.codigo}? As alterações serão perdidas.`)) return;
+    const pergunta = temPublicada
+      ? `Descartar o rascunho v${modelo.versao} da ${modelo.codigo}? As alterações serão perdidas.`
+      : `Descartar o rascunho v${modelo.versao} da ${modelo.codigo}? Como ele nunca foi publicado, o modelo deixa de existir.`;
+    if (!window.confirm(pergunta)) return;
     void executar("descartar", async () => {
       await chamar("DELETE", caminho);
-      exibirAviso("Rascunho descartado.");
-      router.push(`${rotas.web.modelos}?codigo=${encodeURIComponent(modelo.codigo)}`);
+      exibirAviso(temPublicada ? "Rascunho descartado." : `${modelo.codigo} descartado.`);
+      router.push(temPublicada ? rotas.web.modelo(modelo.codigo) : rotas.web.modelos);
       router.refresh();
     });
   };
@@ -285,7 +289,7 @@ export function EditorModelo({ modelo }: { modelo: ModeloCompleto }) {
   return (
     <Panel style={{ padding: "20px 22px", gap: 16 }}>
       <div className="row between wrap" style={{ alignItems: "flex-start" }}>
-        <div className="stack g4" style={{ flex: 1, minWidth: 260 }}>
+        <div className="stack g4 grow">
           <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
             {`${modelo.codigo} · v${modelo.versao} · rascunho`}
           </span>
@@ -297,7 +301,7 @@ export function EditorModelo({ modelo }: { modelo: ModeloCompleto }) {
             style={{ fontSize: 18, fontWeight: 600 }}
           />
         </div>
-        <div className="field" style={{ width: 190 }}>
+        <div className="field campo-data">
           <label>
             Data do documento
             <input className="input" type="date" value={estado.dataDocumento} onChange={(e) => mudar({ dataDocumento: e.target.value })} style={{ height: 44 }} />
@@ -306,8 +310,9 @@ export function EditorModelo({ modelo }: { modelo: ModeloCompleto }) {
       </div>
 
       <Notice tone="info" icon="info">
-        Você está editando o rascunho da v{modelo.versao}. A versão em uso continua valendo para as APRs novas até a publicação; as APRs já
-        preenchidas ficam ligadas à versão que usaram.
+        {temPublicada
+          ? `Você está editando o rascunho da v${modelo.versao}. A versão em uso continua valendo para as APRs novas até a publicação; as APRs já preenchidas ficam ligadas à versão que usaram.`
+          : "Modelo novo, ainda em rascunho: o técnico só o vê depois da publicação. Depois de publicar, ligue as atividades dele na aba Atividades para que as OS dessas atividades o usem."}
       </Notice>
 
       {erro && (
@@ -347,13 +352,13 @@ export function EditorModelo({ modelo }: { modelo: ModeloCompleto }) {
         {estado.riscos.map((risco, ri) => (
           <div key={risco.chave} className="grupo-risco">
             <div className="row wrap" style={{ alignItems: "flex-end" }}>
-              <div className="field" style={{ width: 200 }}>
+              <div className="field campo-class">
                 <label>
                   Classificação
                   <input className="input" style={{ height: 38 }} value={risco.classificacao} onChange={(e) => mudarRisco(ri, { classificacao: e.target.value })} />
                 </label>
               </div>
-              <div className="field grow" style={{ minWidth: 200 }}>
+              <div className="field grow campo-risco">
                 <label>
                   Risco
                   <input className="input" style={{ height: 38 }} value={risco.nome} onChange={(e) => mudarRisco(ri, { nome: e.target.value })} />

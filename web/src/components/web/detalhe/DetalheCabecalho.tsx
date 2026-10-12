@@ -14,7 +14,7 @@ export function DetalheCabecalho({ os }: { os: OsDetalhe }) {
     <>
       <div className="crumb">
         <Link href={rotas.web.quadro} style={{ fontWeight: 500 }}>
-          Quadro de OS
+          Ordem de Serviço
         </Link>{" "}
         / <span className="mono">OS {numero}</span>
       </div>
@@ -32,7 +32,7 @@ export function DetalheCabecalho({ os }: { os: OsDetalhe }) {
               {os.tipo === "preventiva" ? "Preventiva" : "Corretiva"}
               {os.tipo_atividade ? ` · ${os.tipo_atividade}` : ""}
             </Badge>
-            {os.origem === "manual" && <Badge tone="neu">OS manual</Badge>}
+            {os.origem === "apoio" && <Badge tone="neu">OS de apoio</Badge>}
             {os.local_instalacao.critico && <Badge tone="crit">Local crítico</Badge>}
             {os.atrasada && <Badge tone="blq">Atrasada</Badge>}
           </div>

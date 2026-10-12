@@ -75,7 +75,7 @@ export function FiltrosOs({ ativo, contagem, total }: FiltrosOsProps) {
             type="search"
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
-            placeholder="Buscar por número, título ou equipamento"
+            placeholder="Buscar por número, título, local, nota ou cliente"
             aria-label="Buscar OS"
             style={{ minWidth: 280 }}
           />

@@ -19,6 +19,8 @@
   --brand-bg: #E2EEF3;
   --brand-bd: #B8D3DE;
   --brand-ink: #0D3F52;
+  --tint: #F2F8FA;
+  --mark: #FFE89A;
   --dark: #17212B;
   --dark2: #22303C;
   --dark-txt: #C4CDD5;
@@ -40,8 +42,19 @@
   --crit-bg: #FFF3EC;
   --crit-bd: #E7B394;
   --crit: #A3420D;
+  /* Origens de entrada das OS (gráficos da Importação de OS): paleta categórica validada para daltonismo */
+  --o-api: #2A78D6;
+  --o-api-bg: #E4EEFB;
+  --o-api-ink: #1C5CAB;
+  --o-arq: #EB6834;
+  --o-arq-bg: #FDEBE3;
+  --o-arq-ink: #B4461A;
+  --o-cam: #1BAF7A;
+  --o-cam-bg: #DDF4EA;
+  --o-cam-ink: #0E7A53;
   --sans: var(--font-plex-sans), 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, Consolas, monospace;
   --topbar-h: 64px;
   --side-w: 256px;
+  --bottombar-h: 60px;
 }

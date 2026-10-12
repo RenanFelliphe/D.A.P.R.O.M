@@ -1,0 +1,806 @@
+/* Responsividade do painel de gestão (admin, supervisor, analista e Segurança).
+   Pontos de quebra (largura da janela):
+   - até 1279px: notebook pequeno e tablet na horizontal
+   - até 1023px: tablet na vertical (colunas laterais passam para baixo)
+   - até 767px: celular grande e tablet pequeno
+   - até 479px: celular
+   Carregado por último para valer sobre as regras de desktop. */
+
+/* ===== Regras que valem em qualquer largura ===== */
+
+.page > *,
+.panel,
+.two > *,
+.cols > * {
+  min-width: 0
+}
+
+/* Tabela larga rola dentro do próprio painel em vez de estourar a página */
+.tbw {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch
+}
+
+.tbw table.tb {
+  min-width: 560px
+}
+
+.tb td,
+.tb th {
+  overflow-wrap: anywhere
+}
+
+.tb td.acoes-linha {
+  overflow-wrap: normal
+}
+
+.pdf-view {
+  overflow-x: auto;
+  align-items: safe center
+}
+
+.pdf {
+  flex: none
+}
+
+.dlg {
+  max-height: calc(100dvh - 48px)
+}
+
+.dlg-corpo {
+  overflow-y: auto
+}
+
+.two.lateral-270 {
+  grid-template-columns: 270px minmax(0, 1fr)
+}
+
+.two.lateral-340 {
+  grid-template-columns: 340px minmax(0, 1fr)
+}
+
+.dl.d2 {
+  grid-template-columns: repeat(2, 1fr)
+}
+
+.decide.um {
+  grid-template-columns: 1fr
+}
+
+.bcol-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px
+}
+
+.busca-larga {
+  min-width: 260px
+}
+
+.campo-data {
+  width: 190px
+}
+
+.campo-class {
+  width: 200px
+}
+
+.campo-risco {
+  min-width: 200px
+}
+
+.filtros-lista .busca-atividade,
+#busca-atividade {
+  width: 240px
+}
+
+.filters .select {
+  min-width: 170px
+}
+
+/* ===== Notebook pequeno e tablet na horizontal (até 1279px) ===== */
+
+@media (max-width: 1279px) {
+  :root {
+    --side-w: 224px
+  }
+
+  .page {
+    padding: 22px 24px 44px
+  }
+
+  .board {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+
+  .cols {
+    grid-template-columns: minmax(0, 1fr) 320px
+  }
+
+  .kpis {
+    grid-template-columns: repeat(3, 1fr)
+  }
+
+  .kpis.k4 {
+    grid-template-columns: repeat(2, 1fr)
+  }
+
+  .two.lateral-340 {
+    grid-template-columns: 300px minmax(0, 1fr)
+  }
+
+  .dl {
+    grid-template-columns: repeat(2, 1fr)
+  }
+}
+
+/* ===== Tablet na vertical (até 1023px) ===== */
+
+@media (max-width: 1023px) {
+  .cols,
+  .cols.eq,
+  .two,
+  .two.eq,
+  .two.lateral-270,
+  .two.lateral-340 {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .col-side {
+    position: static
+  }
+
+  .kpis,
+  .kpis.k4 {
+    grid-template-columns: repeat(2, 1fr)
+  }
+
+  .bar-row .nm,
+  .axis .sp {
+    flex-basis: 120px
+  }
+
+  .result3 {
+    grid-template-columns: repeat(3, 1fr)
+  }
+}
+
+/* ===== Celular grande (até 767px) ===== */
+
+@media (max-width: 767px) {
+  .page {
+    gap: 14px;
+    padding: 16px 16px 32px
+  }
+
+  .page h1 {
+    font-size: 22px
+  }
+
+  .topbar .brand small,
+  .topbar .net {
+    display: none
+  }
+
+  .topbar .right {
+    gap: 10px
+  }
+
+  .board {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .os-grid {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .dl,
+  .dl.d2,
+  .decide {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .panel {
+    padding: 16px
+  }
+
+  /* Formulários de filtro: um campo por linha, ocupando a largura toda */
+  .filters,
+  .filtros-lista {
+    align-items: stretch
+  }
+
+  .filters > .field,
+  .filtros-lista > .field,
+  .filters > .btn,
+  .filtros-lista > .btn,
+  .filters > button {
+    flex: 1 1 100%
+  }
+
+  .filters .select,
+  .filters .input,
+  .busca-larga,
+  .filtros-lista .select,
+  .filtros-lista .input,
+  #busca-atividade {
+    width: 100%;
+    min-width: 0
+  }
+
+  .filters > .btn,
+  .filtros-lista > .btn,
+  .filters > button {
+    width: 100%
+  }
+
+  /* Cabeçalhos com título + ação: a ação vai para baixo, em largura total */
+  .page > .row.between.wrap > .row.g8,
+  .page > .row.between.wrap > form {
+    width: 100%
+  }
+
+  .page > .row.between.wrap > .row.g8 > .btn {
+    flex: 1
+  }
+
+  .campo-data,
+  .campo-class,
+  .campo-risco {
+    width: 100%;
+    min-width: 0
+  }
+
+  .ied {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 4px 8px;
+    padding: 10px
+  }
+
+  .ied .ctl .acoes {
+    margin-left: 0
+  }
+
+  .ied .ctl .select {
+    min-width: 0;
+    flex: 1
+  }
+
+  .abas {
+    overflow-x: auto;
+    white-space: nowrap
+  }
+
+  .bar-row {
+    gap: 8px
+  }
+
+  .bar-row .nm,
+  .axis .sp {
+    flex-basis: 84px;
+    font-size: 12px
+  }
+
+  .axis {
+    gap: 8px
+  }
+
+  .bar-row .tot,
+  .axis .sp2 {
+    flex-basis: 30px
+  }
+
+  .result3 .v {
+    font-size: 24px
+  }
+
+  .aitem {
+    padding: 12px
+  }
+
+  .toast {
+    bottom: calc(var(--bottombar-h) + 16px + env(safe-area-inset-bottom));
+    max-width: calc(100vw - 32px)
+  }
+}
+
+/* ===== Celular (até 479px) ===== */
+
+@media (max-width: 479px) {
+  .page {
+    padding: 14px 12px 28px
+  }
+
+  .topbar {
+    padding: 0 12px
+  }
+
+  .topbar .brand {
+    font-size: 15px;
+    letter-spacing: .04em
+  }
+
+  .kpis,
+  .kpis.k4 {
+    gap: 8px
+  }
+
+  .kpi {
+    padding: 12px
+  }
+
+  .kpi .v {
+    font-size: 24px
+  }
+
+  .result3 {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .dlg {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px)
+  }
+
+  .dlg-cab,
+  .dlg-corpo {
+    padding-left: 14px;
+    padding-right: 14px
+  }
+
+  .grade2 {
+    grid-template-columns: 1fr
+  }
+
+  .senha-nova {
+    font-size: 18px
+  }
+
+  .bar-row .nm,
+  .axis .sp {
+    flex-basis: 70px
+  }
+
+  .btn {
+    padding: 0 14px
+  }
+}
+
+/* ===== Importação de OS: cartões de entrada, prévias e gráfico ===== */
+
+@media (max-width: 1023px) {
+  .entradas {
+    grid-auto-flow: row
+  }
+
+  .camera-resultado {
+    grid-template-columns: minmax(0, 1fr)
+  }
+}
+
+@media (max-width: 767px) {
+  .metodos {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .previa-pdf {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .previa-pdf object {
+    height: 300px
+  }
+
+  .segmentos {
+    width: 100%
+  }
+
+  .segmentos a {
+    flex: 1;
+    padding: 0 8px
+  }
+
+  .grafico {
+    grid-template-rows: 180px auto;
+    column-gap: 6px
+  }
+
+  /* Sem largura para ficar ao lado da coluna: a dica vai para o alto, centralizada */
+  .grafico-dica {
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 0;
+    width: max-content;
+    max-width: 100%
+  }
+}
+
+/* ===== Filtros do quadro: ocultos atrás do botão "Filtrar" no tablet e no celular ===== */
+
+.filtros-toggle {
+  display: none;
+  position: relative;
+  align-self: flex-start
+}
+
+.filtros-ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--blq)
+}
+
+@media (max-width: 1023px) {
+  .filtros-recolhiveis {
+    display: flex;
+    flex-direction: column;
+    gap: 10px
+  }
+
+  .filtros-toggle {
+    display: inline-flex
+  }
+
+  .filtros-toggle[aria-expanded="true"] {
+    border-color: var(--brand);
+    color: var(--brand)
+  }
+
+  .filtros-corpo[data-aberto="false"] {
+    display: none
+  }
+
+  .filtros-corpo[data-aberto="true"] {
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff
+  }
+}
+
+@media (max-width: 767px) {
+  .filtros-toggle {
+    align-self: stretch
+  }
+}
+
+/* ===== Sino de notificações: menu suspenso com os alertas mais recentes ===== */
+
+.sino {
+  position: relative
+}
+
+.sino-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 40;
+  width: 380px;
+  max-width: calc(100vw - 24px);
+  background: #fff;
+  color: var(--ink);
+  border: 1px solid var(--line3);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(23, 33, 43, .25);
+  overflow: hidden
+}
+
+.sino-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line2)
+}
+
+.sino-cab .cnt {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--blq-bg);
+  color: var(--blq);
+  font-size: 12px;
+  font-weight: 700
+}
+
+.sino-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(60vh, 380px);
+  overflow-y: auto
+}
+
+.sino-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line2);
+  color: inherit;
+  text-decoration: none
+}
+
+.sino-item:hover,
+.sino-item:focus-visible {
+  background: var(--surface2)
+}
+
+.sino-item.novo {
+  background: #F2F8FA
+}
+
+.sino-item .ic {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center
+}
+
+.sino-item .ic.red {
+  background: var(--blq-bg);
+  color: var(--blq)
+}
+
+.sino-item .ic.blue {
+  background: var(--brand-bg);
+  color: var(--brand)
+}
+
+.sino-txt {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px
+}
+
+.sino-txt .tp {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px
+}
+
+.sino-txt .tp span {
+  color: var(--ink4)
+}
+
+.sino-txt .os {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.sino-item.novo .os {
+  font-weight: 600
+}
+
+.sino-vazio {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--ink3)
+}
+
+.sino-todas {
+  display: block;
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  border-top: 1px solid var(--line2);
+  background: var(--surface2)
+}
+
+.sino-todas:hover {
+  text-decoration: underline
+}
+
+@media (max-width: 479px) {
+  /* No celular o menu se ancora na janela, não no sino, para não sair da tela */
+  .sino {
+    position: static
+  }
+
+  .sino-menu {
+    position: fixed;
+    top: calc(var(--topbar-h) + 8px);
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-width: none
+  }
+}
+
+/* ===== Menu do usuário na barra superior ===== */
+
+.usuario-menu {
+  position: relative
+}
+
+.usuario-gatilho {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 4px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left
+}
+
+.usuario-gatilho:hover,
+.usuario-gatilho[aria-expanded="true"] {
+  background: var(--dark2)
+}
+
+.usuario-lista {
+  width: 200px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px
+}
+
+.usuario-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left
+}
+
+.usuario-item:hover,
+.usuario-item:focus-visible {
+  background: var(--brand-bg);
+  color: var(--brand-ink);
+  outline: none
+}
+
+.usuario-item.perigo {
+  color: var(--blq)
+}
+
+.usuario-item.perigo:hover,
+.usuario-item.perigo:focus-visible {
+  background: var(--blq-bg);
+  color: var(--blq)
+}
+
+@media (max-width: 900px) {
+  /* Só o avatar e a seta: o nome e o cargo somem (a regra de .who-u span já os esconde) */
+  .usuario-gatilho > .i {
+    display: none
+  }
+}
+
+@media (max-width: 479px) {
+  .usuario-menu {
+    position: static
+  }
+
+  .usuario-lista {
+    position: fixed;
+    top: calc(var(--topbar-h) + 8px);
+    right: 12px;
+    left: auto
+  }
+}
+
+/* ===== Barra superior do painel: busca centralizada ===== */
+
+@media (min-width: 901px) {
+  .topbar:has(.searchbox) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 440px) minmax(0, 1fr)
+  }
+
+  .topbar:has(.searchbox) .searchbox {
+    max-width: none;
+    width: 100%
+  }
+
+  .topbar:has(.searchbox) .right {
+    justify-self: end
+  }
+}
+
+/* Marca: o nome e o subtítulo ("Painel de gestão") um abaixo do outro */
+.topbar .brand-txt {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15
+}
+
+.topbar .brand-txt small {
+  font-size: 12px
+}
+
+/* ===== Busca da barra superior em telas menores: lupa + faixa que desce por baixo da barra ===== */
+
+.busca-lupa {
+  display: none
+}
+
+@media (max-width: 900px) {
+  .busca-lupa {
+    display: inline-flex;
+    margin-left: auto
+  }
+
+  .busca-lupa ~ .right {
+    margin-left: 0
+  }
+
+  .topbar .searchbox {
+    display: none
+  }
+
+  .topbar .searchbox[data-aberto="true"] {
+    display: block;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    max-width: none;
+    padding: 10px 14px 12px;
+    background: var(--dark);
+    border-top: 1px solid #2B3846;
+    box-shadow: 0 10px 24px rgba(23, 33, 43, .3);
+    transform-origin: top;
+    animation: faixa-desce .2s ease-out
+  }
+}
+
+/* ===== Animação dos menus suspensos da barra (sino, usuário e busca) ===== */
+
+@keyframes menu-abre {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(.97)
+  }
+
+  to {
+    opacity: 1;
+    transform: none
+  }
+}
+
+@keyframes faixa-desce {
+  from {
+    opacity: 0;
+    transform: translateY(-14px)
+  }
+
+  to {
+    opacity: 1;
+    transform: none
+  }
+}
+
+.sino-menu {
+  transform-origin: top right;
+  animation: menu-abre .16s ease-out
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sino-menu,
+  .topbar .searchbox[data-aberto="true"] {
+    animation: none
+  }
+}

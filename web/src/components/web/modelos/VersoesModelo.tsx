@@ -5,9 +5,9 @@ import type { ResumoModelo } from "@/data/modelos";
 import { data, dataDoDia } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 
-/** Histórico de versões do modelo aberto; cada uma abre na mesma tela. */
+/** Histórico de versões do modelo aberto; cada uma abre na mesma tela. Num modelo excluído nenhuma está "em uso". */
 export function VersoesModelo({ codigo, versoes, atual }: { codigo: string; versoes: ResumoModelo[]; atual?: number }) {
-  const emUso = versoes.find((v) => !v.rascunho)?.versao;
+  const emUso = versoes.find((v) => !v.rascunho && !v.arquivado_em)?.versao;
   return (
     <Panel style={{ padding: 16, gap: 10 }}>
       <h2 style={{ fontSize: 15 }}>{`Versões da ${codigo}`}</h2>
@@ -15,7 +15,7 @@ export function VersoesModelo({ codigo, versoes, atual }: { codigo: string; vers
         {versoes.map((v) => (
           <li key={v.id} className="stack" style={{ lineHeight: 1.35 }}>
             <Link
-              href={`${rotas.web.modelos}?codigo=${encodeURIComponent(codigo)}&versao=${v.versao}`}
+              href={rotas.web.modelo(codigo, v.versao)}
               style={{ fontSize: 13.5, fontWeight: v.versao === atual ? 700 : 600, color: "var(--ink)" }}
               aria-current={v.versao === atual ? "true" : undefined}
             >
@@ -31,7 +31,7 @@ export function VersoesModelo({ codigo, versoes, atual }: { codigo: string; vers
             <span className="small">
               {v.rascunho
                 ? `${v.itens_total} itens · ainda não publicada`
-                : `Publicada em ${data(v.publicado_em)} · documento de ${dataDoDia(v.data_documento)} · ${v.itens_total} itens`}
+                : `Publicada em ${data(v.publicado_em)} · documento de ${dataDoDia(v.data_documento)} · ${v.itens_total} itens · ${v.aprs_total} ${v.aprs_total === 1 ? "APR" : "APRs"}`}
             </span>
           </li>
         ))}

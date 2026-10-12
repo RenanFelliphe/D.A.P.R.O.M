@@ -53,13 +53,12 @@ export function FiltrosQuadro({ equipes, meses, valores, filtrado }: FiltrosQuad
       </Field>
       <Field label="Busca" htmlFor="f-bu">
         <input
-          className="input"
+          className="input busca-larga"
           id="f-bu"
           name="busca"
           type="search"
-          placeholder="Ordem, título, local ou equipamento"
+          placeholder="Ordem, título, local, nota ou cliente"
           defaultValue={valores.busca ?? ""}
-          style={{ minWidth: 260 }}
         />
       </Field>
       <button className="btn btn-p btn-sm" type="submit">
@@ -70,9 +69,6 @@ export function FiltrosQuadro({ equipes, meses, valores, filtrado }: FiltrosQuad
           Limpar
         </Link>
       )}
-      <span className="muted" style={{ marginLeft: "auto" }}>
-        Locais críticos aparecem primeiro em cada coluna
-      </span>
     </form>
   );
 }

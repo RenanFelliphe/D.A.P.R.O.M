@@ -152,5 +152,5 @@ export function aprAprovadaDisponivel(aprs: AprDaOs[], execucoes: ExecucaoDaOs[]
   return [...aprs].reverse().find((a) => a.resultado === "aprovada" && ehHoje(a.concluida_em) && !usadas.has(a.id)) ?? null;
 }
 
-/** O número da OS como se mostra ("OS 4031187"); OS manual não tem número. */
+/** O número da OS como se mostra ("OS 4031187"); OS de apoio ainda não tem número. */
 export const rotuloDaOs = (o: { numero_ordem: string | null }) => (o.numero_ordem ? `OS ${o.numero_ordem}` : "OS sem número");

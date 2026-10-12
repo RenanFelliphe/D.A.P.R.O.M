@@ -16,16 +16,43 @@ export const rotas = {
     aprovada: (id: string) => `/app/os/${id}/apr/aprovada`,
     execucao: (id: string) => `/app/os/${id}/execucao`,
     perfil: "/app/perfil",
+    /** Perfil de outra pessoa (aberto pela busca). */
+    perfilDe: (id: string) => `/app/perfil/${id}`,
+    /** Perfil da equipe. */
+    equipe: (id: string) => `/app/equipes/${id}`,
+    /** Resultados da busca global (`?q=`). */
+    busca: "/app/busca",
   },
   web: {
-    quadro: "/web/quadro",
+    /** Seção Ordem de Serviço (menu "Ordem de Serviço"): duas abas. `/web/os` sozinho leva ao quadro. */
+    quadro: "/web/os/quadro",
+    importacao: "/web/os/importacao",
     /** Detalhe da OS para a gestão. */
     os: (id: string) => `/web/os/${id}`,
     alertas: "/web/alertas",
-    importacao: "/web/importacao",
-    indicadores: "/web/indicadores",
-    modelos: "/web/modelos",
+    /**
+     * Seção Indicadores e exportação: quatro dashboards com o mesmo filtro (`?periodo=` e `?equipe_id=`) — geral, equipes e
+     * usuários, OS (com a entrada de OS e a baixa no SAP) e APR. `/web/indicadores` sozinho leva ao geral.
+     */
+    indicadores: "/web/indicadores/geral",
+    indicadoresEquipes: "/web/indicadores/equipes",
+    indicadoresOs: "/web/indicadores/os",
+    indicadoresApr: "/web/indicadores/apr",
+    /** Seção APR, Análise Preliminar de Risco (menu "APR"): duas abas. `/web/apr` sozinho leva aos modelos. */
+    modelos: "/web/apr/modelos",
+    atividades: "/web/apr/atividades",
+    /** Um modelo de APR: versões, editor do rascunho e onde é usado. Sem `versao`, abre o rascunho ou a versão em uso. */
+    modelo: (codigo: string, versao?: number) => `/web/apr/modelos/${encodeURIComponent(codigo)}${versao ? `?versao=${versao}` : ""}`,
+    novoModelo: "/web/apr/modelos/novo",
     usuarios: "/web/usuarios",
+    perfil: "/web/perfil",
+    /** Perfil de outra pessoa (aberto pela busca). */
+    perfilDe: (id: string) => `/web/perfil/${id}`,
+    /** Perfil da equipe. */
+    equipe: (id: string) => `/web/equipes/${id}`,
+    configuracoes: "/web/configuracoes",
+    /** Resultados da busca global (`?q=`). */
+    busca: "/web/busca",
   },
   doc: {
     /** PDF da OS executada, dentro do painel. */

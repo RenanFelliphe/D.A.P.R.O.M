@@ -16,6 +16,8 @@ interface AlertasScreenProps {
   selecionado: Alerta | null;
   /** O `?alerta=` pedido na URL não foi achado. */
   alertaNaoEncontrado: boolean;
+  /** O alerta aberto foi escolhido pela pessoa (`?alerta=` na URL), e não o primeiro da lista aberto por padrão. */
+  alertaPedido: boolean;
   filtros: ValoresDosFiltros;
   pagina: number;
   tamanho: number;
@@ -35,12 +37,15 @@ function endereco(filtros: ValoresDosFiltros, extra: { alerta?: string; pagina?:
 }
 
 /** Alertas do painel: lista à esquerda e, à direita, o detalhe do alerta aberto. */
-export function AlertasScreen({ usuario, alertas, selecionado, alertaNaoEncontrado, filtros, pagina, tamanho, total, naoLidos, equipes }: AlertasScreenProps) {
+export function AlertasScreen({ usuario, alertas, selecionado, alertaNaoEncontrado, alertaPedido, filtros, pagina, tamanho, total, naoLidos, equipes }: AlertasScreenProps) {
   const ehSupervisor = usuario.perfil === "supervisor";
   const nomeDaEquipe = ehSupervisor ? equipes.find((e) => e.id === usuario.equipe_id)?.nome : undefined;
   const leitura = usuario.perfil === "admin" || usuario.perfil === "seguranca";
   const ultimaPagina = Math.max(1, Math.ceil(total / tamanho));
   const hrefDoAlerta = (id: string) => endereco(filtros, { alerta: id, pagina });
+  // Sem `?alerta=` a tela abre o primeiro da lista. Com o filtro de não lidos, marcá-lo o tiraria da lista e o próximo seria
+  // aberto e marcado em seguida, até esvaziar: nesse caso só vale o alerta que a pessoa escolheu.
+  const marcarAoAbrir = alertaPedido || filtros.lido !== "nao";
 
   return (
     <Screen>
@@ -71,11 +76,11 @@ export function AlertasScreen({ usuario, alertas, selecionado, alertaNaoEncontra
           <span className="muted">
             {filtros.lido || filtros.tipo || filtros.equipe_id
               ? "Nenhum alerta combina com os filtros escolhidos."
-              : "Quando uma APR for bloqueada ou uma execução for interrompida, o aviso aparece aqui."}
+              : "Quando uma APR for bloqueada, uma execução for interrompida ou uma importação de OS falhar, o aviso aparece aqui."}
           </span>
         </Panel>
       ) : (
-        <div className="two" style={{ gridTemplateColumns: "340px 1fr" }}>
+        <div className="two lateral-340">
           <div className="stack g8">
             <ListaAlertas alertas={alertas} selecionadoId={selecionado?.id ?? null} hrefDoAlerta={hrefDoAlerta} />
             {ultimaPagina > 1 && (
@@ -88,7 +93,7 @@ export function AlertasScreen({ usuario, alertas, selecionado, alertaNaoEncontra
               </div>
             )}
           </div>
-          {selecionado && <DetalheAlerta key={selecionado.id} alerta={selecionado} usuario={usuario} equipes={equipes} />}
+          {selecionado && <DetalheAlerta key={selecionado.id} alerta={selecionado} usuario={usuario} equipes={equipes} marcarAoAbrir={marcarAoAbrir} />}
         </div>
       )}
     </Screen>

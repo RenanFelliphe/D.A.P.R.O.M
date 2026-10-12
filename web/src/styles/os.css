@@ -192,20 +192,95 @@ button.os-card {
 }
 
 .bcol-h {
+  margin: 0
+}
+
+/* Cabeçalho da coluna: um botão que fecha e abre os cartões */
+.bcol-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 6px 2px
+  width: 100%;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer
 }
 
-.bcol-h h2 {
+.bcol-toggle:hover {
+  background: rgba(23, 33, 43, .06)
+}
+
+.bcol-titulo {
   flex: 1;
-  font-size: 14px
+  min-width: 0
 }
 
 .bcol-h .badge {
   padding: 1px 8px;
   font-weight: 700
+}
+
+.bcol-seta {
+  color: var(--ink3);
+  transition: transform .18s
+}
+
+.bcol[data-fechada="false"] .bcol-seta {
+  transform: rotate(180deg)
+}
+
+.bcol-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px
+}
+
+.bcol-corpo[hidden] {
+  display: none
+}
+
+/* Desktop: a coluna fechada vira uma faixa estreita e as outras dividem o espaço que sobra */
+@media (min-width: 1280px) {
+  .board {
+    display: flex
+  }
+
+  .board > .bcol {
+    flex: 1 1 0;
+    min-width: 0
+  }
+
+  .board > .bcol[data-fechada="true"] {
+    flex: 0 0 64px
+  }
+
+  .bcol[data-fechada="true"] .bcol-toggle {
+    flex-direction: column;
+    padding: 10px 4px
+  }
+
+  .bcol[data-fechada="true"] .bcol-titulo {
+    order: 1;
+    flex: none;
+    writing-mode: vertical-rl
+  }
+
+  .bcol[data-fechada="true"] .bcol-seta {
+    display: none
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bcol-seta {
+    transition: none
+  }
 }
 
 .bcard {

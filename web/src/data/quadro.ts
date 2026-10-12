@@ -7,12 +7,13 @@ import type { Equipe, OsStatus, Paginacao, Perfil } from "@/lib/tipos";
 export interface OsDoQuadro {
   id: string;
   numero_ordem: string | null;
+  numero_nota: string | null;
   tipo: "preventiva" | "corretiva";
   titulo: string;
   status: OsStatus;
   equipe_id: string;
   equipe_nome: string;
-  local_instalacao: { id: string; codigo: string; critico: boolean };
+  local_instalacao: { id: string; codigo: string; cliente: string | null; critico: boolean };
   equipamento: string | null;
   prioridade: string | null;
   data_inicio_prog: string;
@@ -84,7 +85,7 @@ export async function carregarQuadro(filtros: FiltrosDoQuadro): Promise<DadosDoQ
   };
 }
 
-/** Id da OS cujo número de ordem é exatamente `busca`, se houver uma só (a busca da barra superior vai direto ao detalhe). */
+/** Id da OS cujo número de ordem é exatamente `busca`, se houver uma só (a busca do quadro vai direto ao detalhe). */
 export async function osPorNumeroExato(busca: string): Promise<string | null> {
   const r = await api<RespostaOs>("/os", { consulta: { numero_ordem: busca.trim(), tamanho: 2 } });
   return r.os.length === 1 ? r.os[0]!.id : null;
@@ -95,13 +96,6 @@ export async function totalDeAlertasNaoLidos(perfil: Perfil): Promise<number> {
   if (perfil === "tecnico") return 0;
   const r = await apiOuNulo<{ total: number }>("/alertas", { consulta: { lido: false, tamanho: 1 } });
   return r?.total ?? 0;
-}
-
-/** A última leitura automática do SAP terminou com erro (só analista e admin enxergam `GET /importacoes`). */
-export async function leituraDoSapFalhou(perfil: Perfil): Promise<boolean> {
-  if (perfil !== "analista" && perfil !== "admin") return false;
-  const r = await apiOuNulo<{ ultima_leitura_com_erro: boolean }>("/importacoes", { consulta: { tamanho: 1 } });
-  return r?.ultima_leitura_com_erro ?? false;
 }
 
 export async function listarEquipes(): Promise<Equipe[]> {

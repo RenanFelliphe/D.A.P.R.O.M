@@ -51,12 +51,11 @@ export function FormularioUsuario({ usuario, equipes, aoConcluir }: FormularioUs
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
     setErro(null);
-    if (perfil === "supervisor" && !email.trim()) return setErro("Supervisor precisa de e-mail para receber alertas");
     if (!editando && senha.length < 8) return setErro("A senha inicial precisa ter ao menos 8 caracteres");
 
     const comum = {
       nome: nome.trim(),
-      email: email.trim() || null,
+      email: email.trim().toLowerCase(),
       perfil,
       equipe_id: equipeId || null,
       cargo: cargo.trim() || null,
@@ -86,7 +85,7 @@ export function FormularioUsuario({ usuario, equipes, aoConcluir }: FormularioUs
         <input className="input" required value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="off" />
       </Field>
       <div className="grade2">
-        <Field label="Matrícula (é o login)">
+        <Field label="Matrícula">
           {editando ? (
             <input className="input mono" value={usuario!.matricula} readOnly aria-readonly="true" style={{ background: "var(--surface2)" }} />
           ) : (
@@ -104,8 +103,8 @@ export function FormularioUsuario({ usuario, equipes, aoConcluir }: FormularioUs
         </Field>
       </div>
       <div className="grade2">
-        <Field label={perfil === "supervisor" ? "E-mail (obrigatório para supervisor)" : "E-mail"}>
-          <input className="input" type="email" required={perfil === "supervisor"} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+        <Field label="E-mail institucional (é o login)">
+          <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" placeholder="nome.sobrenome@empresa.com.br" />
         </Field>
         <Field label="Equipe">
           <select className="input" value={equipeId} onChange={(e) => setEquipeId(e.target.value)}>

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- script de teste: as respostas da api são lidas como vêm */
-// Fluxo do técnico até a APR, ponta a ponta contra a api local (sem navegador): cria duas OS de teste, monta o
+// Fluxo do técnico até a APR, ponta a ponta contra a api local (sem navegador): injeta as OS de teste no SAP simulado e as lê, monta o
 // rascunho com as mesmas funções que a tela usa (`src/lib/apr.ts`), envia `apr_concluida` aprovada e bloqueada (com foto)
 // e confere resultado, status da OS e o alerta ao supervisor.
 //
@@ -24,6 +24,7 @@ import {
 } from "../src/lib/apr";
 
 const API = process.env.API_URL ?? "http://localhost:3333";
+const SAP_TOKEN = process.env.SAP_API_TOKEN ?? "token-de-desenvolvimento";
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
 async function chamar(token: string | null, metodo: string, caminho: string, corpo?: unknown) {
@@ -69,16 +70,48 @@ function responderTudo(r: RascunhoApr, bloqueantes: Set<string> = new Set()) {
 const [tec1Token, tec2Token, sup1Token, admToken] = await Promise.all([entrar("tec1"), entrar("tec2"), entrar("sup1"), entrar("adm")]);
 const eu = (await ok(tec1Token, "GET", "/me")).usuario;
 const equipeId: string = eu.equipe_id;
+const centroTrabalho: string = (await ok(tec1Token, "GET", "/me")).equipe.centro_trabalho;
 const tec2 = (await ok(tec1Token, "GET", `/usuarios?equipe_id=${equipeId}`)).usuarios.find((u: any) => u.matricula === "tec2");
 assert.ok(tec2, "tec2 está na equipe de tec1");
 console.log("login ok · equipe", equipeId);
 
-// ---- OS de teste: uma com atividade mapeada (modelo da atividade) e outra sem atividade (o técnico escolhe) -----
+// ---- OS de teste: a OS não nasce no sistema, então entram como em produção: o SAP simulado recebe as ordens e a leitura as traz.
+// Uma com atividade mapeada (modelo da atividade) e as outras sem atividade (o técnico escolhe) -----------------------------
 const local = (await ok(sup1Token, "GET", "/locais?tamanho=1")).locais[0];
-const criar = async (titulo: string, codigo_atividade?: string) =>
-  (await ok(sup1Token, "POST", "/os", { tipo: "preventiva", titulo, descricao: "Criada pelo teste do fluxo da APR", local_instalacao_id: local.id, equipe_id: equipeId, data_inicio_prog: "2026-10-13", ...(codigo_atividade ? { codigo_atividade } : {}) })).id as string;
-const osAprovada = await criar("[teste apr web] APR aprovada", "Teste, manutenção e válvulas");
-const osBloqueada = await criar("[teste apr web] APR bloqueada");
+const lote = Date.now() % 1_000_000;
+let sequencia = 0;
+const injetar = async (titulo: string, codigo_atividade?: string) => {
+  const numero_ordem = `9${lote}${++sequencia}`;
+  await ok(SAP_TOKEN, "POST", "/sap-simulado/ordens", {
+    numero_ordem,
+    tipo_ordem: "YBA2",
+    tipo_atividade: "Z02-Manutenção Preventiva",
+    codigo_atividade: codigo_atividade ?? null,
+    titulo,
+    descricao: "Criada pelo teste do fluxo da APR",
+    centro_trabalho: centroTrabalho,
+    local_instalacao: { codigo: local.codigo },
+    data_inicio_prog: "2026-10-13",
+    status_sap: "LIB IMPR",
+  });
+  return numero_ordem;
+};
+const numeroAprovada = await injetar("[teste apr web] APR aprovada", "Teste, manutenção e válvulas");
+const numeroBloqueada = await injetar("[teste apr web] APR bloqueada");
+const numeroNa = await injetar("[teste apr web] APR com NA");
+await ok(admToken, "POST", "/sap/leituras");
+/** A leitura roda na tarefa em segundo plano (a cada poucos segundos): espera a OS aparecer. */
+const aguardarOs = async (numero: string) => {
+  for (let tentativa = 0; tentativa < 40; tentativa++) {
+    const achada = (await ok(tec1Token, "GET", `/os?numero_ordem=${numero}`)).os[0];
+    if (achada) return achada.id as string;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  throw new Error(`A OS ${numero} não chegou pela leitura do SAP`);
+};
+const osAprovada = await aguardarOs(numeroAprovada);
+const osBloqueada = await aguardarOs(numeroBloqueada);
+const osNa = await aguardarOs(numeroNa);
 
 // ---- 1. Detalhe e modelo ----------------------------------------------------------------------------------------------
 const detA = await ok(tec1Token, "GET", `/os/${osAprovada}`);
@@ -227,7 +260,6 @@ assert.ok(publicados.length >= 8);
 
 // ---- 4. "NA": só nos itens que o modelo permite, e sempre com observação ---------------------------------------------------
 {
-  const osNa = await criar("[teste apr web] APR com NA");
   const modelo: ModeloCompleto = await ok(tec1Token, "GET", "/modelos-apr/APR%2004/versoes/publicada");
   assert.ok(modelo.itens.some((i) => i.permite_na), "o APR 04 tem itens com NA");
   let r = novoRascunho({ osId: osNa, usuarioId: eu.id, modelo: doModeloCompleto(modelo), participantes: [{ usuarioId: eu.id, funcao: "responsavel" }], riscos: [] });

@@ -14,6 +14,7 @@ export default async function PerfilPage() {
 
   const dados: [string, string | null][] = [
     ["Nome", usuario.nome],
+    ["E-mail", usuario.email ?? null],
     ["Matrícula", usuario.matricula],
     ["Cargo", usuario.cargo],
     ["Registro profissional", usuario.registro_profissional],

@@ -7,14 +7,14 @@ import { entrar, type EstadoDoFormulario } from "@/lib/acoes-sessao";
 
 const inicial: EstadoDoFormulario = {};
 
-/** Login por matrícula e senha (o formulário chama a ação `entrar` no servidor). */
+/** Login pelo e-mail institucional e senha (o formulário chama a ação `entrar` no servidor). */
 export function FormularioEntrar() {
   const [estado, acao, pendente] = useActionState(entrar, inicial);
   return (
     <form className="stack g12" action={acao}>
       <h2>Entrar</h2>
-      <Field label="Matrícula" htmlFor="matricula">
-        <input className="input mono" id="matricula" name="matricula" autoComplete="username" autoFocus required />
+      <Field label="E-mail institucional" htmlFor="email">
+        <input className="input" id="email" name="email" type="email" autoComplete="username" autoFocus required placeholder="nome.sobrenome@empresa.com.br" />
       </Field>
       <Field label="Senha" htmlFor="senha">
         <input className="input" id="senha" name="senha" type="password" autoComplete="current-password" required />

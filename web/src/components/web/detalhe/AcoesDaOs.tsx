@@ -5,13 +5,13 @@ import { CancelarOs } from "./CancelarOs";
 
 interface AcoesDaOsProps {
   os: OsDetalhe;
-  /** Analista e admin: criticidade do local e cancelamento da OS manual. */
+  /** Analista e admin: criticidade do local e cancelamento da OS de apoio. */
   podeEditar: boolean;
 }
 
 /** Ações de gestão sobre a OS e o local. Some quando o perfil não tem nenhuma delas. */
 export function AcoesDaOs({ os, podeEditar }: AcoesDaOsProps) {
-  const podeCancelar = podeEditar && os.origem === "manual" && (os.status === "liberada" || os.status === "pendente");
+  const podeCancelar = podeEditar && os.origem === "apoio" && (os.status === "liberada" || os.status === "pendente");
   if (!podeEditar) return null;
   return (
     <Panel style={{ gap: 12 }}>

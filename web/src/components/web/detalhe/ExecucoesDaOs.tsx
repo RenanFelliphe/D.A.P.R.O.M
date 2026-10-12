@@ -6,7 +6,7 @@ import { dataHora, duracao, hora } from "@/lib/formatar";
 import { FotosDaEvidencia } from "./FotosDaEvidencia";
 
 const rotuloMedida = { color: "var(--ink4)" } as const;
-const colunaAssinatura = { maxWidth: 260, flex: 1 } as const;
+const colunaAssinatura = { maxWidth: 260, minWidth: 0, flex: "1 1 160px" } as const;
 
 const resultado: Record<NonNullable<ExecucaoDaOs["resultado"]>, { rotulo: string; tom: BadgeTone }> = {
   encerrada: { rotulo: "Encerrada", tom: "enc" },

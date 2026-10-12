@@ -8,7 +8,7 @@ import { FotosDaEvidencia } from "./FotosDaEvidencia";
 
 const cartaoPessoa = {
   flex: 1,
-  minWidth: 240,
+  minWidth: 0,
   padding: "10px 12px",
   borderRadius: 10,
   background: "var(--surface2)",

@@ -27,7 +27,9 @@ export function ListaEquipes({ equipes, supervisores }: ListaEquipesProps) {
           {equipes.map((e) => (
             <li key={e.id} className="stack" style={{ lineHeight: 1.35, paddingBottom: 8, borderBottom: "1px solid var(--line2)" }}>
               <div className="row between">
-                <strong style={{ fontSize: 14 }}>{e.nome}</strong>
+                <Link href={rotas.web.equipe(e.id)} style={{ fontSize: 14, fontWeight: 600 }}>
+                  {e.nome}
+                </Link>
                 <span className="mono small">{e.centro_trabalho}</span>
               </div>
               <div className="row between">

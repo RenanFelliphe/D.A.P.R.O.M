@@ -186,7 +186,11 @@ button:focus-visible,
   position: relative
 }
 
-.searchbox .i {
+.searchbox-campo {
+  position: relative
+}
+
+.searchbox-campo > .i {
   position: absolute;
   left: 12px;
   top: 12px;
@@ -381,9 +385,237 @@ button:focus-visible,
   color: var(--ink4)
 }
 
+/* Item com subpáginas (dropdown): a seta abre e fecha a lista, recuada sob o item com uma linha-guia */
+.side-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px
+}
+
+.side-grupo-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer
+}
+
+.side-grupo-btn:hover {
+  background: var(--surface2)
+}
+
+.side-grupo-btn[data-ativo] {
+  color: var(--brand);
+  font-weight: 600
+}
+
+.side-seta {
+  margin-left: auto;
+  color: var(--ink4);
+  transition: transform .15s
+}
+
+.side-grupo-btn[aria-expanded="true"] .side-seta {
+  transform: rotate(180deg)
+}
+
+.side-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 4px 21px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line)
+}
+
+.side-sub[hidden] {
+  display: none
+}
+
+.side .side-sub a {
+  padding: 8px 10px;
+  font-size: 13.5px
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-seta {
+    transition: none
+  }
+}
+
 .main {
   flex: 1;
   min-width: 0
+}
+
+/* Abaixo do desktop o menu lateral vira uma barra de navegação fixa na parte inferior da tela. */
+@media (max-width: 900px) {
+  .topbar {
+    gap: 12px;
+    padding: 0 14px
+  }
+
+  .who-u span {
+    display: none
+  }
+
+  .shell-body {
+    flex-direction: column;
+    align-items: stretch
+  }
+
+  .main {
+    padding-bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom))
+  }
+
+  .side {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    width: auto;
+    height: calc(var(--bottombar-h) + env(safe-area-inset-bottom));
+    padding: 0 4px env(safe-area-inset-bottom);
+    border-right: 0;
+    border-top: 1px solid var(--line);
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    overflow: hidden
+  }
+
+  .side a {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 6px 2px;
+    border-radius: 0;
+    overflow: hidden
+  }
+
+  .side a .rot {
+    display: none
+  }
+
+  .side a[aria-current="page"] {
+    background: transparent
+  }
+
+  .side a[aria-current="page"]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 25%;
+    right: 25%;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--brand)
+  }
+
+  .side a .cnt {
+    position: absolute;
+    top: 4px;
+    left: calc(50% + 8px);
+    margin-left: 0;
+    min-width: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px
+  }
+
+  .side .side-sep,
+  .side .foot-note {
+    display: none
+  }
+
+  /* Na barra inferior o grupo é um ícone como os outros; as subpáginas abrem num menu acima da barra, só ao tocar */
+  .side-grupo {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 0
+  }
+
+  .side-grupo-btn {
+    position: relative;
+    height: 100%;
+    flex-direction: column;
+    justify-content: center;
+    padding: 6px 2px;
+    border-radius: 0
+  }
+
+  .side-grupo-btn:hover {
+    background: transparent
+  }
+
+  .side-grupo-btn .rot,
+  .side-grupo-btn .side-seta {
+    display: none
+  }
+
+  .side-grupo-btn[data-ativo]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 25%;
+    right: 25%;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--brand)
+  }
+
+  .side-sub {
+    position: fixed;
+    right: 12px;
+    bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom) + 8px);
+    left: 12px;
+    z-index: 40;
+    margin: 0;
+    padding: 6px;
+    border: 1px solid var(--line3);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 32px rgba(23, 33, 43, .25)
+  }
+
+  .side-grupo:not([data-escolha="aberto"]) .side-sub {
+    display: none
+  }
+
+  .side .side-sub a {
+    flex: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px
+  }
+
+  .side .side-sub a .rot {
+    display: inline
+  }
+
+  .side .side-sub a[aria-current="page"] {
+    background: var(--brand-bg)
+  }
+
+  .side .side-sub a[aria-current="page"]::before {
+    display: none
+  }
 }
 
 .page {

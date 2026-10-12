@@ -27,15 +27,22 @@ function Lista({ itens, icone }: { itens: string[]; icone: "check" | "plus" }) {
   );
 }
 
-/** Lista das colunas da planilha que o sistema reconhece. */
+/** As colunas da planilha que o sistema reconhece, obrigatórias ao lado das opcionais (o título fica na página). */
 export function ColunasLidas() {
   return (
     <Panel>
-      <h2>Colunas lidas da planilha</h2>
-      <span className="small">Obrigatórias: sem elas a planilha inteira é recusada.</span>
-      <Lista itens={obrigatorias} icone="check" />
-      <span className="small">Opcionais:</span>
-      <Lista itens={opcionais} icone="plus" />
+      <div className="two eq">
+        <div className="stack g8">
+          <span className="lbl">Obrigatórias</span>
+          <span className="small">Sem qualquer uma delas, a planilha inteira é recusada.</span>
+          <Lista itens={obrigatorias} icone="check" />
+        </div>
+        <div className="stack g8">
+          <span className="lbl">Opcionais</span>
+          <span className="small">Preenchem o restante da OS quando vêm na planilha.</span>
+          <Lista itens={opcionais} icone="plus" />
+        </div>
+      </div>
       <p className="small">O mapeamento será ajustado ao export oficial do SAP quando ele chegar.</p>
     </Panel>
   );

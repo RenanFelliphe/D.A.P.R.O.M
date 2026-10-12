@@ -10,6 +10,7 @@ export interface FiltrosUsuarios {
   equipe_id?: string;
   perfil?: string;
   ativo?: string;
+  busca?: string;
 }
 
 interface TabelaUsuariosProps {
@@ -28,6 +29,10 @@ export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, to
     <Panel>
       <h2>{`Usuários · ${total}`}</h2>
       <form method="get" action={rotas.web.usuarios} className="filtros-lista">
+        <div className="field">
+          <label htmlFor="f-busca">Busca</label>
+          <input id="f-busca" name="busca" type="search" className="input" placeholder="Nome, matrícula, e-mail, cargo ou CREA" defaultValue={filtros.busca ?? ""} />
+        </div>
         <div className="field">
           <label htmlFor="f-equipe">Equipe</label>
           <select id="f-equipe" name="equipe_id" className="select" defaultValue={filtros.equipe_id ?? ""}>
@@ -72,7 +77,7 @@ export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, to
               <th>Perfil</th>
               <th>Equipe</th>
               <th style={{ width: 110 }}>Situação</th>
-              <th style={{ width: 250 }} />
+              <th style={{ width: 56 }} />
             </tr>
           </thead>
           <tbody>

@@ -12,18 +12,18 @@ export interface EstadoDoFormulario {
   erro?: string;
 }
 
-/** Login por matrícula: confere na `api`, guarda os tokens em cookies `httpOnly` e leva ao início do perfil. */
+/** Login pelo e-mail institucional: confere na `api`, guarda os tokens em cookies `httpOnly` e leva ao início do perfil. */
 export async function entrar(_anterior: EstadoDoFormulario, form: FormData): Promise<EstadoDoFormulario> {
-  const matricula = String(form.get("matricula") ?? "").trim();
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
   const senha = String(form.get("senha") ?? "");
-  if (!matricula || !senha) return { erro: "Informe a matrícula e a senha." };
+  if (!email || !senha) return { erro: "Informe o e-mail e a senha." };
 
   let resposta: Response;
   try {
     resposta = await fetch(`${apiUrl()}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matricula, senha }),
+      body: JSON.stringify({ email, senha }),
       cache: "no-store",
     });
   } catch {

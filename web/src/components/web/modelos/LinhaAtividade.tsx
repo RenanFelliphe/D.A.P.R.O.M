@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import type { Atividade } from "@/data/modelos";
 import { chamar } from "@/lib/cliente-api";
+import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
 
 /** `PUT /atividades/{codigo}`: o código do plano pode ter pontos, barras e espaços (`8.7.2/8.7.3`), então vai codificado. */
@@ -18,7 +20,7 @@ interface LinhaAtividadeProps {
   podeEditar: boolean;
 }
 
-/** Linha da tabela "atividade → modelo"; para a Segurança do Trabalho, edita descrição, modelo e a marca de provisório no lugar. */
+/** Linha da tabela "atividade → modelo"; para quem edita (Segurança e admin), edita descrição, modelo e a marca de provisório no lugar. */
 export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividadeProps) {
   const router = useRouter();
   const exibirAviso = useToast();
@@ -71,7 +73,7 @@ export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividad
         </td>
         <td>{atividade.descricao}</td>
         <td className="mono" style={{ color: atividade.modelo_apr_codigo ? "var(--brand)" : "var(--blq)", fontWeight: 600 }}>
-          {atividade.modelo_apr_codigo ?? "Sem modelo"}
+          {atividade.modelo_apr_codigo ? <Link href={rotas.web.modelo(atividade.modelo_apr_codigo)}>{atividade.modelo_apr_codigo}</Link> : "Sem modelo"}
         </td>
         {podeEditar && (
           <td className="acoes-linha">

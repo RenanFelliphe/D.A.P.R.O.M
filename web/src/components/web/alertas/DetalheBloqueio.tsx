@@ -15,7 +15,7 @@ function Fotos({ fotos }: { fotos: FotoDaOs[] }) {
             id={f.foto_path}
             alt="Foto do impedimento"
             className="photo"
-            style={{ display: "block", height: 120, width: 160, objectFit: "cover", borderRadius: 8 }}
+            style={{ display: "block", height: 120, width: "100%", maxWidth: 160, objectFit: "cover", borderRadius: 8 }}
           />
           <figcaption className="small">{dataHora(f.capturada_em)}</figcaption>
         </figure>

@@ -21,7 +21,7 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/web/usu
   if (usuario.perfil !== "admin") redirect(rotas.web.quadro);
 
   const params = await searchParams;
-  const filtros = { equipe_id: um(params.equipe_id) || undefined, perfil: um(params.perfil) || undefined, ativo: um(params.ativo) || undefined };
+  const filtros = { equipe_id: um(params.equipe_id) || undefined, perfil: um(params.perfil) || undefined, ativo: um(params.ativo) || undefined, busca: um(params.busca)?.trim() || undefined };
   const pagina = Math.max(1, Number.parseInt(um(params.pagina) ?? "1", 10) || 1);
 
   const [lista, equipesApi, supervisores] = await Promise.all([

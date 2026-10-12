@@ -10,7 +10,7 @@ export function FotosDaEvidencia({ fotos, descricao }: { fotos: FotoDeEvidencia[
   return (
     <div className="row g12 wrap" style={{ alignItems: "flex-start" }}>
       {fotos.map((foto) => (
-        <figure key={foto.id} className="stack g6" style={{ margin: 0, flex: "0 1 160px", minWidth: 120 }}>
+        <figure key={foto.id} className="stack g6" style={{ margin: 0, flex: "0 1 160px", minWidth: 96 }}>
           <ImagemArquivo id={foto.foto_path} alt={`${descricao} às ${hora(foto.capturada_em)}`} style={moldura} />
           <figcaption className="small">
             <span className="mono">{hora(foto.capturada_em)}</span>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { MenuAcoes } from "@/components/ui/MenuAcoes";
 import { Notice } from "@/components/ui/Notice";
 import { JanelaModal } from "@/components/web/JanelaModal";
 import { chamar } from "@/lib/cliente-api";
@@ -10,9 +11,9 @@ import type { Usuario } from "@/lib/tipos";
 import { useToast } from "@/state/toast";
 import { FormularioUsuario, type OpcaoEquipe } from "./FormularioUsuario";
 
-type Janela = "editar" | "senha" | null;
+type Janela = "editar" | "senha" | "remover" | null;
 
-/** Ações da linha do usuário: editar, ativar/desativar e redefinir a senha (mostrada uma única vez). */
+/** Ações da linha do usuário, num menu de três pontos: editar, redefinir a senha (mostrada uma única vez), desativar/reativar e remover. */
 export function AcoesUsuario({ usuario, equipes }: { usuario: Usuario; equipes: OpcaoEquipe[] }) {
   const router = useRouter();
   const exibirAviso = useToast();
@@ -49,6 +50,21 @@ export function AcoesUsuario({ usuario, equipes }: { usuario: Usuario; equipes: 
     }
   }
 
+  async function remover() {
+    setOcupado(true);
+    setErro(null);
+    try {
+      await chamar("DELETE", `/usuarios/${usuario.id}`);
+      exibirAviso(`${usuario.nome} foi removido(a).`);
+      fechar();
+      router.refresh();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível remover o usuário");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   function fechar() {
     setJanela(null);
     setSenhaNova(null);
@@ -57,16 +73,17 @@ export function AcoesUsuario({ usuario, equipes }: { usuario: Usuario; equipes: 
 
   return (
     <>
-      <span className="row g6" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-        <Button variant="line" sm style={{ height: 32 }} onClick={() => setJanela("editar")} disabled={ocupado}>
-          Editar
-        </Button>
-        <Button variant="line" sm style={{ height: 32 }} onClick={() => setJanela("senha")} disabled={ocupado}>
-          Redefinir senha
-        </Button>
-        <Button variant="line" sm style={{ height: 32 }} onClick={alternarAtivo} disabled={ocupado}>
-          {usuario.ativo ? "Desativar" : "Reativar"}
-        </Button>
+      <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
+        <MenuAcoes
+          rotulo={`Ações de ${usuario.nome}`}
+          desabilitado={ocupado}
+          itens={[
+            { rotulo: "Editar", aoClicar: () => setJanela("editar") },
+            { rotulo: "Redefinir senha", aoClicar: () => setJanela("senha") },
+            { rotulo: usuario.ativo ? "Desativar" : "Reativar", aoClicar: alternarAtivo },
+            { rotulo: "Remover", aoClicar: () => setJanela("remover"), perigo: true },
+          ]}
+        />
       </span>
       {erro && janela === null && (
         <div role="alert" className="small" style={{ color: "var(--blq)", textAlign: "right", marginTop: 4, whiteSpace: "normal" }}>
@@ -78,12 +95,33 @@ export function AcoesUsuario({ usuario, equipes }: { usuario: Usuario; equipes: 
           <FormularioUsuario usuario={usuario} equipes={equipes} aoConcluir={fechar} />
         </JanelaModal>
       )}
+      {janela === "remover" && (
+        <JanelaModal titulo="Remover usuário" aoFechar={fechar}>
+          <p style={{ fontSize: 14 }}>
+            Remover <b>{usuario.nome}</b> ({usuario.email ?? `matrícula ${usuario.matricula}`}) de vez? O cadastro e o acesso são apagados e não dá para desfazer. Quem já participou de APR ou de execução,
+            ou supervisiona uma equipe, tem histórico e não pode ser removido: nesse caso, desative.
+          </p>
+          {erro && (
+            <Notice tone="blq" icon="alert">
+              {erro}
+            </Notice>
+          )}
+          <div className="row g8" style={{ justifyContent: "flex-end" }}>
+            <Button variant="line" sm onClick={fechar} disabled={ocupado}>
+              Cancelar
+            </Button>
+            <Button variant="d" sm onClick={remover} disabled={ocupado}>
+              {ocupado ? "Removendo…" : "Remover"}
+            </Button>
+          </div>
+        </JanelaModal>
+      )}
       {janela === "senha" && (
         <JanelaModal titulo="Redefinir senha" aoFechar={fechar}>
           {senhaNova ? (
             <>
               <Notice tone="ok" icon="check">
-                Nova senha inicial de {usuario.nome} (matrícula {usuario.matricula}). Ela aparece só agora: repasse à pessoa, que vai trocá-la no próximo acesso.
+                Nova senha inicial de {usuario.nome} ({usuario.email ?? `matrícula ${usuario.matricula}`}). Ela aparece só agora: repasse à pessoa, que vai trocá-la no próximo acesso.
               </Notice>
               <div className="senha-nova">{senhaNova}</div>
               <div className="row g8" style={{ justifyContent: "flex-end" }}>
@@ -98,7 +136,7 @@ export function AcoesUsuario({ usuario, equipes }: { usuario: Usuario; equipes: 
           ) : (
             <>
               <p style={{ fontSize: 14 }}>
-                Gerar uma nova senha inicial para <b>{usuario.nome}</b> (matrícula {usuario.matricula})? A senha atual deixa de valer e a pessoa terá de definir uma nova no próximo
+                Gerar uma nova senha inicial para <b>{usuario.nome}</b> ({usuario.email ?? `matrícula ${usuario.matricula}`})? A senha atual deixa de valer e a pessoa terá de definir uma nova no próximo
                 acesso.
               </p>
               {erro && (

@@ -5,9 +5,10 @@ export type Perfil = "tecnico" | "supervisor" | "analista" | "seguranca" | "admi
 export interface Usuario {
   id: string;
   nome: string;
+  /** Identificação definitiva da pessoa na empresa (PDF e SAP); o login é o e-mail. */
   matricula: string;
-  /** Só o admin recebe o e-mail dos usuários. */
-  email?: string | null;
+  /** E-mail institucional (o login). Só o admin o recebe na lista de usuários; cada pessoa o recebe em `/me`. */
+  email?: string;
   cargo: string | null;
   registro_profissional: string | null;
   perfil: Perfil;

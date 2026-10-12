@@ -22,7 +22,7 @@ export function NovaVersao({ codigo }: { codigo: string }) {
     try {
       const criada = await chamar<{ id: string; versao: number }>("POST", `/modelos-apr/${encodeURIComponent(codigo)}/versoes`, {});
       exibirAviso(`Rascunho da v${criada.versao} criado a partir da versão em uso.`);
-      router.push(`${rotas.web.modelos}?codigo=${encodeURIComponent(codigo)}&versao=${criada.versao}`);
+      router.push(rotas.web.modelo(codigo, criada.versao));
       router.refresh();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível criar a nova versão");

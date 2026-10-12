@@ -2,16 +2,19 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { cx } from "@/lib/cx";
 
 interface JanelaModalProps {
   titulo: string;
   /** Chamado quando a janela fecha (botão X, Esc ou clique fora). */
   aoFechar: () => void;
+  /** Classe extra da `<dialog>` (ex.: `dlg-larga`). */
+  className?: string;
   children: ReactNode;
 }
 
 /** Janela modal sobre a `<dialog>` nativa (foco preso, Esc fecha). Monte só quando for abrir. */
-export function JanelaModal({ titulo, aoFechar, children }: JanelaModalProps) {
+export function JanelaModal({ titulo, aoFechar, className, children }: JanelaModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -22,7 +25,7 @@ export function JanelaModal({ titulo, aoFechar, children }: JanelaModalProps) {
   return (
     <dialog
       ref={ref}
-      className="dlg"
+      className={cx("dlg", className)}
       aria-label={titulo}
       onClose={aoFechar}
       onClick={(evento) => {

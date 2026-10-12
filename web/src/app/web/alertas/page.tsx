@@ -54,6 +54,7 @@ export default async function AlertasPage({ searchParams }: PageProps<"/web/aler
       alertas={alertas}
       selecionado={selecionado}
       alertaNaoEncontrado={alertaNaoEncontrado}
+      alertaPedido={pedido !== "" && !alertaNaoEncontrado}
       filtros={filtros}
       pagina={pagina}
       tamanho={tamanho}

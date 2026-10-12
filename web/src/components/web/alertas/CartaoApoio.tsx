@@ -2,8 +2,8 @@
 
 import { Icon } from "@/components/ui/Icon";
 import type { Equipe } from "@/lib/tipos";
-import { FormularioNovaOs } from "@/components/web/os-nova/FormularioNovaOs";
-import type { Atividade, LocalEscolhido } from "@/components/web/os-nova/tipos";
+import { FormularioApoio } from "@/components/web/apoio/FormularioApoio";
+import type { Atividade, LocalEscolhido } from "@/components/web/apoio/tipos";
 
 interface CartaoApoioProps {
   osId: string;
@@ -31,7 +31,7 @@ export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, local, equipes, ati
       <p className="muted">
         Outra equipe resolve antes. A OS original continua pendente e você recebe um aviso quando o apoio terminar.
       </p>
-      <FormularioNovaOs
+      <FormularioApoio
         prefixo="ap"
         equipes={equipes}
         atividades={atividades}
