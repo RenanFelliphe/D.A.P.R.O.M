@@ -1,13 +1,14 @@
-import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, max, or, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
-import { atividade, itemModeloApr, modeloApr, riscoModeloApr } from "../db/schema";
+import { apr, atividade, equipe, itemModeloApr, modeloApr, os, riscoModeloApr, type Perfil } from "../db/schema";
 import {
   conteudoDe,
   gravarRiscosEItens,
   modeloCompleto,
   modeloPorVersao,
+  publicadoEmUso,
   rascunhoDoCodigo,
   resolverVersao,
   traduzirImutabilidade,
@@ -15,6 +16,7 @@ import {
 } from "../dominio/modelo-apr-banco";
 import {
   dataDoDocumento,
+  esquemaCodigo,
   esquemaItem,
   esquemaPae,
   esquemaRisco,
@@ -28,6 +30,17 @@ import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/pag
 import { responder } from "../http/resposta";
 import { booleanoDaConsulta, lerConsulta, lerCorpo, textoObrigatorio } from "../http/validacao";
 
+/**
+ * Quem cria, edita, publica e exclui modelos e mantém a tabela de atividades: a Segurança do Trabalho, que define o
+ * conteúdo, e o administrador do sistema (Reunião 1). Os dois também enxergam os rascunhos.
+ */
+const PERFIS_DE_MODELO = ["seguranca", "admin"] as const satisfies readonly Perfil[];
+const editaModelos = (perfil: Perfil) => (PERFIS_DE_MODELO as readonly Perfil[]).includes(perfil);
+
+/** Status em que a OS ainda vai pedir uma APR (ou está em campo com uma). */
+const OS_ABERTAS = ["liberada", "pendente", "em_execucao"] as const;
+const OS_ABERTAS_NA_RESPOSTA = 10;
+
 /** `:versao` da URL precisa ser um número ou `publicada`; qualquer outra coisa é uma versão que não existe. */
 function numeroDaVersao(versao: string): number {
   if (!/^[0-9]+$/.test(versao)) throw naoEncontrado("Modelo ou versão não encontrado");
@@ -36,39 +49,53 @@ function numeroDaVersao(versao: string): number {
 
 const escaparLike = (texto: string) => texto.replace(/[\\%_]/g, "\\$&");
 
+/** Resumo de uma versão, sem itens. Colunas qualificadas à mão: o Drizzle as emite sem prefixo numa consulta de uma tabela só. */
+const resumoDaVersao = {
+  id: modeloApr.id,
+  codigo: modeloApr.codigo,
+  versao: modeloApr.versao,
+  titulo: modeloApr.titulo,
+  dataDocumento: modeloApr.dataDocumento,
+  publicadoEm: modeloApr.publicadoEm,
+  arquivadoEm: modeloApr.arquivadoEm,
+  rascunho: sql<boolean>`${modeloApr.publicadoEm} is null`,
+  itensTotal: sql<number>`(select count(*)::int from item_modelo_apr where item_modelo_apr.modelo_apr_id = modelo_apr.id)`,
+  /** APRs respondidas nesta versão. */
+  aprsTotal: sql<number>`(select count(*)::int from apr where apr.modelo_apr_id = modelo_apr.id)`,
+  /** Atividades do SAP ligadas ao código (igual em todas as versões dele). */
+  atividadesTotal: sql<number>`(select count(*)::int from atividade where atividade.modelo_apr_codigo = modelo_apr.codigo)`,
+};
+
 /**
- * Modelos de APR versionados e a tabela de atividades. Todo perfil autenticado lê (rascunho só a Segurança do Trabalho
- * enxerga); só o perfil `seguranca` escreve. Um modelo publicado é imutável (Decisão-chave 6): editar é criar um
- * rascunho da versão seguinte, ajustá-lo e publicá-lo.
+ * Modelos de APR versionados e a tabela de atividades. Todo perfil autenticado lê (rascunho só quem edita); só a
+ * Segurança do Trabalho e o administrador escrevem. Um modelo publicado é imutável (Decisão-chave 6): editar é criar
+ * um rascunho da versão seguinte, ajustá-lo e publicá-lo; excluir um modelo publicado o arquiva.
  */
 export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();
-  const soSeguranca = exigirPerfil("seguranca");
+  const soQuemEdita = exigirPerfil(...PERFIS_DE_MODELO);
 
   // ---- Modelos ---------------------------------------------------------------------------------------------------
 
-  /** Resumos, sem itens: por código e versão decrescente. Quem não é da Segurança só vê os publicados. */
+  /**
+   * Resumos, sem itens: por código e versão decrescente. Quem não edita só vê os publicados. Os modelos excluídos
+   * (arquivados) ficam de fora, a menos que se peça `arquivados=true`, que lista só eles.
+   */
   r.get("/modelos-apr", autenticar(), async (c) => {
     const eu = c.get("usuario");
-    const filtros = lerConsulta(c, esquemaPaginacao.extend({ codigo: z.string().trim().min(1).optional(), publicados: booleanoDaConsulta }));
-    const soPublicados = eu.perfil !== "seguranca" || filtros.publicados === true;
+    const filtros = lerConsulta(
+      c,
+      esquemaPaginacao.extend({ codigo: z.string().trim().min(1).optional(), publicados: booleanoDaConsulta, arquivados: booleanoDaConsulta }),
+    );
+    const soPublicados = !editaModelos(eu.perfil) || filtros.publicados === true;
     const onde = and(
       filtros.codigo ? eq(modeloApr.codigo, filtros.codigo) : undefined,
       soPublicados ? isNotNull(modeloApr.publicadoEm) : undefined,
+      filtros.arquivados ? isNotNull(modeloApr.arquivadoEm) : isNull(modeloApr.arquivadoEm),
     );
     const { limit, offset } = limiteEDeslocamento(filtros);
     const linhas = await deps.db
-      .select({
-        id: modeloApr.id,
-        codigo: modeloApr.codigo,
-        versao: modeloApr.versao,
-        titulo: modeloApr.titulo,
-        dataDocumento: modeloApr.dataDocumento,
-        publicadoEm: modeloApr.publicadoEm,
-        rascunho: sql<boolean>`${modeloApr.publicadoEm} is null`,
-        // colunas qualificadas à mão: o Drizzle as emite sem prefixo numa consulta de uma tabela só, e `id` valeria o do item
-        itensTotal: sql<number>`(select count(*)::int from item_modelo_apr where item_modelo_apr.modelo_apr_id = modelo_apr.id)`,
-      })
+      .select(resumoDaVersao)
       .from(modeloApr)
       .where(onde)
       .orderBy(asc(modeloApr.codigo), desc(modeloApr.versao))
@@ -77,19 +104,139 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
     return responder(c, { modelos: linhas, ...meta(filtros, await contar(deps.db, modeloApr, onde)) });
   });
 
+  /** Um modelo e todas as versões dele, inclusive quando excluído (arquivado), para a tela do modelo. */
+  r.get("/modelos-apr/:codigo", autenticar(), async (c) => {
+    const codigo = c.req.param("codigo");
+    const veRascunho = editaModelos(c.get("usuario").perfil);
+    const versoes = await deps.db
+      .select(resumoDaVersao)
+      .from(modeloApr)
+      .where(and(eq(modeloApr.codigo, codigo), veRascunho ? undefined : isNotNull(modeloApr.publicadoEm)))
+      .orderBy(desc(modeloApr.versao));
+    if (versoes.length === 0) throw naoEncontrado("Modelo não encontrado");
+    const principal = versoes.find((v) => !v.rascunho) ?? versoes[0]!;
+    return responder(c, { codigo, titulo: principal.titulo, arquivadoEm: principal.arquivadoEm, versoes });
+  });
+
+  /**
+   * Onde o modelo é usado: as atividades do SAP ligadas a ele (é por elas que uma OS chega ao modelo), as OS abertas
+   * dessas atividades e as APRs já respondidas em qualquer versão. Só para quem enxerga as OS de todas as equipes.
+   */
+  r.get("/modelos-apr/:codigo/uso", autenticar(), exigirPerfil("analista", "seguranca", "admin"), async (c) => {
+    const codigo = c.req.param("codigo");
+    const [existe] = await deps.db.select({ id: modeloApr.id }).from(modeloApr).where(eq(modeloApr.codigo, codigo)).limit(1);
+    if (!existe) throw naoEncontrado("Modelo não encontrado");
+
+    const atividades = await deps.db
+      .select({ codigo: atividade.codigo, descricao: atividade.descricao, provisorio: atividade.provisorio })
+      .from(atividade)
+      .where(eq(atividade.modeloAprCodigo, codigo))
+      .orderBy(asc(atividade.codigo));
+
+    const abertas = and(
+      inArray(os.status, [...OS_ABERTAS]),
+      inArray(os.codigoAtividade, deps.db.select({ codigo: atividade.codigo }).from(atividade).where(eq(atividade.modeloAprCodigo, codigo))),
+    );
+    const [recentes, totalAbertas, [aprs]] = await Promise.all([
+      deps.db
+        .select({
+          id: os.id,
+          numeroOrdem: os.numeroOrdem,
+          titulo: os.titulo,
+          status: os.status,
+          codigoAtividade: os.codigoAtividade,
+          dataInicioProg: os.dataInicioProg,
+          equipe: equipe.nome,
+        })
+        .from(os)
+        .innerJoin(equipe, eq(equipe.id, os.equipeId))
+        .where(abertas)
+        .orderBy(asc(os.dataInicioProg), asc(os.numeroOrdem))
+        .limit(OS_ABERTAS_NA_RESPOSTA),
+      contar(deps.db, os, abertas),
+      deps.db
+        .select({
+          total: count(),
+          bloqueadas: sql<number>`(count(*) filter (where ${apr.resultado} = 'bloqueada'))::int`,
+          ultimaEm: max(apr.concluidaEm),
+        })
+        .from(apr)
+        .innerJoin(modeloApr, eq(modeloApr.id, apr.modeloAprId))
+        .where(eq(modeloApr.codigo, codigo)),
+    ]);
+
+    return responder(c, { codigo, atividades, osAbertas: { total: totalAbertas, recentes }, aprs });
+  });
+
+  /**
+   * Exclui o modelo. O rascunho sai de vez; se já houve versão publicada, as versões ficam arquivadas (APRs, PDFs e
+   * a APR offline que ainda vai chegar apontam para elas): o modelo some das listas, das APRs novas e da cópia offline.
+   * As atividades ligadas a ele passam para o `substituto` (um modelo publicado) ou ficam sem modelo, e o técnico
+   * escolhe ao abrir a APR dessas OS.
+   */
+  r.delete("/modelos-apr/:codigo", autenticar(), soQuemEdita, async (c) => {
+    const codigo = c.req.param("codigo");
+    const { substituto } = lerConsulta(c, z.object({ substituto: esquemaCodigo.optional() }));
+    if (substituto === codigo) throw invalido("substituto_invalido", "O substituto precisa ser outro modelo");
+
+    const feito = await traduzirImutabilidade(() =>
+      deps.db.transaction(async (tx) => {
+        const versoes = await tx.select({ publicadoEm: modeloApr.publicadoEm, arquivadoEm: modeloApr.arquivadoEm }).from(modeloApr).where(eq(modeloApr.codigo, codigo));
+        if (versoes.length === 0) throw naoEncontrado("Modelo não encontrado");
+        if (versoes.some((v) => v.arquivadoEm)) throw conflito("modelo_arquivado", `O modelo ${codigo} já foi excluído`);
+        if (substituto && !(await publicadoEmUso(tx, substituto))) {
+          throw invalido("substituto_invalido", `O modelo ${substituto} não existe, não tem versão publicada ou foi excluído`);
+        }
+
+        const movidas = await tx
+          .update(atividade)
+          .set({ modeloAprCodigo: substituto ?? null })
+          .where(eq(atividade.modeloAprCodigo, codigo))
+          .returning({ codigo: atividade.codigo });
+        await tx.delete(modeloApr).where(and(eq(modeloApr.codigo, codigo), isNull(modeloApr.publicadoEm)));
+        const arquivado = versoes.some((v) => v.publicadoEm);
+        if (arquivado) {
+          await tx
+            .update(modeloApr)
+            .set({ arquivadoEm: deps.agora() })
+            .where(and(eq(modeloApr.codigo, codigo), isNotNull(modeloApr.publicadoEm)));
+        }
+        return { codigo, resultado: arquivado ? "arquivado" : "excluido", atividades: movidas.length, substituto: substituto ?? null };
+      }),
+    );
+    return responder(c, feito);
+  });
+
+  /** Desfaz a exclusão de um modelo arquivado. As atividades não voltam sozinhas: ligue-as de novo na tabela. */
+  r.post("/modelos-apr/:codigo/restaurar", autenticar(), soQuemEdita, async (c) => {
+    const codigo = c.req.param("codigo");
+    const restauradas = await deps.db
+      .update(modeloApr)
+      .set({ arquivadoEm: null })
+      .where(and(eq(modeloApr.codigo, codigo), isNotNull(modeloApr.arquivadoEm)))
+      .returning({ versao: modeloApr.versao });
+    if (restauradas.length === 0) {
+      const [existe] = await deps.db.select({ id: modeloApr.id }).from(modeloApr).where(eq(modeloApr.codigo, codigo)).limit(1);
+      if (!existe) throw naoEncontrado("Modelo não encontrado");
+      throw conflito("modelo_nao_arquivado", `O modelo ${codigo} não está excluído`);
+    }
+    return responder(c, { codigo, versoes: restauradas.length });
+  });
+
   /** Modelo completo para o editor e para aplicar a APR. `publicada` = a publicada mais recente do código. */
   r.get("/modelos-apr/:codigo/versoes/:versao", autenticar(), async (c) => {
-    const veRascunho = c.get("usuario").perfil === "seguranca";
+    const veRascunho = editaModelos(c.get("usuario").perfil);
     const linha = await resolverVersao(deps.db, c.req.param("codigo"), c.req.param("versao"), veRascunho);
     return responder(c, await modeloCompleto(deps.db, linha));
   });
 
   /**
    * Cria o rascunho da versão seguinte. `titulo`, `pae`, `riscos` e `itens` omitidos copiam a versão publicada mais
-   * recente (`data_documento` omitida fica nula: a data é a do documento novo); um código que ainda não existe cria a
-   * versão 1 e exige `titulo`, `riscos` e `itens`.
+   * recente (`data_documento` omitida fica nula: a data é a do documento novo). Um código que ainda não existe cria o
+   * modelo: exige `titulo` e, para o conteúdo, `riscos` e `itens` ou `copiar_de` (outro modelo, cuja versão publicada
+   * mais recente é copiada); `versao` diz o número da primeira versão (a revisão do documento em papel; padrão 1).
    */
-  r.post("/modelos-apr/:codigo/versoes", autenticar(), soSeguranca, async (c) => {
+  r.post("/modelos-apr/:codigo/versoes", autenticar(), soQuemEdita, async (c) => {
     const codigo = c.req.param("codigo").trim();
     if (!codigo || codigo.length > 40) throw invalido("codigo_invalido", "Código do modelo inválido");
     const dados = await lerCorpo(
@@ -100,21 +247,36 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         data_documento: dataDoDocumento.nullable().optional(),
         riscos: z.array(esquemaRisco).optional(),
         itens: z.array(esquemaItem).optional(),
+        versao: z.number().int().min(1).max(999).optional(),
+        copiar_de: esquemaCodigo.optional(),
       }),
     );
 
     const criado = await traduzirImutabilidade(() =>
       deps.db.transaction(async (tx) => {
-        const existentes = await tx.select({ versao: modeloApr.versao }).from(modeloApr).where(eq(modeloApr.codigo, codigo));
+        const existentes = await tx.select({ versao: modeloApr.versao, arquivadoEm: modeloApr.arquivadoEm }).from(modeloApr).where(eq(modeloApr.codigo, codigo));
         let base: ConteudoDoModelo | null = null;
         if (existentes.length > 0) {
+          if (dados.versao !== undefined || dados.copiar_de !== undefined) {
+            throw invalido("so_no_modelo_novo", "versao e copiar_de só valem para um modelo novo");
+          }
+          if (existentes.some((e) => e.arquivadoEm)) {
+            throw conflito("modelo_arquivado", `O modelo ${codigo} foi excluído; restaure-o antes de criar uma versão nova`);
+          }
           if (await rascunhoDoCodigo(tx, codigo)) {
             throw conflito("rascunho_existente", `Já existe um rascunho do modelo ${codigo}; edite-o ou publique-o antes`);
           }
           const publicada = await versaoPublicadaMaisRecente(tx, codigo);
           if (publicada) base = await conteudoDe(tx, publicada);
-        } else if (dados.titulo === undefined || dados.riscos === undefined || dados.itens === undefined) {
-          throw invalido("conteudo_obrigatorio", "Modelo novo precisa de titulo, riscos e itens");
+        } else {
+          if (dados.copiar_de !== undefined) {
+            const origem = await versaoPublicadaMaisRecente(tx, dados.copiar_de);
+            if (!origem) throw invalido("modelo_sem_versao_publicada", `O modelo ${dados.copiar_de} não existe ou não tem versão publicada`);
+            base = await conteudoDe(tx, origem);
+          }
+          if (dados.titulo === undefined || (!base && (dados.riscos === undefined || dados.itens === undefined))) {
+            throw invalido("conteudo_obrigatorio", "Modelo novo precisa de titulo e de riscos e itens (ou de copiar_de)");
+          }
         }
 
         const conteudo: ConteudoDoModelo = {
@@ -126,7 +288,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         };
         validarConteudo(conteudo.riscos, conteudo.itens);
 
-        const versao = Math.max(0, ...existentes.map((e) => e.versao)) + 1;
+        const versao = existentes.length > 0 ? Math.max(...existentes.map((e) => e.versao)) + 1 : (dados.versao ?? 1);
         const [linha] = await tx
           .insert(modeloApr)
           .values({ codigo, versao, titulo: conteudo.titulo, pae: conteudo.pae, dataDocumento: conteudo.dataDocumento })
@@ -139,7 +301,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
   });
 
   /** Substitui o conteúdo inteiro de um rascunho. Publicado não aceita escrita (`409`). */
-  r.put("/modelos-apr/:codigo/versoes/:versao", autenticar(), soSeguranca, async (c) => {
+  r.put("/modelos-apr/:codigo/versoes/:versao", autenticar(), soQuemEdita, async (c) => {
     const codigo = c.req.param("codigo");
     const versao = numeroDaVersao(c.req.param("versao"));
     const dados = await lerCorpo(
@@ -173,8 +335,8 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
     return responder(c, { id, versao });
   });
 
-  /** Só rascunho se descarta; uma versão publicada pode já ter APRs apontando para ela. */
-  r.delete("/modelos-apr/:codigo/versoes/:versao", autenticar(), soSeguranca, async (c) => {
+  /** Só rascunho se descarta; uma versão publicada pode já ter APRs apontando para ela (o modelo inteiro se exclui acima). */
+  r.delete("/modelos-apr/:codigo/versoes/:versao", autenticar(), soQuemEdita, async (c) => {
     const codigo = c.req.param("codigo");
     const versao = numeroDaVersao(c.req.param("versao"));
     await traduzirImutabilidade(() =>
@@ -189,7 +351,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
   });
 
   /** Publica o rascunho: passa a ser a versão que as APRs novas usam, e nada mais nele muda. */
-  r.post("/modelos-apr/:codigo/versoes/:versao/publicar", autenticar(), soSeguranca, async (c) => {
+  r.post("/modelos-apr/:codigo/versoes/:versao/publicar", autenticar(), soQuemEdita, async (c) => {
     const codigo = c.req.param("codigo");
     const versao = numeroDaVersao(c.req.param("versao"));
     const publicado = await traduzirImutabilidade(() =>
@@ -218,13 +380,19 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
 
   // ---- Atividades ------------------------------------------------------------------------------------------------
 
+  /** A ligação OS → modelo: cada OS traz o código da atividade (plano de manutenção), e a atividade diz o modelo. */
   r.get("/atividades", autenticar(), async (c) => {
     const filtros = lerConsulta(
       c,
-      esquemaPaginacao.extend({ sem_modelo: booleanoDaConsulta, busca: z.string().trim().min(1).optional() }),
+      esquemaPaginacao.extend({
+        sem_modelo: booleanoDaConsulta,
+        busca: z.string().trim().min(1).optional(),
+        modelo: esquemaCodigo.optional(),
+      }),
     );
     const condicoes: (SQL | undefined)[] = [
       filtros.sem_modelo ? isNull(atividade.modeloAprCodigo) : undefined,
+      filtros.modelo ? eq(atividade.modeloAprCodigo, filtros.modelo) : undefined,
       filtros.busca ? or(ilike(atividade.codigo, `%${escaparLike(filtros.busca)}%`), ilike(atividade.descricao, `%${escaparLike(filtros.busca)}%`)) : undefined,
     ];
     const onde = and(...condicoes);
@@ -234,7 +402,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
   });
 
   /** Cria ou atualiza a atividade. A chave é o código do plano do SAP (pode ter pontos e barras: `8.7.1`, `8.7.2/8.7.3`). */
-  r.put("/atividades/:codigo{.+}", autenticar(), soSeguranca, async (c) => {
+  r.put("/atividades/:codigo{.+}", autenticar(), soQuemEdita, async (c) => {
     const codigo = c.req.param("codigo").trim();
     if (!codigo || codigo.length > 200) throw invalido("codigo_invalido", "Código da atividade inválido");
     const dados = await lerCorpo(
@@ -245,13 +413,8 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         provisorio: z.boolean().optional(),
       }),
     );
-    if (dados.modelo_apr_codigo !== null) {
-      const [publicado] = await deps.db
-        .select({ id: modeloApr.id })
-        .from(modeloApr)
-        .where(and(eq(modeloApr.codigo, dados.modelo_apr_codigo), isNotNull(modeloApr.publicadoEm)))
-        .limit(1);
-      if (!publicado) throw invalido("modelo_sem_versao_publicada", `O modelo ${dados.modelo_apr_codigo} não existe ou não tem versão publicada`);
+    if (dados.modelo_apr_codigo !== null && !(await publicadoEmUso(deps.db, dados.modelo_apr_codigo))) {
+      throw invalido("modelo_sem_versao_publicada", `O modelo ${dados.modelo_apr_codigo} não existe, não tem versão publicada ou foi excluído`);
     }
 
     const [salva] = await deps.db

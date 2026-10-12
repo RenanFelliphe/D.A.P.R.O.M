@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
+import { criarOs } from "./fixture-os";
 
 const MENSAGEM_SEM_ELIMINATORIO = "Modelo precisa de ao menos um item eliminatório";
 const MENSAGEM_SEM_RESPOSTA = "Todo item de verificação precisa de resposta bloqueante";
@@ -42,9 +43,12 @@ describe("Modelo de APR", () => {
   let supervisor: UsuarioDeTeste;
   let tecnico: UsuarioDeTeste;
 
+  let equipeId: string;
+
   before(async () => {
     amb = await criarAmbiente({ comCarga: true });
     const equipe = await amb.criarEquipe();
+    equipeId = equipe.id;
     seguranca = await amb.criarUsuario({ perfil: "seguranca" });
     admin = await amb.criarUsuario({ perfil: "admin" });
     analista = await amb.criarUsuario({ perfil: "analista" });
@@ -64,13 +68,15 @@ describe("Modelo de APR", () => {
       assert.equal((await amb.req("POST", "/modelos-apr/APR%2001/versoes", { json: {} })).status, 401);
     });
 
-    it("só a segurança escreve: admin, analista, supervisor e técnico recebem 403 em todas as escritas", async () => {
-      for (const quem of [admin, analista, supervisor, tecnico]) {
+    it("só a Segurança e o admin escrevem: analista, supervisor e técnico recebem 403 em todas as escritas", async () => {
+      for (const quem of [analista, supervisor, tecnico]) {
         const c = { como: quem, json: corpoMinimo() };
         assert.equal((await amb.req("POST", "/modelos-apr/APR%2001/versoes", c)).status, 403, `POST versoes ${quem.perfil}`);
         assert.equal((await amb.req("PUT", "/modelos-apr/APR%2001/versoes/4", c)).status, 403, `PUT ${quem.perfil}`);
         assert.equal((await amb.req("DELETE", "/modelos-apr/APR%2001/versoes/4", { como: quem })).status, 403, `DELETE ${quem.perfil}`);
         assert.equal((await publicar("APR 01", 4, quem)).status, 403, `publicar ${quem.perfil}`);
+        assert.equal((await amb.req("DELETE", "/modelos-apr/APR%2001", { como: quem })).status, 403, `excluir ${quem.perfil}`);
+        assert.equal((await amb.req("POST", "/modelos-apr/APR%2001/restaurar", { como: quem })).status, 403, `restaurar ${quem.perfil}`);
         assert.equal((await amb.req("PUT", "/atividades/8.7.1", { como: quem, json: { descricao: "x", modelo_apr_codigo: null } })).status, 403, `PUT atividade ${quem.perfil}`);
       }
     });
@@ -93,8 +99,23 @@ describe("Modelo de APR", () => {
       );
       assert.equal(c.total, 8);
       const apr01 = c.modelos[0];
-      assert.deepEqual(Object.keys(apr01).sort(), ["codigo", "data_documento", "id", "itens_total", "publicado_em", "rascunho", "titulo", "versao"]);
+      assert.deepEqual(Object.keys(apr01).sort(), [
+        "aprs_total",
+        "arquivado_em",
+        "atividades_total",
+        "codigo",
+        "data_documento",
+        "id",
+        "itens_total",
+        "publicado_em",
+        "rascunho",
+        "titulo",
+        "versao",
+      ]);
       assert.equal(apr01.versao, 4);
+      assert.equal(apr01.arquivado_em, null);
+      assert.equal(apr01.aprs_total, 0);
+      assert.ok(apr01.atividades_total > 0, "a carga liga atividades à APR 01");
       assert.equal(apr01.data_documento, "2026-07-24");
       assert.equal(apr01.rascunho, false);
       assert.equal(apr01.itens_total, 43); // 11 verificações + 32 medidas
@@ -515,6 +536,199 @@ describe("Modelo de APR", () => {
       const depois = await amb.esperar(200, "GET", "/atividades", { como: seguranca, consulta: { busca: "9.1.1" } });
       assert.equal(depois.atividades[0].modelo_apr_codigo, "APR 03");
       assert.equal((await ler("APR 03", "publicada")).corpo.versao, 5);
+    });
+
+    it("?modelo= mostra só as atividades ligadas a um modelo", async () => {
+      const c = await amb.esperar(200, "GET", "/atividades", { como: seguranca, consulta: { modelo: "APR 80", tamanho: 200 } });
+      assert.deepEqual(c.atividades.map((a: any) => a.codigo), ["8.7.4"]);
+    });
+  });
+
+  // Daqui para baixo os testes criam atividades: ficam depois dos que contam a carga inicial.
+
+  describe("admin", () => {
+    it("cria, edita, publica, liga atividades e exclui como a Segurança, e enxerga os rascunhos", async () => {
+      await amb.esperar(201, "POST", "/modelos-apr/APR%2040/versoes", { como: admin, json: corpoMinimo() });
+      assert.equal((await ler("APR 40", 1, admin)).corpo.rascunho, true);
+      const lista = await amb.esperar(200, "GET", "/modelos-apr", { como: admin, consulta: { codigo: "APR 40" } });
+      assert.equal(lista.total, 1, "o rascunho aparece para o admin");
+      await amb.esperar(200, "PUT", "/modelos-apr/APR%2040/versoes/1", { como: admin, json: corpoMinimo({ titulo: "Do admin" }) });
+      await amb.esperar(200, "POST", "/modelos-apr/APR%2040/versoes/1/publicar", { como: admin });
+      await amb.esperar(200, "PUT", "/atividades/9.40.1", { como: admin, json: { descricao: "Do admin", modelo_apr_codigo: "APR 40" } });
+      const r = await amb.esperar(200, "DELETE", "/modelos-apr/APR%2040", { como: admin, consulta: { substituto: "APR 03" } });
+      assert.deepEqual(r, { codigo: "APR 40", resultado: "arquivado", atividades: 1, substituto: "APR 03" });
+      await amb.esperar(200, "POST", "/modelos-apr/APR%2040/restaurar", { como: admin });
+    });
+  });
+
+  describe("modelo novo: copiar_de e versão inicial", () => {
+    it("copiar_de começa com riscos, itens e PAE do outro modelo; versao dá o número da primeira versão", async () => {
+      const criado = await amb.esperar(201, "POST", "/modelos-apr/APR%2010/versoes", { como: admin, json: { titulo: "Atividade nova de campo", copiar_de: "APR 01", versao: 3 } });
+      assert.equal(criado.versao, 3);
+      const origem = (await ler("APR 01", "publicada")).corpo;
+      const m = (await ler("APR 10", 3)).corpo;
+      assert.equal(m.titulo, "Atividade nova de campo");
+      assert.equal(m.rascunho, true);
+      assert.equal(m.data_documento, null, "a data é a do documento novo");
+      assert.deepEqual(m.pae, origem.pae);
+      assert.deepEqual(semIds(m.itens), semIds(origem.itens));
+      assert.deepEqual(m.riscos.map((r: any) => [r.ordem, r.nome]), origem.riscos.map((r: any) => [r.ordem, r.nome]));
+    });
+
+    it("modelo novo em branco: título obrigatório, riscos e itens vazios valem", async () => {
+      const semTitulo = await criarVersao("APR 11", { copiar_de: "APR 01" });
+      assert.equal(semTitulo.status, 422);
+      assert.equal(semTitulo.corpo.erro.codigo, "conteudo_obrigatorio");
+      const criado = await amb.esperar(201, "POST", "/modelos-apr/APR%2011/versoes", { como: seguranca, json: { titulo: "Em branco", riscos: [], itens: [] } });
+      assert.equal(criado.versao, 1);
+    });
+
+    it("copiar_de sem versão publicada é 422; versao e copiar_de num modelo que já existe também", async () => {
+      const semOrigem = await criarVersao("APR 12", { titulo: "x", copiar_de: "APR 77" });
+      assert.equal(semOrigem.status, 422);
+      assert.equal(semOrigem.corpo.erro.codigo, "modelo_sem_versao_publicada");
+      for (const json of [{ versao: 9 }, { copiar_de: "APR 02" }]) {
+        const r = await criarVersao("APR 01", json);
+        assert.equal(r.status, 422, JSON.stringify(json));
+        assert.equal(r.corpo.erro.codigo, "so_no_modelo_novo");
+      }
+      assert.equal((await ler("APR 12", 1)).status, 404, "nada ficou gravado");
+    });
+  });
+
+  describe("excluir e restaurar", () => {
+    const excluir = (codigo: string, consulta?: Record<string, string>, como = seguranca) => amb.req("DELETE", `/modelos-apr/${encodeURIComponent(codigo)}`, { como, consulta });
+    const modeloDa = async (atividadeCodigo: string) => (await amb.sql<{ m: string | null }>("select modelo_apr_codigo as m from atividade where codigo = $1", [atividadeCodigo]))[0]!.m;
+
+    it("modelo que só teve rascunho é apagado de vez, e o código fica livre", async () => {
+      await amb.esperar(201, "POST", "/modelos-apr/APR%2020/versoes", { como: seguranca, json: corpoMinimo() });
+      const r = await excluir("APR 20");
+      assert.equal(r.status, 200);
+      assert.deepEqual(r.corpo, { codigo: "APR 20", resultado: "excluido", atividades: 0, substituto: null });
+      assert.equal((await amb.req("GET", "/modelos-apr/APR%2020", { como: seguranca })).status, 404);
+      await amb.esperar(201, "POST", "/modelos-apr/APR%2020/versoes", { como: seguranca, json: corpoMinimo() });
+    });
+
+    it("modelo publicado é arquivado: sai das listas e das APRs novas, o rascunho é apagado e as versões publicadas seguem legíveis", async () => {
+      await amb.esperar(201, "POST", "/modelos-apr/APR%2021/versoes", { como: seguranca, json: corpoMinimo() });
+      await publicar("APR 21", 1);
+      await amb.esperar(201, "POST", "/modelos-apr/APR%2021/versoes", { como: seguranca, json: {} });
+      await amb.esperar(200, "PUT", "/atividades/9.21.1", { como: seguranca, json: { descricao: "Do 21", modelo_apr_codigo: "APR 21" } });
+
+      const r = await excluir("APR 21");
+      assert.deepEqual(r.corpo, { codigo: "APR 21", resultado: "arquivado", atividades: 1, substituto: null });
+      assert.equal(await modeloDa("9.21.1"), null, "a atividade ficou sem modelo");
+
+      assert.equal((await amb.esperar(200, "GET", "/modelos-apr", { como: seguranca, consulta: { codigo: "APR 21" } })).total, 0);
+      const arquivados = await amb.esperar(200, "GET", "/modelos-apr", { como: tecnico, consulta: { codigo: "APR 21", arquivados: true } });
+      assert.deepEqual(arquivados.modelos.map((m: any) => m.versao), [1]);
+      assert.ok(arquivados.modelos[0].arquivado_em);
+
+      assert.equal((await ler("APR 21", "publicada", tecnico)).status, 404, "não serve mais para APR nova");
+      const v1 = await ler("APR 21", 1, tecnico);
+      assert.equal(v1.status, 200, "a versão numerada é o histórico");
+      assert.ok(v1.corpo.arquivado_em);
+      assert.equal((await ler("APR 21", 2)).status, 404, "o rascunho foi apagado");
+
+      const detalhe = await amb.esperar(200, "GET", "/modelos-apr/APR%2021", { como: seguranca });
+      assert.ok(detalhe.arquivado_em);
+      assert.equal(detalhe.versoes.length, 1);
+    });
+
+    it("modelo excluído não recebe atividade nem versão nova, e não se exclui duas vezes", async () => {
+      const atividadeNova = await amb.req("PUT", "/atividades/9.21.1", { como: seguranca, json: { descricao: "Do 21", modelo_apr_codigo: "APR 21" } });
+      assert.equal(atividadeNova.status, 422);
+      assert.equal(atividadeNova.corpo.erro.codigo, "modelo_sem_versao_publicada");
+      const versaoNova = await criarVersao("APR 21", {});
+      assert.equal(versaoNova.status, 409);
+      assert.equal(versaoNova.corpo.erro.codigo, "modelo_arquivado");
+      const deNovo = await excluir("APR 21");
+      assert.equal(deNovo.status, 409);
+      assert.equal(deNovo.corpo.erro.codigo, "modelo_arquivado");
+      assert.equal((await excluir("APR 99")).status, 404);
+    });
+
+    it("com substituto, as atividades passam para o outro modelo; substituto inválido é 422 e nada muda", async () => {
+      await amb.esperar(201, "POST", "/modelos-apr/APR%2022/versoes", { como: seguranca, json: corpoMinimo() });
+      await publicar("APR 22", 1);
+      for (const codigo of ["9.22.1", "9.22.2"]) {
+        await amb.esperar(200, "PUT", `/atividades/${codigo}`, { como: seguranca, json: { descricao: codigo, modelo_apr_codigo: "APR 22" } });
+      }
+      for (const substituto of ["APR 77", "APR 22", "APR 21", "APR 20"]) {
+        const r = await excluir("APR 22", { substituto });
+        assert.equal(r.status, 422, substituto);
+        assert.equal(r.corpo.erro.codigo, "substituto_invalido", substituto);
+      }
+      assert.equal((await ler("APR 22", "publicada")).status, 200, "a recusa não excluiu");
+      assert.equal(await modeloDa("9.22.1"), "APR 22");
+
+      const r = await excluir("APR 22", { substituto: "APR 03" });
+      assert.deepEqual(r.corpo, { codigo: "APR 22", resultado: "arquivado", atividades: 2, substituto: "APR 03" });
+      assert.equal(await modeloDa("9.22.1"), "APR 03");
+      assert.equal(await modeloDa("9.22.2"), "APR 03");
+    });
+
+    it("restaurar devolve o modelo às listas e às APRs novas; as atividades não voltam sozinhas", async () => {
+      const r = await amb.esperar(200, "POST", "/modelos-apr/APR%2021/restaurar", { como: seguranca });
+      assert.deepEqual(r, { codigo: "APR 21", versoes: 1 });
+      assert.equal((await ler("APR 21", "publicada", tecnico)).corpo.versao, 1);
+      assert.equal((await amb.esperar(200, "GET", "/modelos-apr", { como: tecnico, consulta: { codigo: "APR 21" } })).total, 1);
+      assert.equal(await modeloDa("9.21.1"), null);
+
+      const deNovo = await amb.req("POST", "/modelos-apr/APR%2021/restaurar", { como: seguranca });
+      assert.equal(deNovo.status, 409);
+      assert.equal(deNovo.corpo.erro.codigo, "modelo_nao_arquivado");
+      assert.equal((await amb.req("POST", "/modelos-apr/APR%2099/restaurar", { como: seguranca })).status, 404);
+    });
+
+    it("modelo com APR respondida: excluir arquiva, e a APR continua ligada à versão que usou", async () => {
+      const o = await criarOs(amb, { equipeId, encerrada: true, gravarImagens: false });
+      const [{ codigo }] = (await amb.sql<{ codigo: string }>("select codigo from modelo_apr where id = $1", [o.modeloId])) as [{ codigo: string }];
+      const r = await excluir(codigo);
+      assert.equal(r.corpo.resultado, "arquivado");
+      const [ligada] = await amb.sql<{ modelo_apr_id: string }>("select modelo_apr_id from apr where id = $1", [o.aprId]);
+      assert.equal(ligada!.modelo_apr_id, o.modeloId);
+      assert.equal((await ler(codigo, 4)).status, 200);
+    });
+  });
+
+  describe("detalhe e uso do modelo", () => {
+    it("GET /modelos-apr/{codigo} traz as versões, da mais nova à mais antiga; quem não edita não vê o rascunho", async () => {
+      await amb.esperar(201, "POST", "/modelos-apr/APR%2003/versoes", { como: seguranca, json: {} });
+      const daSeguranca = await amb.esperar(200, "GET", "/modelos-apr/APR%2003", { como: seguranca });
+      assert.deepEqual(daSeguranca.versoes.map((v: any) => [v.versao, v.rascunho]), [[6, true], [5, false], [4, false]]);
+      assert.equal(daSeguranca.arquivado_em, null);
+      const doAnalista = await amb.esperar(200, "GET", "/modelos-apr/APR%2003", { como: analista });
+      assert.deepEqual(doAnalista.versoes.map((v: any) => v.versao), [5, 4]);
+      await amb.esperar(200, "DELETE", "/modelos-apr/APR%2003/versoes/6", { como: seguranca });
+      assert.equal((await amb.req("GET", "/modelos-apr/APR%2077", { como: seguranca })).status, 404);
+    });
+
+    it("GET /modelos-apr/{codigo}/uso: atividades ligadas, OS abertas dessas atividades e APRs respondidas", async () => {
+      await amb.esperar(201, "POST", "/modelos-apr/APR%2030/versoes", { como: seguranca, json: corpoMinimo() });
+      await publicar("APR 30", 1);
+      await amb.esperar(200, "PUT", "/atividades/9.30.1", { como: seguranca, json: { descricao: "Do 30", modelo_apr_codigo: "APR 30" } });
+      const aberta = await criarOs(amb, { equipeId, numeroOrdem: "4300001" });
+      const fechada = await criarOs(amb, { equipeId, numeroOrdem: "4300002", status: "encerrada" });
+      for (const o of [aberta, fechada]) await amb.sql("update os set codigo_atividade = '9.30.1' where id = $1", [o.osId]);
+
+      const uso = await amb.esperar(200, "GET", "/modelos-apr/APR%2030/uso", { como: analista });
+      assert.deepEqual(uso.atividades, [{ codigo: "9.30.1", descricao: "Do 30", provisorio: false }]);
+      assert.equal(uso.os_abertas.total, 1, "a encerrada não conta");
+      assert.equal(uso.os_abertas.recentes[0].id, aberta.osId);
+      assert.equal(uso.os_abertas.recentes[0].numero_ordem, "4300001");
+      assert.ok(uso.os_abertas.recentes[0].equipe);
+      assert.deepEqual(uso.aprs, { total: 0, bloqueadas: 0, ultima_em: null });
+
+      const comApr = await criarOs(amb, { equipeId, encerrada: true, gravarImagens: false });
+      const [{ codigo }] = (await amb.sql<{ codigo: string }>("select codigo from modelo_apr where id = $1", [comApr.modeloId])) as [{ codigo: string }];
+      const usoDaApr = await amb.esperar(200, "GET", `/modelos-apr/${encodeURIComponent(codigo)}/uso`, { como: seguranca });
+      assert.deepEqual(usoDaApr.aprs, { total: 1, bloqueadas: 0, ultima_em: "2026-10-09T11:50:00.000Z" });
+    });
+
+    it("o uso é de quem vê as OS de todas as equipes: supervisor e técnico recebem 403; código que não existe é 404", async () => {
+      for (const quem of [supervisor, tecnico]) assert.equal((await amb.req("GET", "/modelos-apr/APR%2030/uso", { como: quem })).status, 403, quem.perfil);
+      assert.equal((await amb.req("GET", "/modelos-apr/APR%2077/uso", { como: admin })).status, 404);
     });
   });
 });

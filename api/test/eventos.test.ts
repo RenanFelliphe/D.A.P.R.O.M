@@ -351,7 +351,7 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const original = await novaOs();
     await enviar(tecnico, evento("apr_concluida", await payloadApr(original.id, { bloquear: true }), original.id));
     const outraEquipe = await amb.criarEquipe({ supervisorId: (await amb.criarUsuario({ perfil: "supervisor" })).id });
-    const apoio = await novaOs({ osOrigemId: original.id, origem: "manual", numeroOrdem: null });
+    const apoio = await novaOs({ osOrigemId: original.id, origem: "apoio", numeroOrdem: null });
     assert.ok(outraEquipe.id);
     const apr = await aprAprovada(apoio.id);
     const e = iniciar(apoio.id, apr.id);
@@ -378,7 +378,7 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const r = await amb.esperar(200, "POST", "/eventos", { como: saindo, json: { eventos: [evento("apr_concluida", p, o.id)] } });
     assert.equal(r.aprs[0].resultado, "aprovada");
     assert.equal(r.acesso_revogado, true);
-    assert.equal(await amb.auth.entrar(`${saindo.matricula.toLowerCase()}@daprom.local`, saindo.senha), null, "conta revogada");
+    assert.equal(await amb.auth.entrar(saindo.email, saindo.senha), null, "conta revogada");
   });
 
   it("POST /sync/pull entrega o snapshot da equipe: OS abertas, APRs, execuções, modelos, atividades, locais e usuários", async () => {
@@ -405,5 +405,20 @@ describe("Eventos de campo: APR, execução e sync", () => {
 
     assert.equal((await amb.req("POST", "/sync/pull", { como: analista })).status, 403);
     assert.equal((await amb.req("POST", "/sync/pull")).status, 401);
+  });
+
+  it("modelo excluído (arquivado): sai da cópia offline de quem não o usou, mas a APR respondida nele ainda é aceita", async () => {
+    await amb.db.update(modeloApr).set({ arquivadoEm: amb.relogio.agora }).where(eq(modeloApr.codigo, "APR 01"));
+    try {
+      const novato = await amb.criarUsuario({ perfil: "tecnico", equipeId: (await amb.criarEquipe()).id });
+      const snap = await amb.esperar(200, "POST", "/sync/pull", { como: novato });
+      assert.ok(snap.modelos_apr.length > 0);
+      assert.ok(!snap.modelos_apr.some((m: any) => m.codigo === "APR 01"));
+
+      const o = await novaOs();
+      await aprAprovada(o.id);
+    } finally {
+      await amb.db.update(modeloApr).set({ arquivadoEm: null }).where(eq(modeloApr.codigo, "APR 01"));
+    }
   });
 });

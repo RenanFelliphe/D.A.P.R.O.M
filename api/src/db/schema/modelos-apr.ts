@@ -22,8 +22,19 @@ export const modeloApr = pgTable(
     pae: jsonb(),
     /** Nulo = rascunho. */
     publicadoEm: instante(),
+    /**
+     * Modelo excluído depois de publicado: sai das listas e das APRs novas, mas as versões ficam para o histórico das
+     * APRs e dos PDFs (e para a APR offline que ainda vai chegar). Vale para todas as versões do código; é a única
+     * coluna que uma versão publicada aceita mudar (gatilho em `0006_modelo_apr_arquivado.sql`).
+     */
+    arquivadoEm: instante(),
   },
-  (t) => [unique("modelo_apr_codigo_versao_key").on(t.codigo, t.versao), check("modelo_apr_versao_check", sql`${t.versao} > 0`)],
+  (t) => [
+    unique("modelo_apr_codigo_versao_key").on(t.codigo, t.versao),
+    check("modelo_apr_versao_check", sql`${t.versao} > 0`),
+    // O rascunho de um modelo excluído é apagado, não arquivado.
+    check("modelo_apr_arquivado_publicado", sql`${t.arquivadoEm} is null or ${t.publicadoEm} is not null`),
+  ],
 ).enableRLS();
 
 /**

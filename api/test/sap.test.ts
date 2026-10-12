@@ -4,6 +4,7 @@ import { after, before, describe, it } from "node:test";
 import { and, eq } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { alerta, apr, atividade, equipe, execucao, importacao, localInstalacao, modeloApr, os, reprogramacao, tarefa, usuario } from "../src/db/schema";
+import { contarMotivos, faixasDoPeriodo, OUTROS_MOTIVOS } from "../src/dominio/importacao-resumo";
 import { executarLeitura, manipularLeituraSap } from "../src/servicos/leitura-sap";
 import { ClienteSapHttp } from "../src/servicos/sap-http";
 import type { OrdemSap } from "../src/servicos/sap";
@@ -369,8 +370,10 @@ describe("Integração SAP: leitura das ordens", () => {
     assert.equal((await osDe(desconhecida.numero_ordem))!.codigoAtividade, "1.2");
   });
 
-  it("API fora do ar: nada é gravado, a importação fica com erro e a faixa acende até a próxima leitura boa", async () => {
+  it("API fora do ar: nenhuma OS muda, a importação fica com erro e os analistas recebem o alerta de falha", async () => {
     const analista = await amb.criarUsuario({ perfil: "analista" });
+    const totalDeOs = async () => (await amb.db.select({ id: os.id }).from(os)).length;
+    const antes = await totalDeOs();
     const o = ordem();
     comOrdens(o);
     amb.sap.falhar = true;
@@ -379,20 +382,62 @@ describe("Integração SAP: leitura das ordens", () => {
     assert.equal(r.erro, "SAP fora do ar");
     assert.deepEqual([r.criadas, r.atualizadas, r.ignoradas.length], [0, 0, 0]);
     assert.equal(await osDe(o.numero_ordem), undefined);
+    assert.equal(await totalDeOs(), antes);
     const [i] = await amb.db.select().from(importacao).where(eq(importacao.id, r.importacaoId));
     assert.deepEqual([i!.origem, i!.erro, i!.criadas], ["api", "SAP fora do ar", 0]);
 
     const lista = await amb.esperar(200, "GET", "/importacoes", { como: analista });
-    assert.equal(lista.ultima_leitura_com_erro, true);
     assert.equal(lista.importacoes[0].id, r.importacaoId);
     assert.equal(lista.importacoes[0].erro, "SAP fora do ar");
+    assert.equal("ultima_leitura_com_erro" in lista, false);
+
+    // A leitura agendada não tem autor: o alerta vai para cada analista ativo, sem OS e apontando para a importação.
+    const alertasDe = () => amb.db.select().from(alerta).where(and(eq(alerta.destinatarioId, analista.id), eq(alerta.tipo, "falha_importacao")));
+    const [primeiro, ...outros] = await alertasDe();
+    assert.equal(outros.length, 0);
+    assert.deepEqual([primeiro!.osId, primeiro!.importacaoId, primeiro!.lidoEm, primeiro!.emailEnviadoEm], [null, r.importacaoId, null, null]);
+    assert.equal(primeiro!.detalhe, "A sincronização com a API do SAP falhou: SAP fora do ar. Nenhuma OS foi criada, alterada ou removida.");
+    const sino = await amb.esperar(200, "GET", "/alertas", { como: analista, consulta: { lido: false } });
+    const noSino = sino.alertas.find((a: any) => a.id === primeiro!.id);
+    assert.deepEqual([noSino.tipo, noSino.os_id, noSino.numero_ordem, noSino.titulo, noSino.importacao_id, noSino.importacao_origem], ["falha_importacao", null, null, null, r.importacaoId, "api"]);
+
+    // Outra falha antes de ler o alerta reaproveita o mesmo: aponta para a falha nova e sobe para o topo.
+    amb.relogio.agora = new Date(amb.relogio.agora.getTime() + 60_000);
+    const segunda = await ler();
+    const [reaproveitado, ...nenhum] = await alertasDe();
+    assert.equal(nenhum.length, 0);
+    assert.deepEqual([reaproveitado!.id, reaproveitado!.importacaoId, reaproveitado!.criadoEm.getTime()], [primeiro!.id, segunda.importacaoId, amb.relogio.agora.getTime()]);
+
+    // Lido o alerta, a próxima falha abre um novo.
+    await amb.esperar(200, "PATCH", `/alertas/${primeiro!.id}`, { como: analista, json: { lido: true } });
+    amb.relogio.agora = new Date(amb.relogio.agora.getTime() + 60_000);
+    await ler();
+    assert.equal((await alertasDe()).length, 2);
 
     amb.sap.falhar = false;
     amb.relogio.agora = new Date(amb.relogio.agora.getTime() + 60_000);
     const boa = await ler();
     assert.equal(boa.erro, null);
     assert.ok(await osDe(o.numero_ordem));
-    assert.equal((await amb.esperar(200, "GET", "/importacoes", { como: analista })).ultima_leitura_com_erro, false);
+    assert.equal((await alertasDe()).length, 2);
+  });
+
+  it("\"Sincronizar agora\" que falha avisa só quem pediu", async () => {
+    const quemPediu = await amb.criarUsuario({ perfil: "admin" });
+    const outroAnalista = await amb.criarUsuario({ perfil: "analista" });
+    const pedido = await amb.esperar(202, "POST", "/sap/leituras", { como: quemPediu });
+    amb.sap.falhar = true;
+    try {
+      await manipularLeituraSap(amb.deps, { id: randomUUID(), referenciaId: pedido.importacao_id });
+    } finally {
+      amb.sap.falhar = false;
+    }
+    const doPedido = await amb.db.select().from(alerta).where(eq(alerta.importacaoId, pedido.importacao_id));
+    assert.deepEqual(
+      doPedido.map((a) => a.destinatarioId),
+      [quemPediu.id],
+    );
+    assert.equal((await amb.db.select().from(alerta).where(eq(alerta.destinatarioId, outroAnalista.id))).length, 0);
   });
 
   it("resposta inválida da API também não grava nada", async () => {
@@ -554,6 +599,144 @@ describe("Integração SAP: cursor, \"Ler agora\" e permissões", () => {
   });
 });
 
+describe("Integração SAP: diagnóstico da entrada de OS e sincronização", () => {
+  let amb: Ambiente;
+  let analista: UsuarioDeTeste;
+
+  before(async () => {
+    // Quarta-feira, 14/10/2026, 12h em São Paulo.
+    amb = await criarAmbiente({ relogio: new Date("2026-10-14T15:00:00Z") });
+    analista = await amb.criarUsuario({ perfil: "analista" });
+    await amb.db.insert(importacao).values([
+      {
+        origem: "api",
+        criadas: 3,
+        atualizadas: 2,
+        ignoradas: 1,
+        detalheIgnoradas: [{ numero_ordem: "4100001", motivo: "Status SAP diferente de liberada" }],
+        criadaEm: new Date("2026-10-14T13:00:00Z"),
+      },
+      // 23h do dia 12 em São Paulo (já dia 13 em UTC): conta no dia 12.
+      {
+        origem: "planilha",
+        arquivo: "x/ordens.xlsx",
+        usuarioId: analista.id,
+        criadas: 5,
+        ignoradas: 3,
+        detalheIgnoradas: [
+          { linha: 2, centro_trabalho: "CT_X", motivo: "Centro de trabalho sem equipe cadastrada" },
+          { linha: 3, motivo: "Ordem inválida: data_fim_prog: A data fim programada é anterior ao início" },
+          { linha: 4, motivo: "Ordem inválida: titulo: obrigatório" },
+        ],
+        criadaEm: new Date("2026-10-13T02:00:00Z"),
+      },
+      { origem: "api", erro: "SAP fora do ar", criadaEm: new Date("2026-10-10T12:00:00Z") },
+      { origem: "api", criadas: 4, criadaEm: new Date("2026-10-05T12:00:00Z") },
+      {
+        origem: "planilha",
+        arquivo: "y/antiga.xlsx",
+        criadas: 7,
+        ignoradas: 1,
+        detalheIgnoradas: [{ linha: 9, motivo: "Reprogramada no sistema" }],
+        criadaEm: new Date("2026-09-01T12:00:00Z"),
+      },
+      { origem: "api", criadas: 9, criadaEm: new Date("2025-10-20T12:00:00Z") },
+    ]);
+  });
+  after(() => amb.fechar());
+
+  const resumo = (periodo?: string) => amb.esperar(200, "GET", "/importacoes/resumo", { como: analista, consulta: { periodo } });
+
+  it("7 dias: um ponto por dia até hoje, criadas por origem e leituras no dia de São Paulo, totais e o período anterior", async () => {
+    const r = await resumo("7d");
+    assert.deepEqual([r.periodo, r.agrupamento, r.de, r.ate], ["7d", "dia", "2026-10-08", "2026-10-14"]);
+    assert.equal(r.serie.length, 7);
+    assert.deepEqual(r.serie.at(-1), { inicio: "2026-10-14", fim: "2026-10-15", api: 3, planilha: 0, leituras: 1, falhas: 0 });
+    assert.deepEqual(r.serie.find((p: any) => p.inicio === "2026-10-12"), { inicio: "2026-10-12", fim: "2026-10-13", api: 0, planilha: 5, leituras: 0, falhas: 0 });
+    assert.deepEqual(r.serie.find((p: any) => p.inicio === "2026-10-10"), { inicio: "2026-10-10", fim: "2026-10-11", api: 0, planilha: 0, leituras: 1, falhas: 1 });
+    assert.deepEqual(r.totais, { criadas: 8, atualizadas: 2, ignoradas: 4 });
+    assert.deepEqual(r.por_origem.api, { criadas: 3, atualizadas: 2, ignoradas: 1, leituras: 2, leituras_com_erro: 1 });
+    assert.deepEqual(r.por_origem.planilha, { criadas: 5, atualizadas: 0, ignoradas: 3, arquivos: 1, arquivos_com_erro: 0 });
+    assert.deepEqual(r.anterior, { criadas: 4, atualizadas: 0, ignoradas: 0 });
+  });
+
+  it("os motivos das linhas ignoradas são só do período, agrupados pelo início do texto e do mais comum ao menos", async () => {
+    assert.deepEqual((await resumo("7d")).motivos_ignoradas, [
+      { motivo: "Ordem inválida", total: 2 },
+      { motivo: "Centro de trabalho sem equipe cadastrada", total: 1 },
+      { motivo: "Status SAP diferente de liberada", total: 1 },
+    ]);
+    assert.ok((await resumo("12m")).motivos_ignoradas.some((m: any) => m.motivo === "Reprogramada no sistema" && m.total === 1));
+  });
+
+  it("acima de cinco motivos, os menos comuns somam em \"Outros motivos\"; detalhe sem motivo não quebra a contagem", () => {
+    const linhas = (motivo: string, n: number) => Array.from({ length: n }, () => ({ motivo }));
+    const contados = contarMotivos([[...linhas("A", 6), ...linhas("B", 5), ...linhas("C", 4), ...linhas("D", 3), ...linhas("E", 2), ...linhas("F", 1)], [{}], null, "x"]);
+    assert.deepEqual(contados, [
+      { motivo: "A", total: 6 },
+      { motivo: "B", total: 5 },
+      { motivo: "C", total: 4 },
+      { motivo: "D", total: 3 },
+      { motivo: OUTROS_MOTIVOS, total: 4 },
+    ]);
+    assert.deepEqual(contarMotivos([[{}]]), [{ motivo: "Sem motivo informado", total: 1 }]);
+  });
+
+  it("sem período são 30 dias; 90 dias vira 13 semanas de segunda a domingo; 12 meses, um ponto por mês", async () => {
+    const trinta = await resumo();
+    assert.deepEqual([trinta.periodo, trinta.serie.length, trinta.de, trinta.totais.criadas, trinta.anterior.criadas], ["30d", 30, "2026-09-15", 12, 7]);
+
+    const semanas = await resumo("90d");
+    assert.equal(semanas.agrupamento, "semana");
+    assert.equal(semanas.serie.length, 13);
+    assert.deepEqual([semanas.serie[0].inicio, semanas.serie.at(-1).inicio, semanas.serie.at(-1).fim], ["2026-07-20", "2026-10-12", "2026-10-19"]);
+    assert.deepEqual([semanas.serie.at(-1).api, semanas.serie.at(-1).planilha], [3, 5]);
+    assert.deepEqual([semanas.serie.at(-2).api, semanas.serie.at(-2).planilha, semanas.serie.at(-2).leituras, semanas.serie.at(-2).falhas], [4, 0, 2, 1]);
+
+    const meses = await resumo("12m");
+    assert.equal(meses.agrupamento, "mes");
+    assert.deepEqual(
+      [meses.serie.length, meses.serie[0].inicio, meses.serie.at(-1).inicio, meses.serie.at(-1).fim],
+      [12, "2025-11-01", "2026-10-01", "2026-11-01"],
+    );
+    assert.equal(meses.serie.find((p: any) => p.inicio === "2026-09-01").planilha, 7);
+    assert.deepEqual([meses.totais.criadas, meses.anterior.criadas], [19, 9]);
+  });
+
+  it("período inválido é 422; só analista e admin veem o diagnóstico e a sincronização", async () => {
+    assert.equal((await amb.req("GET", "/importacoes/resumo", { como: analista, consulta: { periodo: "1a" } })).status, 422);
+    for (const caminho of ["/importacoes/resumo", "/sap/sincronizacao"]) {
+      assert.equal((await amb.req("GET", caminho)).status, 401, caminho);
+      for (const perfil of ["supervisor", "tecnico", "seguranca"] as const) {
+        const u = await amb.criarUsuario({ perfil });
+        assert.equal((await amb.req("GET", caminho, { como: u })).status, 403, `${caminho} ${perfil}`);
+      }
+      await amb.esperar(200, "GET", caminho, { como: await amb.criarUsuario({ perfil: "admin" }) });
+    }
+  });
+
+  it("as faixas atravessam a virada do ano e o período anterior tem o mesmo tamanho", () => {
+    const meses = faixasDoPeriodo("12m", "2026-01-15");
+    assert.deepEqual([meses.faixas[0], meses.faixas.at(-1), meses.anterior], [
+      { inicio: "2025-02-01", fim: "2025-03-01" },
+      { inicio: "2026-01-01", fim: "2026-02-01" },
+      { inicio: "2024-02-01", fim: "2025-02-01" },
+    ]);
+    const dias = faixasDoPeriodo("7d", "2026-01-02");
+    assert.deepEqual([dias.faixas[0]!.inicio, dias.faixas.at(-1)!.fim, dias.anterior], ["2025-12-27", "2026-01-03", { inicio: "2025-12-20", fim: "2025-12-27" }]);
+    // Domingo pertence à semana que começou na segunda anterior.
+    assert.equal(faixasDoPeriodo("90d", "2026-10-18").faixas.at(-1)!.inicio, "2026-10-12");
+  });
+
+  it("GET /sap/sincronizacao: última leitura sem erro, leitura automática e o intervalo; uma falha não muda a última leitura boa", async () => {
+    const sincronizacao = () => amb.esperar(200, "GET", "/sap/sincronizacao", { como: analista });
+    assert.deepEqual(await sincronizacao(), { ultima_leitura_sem_erro_em: "2026-10-14T13:00:00.000Z", automatica: true, intervalo_min: 15 });
+    // Uma leitura mais nova com erro não muda a última leitura boa (a falha vira alerta, ver a leitura das ordens).
+    await amb.db.insert(importacao).values({ origem: "api", erro: "SAP fora do ar", criadaEm: new Date("2026-10-14T14:00:00Z") });
+    assert.deepEqual(await sincronizacao(), { ultima_leitura_sem_erro_em: "2026-10-14T13:00:00.000Z", automatica: true, intervalo_min: 15 });
+  });
+});
+
 describe("Integração SAP: planilha", () => {
   let amb: Ambiente;
   let equipeId: string;
@@ -667,19 +850,60 @@ describe("Integração SAP: planilha", () => {
     assert.equal((await osDe("4200030"))!.statusSap, "LIB");
   });
 
-  it("arquivo que não é o export esperado: 422 com as colunas ausentes e nada é gravado", async () => {
-    const antes = (await amb.db.select({ id: importacao.id }).from(importacao)).length;
-    const arquivosAntes = amb.armazenamento.arquivos.size;
-    const r = await enviar(await xlsx([["Ordem", "Tipo", "Título"], [4200040, "YBA1", "x"]]));
+  it("arquivo que não é o export esperado: 422, nenhuma OS muda, a falha fica no histórico e quem enviou recebe o alerta", async () => {
+    const totalDeOs = async () => (await amb.db.select({ id: os.id }).from(os)).length;
+    const osAntes = await totalDeOs();
+    const r = await enviar(await xlsx([["Ordem", "Tipo", "Título"], [4200040, "YBA1", "x"]], "export errado.xlsx"));
     assert.equal(r.status, 422);
     assert.equal(r.corpo.erro.mensagem, "Colunas obrigatórias ausentes: Centro de trabalho, Local de instalação, Início programado");
     assert.equal(await osDe("4200040"), undefined);
-    assert.equal((await amb.db.select({ id: importacao.id }).from(importacao)).length, antes);
-    assert.equal(amb.armazenamento.arquivos.size, arquivosAntes);
+    assert.equal(await totalDeOs(), osAntes);
 
+    // O registro da tentativa, com o erro e o arquivo enviado (para conferir o que veio).
+    const [falha] = await amb.db.select().from(importacao).where(eq(importacao.erro, r.corpo.erro.mensagem));
+    assert.deepEqual([falha!.origem, falha!.usuarioId, falha!.criadas, falha!.atualizadas, falha!.ignoradas], ["planilha", analista.id, 0, 0, 0]);
+    assert.equal(falha!.arquivo, `${falha!.id}/export_errado.xlsx`);
+    assert.ok(await amb.armazenamento.ler("importacoes", falha!.arquivo!));
+
+    const alertasDoAnalista = () => amb.db.select().from(alerta).where(and(eq(alerta.destinatarioId, analista.id), eq(alerta.tipo, "falha_importacao")));
+    const [aviso, ...outros] = await alertasDoAnalista();
+    assert.equal(outros.length, 0);
+    assert.deepEqual([aviso!.importacaoId, aviso!.osId, aviso!.lidoEm], [falha!.id, null, null]);
+    assert.equal(
+      aviso!.detalhe,
+      'A importação da planilha "export errado.xlsx" falhou: Colunas obrigatórias ausentes: Centro de trabalho, Local de instalação, Início programado. Nenhuma OS foi criada, alterada ou removida.',
+    );
+
+    // Outra planilha recusada antes de o alerta ser lido: o mesmo alerta passa a apontar para ela.
     const vazia = await enviar(await xlsx([]));
     assert.equal(vazia.status, 422);
     assert.match(vazia.corpo.erro.mensagem, /^Colunas obrigatórias ausentes: Ordem, Tipo de ordem, Título/);
+    const [atualizado, ...nenhum] = await alertasDoAnalista();
+    assert.equal(nenhum.length, 0);
+    assert.equal(atualizado!.id, aviso!.id);
+    assert.notEqual(atualizado!.importacaoId, falha!.id);
+  });
+
+  it("erro inesperado ao gravar: 500, nenhuma OS muda e a falha vira alerta", async () => {
+    const outro = await amb.criarUsuario({ perfil: "analista" });
+    const gravarOriginal = amb.armazenamento.gravar.bind(amb.armazenamento);
+    const erroOriginal = console.error;
+    amb.armazenamento.gravar = async () => {
+      throw new Error("disco cheio");
+    };
+    console.error = () => {};
+    try {
+      const r = await enviar(await xlsx([CABECALHO, linhaBoa(4200045)]), outro);
+      assert.equal(r.status, 500);
+    } finally {
+      amb.armazenamento.gravar = gravarOriginal;
+      console.error = erroOriginal;
+    }
+    assert.equal(await osDe("4200045"), undefined);
+    const [aviso] = await amb.db.select().from(alerta).where(eq(alerta.destinatarioId, outro.id));
+    assert.match(aviso!.detalhe, /falhou: erro inesperado ao gravar as ordens\. Nenhuma OS foi criada, alterada ou removida\.$/);
+    const [falha] = await amb.db.select().from(importacao).where(eq(importacao.id, aviso!.importacaoId!));
+    assert.deepEqual([falha!.erro, falha!.arquivo], ["erro inesperado ao gravar as ordens", null]);
   });
 
   it("recusa o que não é uma planilha .xlsx, o envio sem arquivo e o arquivo vazio", async () => {
@@ -703,20 +927,24 @@ describe("Integração SAP: planilha", () => {
     assert.ok(await osDe("4200050"));
   });
 
-  it("a lista de importações mostra a planilha com o arquivo e quem enviou", async () => {
+  it("a lista de importações mostra a planilha com o arquivo e quem enviou, e também as que falharam", async () => {
     const lista = await amb.esperar(200, "GET", "/importacoes", { como: analista });
     const planilhas = lista.importacoes.filter((i: any) => i.origem === "planilha");
-    assert.ok(planilhas.length >= 3);
-    assert.ok(planilhas.every((i: any) => i.arquivo.endsWith(".xlsx") && i.erro === null));
-    assert.equal(lista.ultima_leitura_com_erro, false);
+    const boas = planilhas.filter((i: any) => i.erro === null);
+    assert.ok(boas.length >= 3);
+    assert.ok(boas.every((i: any) => i.arquivo.endsWith(".xlsx")));
+    assert.ok(planilhas.some((i: any) => i.erro?.startsWith("Colunas obrigatórias ausentes")));
+    assert.equal("ultima_leitura_com_erro" in lista, false);
   });
 });
 
-describe("Integração SAP: OS manual, OS de apoio e locais", () => {
+describe("Integração SAP: OS de apoio e locais", () => {
   let amb: Ambiente;
   let equipeA: string;
   let equipeB: string;
   let localId: string;
+  /** OS lida do SAP, da equipe A: a que o apoio destrava. */
+  let originalId: string;
   let admin: UsuarioDeTeste;
   let analista: UsuarioDeTeste;
   let supervisorA: UsuarioDeTeste;
@@ -725,15 +953,23 @@ describe("Integração SAP: OS manual, OS de apoio e locais", () => {
 
   const corpoOs = (extra: Record<string, unknown> = {}) => ({
     tipo: "corretiva",
-    titulo: "Vazamento urgente",
-    descricao: "Cheiro de gás",
+    titulo: "Drenar caixa de válvula",
+    descricao: "Caixa cheia d'água",
     local_instalacao_id: localId,
-    equipe_id: equipeA,
+    equipe_id: equipeB,
     data_inicio_prog: "2026-10-12",
     prioridade: "Muito alto",
+    os_origem_id: originalId,
     ...extra,
   });
   const osPorId = async (id: string) => (await amb.db.select().from(os).where(eq(os.id, id)))[0]!;
+  const osDoSap = async (equipeId: string) => {
+    const [o] = await amb.db
+      .insert(os)
+      .values({ numeroOrdem: proximoNumero(), tipo: "corretiva", titulo: "OS do SAP", localInstalacaoId: localId, equipeId, dataInicioProg: "2026-10-12", origem: "sap" })
+      .returning({ id: os.id });
+    return o!.id;
+  };
 
   before(async () => {
     amb = await criarAmbiente({ comCarga: true });
@@ -744,24 +980,45 @@ describe("Integração SAP: OS manual, OS de apoio e locais", () => {
     supervisorA = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeA });
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA });
     seguranca = await amb.criarUsuario({ perfil: "seguranca" });
-    localId = (await amb.esperar(201, "POST", "/locais", { como: analista, json: { codigo: "LOCAL/MANUAL" } })).id;
+    localId = (await amb.db.insert(localInstalacao).values({ codigo: "LOCAL/APOIO" }).returning({ id: localInstalacao.id }))[0]!.id;
+    originalId = await osDoSap(equipeA);
   });
   after(() => amb.fechar());
 
-  it("OS manual: analista e admin criam para qualquer equipe; nasce liberada, origem manual, sem número de ordem", async () => {
+  it("OS de apoio: analista e admin abrem para qualquer equipe; nasce liberada, origem apoio, sem número de ordem, ligada à original", async () => {
     for (const [u, equipe] of [[analista, equipeB], [admin, equipeA]] as const) {
-      const c = await amb.esperar(201, "POST", "/os", { como: u, json: corpoOs({ equipe_id: equipe, equipamento: "EQ-7", solicitante: "Central", data_fim_prog: "2026-10-13" }) });
+      const c = await amb.esperar(201, "POST", "/os", { como: u, json: corpoOs({ equipe_id: equipe, equipamento: "EQ-7", data_fim_prog: "2026-10-13" }) });
       const o = await osPorId(c.id);
-      assert.deepEqual([o.origem, o.status, o.numeroOrdem, o.equipeId, o.tipo, o.titulo, o.descricao, o.prioridade, o.equipamento, o.solicitante, o.dataInicioProg, o.dataFimProg, o.osOrigemId], ["manual", "liberada", null, equipe, "corretiva", "Vazamento urgente", "Cheiro de gás", "Muito alto", "EQ-7", "Central", "2026-10-12", "2026-10-13", null]);
+      assert.deepEqual(
+        [o.origem, o.status, o.numeroOrdem, o.equipeId, o.tipo, o.titulo, o.descricao, o.prioridade, o.equipamento, o.dataInicioProg, o.dataFimProg, o.osOrigemId],
+        ["apoio", "liberada", null, equipe, "corretiva", "Drenar caixa de válvula", "Caixa cheia d'água", "Muito alto", "EQ-7", "2026-10-12", "2026-10-13", originalId],
+      );
     }
   });
 
-  it("supervisor cria OS manual só para a própria equipe", async () => {
-    await amb.esperar(201, "POST", "/os", { como: supervisorA, json: corpoOs({ equipe_id: equipeA }) });
-    const r = await amb.req("POST", "/os", { como: supervisorA, json: corpoOs({ equipe_id: equipeB }) });
-    assert.equal(r.status, 403);
-    const semEquipe = await amb.criarUsuario({ perfil: "supervisor", equipeId: null });
-    assert.equal((await amb.req("POST", "/os", { como: semEquipe, json: corpoOs() })).status, 403);
+  it("supervisor abre OS de apoio para qualquer equipe, a partir de uma OS que ele vê; a original continua como está", async () => {
+    await amb.db.update(os).set({ status: "pendente" }).where(eq(os.id, originalId));
+    const antes = await osPorId(originalId);
+
+    const apoio = await amb.esperar(201, "POST", "/os", { como: supervisorA, json: corpoOs({ equipe_id: equipeB }) });
+    const o = await osPorId(apoio.id);
+    assert.deepEqual([o.osOrigemId, o.equipeId, o.origem, o.status], [originalId, equipeB, "apoio", "liberada"]);
+    assert.deepEqual(await osPorId(originalId), antes);
+
+    const daPropriaEquipe = await amb.esperar(201, "POST", "/os", { como: supervisorA, json: corpoOs({ equipe_id: equipeA }) });
+    assert.equal((await osPorId(daPropriaEquipe.id)).equipeId, equipeA);
+  });
+
+  it("não existe OS sem origem no SAP: sem os_origem_id é 422, e o número de ordem e o solicitante enviados são ignorados", async () => {
+    const semOrigem: Record<string, unknown> = corpoOs();
+    delete semOrigem.os_origem_id;
+    for (const u of [analista, admin, supervisorA]) assert.equal((await amb.req("POST", "/os", { como: u, json: semOrigem })).status, 422, u.perfil);
+    assert.equal((await amb.req("POST", "/os", { como: analista, json: { ...semOrigem, os_origem_id: null } })).status, 422);
+
+    const c = await amb.esperar(201, "POST", "/os", { como: analista, json: corpoOs({ numero_ordem: "9000001", solicitante: "Central" }) });
+    const o = await osPorId(c.id);
+    assert.deepEqual([o.numeroOrdem, o.solicitante, o.origem], [null, null, "apoio"]);
+    assert.equal((await amb.db.select().from(os).where(eq(os.numeroOrdem, "9000001"))).length, 0);
   });
 
   it("técnico e segurança não criam OS; sem token é 401", async () => {
@@ -770,29 +1027,18 @@ describe("Integração SAP: OS manual, OS de apoio e locais", () => {
     assert.equal((await amb.req("POST", "/os", { como: seguranca, json: corpoOs() })).status, 403);
   });
 
-  it("OS de apoio: supervisor cria para qualquer equipe, ligada à original, que continua como está", async () => {
-    const original = (await amb.esperar(201, "POST", "/os", { como: supervisorA, json: corpoOs({ numero_ordem: "9000001" }) })).id;
-    await amb.db.update(os).set({ status: "pendente" }).where(eq(os.id, original));
-    const antes = await osPorId(original);
-
-    const apoio = await amb.esperar(201, "POST", "/os", { como: supervisorA, json: corpoOs({ equipe_id: equipeB, titulo: "Drenar caixa de válvula", os_origem_id: original }) });
-    const o = await osPorId(apoio.id);
-    assert.deepEqual([o.osOrigemId, o.equipeId, o.origem, o.status], [original, equipeB, "manual", "liberada"]);
-    assert.deepEqual(await osPorId(original), antes);
-
-    const doAnalista = await amb.esperar(201, "POST", "/os", { como: analista, json: corpoOs({ equipe_id: equipeB, os_origem_id: original }) });
-    assert.equal((await osPorId(doAnalista.id)).osOrigemId, original);
-  });
-
-  it("OS de apoio exige uma OS de origem existente (e visível ao supervisor)", async () => {
+  it("a OS de origem precisa existir e, para o supervisor, ser de uma equipe que ele vê", async () => {
     const inexistente = await amb.req("POST", "/os", { como: analista, json: corpoOs({ os_origem_id: randomUUID() }) });
     assert.equal(inexistente.status, 422);
     assert.equal(inexistente.corpo.erro.codigo, "os_origem_inexistente");
-    const deB = (await amb.esperar(201, "POST", "/os", { como: analista, json: corpoOs({ equipe_id: equipeB }) })).id;
+    const deB = await osDoSap(equipeB);
     assert.equal((await amb.req("POST", "/os", { como: supervisorA, json: corpoOs({ os_origem_id: deB }) })).status, 422);
+    const semEquipe = await amb.criarUsuario({ perfil: "supervisor", equipeId: null });
+    assert.equal((await amb.req("POST", "/os", { como: semEquipe, json: corpoOs() })).status, 422);
+    assert.equal((await amb.req("POST", "/os", { como: analista, json: corpoOs({ os_origem_id: deB }) })).status, 201);
   });
 
-  it("valida o corpo: tipo, datas, referências, atividade e número de ordem repetido", async () => {
+  it("valida o corpo: tipo, datas, referências e atividade", async () => {
     const quer = async (status: number, extra: Record<string, unknown>) => {
       const r = await amb.req("POST", "/os", { como: analista, json: corpoOs(extra) });
       assert.equal(r.status, status, JSON.stringify([extra, r.corpo]));
@@ -802,6 +1048,7 @@ describe("Integração SAP: OS manual, OS de apoio e locais", () => {
     await quer(422, { titulo: "  " });
     await quer(422, { data_inicio_prog: "12/10/2026" });
     await quer(422, { data_inicio_prog: "2026-02-31" });
+    await quer(422, { os_origem_id: "nao-e-uuid" });
     assert.equal((await quer(422, { data_fim_prog: "2026-10-01" })).erro.codigo, "datas_invalidas");
     assert.equal((await quer(422, { local_instalacao_id: randomUUID() })).erro.codigo, "local_inexistente");
     assert.equal((await quer(422, { equipe_id: randomUUID() })).erro.codigo, "equipe_inexistente");
@@ -809,30 +1056,11 @@ describe("Integração SAP: OS manual, OS de apoio e locais", () => {
 
     const comAtividade = await quer(201, { codigo_atividade: ATIVIDADE_COM_MODELO });
     assert.equal((await osPorId(comAtividade.id)).codigoAtividade, ATIVIDADE_COM_MODELO);
-
-    await quer(201, { numero_ordem: "9100001" });
-    const repetida = await quer(409, { numero_ordem: "9100001" });
-    assert.equal(repetida.erro.codigo, "numero_ordem_duplicado");
-    // Uma OS lida do SAP também ocupa o número.
-    await amb.db.insert(os).values({ numeroOrdem: "9100002", tipo: "corretiva", titulo: "x", localInstalacaoId: localId, equipeId: equipeA, dataInicioProg: "2026-10-12", origem: "sap" });
-    await quer(409, { numero_ordem: "9100002" });
   });
 
-  it("POST /locais: supervisor, analista e admin cadastram; código repetido é 409 \"Local já cadastrado\"", async () => {
-    const dados = { codigo: "CARIACICA/RAMAL NOVO", endereco: "Av. Principal, 5", plus_code: "7QX2+R3", cliente: "Suzano" };
-    const c = await amb.esperar(201, "POST", "/locais", { como: supervisorA, json: dados });
-    const [l] = await amb.db.select().from(localInstalacao).where(eq(localInstalacao.id, c.id));
-    assert.deepEqual([l!.codigo, l!.endereco, l!.plusCode, l!.cliente, l!.critico], ["CARIACICA/RAMAL NOVO", "Av. Principal, 5", "7QX2+R3", "Suzano", false]);
-
-    for (const u of [supervisorA, analista, admin]) {
-      const repetido = await amb.req("POST", "/locais", { como: u, json: { codigo: "CARIACICA/RAMAL NOVO" } });
-      assert.equal(repetido.status, 409, u.perfil);
-      assert.equal(repetido.corpo.erro.mensagem, "Local já cadastrado");
-    }
-    assert.equal((await amb.req("POST", "/locais", { como: tecnico, json: { codigo: "X" } })).status, 403);
-    assert.equal((await amb.req("POST", "/locais", { como: seguranca, json: { codigo: "X" } })).status, 403);
-    assert.equal((await amb.req("POST", "/locais", { como: admin, json: { codigo: " " } })).status, 422);
-    assert.equal((await amb.req("POST", "/locais", { json: { codigo: "X" } })).status, 401);
+  it("POST /locais não existe: o local só vem do SAP", async () => {
+    for (const u of [supervisorA, analista, admin]) assert.equal((await amb.req("POST", "/locais", { como: u, json: { codigo: "CARIACICA/RAMAL NOVO" } })).status, 404, u.perfil);
+    assert.equal((await amb.db.select().from(localInstalacao).where(eq(localInstalacao.codigo, "CARIACICA/RAMAL NOVO"))).length, 0);
   });
 
   it("PATCH /locais/{id}: só analista e admin mudam a criticidade", async () => {
@@ -847,7 +1075,7 @@ describe("Integração SAP: OS manual, OS de apoio e locais", () => {
   });
 
   it("GET /locais: qualquer perfil lê, com paginação e filtro por trecho do código (sem tratar % como curinga)", async () => {
-    for (const codigo of ["ZZ/LISTA 1", "ZZ/LISTA 2", "ZZ/LISTA 3", "ZZ_100%"]) await amb.esperar(201, "POST", "/locais", { como: analista, json: { codigo } });
+    await amb.db.insert(localInstalacao).values(["ZZ/LISTA 1", "ZZ/LISTA 2", "ZZ/LISTA 3", "ZZ_100%"].map((codigo) => ({ codigo })));
     for (const u of [tecnico, supervisorA, seguranca, analista, admin]) assert.equal((await amb.req("GET", "/locais", { como: u })).status, 200, u.perfil);
     assert.equal((await amb.req("GET", "/locais")).status, 401);
 

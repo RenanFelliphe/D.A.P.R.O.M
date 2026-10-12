@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, ne, notExists, sql } from "drizzle-orm"
 import type { Db } from "../db/conexao";
 import { importacao, tarefa } from "../db/schema";
 import type { Deps } from "../deps";
+import { alertarFalhaDeImportacao, detalheDaFalha } from "../dominio/alertas";
 import { processarOrdens, type AvisoOrdem, type DetalheIgnorada } from "../dominio/importacao-ordens";
 
 const TAMANHO_DA_PAGINA = 200;
@@ -47,6 +48,9 @@ async function cursorDaLeitura(db: Db, importacaoId: string | undefined): Promis
   return ultima?.criadaEm;
 }
 
+/** Início da última leitura pela API que terminou sem erro (a "última sincronização" do painel), ou `undefined`. */
+export const ultimaLeituraConcluida = (db: Db) => cursorDaLeitura(db, undefined);
+
 async function buscarOrdens(deps: Deps, alteradasDesde: Date | undefined): Promise<unknown[]> {
   const ordens: unknown[] = [];
   let pagina = 1;
@@ -61,23 +65,29 @@ async function buscarOrdens(deps: Deps, alteradasDesde: Date | undefined): Promi
   throw new Error("A API do SAP devolveu páginas demais");
 }
 
-/** Falha: nada foi gravado das ordens; fica só o registro da leitura, com o erro (a faixa "Falha na leitura do SAP"). */
+/**
+ * Falha: nenhuma OS foi criada, alterada ou removida; fica só o registro da leitura, com o erro (no histórico), e o alerta
+ * `falha_importacao` no sino de quem pediu a leitura (na agendada, dos analistas).
+ */
 async function registrarFalha(deps: Deps, o: { importacaoId?: string; usuarioId: string | null; inicio: Date; erro: string }): Promise<string> {
-  if (o.importacaoId) {
-    await deps.db.update(importacao).set({ erro: o.erro }).where(eq(importacao.id, o.importacaoId));
-    return o.importacaoId;
-  }
-  const [criada] = await deps.db
-    .insert(importacao)
-    .values({ origem: "api", usuarioId: o.usuarioId, erro: o.erro, criadaEm: o.inicio })
-    .returning({ id: importacao.id });
-  return criada!.id;
+  return deps.db.transaction(async (tx) => {
+    const db = tx as unknown as Db;
+    let importacaoId = o.importacaoId;
+    if (importacaoId) {
+      await db.update(importacao).set({ erro: o.erro }).where(eq(importacao.id, importacaoId));
+    } else {
+      const [criada] = await db.insert(importacao).values({ origem: "api", usuarioId: o.usuarioId, erro: o.erro, criadaEm: o.inicio }).returning({ id: importacao.id });
+      importacaoId = criada!.id;
+    }
+    await alertarFalhaDeImportacao(db, { importacaoId, origem: "api", usuarioId: o.usuarioId, detalhe: detalheDaFalha({ origem: "api", motivo: o.erro }), agora: deps.agora() });
+    return importacaoId;
+  });
 }
 
 /**
  * Uma leitura do SAP: consulta a API desde a última leitura bem-sucedida, pagina até o fim e processa as ordens numa
- * única transação. Com a API fora do ar ou uma resposta inválida, nada é gravado e a `importacao` fica com `erro`; a
- * leitura seguinte retoma do mesmo ponto. Sem `importacaoId` (leitura agendada), a `importacao` é criada aqui, com o
+ * única transação. Com a API fora do ar, uma resposta inválida ou um erro ao gravar, nenhuma OS muda, a `importacao` fica
+ * com `erro` e sai o alerta de falha; a leitura seguinte retoma do mesmo ponto. Sem `importacaoId` (leitura agendada), a `importacao` é criada aqui, com o
  * início da leitura como `criada_em` para que nenhuma alteração feita durante a consulta escape da próxima.
  */
 export async function executarLeitura(deps: Deps, opcoes: { importacaoId?: string; usuarioId?: string | null } = {}): Promise<ResultadoLeitura> {

@@ -76,6 +76,7 @@ export async function modeloCompleto(db: Db, linha: typeof modeloApr.$inferSelec
     dataDocumento: linha.dataDocumento,
     pae: linha.pae,
     publicadoEm: linha.publicadoEm,
+    arquivadoEm: linha.arquivadoEm,
     rascunho: linha.publicadoEm === null,
     riscos,
     itens,
@@ -131,11 +132,22 @@ export async function modeloPorVersao(db: Db, codigo: string, versao: number) {
   return linha;
 }
 
-/** Versão pedida na URL: um número, ou `publicada` (a publicada mais recente). Rascunho só para quem pode vê-lo. */
+/** Há uma versão publicada deste código e ele não foi excluído: pode ir para uma atividade ou ser o substituto de outro. */
+export async function publicadoEmUso(db: Db, codigo: string) {
+  const linha = await versaoPublicadaMaisRecente(db, codigo);
+  return Boolean(linha && !linha.arquivadoEm);
+}
+
+/**
+ * Versão pedida na URL: um número, ou `publicada` (a publicada mais recente, que um modelo excluído não tem mais).
+ * Rascunho só para quem pode vê-lo. Uma versão numerada de um modelo excluído continua legível: é o histórico.
+ */
 export async function resolverVersao(db: Db, codigo: string, versao: string, veRascunho: boolean) {
   let linha: typeof modeloApr.$inferSelect | undefined;
-  if (versao === "publicada") linha = await versaoPublicadaMaisRecente(db, codigo);
-  else if (/^[0-9]+$/.test(versao)) linha = await modeloPorVersao(db, codigo, Number(versao));
+  if (versao === "publicada") {
+    linha = await versaoPublicadaMaisRecente(db, codigo);
+    if (linha?.arquivadoEm) linha = undefined;
+  } else if (/^[0-9]+$/.test(versao)) linha = await modeloPorVersao(db, codigo, Number(versao));
   if (!linha || (linha.publicadoEm === null && !veRascunho)) throw naoEncontrado("Modelo ou versão não encontrado");
   return linha;
 }

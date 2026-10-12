@@ -2,17 +2,22 @@ import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, ilike } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
 import { atividade, equipe, importacao, localInstalacao, os, OS_TIPOS, usuario } from "../db/schema";
+import { alertarFalhaDeImportacao, detalheDaFalha } from "../dominio/alertas";
 import { processarOrdens } from "../dominio/importacao-ordens";
 import { lerPlanilha } from "../dominio/importacao-planilha";
+import { resumoDasImportacoes } from "../dominio/importacao-resumo";
+import { esquemaPeriodo } from "../dominio/periodo";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { podeVerEquipe } from "../http/autenticacao";
-import { codigoPostgres, conflito, ErroApi, invalido, naoEncontrado, proibido } from "../http/erros";
+import { ErroApi, invalido, naoEncontrado } from "../http/erros";
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { dataIso, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
 import { enfileirarTarefa } from "../servicos/fila";
+import { ultimaLeituraConcluida } from "../servicos/leitura-sap";
 
 const LIMITE_DA_PLANILHA = 10 * 1024 * 1024;
 const TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -33,7 +38,32 @@ function nomeSeguro(nome: string): string {
 const escaparLike = (t: string) => t.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 /**
- * Integração SAP: leitura sob demanda, importação de planilha, OS manual e de apoio, e os locais de instalação. A
+ * A planilha falhou: nenhuma OS mudou (a transação das ordens desfez tudo ou nem começou). Fica o registro da importação
+ * com o erro e o arquivo, se chegou a ser guardado, e o alerta de falha para quem enviou. Se nem isso der para gravar, só
+ * registra no log: o erro original é o que volta para a pessoa.
+ */
+async function registrarFalhaDaPlanilha(deps: Deps, o: { importacaoId: string; arquivo: string | null; nome: string; usuarioId: string; erro: unknown }) {
+  const motivo = o.erro instanceof ErroApi ? o.erro.message : "erro inesperado ao gravar as ordens";
+  if (!(o.erro instanceof ErroApi)) console.error("Falha ao importar a planilha", o.erro);
+  try {
+    await deps.db.transaction(async (tx) => {
+      const db = tx as unknown as Db;
+      await db.insert(importacao).values({ id: o.importacaoId, origem: "planilha", arquivo: o.arquivo, usuarioId: o.usuarioId, erro: motivo });
+      await alertarFalhaDeImportacao(db, {
+        importacaoId: o.importacaoId,
+        origem: "planilha",
+        usuarioId: o.usuarioId,
+        detalhe: detalheDaFalha({ origem: "planilha", arquivo: o.nome, motivo }),
+        agora: deps.agora(),
+      });
+    });
+  } catch (falha) {
+    console.error("Não foi possível registrar a falha da planilha", falha);
+  }
+}
+
+/**
+ * Integração SAP: leitura sob demanda, importação de planilha, OS de apoio e os locais de instalação (que só vêm do SAP). A
  * leitura em si (agendada ou por "Ler agora") roda na tarefa `leitura_sap`, em `servicos/leitura-sap.ts`.
  */
 export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
@@ -50,46 +80,58 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
     return responder(c, { importacaoId }, 202);
   });
 
-  /** Planilha no lugar da API: o mesmo processamento da leitura, com o mapeamento de colunas de `importacao-planilha.ts`. */
+  /**
+   * Planilha no lugar da API: o mesmo processamento da leitura, com o mapeamento de colunas de `importacao-planilha.ts`.
+   * Recebido o arquivo, qualquer falha (vazio, grande demais, fora do formato, erro ao gravar) não mexe em nenhuma OS: o
+   * arquivo e o registro da importação com o erro ficam no histórico, sai o alerta de falha para quem enviou, e a resposta
+   * é o próprio erro.
+   */
   r.post("/importacoes", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
     const eu = c.get("usuario");
     const form = await c.req.parseBody().catch(() => null);
     const arquivo = form?.arquivo;
     if (!(arquivo instanceof File)) throw invalido("validacao", 'arquivo: envie a planilha .xlsx no campo multipart "arquivo"');
-    if (arquivo.size === 0) throw invalido("arquivo_vazio", "Arquivo vazio");
-    if (arquivo.size > LIMITE_DA_PLANILHA) throw new ErroApi(413, "arquivo_grande", `Arquivo maior que ${LIMITE_DA_PLANILHA / 1024 / 1024} MB`);
-
-    const bytes = new Uint8Array(await arquivo.arrayBuffer());
-    const { entradas } = await lerPlanilha(bytes);
 
     const importacaoId = randomUUID();
     const caminho = `${importacaoId}/${nomeSeguro(arquivo.name)}`;
-    await deps.armazenamento.gravar("importacoes", caminho, bytes, TIPO_XLSX);
+    let guardado = false;
+    try {
+      if (arquivo.size === 0) throw invalido("arquivo_vazio", "Arquivo vazio");
+      if (arquivo.size > LIMITE_DA_PLANILHA) throw new ErroApi(413, "arquivo_grande", `Arquivo maior que ${LIMITE_DA_PLANILHA / 1024 / 1024} MB`);
 
-    const agora = deps.agora();
-    const resultado = await deps.db.transaction(async (tx) => {
-      const processado = await processarOrdens(tx, entradas, { origem: "planilha", agora });
-      await tx.insert(importacao).values({
-        id: importacaoId,
-        origem: "planilha",
-        arquivo: caminho,
-        usuarioId: eu.id,
-        criadas: processado.criadas,
-        atualizadas: processado.atualizadas,
-        ignoradas: processado.ignoradas.length,
-        detalheIgnoradas: processado.ignoradas,
+      const bytes = new Uint8Array(await arquivo.arrayBuffer());
+      await deps.armazenamento.gravar("importacoes", caminho, bytes, TIPO_XLSX);
+      guardado = true;
+      const { entradas } = await lerPlanilha(bytes);
+
+      const agora = deps.agora();
+      const resultado = await deps.db.transaction(async (tx) => {
+        const processado = await processarOrdens(tx, entradas, { origem: "planilha", agora });
+        await tx.insert(importacao).values({
+          id: importacaoId,
+          origem: "planilha",
+          arquivo: caminho,
+          usuarioId: eu.id,
+          criadas: processado.criadas,
+          atualizadas: processado.atualizadas,
+          ignoradas: processado.ignoradas.length,
+          detalheIgnoradas: processado.ignoradas,
+        });
+        return processado;
       });
-      return processado;
-    });
 
-    return responder(
-      c,
-      { importacaoId, criadas: resultado.criadas, atualizadas: resultado.atualizadas, ignoradas: resultado.ignoradas, avisos: resultado.avisos },
-      201,
-    );
+      return responder(
+        c,
+        { importacaoId, criadas: resultado.criadas, atualizadas: resultado.atualizadas, ignoradas: resultado.ignoradas, avisos: resultado.avisos },
+        201,
+      );
+    } catch (erro) {
+      await registrarFalhaDaPlanilha(deps, { importacaoId, arquivo: guardado ? caminho : null, nome: arquivo.name, usuarioId: eu.id, erro });
+      throw erro;
+    }
   });
 
-  /** Histórico das leituras e importações; `ultima_leitura_com_erro` acende a faixa "Falha na leitura do SAP" no painel. */
+  /** Histórico das leituras e importações, inclusive as que falharam (com `erro`). */
   r.get("/importacoes", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
     const p = lerConsulta(c, esquemaPaginacao);
     const { limit, offset } = limiteEDeslocamento(p);
@@ -112,29 +154,40 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
       .orderBy(desc(importacao.criadaEm), desc(importacao.id))
       .limit(limit)
       .offset(offset);
-    const [ultimaDaApi] = await deps.db
-      .select({ erro: importacao.erro })
-      .from(importacao)
-      .where(eq(importacao.origem, "api"))
-      .orderBy(desc(importacao.criadaEm), desc(importacao.id))
-      .limit(1);
+    return responder(c, { importacoes: linhas, ...meta(p, await contar(deps.db, importacao)) });
+  });
+
+  /**
+   * Diagnóstico da entrada de OS: OS registradas por dia, semana ou mês e por origem no período (`?periodo=7d|30d|90d|12m|AAAA-MM`,
+   * 30 dias se ausente), as leituras da API com e sem falha, os motivos das linhas ignoradas e a comparação com o período
+   * anterior.
+   */
+  r.get("/importacoes/resumo", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+    const { periodo } = lerConsulta(c, z.object({ periodo: esquemaPeriodo }));
+    return responder(c, await resumoDasImportacoes(deps.db, periodo, deps.agora()));
+  });
+
+  /** Estado da sincronização com a API: a última leitura sem erro e a leitura agendada. As falhas viram alerta no sino. */
+  r.get("/sap/sincronizacao", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+    const ultimaLeitura = await ultimaLeituraConcluida(deps.db);
     return responder(c, {
-      importacoes: linhas,
-      ...meta(p, await contar(deps.db, importacao)),
-      ultimaLeituraComErro: ultimaDaApi?.erro != null,
+      ultimaLeituraSemErroEm: ultimaLeitura ?? null,
+      // Sem `SAP_API_URL` a leitura agendada não roda; a sincronização sob demanda continua disponível.
+      automatica: Boolean(deps.config.sapApiUrl),
+      intervaloMin: deps.config.sapLeituraIntervaloMin,
     });
   });
 
   /**
-   * OS manual (corretiva urgente fora do SAP) e OS de apoio (`os_origem_id`). Supervisor cria para a própria equipe, ou
-   * OS de apoio para qualquer equipe; analista e admin, para qualquer equipe.
+   * OS de apoio: a única OS que nasce no sistema (as demais vêm da leitura do SAP ou da planilha). Fica ligada à OS que
+   * destrava (`os_origem_id`, obrigatório) e ainda não tem número SAP. O supervisor abre para qualquer equipe, desde que
+   * veja a OS de origem; analista e admin, a partir de qualquer OS.
    */
   r.post("/os", autenticar(), exigirPerfil("supervisor", "analista", "admin"), async (c) => {
     const eu = c.get("usuario");
     const dados = await lerCorpo(
       c,
       z.object({
-        numero_ordem: textoOpcional,
         tipo: z.enum(OS_TIPOS),
         codigo_atividade: textoOpcional,
         titulo: textoObrigatorio,
@@ -144,23 +197,17 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
         data_inicio_prog: dataValida,
         data_fim_prog: dataValida.nullable().optional(),
         prioridade: textoOpcional,
-        solicitante: textoOpcional,
-        os_origem_id: uuid.nullable().optional(),
+        os_origem_id: uuid,
         equipamento: textoOpcional,
       }),
     );
-    if (eu.perfil === "supervisor" && !dados.os_origem_id && dados.equipe_id !== eu.equipeId) {
-      throw proibido("O supervisor só cria OS para a própria equipe");
-    }
     if (dados.data_fim_prog && dados.data_fim_prog < dados.data_inicio_prog) {
       throw invalido("datas_invalidas", "A data fim programada não pode ser anterior ao início");
     }
 
-    if (dados.os_origem_id) {
-      const [origem] = await deps.db.select({ equipeId: os.equipeId }).from(os).where(eq(os.id, dados.os_origem_id));
-      if (!origem || (eu.perfil === "supervisor" && !podeVerEquipe(eu, origem.equipeId))) {
-        throw invalido("os_origem_inexistente", "OS de origem não encontrada");
-      }
+    const [origem] = await deps.db.select({ equipeId: os.equipeId }).from(os).where(eq(os.id, dados.os_origem_id));
+    if (!origem || (eu.perfil === "supervisor" && !podeVerEquipe(eu, origem.equipeId))) {
+      throw invalido("os_origem_inexistente", "OS de origem não encontrada");
     }
     const [local] = await deps.db.select({ id: localInstalacao.id }).from(localInstalacao).where(eq(localInstalacao.id, dados.local_instalacao_id));
     if (!local) throw invalido("local_inexistente", "Local de instalação não encontrado");
@@ -170,53 +217,24 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
       const [a] = await deps.db.select({ codigo: atividade.codigo }).from(atividade).where(eq(atividade.codigo, dados.codigo_atividade));
       if (!a) throw invalido("atividade_inexistente", "Atividade não encontrada");
     }
-    if (dados.numero_ordem) {
-      const [repetida] = await deps.db.select({ id: os.id }).from(os).where(eq(os.numeroOrdem, dados.numero_ordem));
-      if (repetida) throw conflito("numero_ordem_duplicado", "Já existe uma OS com este número de ordem");
-    }
-
-    try {
-      const [criada] = await deps.db
-        .insert(os)
-        .values({
-          numeroOrdem: dados.numero_ordem ?? null,
-          tipo: dados.tipo,
-          codigoAtividade: dados.codigo_atividade ?? null,
-          titulo: dados.titulo,
-          descricao: dados.descricao ?? null,
-          equipamento: dados.equipamento ?? null,
-          localInstalacaoId: dados.local_instalacao_id,
-          equipeId: dados.equipe_id,
-          prioridade: dados.prioridade ?? null,
-          dataInicioProg: dados.data_inicio_prog,
-          dataFimProg: dados.data_fim_prog ?? null,
-          solicitante: dados.solicitante ?? null,
-          osOrigemId: dados.os_origem_id ?? null,
-          origem: "manual",
-        })
-        .returning({ id: os.id });
-      return responder(c, { id: criada!.id }, 201);
-    } catch (erro) {
-      if (codigoPostgres(erro) === "23505") throw conflito("numero_ordem_duplicado", "Já existe uma OS com este número de ordem");
-      throw erro;
-    }
-  });
-
-  /** O cadastro manual existe para a OS manual num local que nunca veio do SAP. */
-  r.post("/locais", autenticar(), exigirPerfil("supervisor", "analista", "admin"), async (c) => {
-    const dados = await lerCorpo(c, z.object({ codigo: textoObrigatorio, endereco: textoOpcional, plus_code: textoOpcional, cliente: textoOpcional }));
-    const [existente] = await deps.db.select({ id: localInstalacao.id }).from(localInstalacao).where(eq(localInstalacao.codigo, dados.codigo));
-    if (existente) throw conflito("local_duplicado", "Local já cadastrado");
-    try {
-      const [criado] = await deps.db
-        .insert(localInstalacao)
-        .values({ codigo: dados.codigo, endereco: dados.endereco ?? null, plusCode: dados.plus_code ?? null, cliente: dados.cliente ?? null })
-        .returning({ id: localInstalacao.id });
-      return responder(c, { id: criado!.id }, 201);
-    } catch (erro) {
-      if (codigoPostgres(erro) === "23505") throw conflito("local_duplicado", "Local já cadastrado");
-      throw erro;
-    }
+    const [criada] = await deps.db
+      .insert(os)
+      .values({
+        tipo: dados.tipo,
+        codigoAtividade: dados.codigo_atividade ?? null,
+        titulo: dados.titulo,
+        descricao: dados.descricao ?? null,
+        equipamento: dados.equipamento ?? null,
+        localInstalacaoId: dados.local_instalacao_id,
+        equipeId: dados.equipe_id,
+        prioridade: dados.prioridade ?? null,
+        dataInicioProg: dados.data_inicio_prog,
+        dataFimProg: dados.data_fim_prog ?? null,
+        osOrigemId: dados.os_origem_id,
+        origem: "apoio",
+      })
+      .returning({ id: os.id });
+    return responder(c, { id: criada!.id }, 201);
   });
 
   /** Criticidade do local, editada no painel. */
@@ -228,7 +246,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
     return responder(c, {});
   });
 
-  /** Qualquer perfil lê (o formulário de OS manual escolhe o local aqui); `?codigo=` filtra por trecho do código. */
+  /** Qualquer perfil lê (o formulário de OS de apoio escolhe o local aqui); `?codigo=` filtra por trecho do código. */
   r.get("/locais", autenticar(), async (c) => {
     const filtros = lerConsulta(c, esquemaPaginacao.extend({ codigo: z.string().trim().min(1).optional() }));
     const { limit, offset } = limiteEDeslocamento(filtros);

@@ -17,8 +17,8 @@ interface Reprovado {
 }
 
 /**
- * Tarefa `email_alerta`: `referenciaId` é o `alerta.id`. Só o alerta `bloqueio` vai por e-mail, e só se o destinatário
- * tem e-mail. Reenvio da tarefa não duplica: `email_enviado_em` preenchido encerra sem enviar.
+ * Tarefa `email_alerta`: `referenciaId` é o `alerta.id`. Só o alerta `bloqueio` vai por e-mail, para o e-mail institucional do destinatário.
+ * Reenvio da tarefa não duplica: `email_enviado_em` preenchido encerra sem enviar.
  */
 export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Promise<void> {
   if (!tarefa.referenciaId) throw new Error("Tarefa email_alerta sem referência ao alerta");
@@ -27,6 +27,9 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
   const [a] = await db.select().from(alerta).where(eq(alerta.id, tarefa.referenciaId));
   if (!a) throw new Error("Alerta não encontrado");
   if (a.tipo !== "bloqueio" || a.emailEnviadoEm !== null) return;
+  // O banco garante a OS em todo alerta de bloqueio (`alerta_alvo`); só a falha de importação vem sem ela.
+  const osId = a.osId;
+  if (!osId) throw new Error("Alerta de bloqueio sem OS");
 
   const [destinatario] = await db.select({ email: usuario.email }).from(usuario).where(eq(usuario.id, a.destinatarioId));
   if (!destinatario?.email) return;
@@ -36,11 +39,11 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
     .from(os)
     .innerJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
     .innerJoin(equipe, eq(equipe.id, os.equipeId))
-    .where(eq(os.id, a.osId));
+    .where(eq(os.id, osId));
   if (!base) throw new Error("OS do alerta não encontrada");
 
   // A APR do bloqueio: a mais recente concluída até o alerta (a bloqueada, ou a que amparou a execução interrompida).
-  const aprs = await db.select().from(apr).where(eq(apr.osId, a.osId)).orderBy(desc(apr.concluidaEm));
+  const aprs = await db.select().from(apr).where(eq(apr.osId, osId)).orderBy(desc(apr.concluidaEm));
   const aprDoAlerta = aprs.find((x) => x.concluidaEm.getTime() <= a.criadoEm.getTime()) ?? aprs[0];
 
   let tecnicoId = aprDoAlerta?.preenchidaPor ?? null;
@@ -75,7 +78,7 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
   }
 
   const [tecnico] = tecnicoId ? await db.select({ nome: usuario.nome, matricula: usuario.matricula }).from(usuario).where(eq(usuario.id, tecnicoId)) : [];
-  const numero = base.os.numeroOrdem ?? "(OS manual)";
+  const numero = base.os.numeroOrdem ?? "(OS de apoio)";
   const link = `${deps.config.painelUrl}/os/${base.os.id}`;
   const nomeTecnico = tecnico ? `${tecnico.nome} (${tecnico.matricula})` : "não identificado";
 

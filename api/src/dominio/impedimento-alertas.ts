@@ -1,6 +1,6 @@
 import { and, desc, eq, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { alerta, os } from "../db/schema";
+import { alerta, importacao, os } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { naoEncontrado } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
@@ -8,6 +8,7 @@ import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 /** Seguranca e admin enxergam os alertas de todos os destinatários; supervisor e analista, só os seus. */
 const veTodosOsAlertas = (u: UsuarioAutenticado) => u.perfil === "admin" || u.perfil === "seguranca";
 
+/** A OS (alertas de OS) ou a importação (falha de importação): o que não se aplica vem nulo. */
 const colunas = {
   id: alerta.id,
   tipo: alerta.tipo,
@@ -15,13 +16,18 @@ const colunas = {
   numeroOrdem: os.numeroOrdem,
   titulo: os.titulo,
   equipeId: os.equipeId,
+  importacaoId: alerta.importacaoId,
+  importacaoOrigem: importacao.origem,
   detalhe: alerta.detalhe,
   emailEnviadoEm: alerta.emailEnviadoEm,
   lidoEm: alerta.lidoEm,
   criadoEm: alerta.criadoEm,
 };
 
-/** Alertas visíveis ao usuário, do mais recente ao mais antigo; `equipeId` é a equipe atual da OS. */
+/**
+ * Alertas visíveis ao usuário, do mais recente ao mais antigo; `equipeId` é a equipe atual da OS. O filtro de equipe só
+ * alcança os alertas de OS (a falha de importação não tem equipe).
+ */
 export async function listarAlertas(db: Db, eu: UsuarioAutenticado, filtros: Paginacao & { lido?: boolean; equipe_id?: string }) {
   const onde = and(
     veTodosOsAlertas(eu) ? undefined : eq(alerta.destinatarioId, eu.id),
@@ -33,12 +39,13 @@ export async function listarAlertas(db: Db, eu: UsuarioAutenticado, filtros: Pag
   const linhas = await db
     .select(colunas)
     .from(alerta)
-    .innerJoin(os, eq(os.id, alerta.osId))
+    .leftJoin(os, eq(os.id, alerta.osId))
+    .leftJoin(importacao, eq(importacao.id, alerta.importacaoId))
     .where(onde)
     .orderBy(desc(alerta.criadoEm), desc(alerta.id))
     .limit(limit)
     .offset(offset);
-  const [contagem] = await db.select({ n: sql<number>`count(*)::int` }).from(alerta).innerJoin(os, eq(os.id, alerta.osId)).where(onde);
+  const [contagem] = await db.select({ n: sql<number>`count(*)::int` }).from(alerta).leftJoin(os, eq(os.id, alerta.osId)).where(onde);
   return { linhas, total: contagem?.n ?? 0 };
 }
 

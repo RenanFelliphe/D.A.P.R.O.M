@@ -1,21 +1,26 @@
 import { sql } from "drizzle-orm";
 import { check, date, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
-import { os } from "./sap";
+import { importacao, os } from "./sap";
 import { equipe, usuario } from "./usuarios";
 
-export const ALERTA_TIPOS = ["bloqueio", "conflito_planejamento", "execucao_duplicada", "apoio_encerrado"] as const;
+export const ALERTA_TIPOS = ["bloqueio", "conflito_planejamento", "execucao_duplicada", "apoio_encerrado", "falha_importacao"] as const;
 export type AlertaTipo = (typeof ALERTA_TIPOS)[number];
 
+/**
+ * Aviso no sino do painel. Os alertas de OS (impedimento, conflito, execução duplicada, apoio encerrado) apontam para a OS;
+ * a falha de importação (sincronização ou planilha) aponta para o registro da importação que falhou, e não tem OS.
+ */
 export const alerta = pgTable(
   "alerta",
   {
     id: uuid().primaryKey().defaultRandom(),
     tipo: text({ enum: ALERTA_TIPOS }).notNull(),
-    osId: uuid()
-      .notNull()
-      .references(() => os.id),
-    /** Supervisor da equipe; sem supervisor, um alerta por analista ativo. */
+    /** Obrigatória em todo alerta, menos na falha de importação. */
+    osId: uuid().references(() => os.id),
+    /** Só na falha de importação. */
+    importacaoId: uuid().references(() => importacao.id),
+    /** Alerta de OS: supervisor da equipe; sem supervisor, um alerta por analista ativo. Falha de importação: ver `dominio/alertas.ts`. */
     destinatarioId: uuid()
       .notNull()
       .references(() => usuario.id),
@@ -26,6 +31,10 @@ export const alerta = pgTable(
   },
   (t) => [
     check("alerta_tipo_check", emLista(t.tipo, ALERTA_TIPOS)),
+    check(
+      "alerta_alvo",
+      sql`(${t.tipo} = 'falha_importacao' and ${t.importacaoId} is not null and ${t.osId} is null) or (${t.tipo} <> 'falha_importacao' and ${t.osId} is not null and ${t.importacaoId} is null)`,
+    ),
     index("alerta_destinatario_idx").on(t.destinatarioId, t.criadoEm.desc()),
     index("alerta_nao_lidos_idx").on(t.destinatarioId).where(sql`${t.lidoEm} is null`),
     index("alerta_os_idx").on(t.osId),

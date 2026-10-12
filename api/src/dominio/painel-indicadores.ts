@@ -19,22 +19,26 @@ import {
  * Supervisor só vê a própria equipe: pedir os indicadores de outra é `403` (nos demais perfis, `equipe_id` é só
  * um filtro). Devolve a equipe a que a consulta deve se limitar, ou `undefined` para todas.
  */
-function equipeDoIndicador(eu: UsuarioAutenticado, equipeId: string | undefined): string | undefined {
+export function equipeDoIndicador(eu: UsuarioAutenticado, equipeId: string | undefined): string | undefined {
   const escopo = equipeDoEscopo(eu);
   if (escopo !== null && equipeId !== undefined && equipeId !== escopo) throw proibido("Você só vê os indicadores da sua equipe");
   return equipeId ?? escopo ?? undefined;
 }
 
-/**
- * Indicador mensal de preventivas (por `data_inicio_prog` no mês). Encerradas: status `encerrada`. Atrasada
- * justificada: não encerrada nem cancelada, `pendente` ou com reprogramação, e com a data de referência
- * (`data_fim_prog`, senão `data_inicio_prog`) anterior a hoje. Atrasada sem justificativa: `liberada`, sem
- * reprogramação, também depois da data de referência.
- */
+/** Indicador mensal de preventivas (`GET /indicadores?mes=`): a situação das preventivas programadas no mês. */
 export async function indicadoresMensais(db: Db, eu: UsuarioAutenticado, f: { mes: string; equipe_id?: string }, agora: Date) {
   const equipeId = equipeDoIndicador(eu, f.equipe_id);
-  const { inicio, fim } = intervaloDoMes(f.mes);
-  const hoje = diaNoFuso(agora);
+  return situacaoDasPreventivas(db, eu, { ...intervaloDoMes(f.mes), equipeId }, diaNoFuso(agora));
+}
+
+/**
+ * Situação das preventivas com `data_inicio_prog` em `[inicio, fim)`. Encerradas: status `encerrada`. Atrasada
+ * justificada: não encerrada nem cancelada, `pendente` ou com reprogramação, e com a data de referência
+ * (`data_fim_prog`, senão `data_inicio_prog`) anterior a hoje. Atrasada sem justificativa: `liberada`, sem
+ * reprogramação, também depois da data de referência. A equipe já vem resolvida (`equipeDoIndicador`).
+ */
+export async function situacaoDasPreventivas(db: Db, eu: UsuarioAutenticado, f: { inicio: string; fim: string; equipeId?: string }, hoje: string) {
+  const { inicio, fim, equipeId } = f;
 
   const jaPassou = sql`coalesce(${os.dataFimProg}, ${os.dataInicioProg}) < ${hoje}::date`;
   const comReprogramacao = sql`exists (select 1 from ${reprogramacao} where ${reprogramacao.osId} = ${os.id})`;
@@ -91,10 +95,15 @@ function medir(tempos: TempoDaExecucao[]): MedidaDeTempo {
   };
 }
 
-/** Indicador de tempo: só Execuções `encerrada` iniciadas no mês (fuso de São Paulo). */
+/** Indicador de tempo do mês (`GET /indicadores/tempo?mes=`). */
 export async function indicadoresDeTempo(db: Db, eu: UsuarioAutenticado, f: { mes: string; equipe_id?: string; usuario_id?: string }) {
   const equipeId = equipeDoIndicador(eu, f.equipe_id);
-  const { inicio, fim } = intervaloDoMes(f.mes);
+  return temposDeExecucao(db, eu, { ...intervaloDoMes(f.mes), equipeId, usuarioId: f.usuario_id });
+}
+
+/** Indicador de tempo: só Execuções `encerrada` iniciadas em `[inicio, fim)` (dias no fuso de São Paulo). */
+export async function temposDeExecucao(db: Db, eu: UsuarioAutenticado, f: { inicio: string; fim: string; equipeId?: string; usuarioId?: string }) {
+  const { inicio, fim, equipeId } = f;
 
   const execucoes = await db
     .select({
@@ -117,7 +126,7 @@ export async function indicadoresDeTempo(db: Db, eu: UsuarioAutenticado, f: { me
         sql`${execucao.inicio} >= (${inicio}::timestamp at time zone 'America/Sao_Paulo') and ${execucao.inicio} < (${fim}::timestamp at time zone 'America/Sao_Paulo')`,
         condicaoEscopo(eu),
         equipeId ? eq(os.equipeId, equipeId) : undefined,
-        f.usuario_id ? eq(execucao.executorId, f.usuario_id) : undefined,
+        f.usuarioId ? eq(execucao.executorId, f.usuarioId) : undefined,
       ),
     );
 
@@ -139,7 +148,7 @@ export async function indicadoresDeTempo(db: Db, eu: UsuarioAutenticado, f: { me
       grupos.set(id, g);
     }
     return [...grupos.entries()]
-      .map(([id, g]) => ({ [nomeId]: id, nome: g.nome, ...medir(g.tempos) }))
+      .map(([id, g]) => ({ [nomeId]: id, nome: g.nome, ...medir(g.tempos) }) as Record<K, string> & { nome: string } & MedidaDeTempo)
       .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   };
 

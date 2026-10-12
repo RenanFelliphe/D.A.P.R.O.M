@@ -46,10 +46,10 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
   const locais = osIds.length ? await db.select().from(localInstalacao).where(inArray(localInstalacao.id, [...new Set(ordens.map((o) => o.localInstalacaoId))])) : [];
   const atividades = await db.select().from(atividade);
 
-  // Modelos: a publicada mais recente de cada código e as versões usadas pelas APRs do snapshot.
+  // Modelos: a publicada mais recente de cada código não excluído e as versões usadas pelas APRs do snapshot.
   const publicados = await db.select().from(modeloApr).where(isNotNull(modeloApr.publicadoEm)).orderBy(desc(modeloApr.versao));
   const maisRecentes = new Map<string, string>();
-  for (const m of publicados) if (!maisRecentes.has(m.codigo)) maisRecentes.set(m.codigo, m.id);
+  for (const m of publicados) if (!m.arquivadoEm && !maisRecentes.has(m.codigo)) maisRecentes.set(m.codigo, m.id);
   const idsDosModelos = new Set([...maisRecentes.values(), ...aprs.map((a) => a.modeloAprId)]);
   const modelos = publicados.filter((m) => idsDosModelos.has(m.id));
   const ids = modelos.map((m) => m.id);

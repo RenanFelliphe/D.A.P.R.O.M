@@ -2,9 +2,12 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { OS_STATUS, OS_TIPOS } from "../db/schema";
+import { resumoDasAprs } from "../dominio/apr-resumo";
+import { dashboardDeEquipes, dashboardDeOs, dashboardGeral } from "../dominio/dashboards";
 import { exportarParaSap, MENSAGEM_SEM_NOVAS, nomeDoArquivo, TIPO_XLSX } from "../dominio/painel-exportacao";
-import { historicoDoLocal, indicadoresDeTempo, indicadoresMensais } from "../dominio/painel-indicadores";
+import { equipeDoIndicador, historicoDoLocal, indicadoresDeTempo, indicadoresMensais } from "../dominio/painel-indicadores";
 import { darCiencia, detalharOs, listarAprsDaOs, listarOs } from "../dominio/painel-os";
+import { esquemaPeriodo } from "../dominio/periodo";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { esquemaPaginacao, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
@@ -58,6 +61,40 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
   r.get("/indicadores/tempo", autenticar(), exigirPerfil("supervisor", "analista", "seguranca", "admin"), async (c) => {
     const f = lerConsulta(c, z.object({ mes, equipe_id: uuid.optional(), usuario_id: uuid.optional() }));
     return responder(c, await indicadoresDeTempo(deps.db, c.get("usuario"), f));
+  });
+
+  // ---- Dashboards de Indicadores e exportação ---------------------------------------------------------------------
+  // Todos com o mesmo filtro: `?periodo=7d|30d|90d|12m|AAAA-MM` (30 dias se ausente) e `?equipe_id=`. O supervisor só
+  // vê a própria equipe (pedir outra é `403`); os demais perfis de gestão veem todas.
+
+  const gestao = exigirPerfil("supervisor", "analista", "seguranca", "admin");
+  const lerFiltro = (c: Parameters<typeof lerConsulta>[0]) => {
+    const f = lerConsulta(c, z.object({ periodo: esquemaPeriodo, equipe_id: uuid.optional() }));
+    return { periodo: f.periodo, equipeId: equipeDoIndicador(c.get("usuario"), f.equipe_id) };
+  };
+
+  /** Dashboard geral: a carteira de agora, o resumo do período e as pendências. */
+  r.get("/indicadores/geral", autenticar(), gestao, async (c) => {
+    return responder(c, await dashboardGeral(deps.db, c.get("usuario"), lerFiltro(c), deps.agora()));
+  });
+
+  /** Dashboard de OS: carteira, programadas e encerradas, preventivas, tempo, interrupções, reprogramações e locais. */
+  r.get("/indicadores/os", autenticar(), gestao, async (c) => {
+    return responder(c, await dashboardDeOs(deps.db, c.get("usuario"), lerFiltro(c), deps.agora()));
+  });
+
+  /** Dashboard de equipes e usuários: por equipe e por técnico; o estado do cadastro só para o admin. */
+  r.get("/indicadores/equipes", autenticar(), gestao, async (c) => {
+    const eu = c.get("usuario");
+    return responder(c, await dashboardDeEquipes(deps.db, eu, { ...lerFiltro(c), comCadastro: eu.perfil === "admin" }, deps.agora()));
+  });
+
+  /**
+   * Dashboard de APR: respondidas, aprovadas e bloqueadas por faixa, itens que mais bloqueiam, alertas mais registrados,
+   * APRs por modelo e por equipe (a da OS).
+   */
+  r.get("/aprs/resumo", autenticar(), gestao, async (c) => {
+    return responder(c, await resumoDasAprs(deps.db, c.get("usuario"), lerFiltro(c), deps.agora()));
   });
 
   r.get("/historico", autenticar(), async (c) => {

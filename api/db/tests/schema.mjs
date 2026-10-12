@@ -30,13 +30,15 @@ async function recusa(nome, sql, params = []) {
 
 // base
 await deve("equipe", `insert into equipe (id,nome,centro_trabalho) values ('${id(1)}','Serviços Especiais','SERV_ESP')`);
-await deve("usuário técnico", `insert into usuario (id,nome,matricula,perfil,equipe_id) values ('${id(10)}','Carlos','10482','tecnico','${id(1)}')`);
-await deve("usuário técnico 2", `insert into usuario (id,nome,matricula,perfil,equipe_id) values ('${id(11)}','Diego','10483','tecnico','${id(1)}')`);
+await deve("usuário técnico", `insert into usuario (id,nome,matricula,email,perfil,equipe_id) values ('${id(10)}','Carlos','10482','carlos.silva@empresa.com.br','tecnico','${id(1)}')`);
+await deve("usuário técnico 2", `insert into usuario (id,nome,matricula,email,perfil,equipe_id) values ('${id(11)}','Diego','10483','diego.souza@empresa.com.br','tecnico','${id(1)}')`);
 await deve("usuário com cargo e CREA", `update usuario set cargo='Técnico em Elétrica', registro_profissional='ES-050003/D' where id='${id(11)}'`);
-await recusa("supervisor sem e-mail", `insert into usuario (id,nome,matricula,perfil) values ('${id(12)}','Marcos','90001','supervisor')`);
-await deve("supervisor com e-mail", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(12)}','Marcos','90001','supervisor','m@x.com')`);
-await recusa("matrícula repetida", `insert into usuario (id,nome,matricula,perfil) values ('${id(13)}','Outro','10482','tecnico')`);
-await recusa("perfil inválido", `insert into usuario (id,nome,matricula,perfil) values ('${id(13)}','X','777','gerente')`);
+await recusa("usuário sem e-mail", `insert into usuario (id,nome,matricula,perfil) values ('${id(12)}','Marcos','90001','supervisor')`);
+await deve("supervisor com e-mail", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(12)}','Marcos','90001','supervisor','marcos.lima@empresa.com.br')`);
+await recusa("e-mail repetido", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(14)}','Outro','90002','tecnico','marcos.lima@empresa.com.br')`);
+await recusa("e-mail com maiúsculas", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(14)}','Outro','90002','tecnico','Outro.Nome@empresa.com.br')`);
+await recusa("matrícula repetida", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(13)}','Outro','10482','tecnico','outro.nome@empresa.com.br')`);
+await recusa("perfil inválido", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(13)}','X','777','gerente','x.y@empresa.com.br')`);
 await deve("supervisor da equipe", `update equipe set supervisor_id='${id(12)}' where id='${id(1)}'`);
 
 // modelo
@@ -53,6 +55,10 @@ await recusa("versão repetida do modelo", `insert into modelo_apr (codigo,versa
 await deve("publicar modelo", `update modelo_apr set publicado_em=now() where id='${id(20)}'`);
 await recusa("editar modelo publicado", `update modelo_apr set titulo='x' where id='${id(20)}'`);
 await recusa("apagar modelo publicado", `delete from modelo_apr where id='${id(20)}'`);
+await deve("arquivar modelo publicado", `update modelo_apr set arquivado_em=now() where id='${id(20)}'`);
+await recusa("editar o título ao restaurar", `update modelo_apr set arquivado_em=null, titulo='x' where id='${id(20)}'`);
+await deve("restaurar modelo arquivado", `update modelo_apr set arquivado_em=null where id='${id(20)}'`);
+await recusa("arquivar rascunho", `insert into modelo_apr (codigo,versao,titulo,arquivado_em) values ('APR 98',1,'rascunho',now())`);
 await recusa("novo item em modelo publicado", `insert into item_modelo_apr (modelo_apr_id,secao,ordem,texto,tipo) values ('${id(20)}','verificacao',9,'x','alerta')`);
 await recusa("editar item de modelo publicado", `update item_modelo_apr set texto='x' where id='${id(21)}'`);
 await recusa("novo risco em modelo publicado", `insert into risco_modelo_apr (modelo_apr_id,classificacao,nome,ordem) values ('${id(20)}','Veicular','Novo',9)`);
@@ -67,8 +73,11 @@ await deve("local", `insert into local_instalacao (id,codigo) values ('${id(30)}
 await deve("OS SAP", `insert into os (id,numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('${id(40)}','4031187','corretiva','8.7.1','DCV','${id(30)}','${id(1)}','2026-10-13','sap')`);
 await recusa("ordem SAP repetida", `insert into os (numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('4031187','corretiva','8.7.1','dup','${id(30)}','${id(1)}','2026-10-13','sap')`);
 await recusa("OS do SAP sem número", `insert into os (tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('corretiva','8.7.1','x','${id(30)}','${id(1)}','2026-10-13','sap')`);
-await deve("OS manual sem número", `insert into os (id,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem,os_origem_id) values ('${id(41)}','corretiva','8.7.1','apoio','${id(30)}','${id(1)}','2026-10-14','manual','${id(40)}')`);
-await deve("OS sem atividade mapeada", `insert into os (id,numero_ordem,tipo,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('${id(42)}','4023470','corretiva','DCV Desobstrução de caixa de valvula','${id(30)}','${id(1)}','2026-05-15','sap')`);
+await deve("OS de apoio sem número", `insert into os (id,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem,os_origem_id) values ('${id(41)}','corretiva','8.7.1','apoio','${id(30)}','${id(1)}','2026-10-14','apoio','${id(40)}')`);
+await recusa("OS de apoio sem OS de origem", `insert into os (tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('corretiva','8.7.1','apoio','${id(30)}','${id(1)}','2026-10-14','apoio')`);
+await recusa("OS do SAP ligada a uma OS de origem", `insert into os (numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem,os_origem_id) values ('4031188','corretiva','8.7.1','x','${id(30)}','${id(1)}','2026-10-14','sap','${id(40)}')`);
+await recusa("origem manual não existe mais", `insert into os (numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('4031189','corretiva','8.7.1','x','${id(30)}','${id(1)}','2026-10-14','manual')`);
+await deve("OS sem atividade mapeada",`insert into os (id,numero_ordem,tipo,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('${id(42)}','4023470','corretiva','DCV Desobstrução de caixa de valvula','${id(30)}','${id(1)}','2026-05-15','sap')`);
 await deve("OS preventiva com plano e item", `insert into os (id,numero_ordem,tipo,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem,plano_manutencao,item_manutencao,data_ordem,criado_por_sap,status_sap) values ('${id(43)}','4019821','preventiva','1.2 - Inspeção Funcional de Retificador','${id(30)}','${id(1)}','2026-01-12','sap','10573','10603','2025-12-02','IP1020251202','LIB CAPC NOAP SCDM')`);
 await recusa("atividade inexistente", `insert into os (numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('1','corretiva','9.9.9','x','${id(30)}','${id(1)}','2026-10-13','sap')`);
 await recusa("status inválido", `update os set status='aberta' where id='${id(40)}'`);
@@ -131,6 +140,12 @@ await deve("evento repetido com ON CONFLICT DO NOTHING", `insert into evento_cam
 await recusa("tipo de evento inválido", `insert into evento_campo (id,usuario_id,tipo,payload,ocorrido_em) values ('${id(91)}','${id(10)}','voou','{}',now())`);
 await deve("alerta", `insert into alerta (tipo,os_id,destinatario_id,detalhe) values ('bloqueio','${id(40)}','${id(12)}','Caixa alagada')`);
 await recusa("alerta de tipo inválido", `insert into alerta (tipo,os_id,destinatario_id,detalhe) values ('x','${id(40)}','${id(12)}','d')`);
+await recusa("alerta de OS sem OS", `insert into alerta (tipo,destinatario_id,detalhe) values ('bloqueio','${id(12)}','d')`);
+await deve("importação que falhou", `insert into importacao (id,origem,erro) values ('${id(95)}','api','SAP fora do ar')`);
+await deve("alerta de falha de importação", `insert into alerta (tipo,importacao_id,destinatario_id,detalhe) values ('falha_importacao','${id(95)}','${id(12)}','A sincronização falhou')`);
+await recusa("falha de importação sem a importação", `insert into alerta (tipo,destinatario_id,detalhe) values ('falha_importacao','${id(12)}','d')`);
+await recusa("falha de importação ligada a uma OS", `insert into alerta (tipo,os_id,importacao_id,destinatario_id,detalhe) values ('falha_importacao','${id(40)}','${id(95)}','${id(12)}','d')`);
+await recusa("alerta de OS ligado a uma importação", `insert into alerta (tipo,os_id,importacao_id,destinatario_id,detalhe) values ('bloqueio','${id(40)}','${id(95)}','${id(12)}','d')`);
 await deve("reprogramação", `insert into reprogramacao (os_id,usuario_id,data_anterior,data_nova,justificativa) values ('${id(40)}','${id(12)}','2026-10-13','2026-10-16','Aguardar drenagem')`);
 await recusa("reprogramar sem justificativa", `insert into reprogramacao (os_id,usuario_id,data_anterior,data_nova,justificativa) values ('${id(40)}','${id(12)}','2026-10-13','2026-10-16','   ')`);
 await deve("tarefa", `insert into tarefa (tipo,referencia_id) values ('pdf_os','${id(40)}')`);
