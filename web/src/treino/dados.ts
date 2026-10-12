@@ -39,7 +39,15 @@ export interface LocalReg {
   critico: boolean;
 }
 
-export interface ModeloReg extends ModeloCompleto {
+/** O item como o servidor o guarda: com o tipo, a resposta que bloqueia e a evidência, que o técnico não recebe. */
+export interface ItemRegDoModelo extends ItemDoModelo {
+  resposta_bloqueante: "sim" | "nao" | null;
+  tipo: "eliminatorio" | "alerta";
+  evidencia: "foto" | "texto";
+}
+
+export interface ModeloReg extends Omit<ModeloCompleto, "itens"> {
+  itens: ItemRegDoModelo[];
   pae: null;
   arquivado_em: null;
   rascunho: false;
@@ -200,7 +208,7 @@ function montarModelo(
   agora: Date,
 ): ModeloReg {
   const riscos: RiscoDoModelo[] = riscosSpec.map(([classificacao, nome], i) => ({ id: idTreino("d", deslocamento + i + 1), classificacao, nome, ordem: i + 1 }));
-  const itens: ItemDoModelo[] = itensSpec.map((s) => ({
+  const itens: ItemRegDoModelo[] = itensSpec.map((s) => ({
     id: idTreino("a", s.n),
     secao: s.secao,
     risco_id: s.risco ? riscos[s.risco - 1]!.id : null,

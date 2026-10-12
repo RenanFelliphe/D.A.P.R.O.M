@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- script de teste: as respostas da api são lidas como vêm */
 // Fluxo do técnico até a APR, ponta a ponta contra a api local (sem navegador): injeta as OS de teste no SAP simulado e as lê, monta o
-// rascunho com as mesmas funções que a tela usa (`src/lib/apr.ts`), envia `apr_concluida` aprovada e bloqueada (com foto)
-// e confere resultado, status da OS e o alerta ao supervisor.
+// rascunho com as mesmas funções que a tela usa (`src/lib/apr.ts`), valida as respostas (`POST /aprs/avaliar`), envia
+// `apr_concluida` aprovada e bloqueada (com foto) e confere resultado, status da OS e o alerta ao supervisor. O técnico
+// não recebe o que é eliminatório: o script usa o modelo do admin só para escolher que respostas dar.
 //
 //   cd api && node --import tsx ../web/scripts/testar-fluxo-apr.mts
 //
@@ -9,15 +10,14 @@
 import assert from "node:assert/strict";
 import {
   doModeloCompleto,
-  estaReprovado,
-  geraAlerta,
+  montarAvaliacao,
   montarPayload,
   novoRascunho,
   adicionarFoto,
   observar,
   perguntasDe,
+  reprovadosSemEvidencia,
   responder,
-  resultadoEsperado,
   resumoDe,
   type ModeloCompleto,
   type RascunhoApr,
@@ -57,10 +57,26 @@ async function enviarEvento(token: string, osId: string, payload: unknown, id = 
   return { ...r, id } as { id: string; aprs: { id: string; resultado: string }[]; os: { id: string; status: string }[]; alertas: string[]; rejeitados: { id: string; codigo: string; mensagem: string }[]; pendentes: { id: string; codigo: string; mensagem: string }[] };
 }
 
+/** O item como o admin o vê: com o tipo, a resposta que bloqueia e a evidência, que o técnico não recebe. */
+interface ItemDoAdmin {
+  id: string;
+  tipo: "eliminatorio" | "alerta";
+  resposta_bloqueante: "sim" | "nao" | null;
+  evidencia: "foto" | "texto";
+}
+const classificacaoDe = async (codigo: string) =>
+  new Map<string, ItemDoAdmin>(((await ok(admToken, "GET", `/modelos-apr/${encodeURIComponent(codigo)}/versoes/publicada`)).itens as ItemDoAdmin[]).map((i) => [i.id, i]));
+
+/** `POST /aprs/avaliar` com as respostas do rascunho: o rascunho volta com o que a `api` disse (aprovada ou bloqueada). */
+async function avaliar(token: string, r: RascunhoApr): Promise<RascunhoApr> {
+  const res = await ok(token, "POST", "/aprs/avaliar", montarAvaliacao(r));
+  return { ...r, avaliacao: { resultado: res.resultado, reprovados: res.reprovados.map((x: any) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })) } };
+}
+
 /** Responde "tudo certo" (a resposta que não bloqueia) em todas as perguntas; `bloqueantes` troca a resposta de itens escolhidos. */
-function responderTudo(r: RascunhoApr, bloqueantes: Set<string> = new Set()) {
+function responderTudo(r: RascunhoApr, classificacao: Map<string, ItemDoAdmin>, bloqueantes: Set<string> = new Set()) {
   for (const item of perguntasDe(r.modelo, r.riscos)) {
-    const bloq = item.resposta_bloqueante;
+    const bloq = classificacao.get(item.id)!.resposta_bloqueante;
     const valor = bloq === null ? "sim" : bloqueantes.has(item.id) ? bloq : bloq === "sim" ? "nao" : "sim";
     r = responder(r, item, valor);
   }
@@ -152,17 +168,20 @@ assert.ok(publicados.length >= 8);
   const medidas = modeloA.itens.filter((i) => i.secao === "medida_preventiva" && riscos.includes(i.risco_id!)).length;
   assert.equal(total, verificacao + medidas, "perguntas = verificação + medidas dos riscos marcados");
 
+  // o técnico não vê o que é eliminatório: o modelo dele não traz tipo, resposta bloqueante nem evidência
+  assert.ok(modeloA.itens.every((i) => !("tipo" in i) && !("resposta_bloqueante" in i) && !("evidencia" in i)), "o modelo do técnico não traz a classificação");
   // com um item de alerta respondido com a resposta bloqueante: segue, marcado
-  const alerta = modeloA.itens.find((i) => i.tipo === "alerta" && i.resposta_bloqueante !== null)!;
-  r = responderTudo(r, new Set([alerta.id]));
-  const resumo = resumoDe(r);
-  assert.ok(resumo.completo && resumo.reprovados.length === 0 && resumo.alertas.length === 1);
-  assert.equal(resultadoEsperado(r), "aprovada");
-  assert.ok(geraAlerta(alerta, r.respostas[alerta.id]!.resposta));
+  const classeA = await classificacaoDe(detA.os.modelo_apr_codigo);
+  const alerta = [...classeA.values()].find((i) => i.tipo === "alerta" && i.resposta_bloqueante !== null)!;
+  r = responderTudo(r, classeA, new Set([alerta.id]));
+  assert.ok(resumoDe(r).completo);
+  r = await avaliar(tec1Token, r);
+  assert.equal(r.avaliacao?.resultado, "aprovada");
+  assert.equal(r.avaliacao?.reprovados.length, 0);
 
   // 2a. participante sem assinatura: rejeitado com assinatura_ausente
   r = { ...r, concluidaEm: new Date().toISOString(), assinaturas: Object.fromEntries(r.participantes.map((p) => [p.usuarioId, new Date().toISOString()])) };
-  const recusado = await enviarEvento(tec1Token, osAprovada, montarPayload(r, "aprovada"), r.eventoId);
+  const recusado = await enviarEvento(tec1Token, osAprovada, montarPayload(r), r.eventoId);
   assert.equal(recusado.rejeitados[0]?.codigo, "assinatura_ausente", JSON.stringify(recusado));
   console.log("aprovada, sem assinatura de um participante ->", recusado.rejeitados[0]!.mensagem);
 
@@ -170,18 +189,20 @@ assert.ok(publicados.length >= 8);
   const arquivoAssinatura = crypto.randomUUID();
   await subir(tokenNovo, arquivoAssinatura, "assinatura");
   await ok(tokenNovo, "PUT", "/me/assinatura", { arquivo_id: arquivoAssinatura });
-  const registrada = await enviarEvento(tec1Token, osAprovada, montarPayload(r, "aprovada"), r.eventoId);
+  const registrada = await enviarEvento(tec1Token, osAprovada, montarPayload(r), r.eventoId);
   assert.equal(registrada.rejeitados.length + registrada.pendentes.length, 0, JSON.stringify(registrada));
   assert.equal(registrada.aprs[0]?.resultado, "aprovada");
   assert.equal(registrada.os[0]?.status, "liberada", "OS continua liberada: falta a execução");
   // reenviar o mesmo evento não duplica a APR
-  const repetida = await enviarEvento(tec1Token, osAprovada, montarPayload(r, "aprovada"), r.eventoId);
+  const repetida = await enviarEvento(tec1Token, osAprovada, montarPayload(r), r.eventoId);
   assert.equal(repetida.aprs[0]?.resultado, "aprovada");
   const det = await ok(tec1Token, "GET", `/os/${osAprovada}`);
   assert.equal(det.aprs.length, 1);
   assert.equal(det.aprs[0].resultado, "aprovada");
   assert.equal(det.aprs[0].participantes.length, 3);
-  assert.equal(det.aprs[0].respostas.filter((x: any) => x.alerta_marcado).length, 1);
+  assert.ok(det.aprs[0].respostas.every((x: any) => !("alerta_marcado" in x) && !("tipo" in x)), "o detalhe da OS não diz ao técnico o que é alerta");
+  const detAdmin = await ok(admToken, "GET", `/os/${osAprovada}`);
+  assert.equal(detAdmin.aprs[0].respostas.filter((x: any) => x.alerta_marcado).length, 1, "o admin vê o alerta marcado");
   assert.equal(det.alertas.length, 0, "APR aprovada não gera alerta de bloqueio");
   console.log("aprovada: aprs[0].resultado =", det.aprs[0].resultado, "· status da OS =", det.os.status);
 
@@ -202,17 +223,22 @@ assert.ok(publicados.length >= 8);
     ],
     riscos: modelo.riscos.slice(0, 1).map((x) => x.id),
   });
-  const eliminatorios = perguntasDe(r.modelo, r.riscos).filter((i) => i.tipo === "eliminatorio" && i.resposta_bloqueante !== null);
-  const comFoto = eliminatorios.find((i) => i.evidencia === "foto")!;
-  const soTexto = eliminatorios.find((i) => i.evidencia === "texto");
+  const classe = await classificacaoDe(resumoModelo.codigo);
+  const eliminatorios = perguntasDe(r.modelo, r.riscos).filter((i) => classe.get(i.id)!.tipo === "eliminatorio" && classe.get(i.id)!.resposta_bloqueante !== null);
+  const comFoto = eliminatorios.find((i) => classe.get(i.id)!.evidencia === "foto")!;
+  const soTexto = eliminatorios.find((i) => classe.get(i.id)!.evidencia === "texto");
   const reprovar = [comFoto, ...(soTexto ? [soTexto] : [])];
-  r = responderTudo(r, new Set(reprovar.map((i) => i.id)));
-  assert.equal(resultadoEsperado(r), "bloqueada");
-  assert.equal(resumoDe(r).reprovados.length, reprovar.length, "todos os itens reprovados contam");
-  assert.ok(resumoDe(r).semEvidencia.length === reprovar.length, "sem observação nem foto: falta evidência em todos");
+  r = responderTudo(r, classe, new Set(reprovar.map((i) => i.id)));
+  assert.ok(resumoDe(r).completo, "o checklist não pede evidência: só responde");
+  // validar: só agora a api diz o que reprovou e que evidência cada item pede
+  r = await avaliar(tec1Token, r);
+  assert.equal(r.avaliacao?.resultado, "bloqueada");
+  assert.deepEqual(r.avaliacao?.reprovados.map((x) => x.itemId).sort(), reprovar.map((i) => i.id).sort(), "todos os itens reprovados contam");
+  assert.equal(r.avaliacao?.reprovados.find((x) => x.itemId === comFoto.id)?.evidencia, "foto");
+  assert.ok(reprovadosSemEvidencia(r).length === reprovar.length, "sem observação nem foto: falta evidência em todos");
 
   // 3a. evidência faltando: a api recusa com "Falta evidência em N item(ns)"
-  const semEvidencia = await enviarEvento(tec1Token, osBloqueada, montarPayload({ ...r, concluidaEm: new Date().toISOString() }, "bloqueada"));
+  const semEvidencia = await enviarEvento(tec1Token, osBloqueada, montarPayload({ ...r, concluidaEm: new Date().toISOString() }));
   assert.match(semEvidencia.rejeitados[0]?.mensagem ?? "", new RegExp(`Falta evidência em ${reprovar.length} item\\(ns\\)`), JSON.stringify(semEvidencia));
   console.log("bloqueada sem evidência ->", semEvidencia.rejeitados[0]!.mensagem);
 
@@ -221,11 +247,10 @@ assert.ok(publicados.length >= 8);
   await subir(tec1Token, fotoId, "foto");
   for (const item of reprovar) r = observar(r, item.id, `Motivo do teste: ${item.texto.slice(0, 40)}`);
   r = adicionarFoto(r, comFoto.id, { id: crypto.randomUUID(), arquivoId: fotoId, capturadaEm: new Date().toISOString(), latitude: -20.31, longitude: -40.29 });
-  const resumo = resumoDe(r);
-  assert.ok(resumo.completo && resumo.semEvidencia.length === 0, "evidência completa: pode concluir");
+  assert.equal(reprovadosSemEvidencia(r).length, 0, "evidência completa: pode registrar o impedimento");
   r = { ...r, observacaoGeral: "Caixa de válvula alagada", concluidaEm: new Date().toISOString() };
 
-  const resposta = await enviarEvento(tec1Token, osBloqueada, montarPayload(r, "bloqueada"), r.eventoId);
+  const resposta = await enviarEvento(tec1Token, osBloqueada, montarPayload(r), r.eventoId);
   assert.equal(resposta.rejeitados.length + resposta.pendentes.length, 0, JSON.stringify(resposta));
   assert.equal(resposta.aprs[0]?.resultado, "bloqueada");
   assert.equal(resposta.os[0]?.status, "pendente", "a OS fica pendente");
@@ -237,7 +262,8 @@ assert.ok(publicados.length >= 8);
   assert.equal(det.aprs[0].itens_reprovados.length, reprovar.length, "a APR bloqueada registra TODOS os itens reprovados");
   const reprovadoComFoto = det.aprs[0].itens_reprovados.find((i: any) => i.item_id === comFoto.id);
   assert.equal(reprovadoComFoto.fotos[0].foto_path, fotoId);
-  assert.ok(estaReprovado(comFoto, reprovadoComFoto.resposta));
+  assert.equal(reprovadoComFoto.resposta, classe.get(comFoto.id)!.resposta_bloqueante);
+  assert.ok(det.aprs[0].itens_reprovados.every((i: any) => !("tipo" in i) && !("evidencia" in i)), "o técnico não recebe o tipo do item");
   const url = await ok(tec1Token, "GET", `/arquivos/${fotoId}/url`);
   assert.ok(url.url, "a foto da evidência abre depois que a APR a referencia");
 
@@ -249,9 +275,9 @@ assert.ok(publicados.length >= 8);
   const modeloNovo = doModeloCompleto(modelo);
   let nova = novoRascunho({ osId: osBloqueada, usuarioId: tec2.id, modelo: modeloNovo, participantes: [{ usuarioId: tec2.id, funcao: "responsavel" }], riscos: [] });
   assert.equal(Object.keys(nova.respostas).length, 0);
-  nova = { ...responderTudo(nova), concluidaEm: new Date().toISOString(), assinaturas: { [tec2.id]: new Date().toISOString() } };
-  assert.equal(resultadoEsperado(nova), "aprovada");
-  const retomada = await enviarEvento(tec2Token, osBloqueada, montarPayload(nova, "aprovada"), nova.eventoId);
+  nova = { ...(await avaliar(tec2Token, responderTudo(nova, classe))), concluidaEm: new Date().toISOString(), assinaturas: { [tec2.id]: new Date().toISOString() } };
+  assert.equal(nova.avaliacao?.resultado, "aprovada");
+  const retomada = await enviarEvento(tec2Token, osBloqueada, montarPayload(nova), nova.eventoId);
   assert.equal(retomada.aprs[0]?.resultado, "aprovada", JSON.stringify(retomada));
   const depois = await ok(tec2Token, "GET", `/os/${osBloqueada}`);
   assert.equal(depois.aprs.length, 2);
@@ -263,17 +289,17 @@ assert.ok(publicados.length >= 8);
   const modelo: ModeloCompleto = await ok(tec1Token, "GET", "/modelos-apr/APR%2004/versoes/publicada");
   assert.ok(modelo.itens.some((i) => i.permite_na), "o APR 04 tem itens com NA");
   let r = novoRascunho({ osId: osNa, usuarioId: eu.id, modelo: doModeloCompleto(modelo), participantes: [{ usuarioId: eu.id, funcao: "responsavel" }], riscos: [] });
-  r = responderTudo(r);
+  r = responderTudo(r, await classificacaoDe("APR 04"));
   const comNa = perguntasDe(r.modelo, r.riscos).find((i) => i.permite_na);
   assert.ok(comNa, "há pergunta com NA entre as de verificação do APR 04");
   r = responder(r, comNa, "na");
   assert.ok(resumoDe(r).naSemObservacao.length === 1, "NA sem observação fica pendente na tela");
-  r = { ...r, concluidaEm: new Date().toISOString(), assinaturas: { [eu.id]: new Date().toISOString() } };
-  const recusada = await enviarEvento(tec1Token, osNa, montarPayload(r, "aprovada"));
+  r = { ...(await avaliar(tec1Token, r)), concluidaEm: new Date().toISOString(), assinaturas: { [eu.id]: new Date().toISOString() } };
+  const recusada = await enviarEvento(tec1Token, osNa, montarPayload(r));
   assert.equal(recusada.rejeitados[0]?.codigo, "observacao_obrigatoria", JSON.stringify(recusada));
   r = observar(r, comNa.id, "Não há válvula neste ponto");
   assert.equal(resumoDe(r).naSemObservacao.length, 0);
-  const aceita = await enviarEvento(tec1Token, osNa, montarPayload(r, "aprovada"), r.eventoId);
+  const aceita = await enviarEvento(tec1Token, osNa, montarPayload(r), r.eventoId);
   assert.equal(aceita.aprs[0]?.resultado, "aprovada", JSON.stringify(aceita));
   console.log("NA sem observação ->", recusada.rejeitados[0]!.mensagem, "· com observação: aprs[0].resultado =", aceita.aprs[0]!.resultado);
 }

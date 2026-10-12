@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- script de teste: as respostas da API fictícia são lidas como vêm */
 // Percorre o Campo de treino (a API fictícia, sem servidor e sem navegador) do mesmo modo que as telas de campo:
-// lista as OS, abre a OS guiada, faz a APR aprovada, inicia e encerra a execução; depois abre a OS do bloqueio, reprova o
-// item eliminatório e confere o impedimento. Usa as funções puras da tela (`src/lib/apr.ts`) para montar o evento.
+// lista as OS, abre a OS guiada, faz a APR aprovada, inicia e encerra a execução; depois abre a OS do bloqueio, responde
+// uma pergunta do jeito que reprova e confere o impedimento. O modelo que o técnico recebe não diz o que é eliminatório:
+// só `POST /aprs/avaliar` revela os itens reprovados. Usa as funções puras da tela (`src/lib/apr.ts`) para montar o evento.
 //
 //   cd api && node --import tsx ../web/scripts/verificar-treino.mts
 import assert from "node:assert/strict";
-import { adicionarFoto, doModeloCompleto, montarPayload, novoRascunho, observar, perguntasDe, responder, resultadoEsperado, type ModeloCompleto, type RascunhoApr } from "../src/lib/apr";
+import { adicionarFoto, doModeloCompleto, montarAvaliacao, montarPayload, novoRascunho, observar, perguntasDe, responder, type ModeloCompleto, type RascunhoApr } from "../src/lib/apr";
 import { arquivoDoTreino, responderTreino } from "../src/treino/api-ficticia";
 import { reiniciarTreino } from "../src/treino/armazem";
-import { COLEGAS_TREINO, COLEGA_SEM_ASSINATURA, MODELO_BLOQUEIO, MODELO_GUIADO, OS_BLOQUEIO, OS_GUIADA, RESPOSTA_QUE_BLOQUEIA, idTreino } from "../src/treino/ids";
+import { COLEGAS_TREINO, COLEGA_SEM_ASSINATURA, MODELO_BLOQUEIO, MODELO_GUIADO, OS_BLOQUEIO, OS_GUIADA, idTreino } from "../src/treino/ids";
 import type { Usuario } from "../src/lib/tipos";
 
 const eu: Usuario = {
@@ -57,6 +58,12 @@ function preencher(osId: string, modelo: ModeloCompleto, riscos: string[], parti
   return r;
 }
 
+/** `POST /aprs/avaliar` com as respostas do rascunho: devolve o rascunho com o que a `api` disse (aprovada ou bloqueada). */
+async function avaliar(r: RascunhoApr): Promise<RascunhoApr> {
+  const res = await ler<any>("POST", "/aprs/avaliar", montarAvaliacao(r));
+  return { ...r, avaliacao: { resultado: res.resultado, reprovados: res.reprovados.map((x: any) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })) } };
+}
+
 let passos = 0;
 const ok = (texto: string) => console.log(`ok ${++passos} - ${texto}`);
 
@@ -95,24 +102,25 @@ ok("GET /os/{id}, /modelos-apr e /usuarios da OS guiada");
 
 // Colega sem assinatura: a APR é recusada.
 {
-  const r = preencher(OS_GUIADA, modeloA, [], [{ usuarioId: eu.id, funcao: "responsavel" }, { usuarioId: COLEGA_SEM_ASSINATURA.id, funcao: "executor" }]);
-  r.concluidaEm = new Date().toISOString();
-  const res = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(r, "aprovada") as any));
+  const r = { ...(await avaliar(preencher(OS_GUIADA, modeloA, [], [{ usuarioId: eu.id, funcao: "responsavel" }, { usuarioId: COLEGA_SEM_ASSINATURA.id, funcao: "executor" }]))), concluidaEm: new Date().toISOString() };
+  const res = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(r) as any));
   assert.equal(res.rejeitados[0].codigo, "assinatura_ausente");
   ok("participante sem assinatura: rejeitado (assinatura_ausente)");
 }
 
-const rascunho = preencher(OS_GUIADA, modeloA, [modeloA.riscos[0]!.id], [{ usuarioId: eu.id, funcao: "responsavel" }, { usuarioId: COLEGAS_TREINO.carlos.id, funcao: "executor" }]);
-rascunho.concluidaEm = new Date().toISOString();
-assert.equal(resultadoEsperado(rascunho), "aprovada");
-const aprovada = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(rascunho, "aprovada") as any, rascunho.eventoId));
+const rascunho = {
+  ...(await avaliar(preencher(OS_GUIADA, modeloA, [modeloA.riscos[0]!.id], [{ usuarioId: eu.id, funcao: "responsavel" }, { usuarioId: COLEGAS_TREINO.carlos.id, funcao: "executor" }]))),
+  concluidaEm: new Date().toISOString(),
+};
+assert.equal(rascunho.avaliacao?.resultado, "aprovada");
+const aprovada = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(rascunho) as any, rascunho.eventoId));
 assert.equal(aprovada.rejeitados.length, 0, JSON.stringify(aprovada));
 assert.equal(aprovada.aprs[0].resultado, "aprovada");
 assert.equal(aprovada.os[0].status, "liberada");
 ok("apr_concluida aprovada na OS guiada");
 
 // Reenviar o mesmo evento só confirma.
-const repetida = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(rascunho, "aprovada") as any, rascunho.eventoId));
+const repetida = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(rascunho) as any, rascunho.eventoId));
 assert.equal(repetida.confirmados.length, 1);
 assert.equal((await ler<any>("GET", `/os/${OS_GUIADA}`)).aprs.length, 1);
 ok("reenvio do mesmo evento é idempotente");
@@ -171,41 +179,61 @@ assert.equal(pdf.binario?.tipo, "application/pdf");
 assert.equal(new TextDecoder().decode(pdf.binario!.bytes.slice(0, 5)), "%PDF-");
 ok("detalhe pós-execução, histórico e PDF");
 
-// ---- OS do bloqueio: item eliminatório reprovado ------------------------------------------------------------------
+// ---- OS do bloqueio: pergunta respondida do jeito que reprova -------------------------------------------------------
 const modeloB = await ler<ModeloCompleto>("GET", `/modelos-apr/${MODELO_BLOQUEIO.codigo}/versoes/publicada`);
 const eliminatorio = modeloB.itens.find((i) => i.id === MODELO_BLOQUEIO.itemEliminatorioId)!;
-assert.equal(eliminatorio.tipo, "eliminatorio");
-assert.equal(eliminatorio.resposta_bloqueante, RESPOSTA_QUE_BLOQUEIA);
-assert.equal(eliminatorio.evidencia, "foto");
+// O técnico não recebe o que é eliminatório: nem o tipo, nem a resposta que bloqueia, nem a evidência do item.
+for (const modelo of [modeloA, modeloB]) {
+  for (const item of modelo.itens) {
+    assert.deepEqual(Object.keys(item).filter((k) => ["tipo", "resposta_bloqueante", "evidencia"].includes(k)), [], "o modelo do técnico não traz a classificação");
+  }
+}
+ok("o modelo que o técnico recebe não diz quais itens são eliminatórios");
 
 const participantes: RascunhoApr["participantes"] = [{ usuarioId: eu.id, funcao: "responsavel" }, { usuarioId: COLEGAS_TREINO.paulo.id, funcao: "executor" }];
 const riscosB = [modeloB.riscos[0]!.id];
-let bloqueada = preencher(OS_BLOQUEIO, modeloB, riscosB, participantes, { [eliminatorio.id]: "nao" });
-bloqueada.concluidaEm = new Date().toISOString();
-assert.equal(resultadoEsperado(bloqueada), "bloqueada");
+// Respostas incompletas não são avaliadas.
+const vazia = novoRascunho({ osId: OS_BLOQUEIO, usuarioId: eu.id, modelo: doModeloCompleto(modeloB), participantes, riscos: riscosB });
+assert.equal((await chamar("POST", "/aprs/avaliar", { modelo_apr_id: modeloB.id, riscos: riscosB, respostas: [] })).status, 422);
+assert.equal(vazia.avaliacao, null);
+// A avaliação não grava nada: a OS segue só com a APR bloqueada da massa inicial.
+const aprsAntes = (await ler<any>("GET", `/os/${OS_BLOQUEIO}`)).aprs.length;
+let bloqueada = await avaliar(preencher(OS_BLOQUEIO, modeloB, riscosB, participantes, { [eliminatorio.id]: "nao" }));
+assert.equal((await ler<any>("GET", `/os/${OS_BLOQUEIO}`)).aprs.length, aprsAntes, "avaliar não registra APR");
+bloqueada = { ...bloqueada, concluidaEm: new Date().toISOString() };
+assert.equal(bloqueada.avaliacao?.resultado, "bloqueada");
+assert.deepEqual(bloqueada.avaliacao?.reprovados.map((x) => x.itemId), [eliminatorio.id]);
+assert.equal(bloqueada.avaliacao?.reprovados[0]!.evidencia, "foto");
+ok("POST /aprs/avaliar: só depois de responder tudo a `api` diz qual item reprovou e que evidência ele pede");
 
 // Sem observação e sem foto: recusada.
-assert.equal((await enviar(evento("apr_concluida", OS_BLOQUEIO, montarPayload(bloqueada, "bloqueada") as any))).rejeitados[0].codigo, "evidencia_faltando");
+assert.equal((await enviar(evento("apr_concluida", OS_BLOQUEIO, montarPayload(bloqueada) as any))).rejeitados[0].codigo, "evidencia_faltando");
 // Com observação e sem foto: ainda recusada (o item pede foto).
 bloqueada = observar(bloqueada, eliminatorio.id, "Talabarte com costura rompida.");
-assert.equal((await enviar(evento("apr_concluida", OS_BLOQUEIO, montarPayload(bloqueada, "bloqueada") as any))).rejeitados[0].codigo, "evidencia_faltando");
+assert.equal((await enviar(evento("apr_concluida", OS_BLOQUEIO, montarPayload(bloqueada) as any))).rejeitados[0].codigo, "evidencia_faltando");
 // Com foto ainda não enviada: pendente (o evento espera o arquivo).
 bloqueada = adicionarFoto(bloqueada, eliminatorio.id, { id: crypto.randomUUID(), arquivoId: crypto.randomUUID(), capturadaEm: new Date().toISOString() });
-assert.equal((await enviar(evento("apr_concluida", OS_BLOQUEIO, montarPayload(bloqueada, "bloqueada") as any))).pendentes[0].codigo, "arquivo_ausente");
+assert.equal((await enviar(evento("apr_concluida", OS_BLOQUEIO, montarPayload(bloqueada) as any))).pendentes[0].codigo, "arquivo_ausente");
 // Com a foto enviada: APR bloqueada, OS pendente e alerta ao supervisor.
 const arquivoDaFoto = await subirFoto();
 bloqueada = { ...bloqueada, fotos: { [eliminatorio.id]: [{ ...bloqueada.fotos[eliminatorio.id]![0]!, arquivoId: arquivoDaFoto }] } };
-const resBloqueio = await enviar(evento("apr_concluida", OS_BLOQUEIO, montarPayload(bloqueada, "bloqueada") as any, bloqueada.eventoId));
+const resBloqueio = await enviar(evento("apr_concluida", OS_BLOQUEIO, montarPayload(bloqueada) as any, bloqueada.eventoId));
 assert.equal(resBloqueio.rejeitados.length + resBloqueio.pendentes.length, 0, JSON.stringify(resBloqueio));
 assert.equal(resBloqueio.aprs[0].resultado, "bloqueada");
 assert.equal(resBloqueio.os[0].status, "pendente");
 assert.equal(resBloqueio.alertas.length, 1);
 const detalheB = await ler<any>("GET", `/os/${OS_BLOQUEIO}`);
 assert.equal(detalheB.os.status, "pendente");
-assert.equal(detalheB.aprs[0].itens_reprovados[0].item_id, eliminatorio.id);
-assert.equal(detalheB.aprs[0].itens_reprovados[0].fotos.length, 1);
+// A APR da massa inicial vem primeiro (mais antiga); a que acabou de ser registrada é a última.
+const aprNova = detalheB.aprs[detalheB.aprs.length - 1];
+assert.equal(aprNova.itens_reprovados[0].item_id, eliminatorio.id);
+assert.equal(aprNova.itens_reprovados[0].fotos.length, 1);
+for (const apr of detalheB.aprs) {
+  for (const r of apr.respostas) assert.equal(["tipo", "evidencia", "resposta_bloqueante", "alerta_marcado"].some((k) => k in r), false, "o detalhe da OS não traz a classificação ao técnico");
+  for (const i of apr.itens_reprovados) assert.equal(["tipo", "evidencia"].some((k) => k in i), false);
+}
 assert.equal(detalheB.alertas[0].tipo, "bloqueio");
-ok("item eliminatório reprovado: APR bloqueada, OS pendente, alerta ao supervisor");
+ok("pergunta respondida do jeito que reprova: APR bloqueada, OS pendente, alerta ao supervisor");
 
 const semApr = await enviar(evento("execucao_iniciada", OS_BLOQUEIO, { id: crypto.randomUUID(), apr_id: bloqueada.aprId, inicio: new Date().toISOString() }));
 assert.equal(semApr.rejeitados[0].codigo, "apr_invalida");

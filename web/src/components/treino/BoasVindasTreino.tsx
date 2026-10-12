@@ -76,9 +76,6 @@ export function BoasVindasTreino({ contexto, aoFechar }: BoasVindasTreinoProps) 
               <a className="tr-link" href={rotas.app.treinoSair}>
                 Voltar ao sistema real
               </a>
-              <button type="button" className="tr-link" onClick={aoFechar}>
-                Explorar sem roteiro
-              </button>
             </>
           )}
         </div>

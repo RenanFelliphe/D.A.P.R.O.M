@@ -22,7 +22,7 @@ async function ehAdmin(token: string | undefined) {
  * (`?modo=direcionado|livre`) segue na URL para o navegador guardá-la; sem ela, a lista abre a escolha.
  */
 export async function GET(req: NextRequest) {
-  if (await ehAdmin(req.cookies.get(COOKIE_ACESSO)?.value)) return NextResponse.redirect(new URL(rotas.web.quadro, req.url));
+  if (await ehAdmin(req.cookies.get(COOKIE_ACESSO)?.value)) return NextResponse.redirect(new URL(rotas.app.lista, req.url));
 
   const modo = req.nextUrl.searchParams.get("modo");
   const destino = new URL(rotas.app.lista, req.url);

@@ -233,15 +233,11 @@ function aprsApi(e: EstadoTreino, osId: string) {
             secao: item.secao,
             ordem: item.ordem,
             texto: item.texto,
-            tipo: item.tipo,
-            evidencia: item.evidencia,
-            resposta_bloqueante: item.resposta_bloqueante,
             risco_id: item.risco_id,
             resposta: r.resposta,
             observacao: r.observacao,
             respondida_em: r.respondida_em,
             reprovado,
-            alerta_marcado: item.tipo === "alerta" && item.resposta_bloqueante !== null && r.resposta === item.resposta_bloqueante,
           };
         });
       const preenchedor = usuarioDe(e, a.preenchida_por);
@@ -268,8 +264,6 @@ function aprsApi(e: EstadoTreino, osId: string) {
             texto: r.texto,
             resposta: r.resposta,
             observacao: r.observacao,
-            tipo: r.tipo,
-            evidencia: r.evidencia,
             fotos: a.evidencias
               .filter((f) => f.item_id === r.item_id)
               .map((f) => ({ id: f.id, foto_path: f.arquivo_id, capturada_em: f.capturada_em, latitude: f.latitude, longitude: f.longitude })),
@@ -382,8 +376,21 @@ const resumoDoModelo = (e: EstadoTreino, m: ModeloReg) => ({
   atividades_total: e.os.filter((o) => o.modelo_apr_codigo === m.codigo).length,
 });
 
+/** O técnico recebe o modelo sem `tipo`, `resposta_bloqueante` e `evidencia`: não pode saber o que é eliminatório. */
 function completoDoModelo(m: ModeloReg) {
-  return { ...m, riscos: m.riscos.map((r) => ({ ...r })), itens: m.itens.map((i) => ({ ...i, risco_ordem: i.risco_id ? (m.riscos.find((r) => r.id === i.risco_id)?.ordem ?? null) : null })) };
+  return {
+    ...m,
+    riscos: m.riscos.map((r) => ({ ...r })),
+    itens: m.itens.map((i) => ({
+      id: i.id,
+      secao: i.secao,
+      risco_id: i.risco_id,
+      risco_ordem: i.risco_id ? (m.riscos.find((r) => r.id === i.risco_id)?.ordem ?? null) : null,
+      ordem: i.ordem,
+      texto: i.texto,
+      permite_na: i.permite_na,
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1188,6 +1195,32 @@ rota("GET", "/arquivos/:id/url", ({ e, params }) => {
 });
 
 rota("POST", "/eventos", ({ e, eu, corpo, agora }) => ok(processarEventos(e, eu, corpo, agora)));
+
+/**
+ * `POST /aprs/avaliar`: o resultado das respostas e, se bloqueada, os itens reprovados com a evidência de cada um. Não
+ * grava nada. É a única hora em que o técnico fica sabendo quais itens são eliminatórios.
+ */
+rota("POST", "/aprs/avaliar", ({ e, corpo }) => {
+  const p = obj(corpo);
+  const modelo = e.modelos.find((m) => m.id === p.modelo_apr_id);
+  if (!modelo || !modelo.publicado_em) throw invalido("modelo_invalido", "Modelo de APR inexistente ou não publicado");
+  const riscos = Array.isArray(p.riscos) ? p.riscos.filter((r): r is string => typeof r === "string") : [];
+  const respostas = Array.isArray(p.respostas) ? p.respostas.map(obj) : [];
+  const respostaPorItem = new Map<string, string>();
+  for (const r of respostas) {
+    const itemId = typeof r.item_id === "string" ? r.item_id : "";
+    if (!modelo.itens.some((i) => i.id === itemId)) throw invalido("item_invalido", "Resposta a um item que não pertence ao modelo da APR");
+    respostaPorItem.set(itemId, String(r.resposta));
+  }
+  const marcados = new Set(riscos);
+  const faltando = modelo.itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.risco_id!)) && !respostaPorItem.has(i.id));
+  if (faltando.length > 0) throw invalido("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
+  const reprovados = modelo.itens
+    .filter((i) => i.tipo === "eliminatorio" && i.resposta_bloqueante !== null && respostaPorItem.get(i.id) === i.resposta_bloqueante)
+    .sort((a, b) => a.ordem - b.ordem)
+    .map((i) => ({ item_id: i.id, texto: i.texto, evidencia: i.evidencia }));
+  return ok({ resultado: reprovados.length > 0 ? "bloqueada" : "aprovada", reprovados });
+});
 
 // ---------------------------------------------------------------------------------------------------------------
 // Entrada
