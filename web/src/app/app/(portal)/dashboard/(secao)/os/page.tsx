@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Dashboard de OS" };
  * Dashboard de OS: carteira, programadas e encerradas, preventivas, tempo, interrupções e locais; para o admin,
  * também a entrada de OS (que não depende da equipe) e a baixa no SAP.
  */
-export default async function OsPage({ searchParams }: PageProps<"/web/indicadores/os">) {
+export default async function OsPage({ searchParams }: PageProps<"/app/dashboard/os">) {
   const painel = await prepararDashboard(searchParams);
   const completo = veImportacao(painel.usuario);
   const [dados, entrada, previa] = await Promise.all([
@@ -25,8 +25,8 @@ export default async function OsPage({ searchParams }: PageProps<"/web/indicador
   ]);
   return (
     <>
-      <CabecalhoDoPainel acao={rotas.web.indicadoresOs} filtro={painel.filtro} de={dados.de} ate={dados.ate} equipes={painel.equipes} nomeDaEquipe={painel.nomeDaEquipe} />
-      <DashboardOs dados={dados} rotuloAnterior={painel.rotuloAnterior} entrada={entrada} exportacao={previa ? { total: previa.total, os: previa.os } : null} />
+      <CabecalhoDoPainel acao={rotas.app.dashboardOs} filtro={painel.filtro} de={dados.de} ate={dados.ate} equipes={painel.equipes} nomeDaEquipe={painel.nomeDaEquipe} />
+      <DashboardOs dados={dados} rotuloAnterior={painel.rotuloAnterior} entrada={entrada} exportacao={previa ? { total: previa.total, os: previa.os } : null} porTecnico={painel.acompanha} />
     </>
   );
 }

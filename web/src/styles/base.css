@@ -378,6 +378,12 @@ button:focus-visible,
   color: var(--ink4)
 }
 
+.side .side-sep.side-sep-topo {
+  margin-top: 4px;
+  padding-top: 0;
+  border-top: 0
+}
+
 .side .foot-note {
   margin-top: auto;
   padding: 10px 12px;

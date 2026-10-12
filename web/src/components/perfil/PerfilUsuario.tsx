@@ -15,7 +15,8 @@ interface PerfilDaApi {
   equipe: Equipe | null;
   supervisor: { id: string; nome: string } | null;
   membros: { id: string; nome: string; matricula: string; cargo: string | null; perfil: Perfil }[];
-  resumo: { os_encerradas: number; em_andamento: number; ultima_encerrada_em: string | null };
+  /** `null` para um técnico comum vendo um colega: o desempenho de cada um não é dele. */
+  resumo: { os_encerradas: number; em_andamento: number; ultima_encerrada_em: string | null } | null;
   execucoes: {
     id: string;
     os_id: string;
@@ -30,8 +31,6 @@ interface PerfilDaApi {
 }
 
 interface PerfilUsuarioProps {
-  /** `web` é o painel de gestão; `app` é a área do técnico. */
-  area: "web" | "app";
   usuarioId: string;
 }
 
@@ -39,17 +38,17 @@ interface PerfilUsuarioProps {
  * Perfil de uma pessoa (aberto pela busca global): foto, dados, equipe com os membros e as últimas OS que ela encerrou.
  * A `api` decide quem pode ver quem; o que ela recusa vira `404`.
  */
-export async function PerfilUsuario({ area, usuarioId }: PerfilUsuarioProps) {
+export async function PerfilUsuario({ usuarioId }: PerfilUsuarioProps) {
   const [perfil, { usuario: eu }] = await Promise.all([apiOuNulo<PerfilDaApi>(`/usuarios/${usuarioId}`), usuarioAtual()]);
   if (!perfil) notFound();
 
   const { usuario: u, equipe, supervisor, membros, resumo, execucoes } = perfil;
   const admin = eu.perfil === "admin";
   const euMesmo = u.id === eu.id;
-  const hrefDoPerfil = (id: string) => (area === "web" ? rotas.web.perfilDe(id) : rotas.app.perfilDe(id));
-  const hrefDaEquipe = (id: string) => (area === "web" ? rotas.web.equipe(id) : rotas.app.equipe(id));
-  const hrefDaOs = (id: string) => (area === "web" ? rotas.web.os(id) : rotas.app.os(id));
-  const meuPerfil = area === "web" ? rotas.web.perfil : rotas.app.perfil;
+  const hrefDoPerfil = (id: string) => (rotas.app.perfilDe(id));
+  const hrefDaEquipe = (id: string) => (rotas.app.equipe(id));
+  const hrefDaOs = (id: string) => (rotas.app.os(id));
+  const meuPerfil = rotas.app.perfil;
 
   const dados: [string, string | null][] = [
     ["Matrícula", u.matricula],
@@ -63,7 +62,7 @@ export async function PerfilUsuario({ area, usuarioId }: PerfilUsuarioProps) {
     <Screen className="perfil-pagina">
       <Trilha
         passos={[
-          { rotulo: "Busca", href: area === "web" ? rotas.web.busca : rotas.app.busca },
+          { rotulo: "Busca", href: rotas.app.busca },
           { rotulo: u.nome },
         ]}
       />
@@ -99,77 +98,81 @@ export async function PerfilUsuario({ area, usuarioId }: PerfilUsuarioProps) {
             </Link>
           )}
           {admin && (
-            <Link className="btn btn-line btn-sm" href={`${rotas.web.usuarios}?busca=${encodeURIComponent(u.matricula)}`}>
+            <Link className="btn btn-line btn-sm" href={`${rotas.app.usuarios}?busca=${encodeURIComponent(u.matricula)}`}>
               Gerenciar conta
             </Link>
           )}
         </div>
       </header>
 
-      <div className="kpis perfil-kpis">
-        <div className="kpi">
-          <span className="l">
-            <i style={{ background: "var(--enc)" }} />
-            OS encerradas
-          </span>
-          <span className="v">{resumo.os_encerradas}</span>
-          <span className="s">no total</span>
+      {resumo && (
+        <div className="kpis perfil-kpis">
+          <div className="kpi">
+            <span className="l">
+              <i style={{ background: "var(--enc)" }} />
+              OS encerradas
+            </span>
+            <span className="v">{resumo.os_encerradas}</span>
+            <span className="s">no total</span>
+          </div>
+          <div className="kpi">
+            <span className="l">
+              <i style={{ background: "var(--exe)" }} />
+              Em andamento
+            </span>
+            <span className="v">{resumo.em_andamento}</span>
+            <span className="s">execuções abertas agora</span>
+          </div>
+          <div className="kpi">
+            <span className="l">
+              <i style={{ background: "var(--lib)" }} />
+              Última OS encerrada
+            </span>
+            <span className="v" style={{ fontSize: 22 }}>
+              {resumo.ultima_encerrada_em ? data(resumo.ultima_encerrada_em) : "—"}
+            </span>
+            <span className="s">{resumo.ultima_encerrada_em ? dataHora(resumo.ultima_encerrada_em).slice(-5) : "sem OS encerradas"}</span>
+          </div>
         </div>
-        <div className="kpi">
-          <span className="l">
-            <i style={{ background: "var(--exe)" }} />
-            Em andamento
-          </span>
-          <span className="v">{resumo.em_andamento}</span>
-          <span className="s">execuções abertas agora</span>
-        </div>
-        <div className="kpi">
-          <span className="l">
-            <i style={{ background: "var(--lib)" }} />
-            Última OS encerrada
-          </span>
-          <span className="v" style={{ fontSize: 22 }}>
-            {resumo.ultima_encerrada_em ? data(resumo.ultima_encerrada_em) : "—"}
-          </span>
-          <span className="s">{resumo.ultima_encerrada_em ? dataHora(resumo.ultima_encerrada_em).slice(-5) : "sem OS encerradas"}</span>
-        </div>
-      </div>
+      )}
 
       <div className="perfil-grade">
-        <div className="col-main">
-          <section className="panel" aria-labelledby="ultimas-os">
-            <h2 id="ultimas-os">Últimas OS realizadas</h2>
-            {execucoes.length === 0 ? (
-              <p className="muted">{euMesmo ? "Você ainda não encerrou nenhuma OS." : `${u.nome.split(" ")[0]} ainda não encerrou nenhuma OS.`}</p>
-            ) : (
-              <ul className="perfil-os">
-                {execucoes.map((e) => (
-                  <li key={e.id}>
-                    <Link href={hrefDaOs(e.os_id)} className="perfil-os-item">
-                      <span className="stack" style={{ minWidth: 0, flex: 1, lineHeight: 1.3 }}>
-                        <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
-                          OS {e.numero_ordem ?? "—"}
+        {resumo && (
+          <div className="col-main">
+            <section className="panel" aria-labelledby="ultimas-os">
+              <h2 id="ultimas-os">Últimas OS realizadas</h2>
+              {execucoes.length === 0 ? (
+                <p className="muted">{euMesmo ? "Você ainda não encerrou nenhuma OS." : `${u.nome.split(" ")[0]} ainda não encerrou nenhuma OS.`}</p>
+              ) : (
+                <ul className="perfil-os">
+                  {execucoes.map((e) => (
+                    <li key={e.id}>
+                      <Link href={hrefDaOs(e.os_id)} className="perfil-os-item">
+                        <span className="stack" style={{ minWidth: 0, flex: 1, lineHeight: 1.3 }}>
+                          <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
+                            OS {e.numero_ordem ?? "—"}
+                          </span>
+                          <span style={{ fontSize: 14.5, fontWeight: 600 }}>{e.titulo}</span>
+                          <span className="small">
+                            <Icon name="pin" size={13} /> {e.local_codigo} · {dataHora(e.fim)} · {duracao(e.tempo_liquido_min)} líquidos
+                          </span>
                         </span>
-                        <span style={{ fontSize: 14.5, fontWeight: 600 }}>{e.titulo}</span>
-                        <span className="small">
-                          <Icon name="pin" size={13} /> {e.local_codigo} · {dataHora(e.fim)} · {duracao(e.tempo_liquido_min)} líquidos
-                        </span>
-                      </span>
-                      <Badge tone="enc">Encerrada</Badge>
-                      <Icon name="right" size={16} className="res-seta" />
-                    </Link>
-                    {e.pdf_pronto && (
-                      <a className="perfil-pdf" href={urlDoPdf(e.os_id)} target="_blank" rel="noreferrer" aria-label={`PDF da OS ${e.numero_ordem ?? ""}`}>
-                        <Icon name="file" size={16} />
-                        PDF
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </div>
+                        <Badge tone="enc">Encerrada</Badge>
+                        <Icon name="right" size={16} className="res-seta" />
+                      </Link>
+                      {e.pdf_pronto && (
+                        <a className="perfil-pdf" href={urlDoPdf(e.os_id)} target="_blank" rel="noreferrer" aria-label={`PDF da OS ${e.numero_ordem ?? ""}`}>
+                          <Icon name="file" size={16} />
+                          PDF
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
 
         <aside className="stack g16" style={{ minWidth: 0 }}>
           <section className="panel" aria-labelledby="dados-pessoa">

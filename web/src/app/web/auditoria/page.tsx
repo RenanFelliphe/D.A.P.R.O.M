@@ -16,7 +16,7 @@ const DIA = /^\d{4}-\d{2}-\d{2}$/;
 /** Auditoria: quem fez o quê e quando nas telas de gestão (cadastros, modelos, importações, baixa no SAP). Só o administrador. */
 export default async function AuditoriaPage({ searchParams }: PageProps<"/web/auditoria">) {
   const { usuario } = await usuarioAtual();
-  if (!ehAdmin(usuario)) redirect(rotas.web.quadro);
+  if (!ehAdmin(usuario)) redirect(rotas.app.lista);
 
   const params = await searchParams;
   const entidade = um(params.entidade);

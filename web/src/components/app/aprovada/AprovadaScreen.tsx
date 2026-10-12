@@ -21,7 +21,6 @@ export interface AprRegistrada {
   modelo: { codigo: string; versao: number };
   concluidaEm: string;
   itens: number;
-  alertas: number;
   participantes: { usuarioId: string; nome: string; funcao: "responsavel" | "executor"; assinaturaPath: string; assinadaEm: string }[];
 }
 
@@ -69,7 +68,8 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
   if (rascunho === undefined) return <Screen>{cabecalho}</Screen>;
 
   const registrada = recemRegistrada ?? (rascunho?.concluidaEm ? null : doServidor);
-  const pendente = !registrada && rascunho && rascunho.concluidaEm ? rascunho : null;
+  // Só a APR que a `api` aprovou chega às assinaturas; a reprovada fica no checklist, pedindo a evidência.
+  const pendente = !registrada && rascunho && rascunho.concluidaEm && rascunho.avaliacao?.resultado === "aprovada" ? rascunho : null;
 
   if (!registrada && !pendente) {
     return (
@@ -108,7 +108,6 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
 
   const resumo = pendente ? resumoDe(pendente) : null;
   const itens = registrada ? registrada.itens : resumo!.perguntas.length;
-  const alertas = registrada ? registrada.alertas : resumo!.alertas.length;
   const modelo = registrada ? registrada.modelo : pendente!.modelo;
   const todasConfirmadas = linhas.length > 0 && linhas.every((l) => l.assinadaEm !== null);
 
@@ -116,7 +115,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
     setEnviando(true);
     setErro(null);
     try {
-      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r, "aprovada") });
+      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r) });
       const resultado = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
       descartar();
       if (resultado === "bloqueada") {
@@ -129,7 +128,6 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
         modelo: { codigo: r.modelo.codigo, versao: r.modelo.versao },
         concluidaEm: r.concluidaEm ?? new Date().toISOString(),
         itens: resumoAtual.perguntas.length,
-        alertas: resumoAtual.alertas.length,
         participantes: r.participantes.map((p) => {
           const colega = colegas.find((c) => c.id === p.usuarioId);
           return { usuarioId: p.usuarioId, nome: colega?.nome ?? "Participante", funcao: p.funcao, assinaturaPath: (colega && assinaturaDe(colega)) ?? "", assinadaEm: r.assinaturas[p.usuarioId] ?? new Date().toISOString() };
@@ -163,7 +161,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
   }
 
   function voltarAoChecklist() {
-    atualizar((atual) => ({ ...atual, concluidaEm: null, assinaturas: {} }));
+    atualizar((atual) => ({ ...atual, concluidaEm: null, assinaturas: {}, avaliacao: null }));
     roteador.push(rotas.app.checklist(os.id));
   }
 
@@ -179,18 +177,10 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
           <h2>APR aprovada</h2>
           <p>
             {itens} de {itens} itens respondidos · {modelo.codigo} v{modelo.versao}
-            {registrada ? ` · registrada em ${dataHora(registrada.concluidaEm)}` : ""}. Nenhum item eliminatório bloqueou.
+            {registrada ? ` · registrada em ${dataHora(registrada.concluidaEm)}` : ""}.
           </p>
         </div>
       </div>
-      {alertas > 0 && (
-        <Notice tone="al" icon="alert">
-          <strong>
-            {alertas} {alertas > 1 ? "alertas registrados" : "alerta registrado"}:
-          </strong>{" "}
-          aparece no PDF e no painel, mas não bloqueia.
-        </Notice>
-      )}
       {erro && (
         <Notice tone="blq" icon="alert">
           {erro}

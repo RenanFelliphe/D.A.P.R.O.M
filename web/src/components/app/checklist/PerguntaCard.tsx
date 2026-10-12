@@ -1,27 +1,5 @@
-import type { CSSProperties } from "react";
-import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import type { ItemDoModelo, Resposta } from "@/lib/apr";
-
-const tagEliminatorio: CSSProperties = { border: "1px solid #E8A9A2", background: "#FDF0EE", color: "var(--blq)" };
-
-/** Selo do tipo da pergunta: eliminatória, alerta (registra, não bloqueia) ou medida preventiva. */
-function TagPergunta({ item }: { item: ItemDoModelo }) {
-  if (item.tipo === "eliminatorio") {
-    return (
-      <span className="badge" style={tagEliminatorio}>
-        <Icon name="octagon" size={13} />
-        Eliminatório
-      </span>
-    );
-  }
-  return (
-    <Badge tone="al">
-      <Icon name="alert" size={13} />
-      {item.resposta_bloqueante ? "Alerta · registra, não bloqueia" : "Medida preventiva"}
-    </Badge>
-  );
-}
 
 interface PerguntaCardProps {
   /** Número (base 1) da pergunta. */
@@ -32,7 +10,10 @@ interface PerguntaCardProps {
   aoResponder: (resposta: Resposta) => void;
 }
 
-/** Cartão da pergunta atual com o texto e os botões Sim/Não (e NA, só nos itens que o permitem). */
+/**
+ * Cartão da pergunta atual com o texto e os botões Sim/Não (e NA, só nos itens que o permitem). Todas as perguntas têm a
+ * mesma aparência: o técnico não pode saber quais são eliminatórias.
+ */
 export function PerguntaCard({ numero, item, resposta, aoResponder }: PerguntaCardProps) {
   return (
     <section className="q-card" aria-label="Pergunta atual" data-treino="ck-pergunta" data-treino-item={item.id}>
@@ -40,7 +21,6 @@ export function PerguntaCard({ numero, item, resposta, aoResponder }: PerguntaCa
         <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
           Pergunta {numero}
         </span>
-        <TagPergunta item={item} />
       </div>
       <p className="q">{item.texto}</p>
       <div className="answer" data-treino="ck-resposta" style={item.permite_na ? { gridTemplateColumns: "1fr 1fr 1fr" } : undefined}>

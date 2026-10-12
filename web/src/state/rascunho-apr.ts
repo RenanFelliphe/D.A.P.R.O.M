@@ -48,7 +48,8 @@ function analisar(bruto: string | null, usuarioId: string): RascunhoApr | null {
   try {
     const r = JSON.parse(bruto) as RascunhoApr;
     // Rascunho de outra pessoa que usou este navegador não é meu.
-    return r?.versao === 1 && r.usuarioId === usuarioId ? r : null;
+    // Rascunho gravado antes da validação pela `api` não tem `avaliacao`.
+    return r?.versao === 1 && r.usuarioId === usuarioId ? { ...r, avaliacao: r.avaliacao ?? null } : null;
   } catch {
     return null;
   }

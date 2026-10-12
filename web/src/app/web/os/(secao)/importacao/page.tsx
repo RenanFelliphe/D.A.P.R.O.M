@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Importação de OS" };
 
 const TAMANHO_DO_HISTORICO = 20;
 
-/** Aba Importação: só os métodos de entrada de OS, as colunas lidas da planilha e o histórico (os gráficos ficam no dashboard de OS, em Indicadores e exportação). */
+/** Aba Importação: só os métodos de entrada de OS, as colunas lidas da planilha e o histórico (os gráficos ficam no dashboard de OS, em Dashboard). */
 export default async function ImportacaoPage({ searchParams }: PageProps<"/web/os/importacao">) {
   const { usuario } = await usuarioAtual();
   if (!veImportacao(usuario)) return <AcessoRestrito />;

@@ -9,12 +9,12 @@ import { rotas } from "@/lib/rotas";
 export const metadata: Metadata = { title: "Dashboard de APR" };
 
 /** Dashboard de APR: quanto bloqueia, por quê e onde, no período e na equipe do filtro. */
-export default async function AprPage({ searchParams }: PageProps<"/web/indicadores/apr">) {
+export default async function AprPage({ searchParams }: PageProps<"/app/dashboard/apr">) {
   const painel = await prepararDashboard(searchParams);
   const resumo = await api<ResumoDasAprs>("/aprs/resumo", { consulta: painel.consulta });
   return (
     <>
-      <CabecalhoDoPainel acao={rotas.web.indicadoresApr} filtro={painel.filtro} de={resumo.de} ate={resumo.ate} equipes={painel.equipes} nomeDaEquipe={painel.nomeDaEquipe} />
+      <CabecalhoDoPainel acao={rotas.app.dashboardApr} filtro={painel.filtro} de={resumo.de} ate={resumo.ate} equipes={painel.equipes} nomeDaEquipe={painel.nomeDaEquipe} />
       <DashboardApr resumo={resumo} rotuloAnterior={painel.rotuloAnterior} />
     </>
   );

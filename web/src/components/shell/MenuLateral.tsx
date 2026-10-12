@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
+import { Fragment, useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 
 export interface SubitemMenu {
@@ -27,11 +27,17 @@ export interface ItemMenu {
   subitens?: SubitemMenu[];
 }
 
+/** Grupo de itens; entre um grupo e o seguinte entra um separador (com o título do grupo, se tiver). */
+export interface SecaoMenu {
+  titulo?: string;
+  itens: ItemMenu[];
+}
+
 interface MenuLateralProps {
   titulo: string;
   itens: ItemMenu[];
-  /** Atalho para a outra área do sistema, quando o perfil tem acesso a ela. */
-  outraArea?: Omit<ItemMenu, "contador" | "rotuloDoContador" | "prefixos" | "subitens">;
+  /** Itens agrupados por título; quando informado, substitui `itens`. */
+  secoes?: SecaoMenu[];
   rodape: string;
 }
 
@@ -104,12 +110,13 @@ function GrupoMenu({ item, pathname, ativo }: { item: ItemMenu & { subitens: Sub
   );
 }
 
-/** Menu lateral: destaca o item da tela atual (o de prefixo mais longo que combina). */
-export function MenuLateral({ titulo, itens, outraArea, rodape }: MenuLateralProps) {
+/** Menu lateral: destaca o item da tela atual (o de prefixo mais longo que combina). Com `secoes`, os itens ficam em grupos separados, sem trocar de menu. */
+export function MenuLateral({ titulo, itens, secoes, rodape }: MenuLateralProps) {
   const pathname = usePathname();
+  const grupos: SecaoMenu[] = secoes ?? [{ itens }];
   let ativo: string | undefined;
   let melhor = -1;
-  for (const item of itens) {
+  for (const item of grupos.flatMap((g) => g.itens)) {
     for (const prefixo of [item.href, ...(item.prefixos ?? [])]) {
       if (combina(pathname, prefixo) && prefixo.length > melhor) {
         ativo = item.href;
@@ -119,26 +126,22 @@ export function MenuLateral({ titulo, itens, outraArea, rodape }: MenuLateralPro
   }
   return (
     <nav className="side" aria-label={titulo}>
-      {itens.map((item) =>
-        item.subitens?.length ? (
-          <GrupoMenu key={item.href} item={{ ...item, subitens: item.subitens }} pathname={pathname} ativo={item.href === ativo} />
-        ) : (
-          <Link key={item.href} href={item.href} title={item.rotulo} aria-label={item.contador && item.rotuloDoContador ? `${item.rotulo}, ${item.rotuloDoContador}` : item.rotulo} aria-current={item.href === ativo ? "page" : undefined} data-treino={item.chave}>
-            <Icon name={item.icone} size={18} />
-            <span className="rot">{item.rotulo}</span>
-            {item.contador !== undefined && item.contador > 0 && <span className="cnt">{item.contador}</span>}
-          </Link>
-        ),
-      )}
-      {outraArea && (
-        <>
-          <div className="side-sep">Outra área</div>
-          <Link href={outraArea.href} title={outraArea.rotulo} aria-label={outraArea.rotulo}>
-            <Icon name={outraArea.icone} size={18} />
-            <span className="rot">{outraArea.rotulo}</span>
-          </Link>
-        </>
-      )}
+      {grupos.map((grupo, i) => (
+        <Fragment key={grupo.titulo ?? i}>
+          {(grupo.titulo || i > 0) && <div className={i === 0 ? "side-sep side-sep-topo" : "side-sep"} aria-hidden={!grupo.titulo}>{grupo.titulo}</div>}
+          {grupo.itens.map((item) =>
+            item.subitens?.length ? (
+              <GrupoMenu key={item.href} item={{ ...item, subitens: item.subitens }} pathname={pathname} ativo={item.href === ativo} />
+            ) : (
+              <Link key={item.href} href={item.href} title={item.rotulo} aria-label={item.contador && item.rotuloDoContador ? `${item.rotulo}, ${item.rotuloDoContador}` : item.rotulo} aria-current={item.href === ativo ? "page" : undefined} data-treino={item.chave}>
+                <Icon name={item.icone} size={18} />
+                <span className="rot">{item.rotulo}</span>
+                {item.contador !== undefined && item.contador > 0 && <span className="cnt">{item.contador}</span>}
+              </Link>
+            ),
+          )}
+        </Fragment>
+      ))}
       <div className="foot-note">{rodape}</div>
     </nav>
   );

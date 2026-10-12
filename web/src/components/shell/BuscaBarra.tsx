@@ -9,11 +9,6 @@ import { destacar } from "@/lib/destacar";
 import { rotas } from "@/lib/rotas";
 import { rotuloDoPerfil, rotuloDoStatus, type OsStatus, type Perfil } from "@/lib/tipos";
 
-interface BuscaBarraProps {
-  /** Área em que a pessoa está: define para onde vão a página de resultados e o detalhe das OS. */
-  area: "web" | "app";
-}
-
 interface OsPrevia {
   id: string;
   numero_ordem: string | null;
@@ -65,7 +60,7 @@ const ESPERA_MS = 250;
  * sempre para a página de resultados. Abaixo de 901px o campo some e a lupa o abre numa faixa que desce por baixo da
  * barra.
  */
-export function BuscaBarra({ area }: BuscaBarraProps) {
+export function BuscaBarra() {
   const router = useRouter();
   const [faixaAberta, setFaixaAberta] = useState(false);
   const [texto, setTexto] = useState("");
@@ -80,8 +75,7 @@ export function BuscaBarra({ area }: BuscaBarraProps) {
   const id = useId();
 
   const termo = texto.trim();
-  const paginaDeBusca = area === "web" ? rotas.web.busca : rotas.app.busca;
-  const hrefDeTodos = `${paginaDeBusca}?q=${encodeURIComponent(termo)}`;
+  const hrefDeTodos = `${rotas.app.busca}?q=${encodeURIComponent(termo)}`;
 
   // Busca em tempo real: espera o fim da digitação e ignora respostas de pedidos que já ficaram para trás.
   useEffect(() => {
@@ -116,7 +110,7 @@ export function BuscaBarra({ area }: BuscaBarraProps) {
     const todos: Record<"equipe" | "usuario" | "os", Item[]> = {
       equipe: resultados.equipes.map((e) => ({
         chave: `eq-${e.id}`,
-        href: area === "web" ? rotas.web.equipe(e.id) : rotas.app.equipe(e.id),
+        href: rotas.app.equipe(e.id),
         tipo: "equipe" as const,
         titulo: `Equipe ${e.nome}`,
         detalhe: `${e.centro_trabalho} · ${e.total_membros} ${e.total_membros === 1 ? "membro" : "membros"}${e.supervisor_nome ? ` · ${e.supervisor_nome}` : ""}`,
@@ -124,7 +118,7 @@ export function BuscaBarra({ area }: BuscaBarraProps) {
       })),
       usuario: resultados.usuarios.map((u) => ({
         chave: `us-${u.id}`,
-        href: area === "web" ? rotas.web.perfilDe(u.id) : rotas.app.perfilDe(u.id),
+        href: rotas.app.perfilDe(u.id),
         tipo: "usuario" as const,
         titulo: u.nome,
         detalhe: u.email ?? u.cargo ?? rotuloDoPerfil[u.perfil],
@@ -132,7 +126,7 @@ export function BuscaBarra({ area }: BuscaBarraProps) {
       })),
       os: resultados.os.map((o) => ({
         chave: `os-${o.id}`,
-        href: area === "web" ? rotas.web.os(o.id) : rotas.app.os(o.id),
+        href: rotas.app.os(o.id),
         tipo: "os" as const,
         titulo: o.titulo,
         detalhe: [o.numero_ordem ?? "OS de apoio", o.local_instalacao.codigo, o.local_instalacao.cliente].filter(Boolean).join(" · "),
@@ -205,7 +199,7 @@ export function BuscaBarra({ area }: BuscaBarraProps) {
         id={id}
         className="searchbox"
         data-aberto={faixaAberta}
-        action={paginaDeBusca}
+        action={rotas.app.busca}
         method="get"
         role="search"
         onSubmit={fecharTudo}

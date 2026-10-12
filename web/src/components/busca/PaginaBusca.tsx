@@ -31,8 +31,6 @@ interface AchadoExato {
   id: string;
 }
 
-type Area = "web" | "app";
-
 const PERFIS: Perfil[] = ["tecnico", "admin"];
 
 type Consulta = Record<string, string | string[] | undefined>;
@@ -50,14 +48,14 @@ function endereco(caminho: string, atual: Record<string, string | undefined>, tr
 }
 
 /** Página do item achado: perfil da pessoa, perfil da equipe ou detalhe da OS. */
-function enderecoDoAchado(area: Area, achado: AchadoExato): string {
-  const r = area === "web" ? rotas.web : rotas.app;
+function enderecoDoAchado(achado: AchadoExato): string {
+  const r = rotas.app;
   if (achado.tipo === "usuario") return r.perfilDe(achado.id);
   return achado.tipo === "equipe" ? r.equipe(achado.id) : r.os(achado.id);
 }
 
-function ResultadoEquipe({ area, equipe, q }: { area: Area; equipe: EquipeEncontrada; q: string | undefined }) {
-  const r = area === "web" ? rotas.web : rotas.app;
+function ResultadoEquipe({ equipe, q }: { equipe: EquipeEncontrada; q: string | undefined }) {
+  const r = rotas.app;
   return (
     <Link className="res-equipe" href={r.equipe(equipe.id)}>
       <span className="res-icone eq">
@@ -78,8 +76,8 @@ function ResultadoEquipe({ area, equipe, q }: { area: Area; equipe: EquipeEncont
   );
 }
 
-function ResultadoUsuario({ area, usuario: u, equipe, q }: { area: Area; usuario: Usuario; equipe: string | undefined; q: string | undefined }) {
-  const r = area === "web" ? rotas.web : rotas.app;
+function ResultadoUsuario({ usuario: u, equipe, q }: { usuario: Usuario; equipe: string | undefined; q: string | undefined }) {
+  const r = rotas.app;
   return (
     <Link className="res-item" href={r.perfilDe(u.id)} data-inativo={u.ativo ? undefined : ""}>
       <span className={u.ativo ? "avatar" : "avatar av3"}>{iniciaisDe(u.nome)}</span>
@@ -102,8 +100,8 @@ function ResultadoUsuario({ area, usuario: u, equipe, q }: { area: Area; usuario
   );
 }
 
-function ResultadoOs({ area, os: o, q }: { area: Area; os: OsDoQuadro; q: string | undefined }) {
-  const r = area === "web" ? rotas.web : rotas.app;
+function ResultadoOs({ os: o, q }: { os: OsDoQuadro; q: string | undefined }) {
+  const r = rotas.app;
   const a = aparenciaDoStatus[o.status];
   const programada = dataDoDia(o.data_fim_prog ?? o.data_inicio_prog).slice(0, 5);
   return (
@@ -161,8 +159,6 @@ function Aviso({ icone, titulo, children }: AvisoProps) {
 }
 
 interface PaginaBuscaProps {
-  /** `web` é o painel de gestão; `app` é a área do técnico. */
-  area: Area;
   consulta: Consulta;
 }
 
@@ -174,8 +170,8 @@ interface PaginaBuscaProps {
  * barra superior (ou pelo Enter no campo desta página) chega com `abrir=1`: se o texto é exatamente um item só (o e-mail
  * completo, a matrícula, o número da ordem...), abre direto a página dele em vez desta.
  */
-export async function PaginaBusca({ area, consulta }: PaginaBuscaProps) {
-  const caminho = area === "web" ? rotas.web.busca : rotas.app.busca;
+export async function PaginaBusca({ consulta }: PaginaBuscaProps) {
+  const caminho = rotas.app.busca;
   const { usuario } = await usuarioAtual();
   const admin = ehAdmin(usuario);
   const veEquipes = ehAdmin(usuario);
@@ -195,7 +191,7 @@ export async function PaginaBusca({ area, consulta }: PaginaBuscaProps) {
 
   if (q && um(consulta.abrir) === "1") {
     const { achado } = await api<{ achado: AchadoExato | null }>("/busca/exata", { consulta: { q } });
-    if (achado) redirect(enderecoDoAchado(area, achado));
+    if (achado) redirect(enderecoDoAchado(achado));
   }
 
   const paginaOs = numero(um(consulta.po));
@@ -329,7 +325,7 @@ export async function PaginaBusca({ area, consulta }: PaginaBuscaProps) {
                     equipes && <Paginador pagina={equipes.pagina} tamanho={equipes.tamanho} total={equipes.total} href={(p) => hrefDa({ pe: p > 1 ? String(p) : undefined })} />
                   }
                 >
-                  {equipes?.equipes.map((e) => <ResultadoEquipe key={e.id} area={area} equipe={e} q={q} />)}
+                  {equipes?.equipes.map((e) => <ResultadoEquipe key={e.id} equipe={e} q={q} />)}
                 </ColunaResultados>
               )}
 
@@ -347,7 +343,7 @@ export async function PaginaBusca({ area, consulta }: PaginaBuscaProps) {
                       }
                     >
                       {usuarios?.usuarios.map((u) => (
-                        <ResultadoUsuario key={u.id} area={area} usuario={u} equipe={u.equipe_id ? nomeDaEquipe.get(u.equipe_id) : undefined} q={q} />
+                        <ResultadoUsuario key={u.id} usuario={u} equipe={u.equipe_id ? nomeDaEquipe.get(u.equipe_id) : undefined} q={q} />
                       ))}
                     </ColunaResultados>
                   )}
@@ -361,7 +357,7 @@ export async function PaginaBusca({ area, consulta }: PaginaBuscaProps) {
                       vazio="Nenhuma OS encontrada."
                       paginacao={os && <Paginador pagina={os.pagina} tamanho={os.tamanho} total={os.total} href={(p) => hrefDa({ po: p > 1 ? String(p) : undefined })} />}
                     >
-                      {os?.os.map((o) => <ResultadoOs key={o.id} area={area} os={o} q={q} />)}
+                      {os?.os.map((o) => <ResultadoOs key={o.id} os={o} q={q} />)}
                     </ColunaResultados>
                   )}
                 </div>

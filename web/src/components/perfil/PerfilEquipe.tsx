@@ -10,7 +10,7 @@ import { apiOuNulo, usuarioAtual } from "@/lib/api";
 import { dataDoDia } from "@/lib/formatar";
 import { ordemDosStatus } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
-import { iniciaisDe, rotuloDoPerfil, rotuloDoStatus, type Equipe, type Perfil } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor, iniciaisDe, rotuloDoPerfil, rotuloDoStatus, type Equipe, type Perfil } from "@/lib/tipos";
 
 /** Resposta de `GET /equipes/{id}`. */
 interface EquipeDaApi {
@@ -23,28 +23,30 @@ interface EquipeDaApi {
 }
 
 interface PerfilEquipeProps {
-  /** `web` é o painel de gestão; `app` é a área do técnico. */
-  area: "web" | "app";
   equipeId: string;
+  /** "Minha equipe" do técnico: a página abre direto, sem a trilha que volta à busca. */
+  propria?: boolean;
 }
 
 /**
  * Perfil de uma equipe: centro de trabalho, supervisor, membros, a situação das OS e as mais recentes. A `api` decide
  * quem enxerga a equipe; o que ela recusa vira `404`.
  */
-export async function PerfilEquipe({ area, equipeId }: PerfilEquipeProps) {
+export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipeProps) {
   const [dados, { usuario: eu }] = await Promise.all([apiOuNulo<EquipeDaApi>(`/equipes/${equipeId}`), usuarioAtual()]);
   if (!dados) notFound();
 
   const { equipe, supervisor, membros, contagem_por_status: contagem, total_os: totalOs, os_recentes: recentes } = dados;
-  const hrefDoPerfil = (id: string) => (area === "web" ? rotas.web.perfilDe(id) : rotas.app.perfilDe(id));
-  const hrefDaOs = (id: string) => (area === "web" ? rotas.web.os(id) : rotas.app.os(id));
+  const hrefDoPerfil = (id: string) => rotas.app.perfilDe(id);
+  const hrefDaOs = (id: string) => rotas.app.os(id);
   const ativos = membros.filter((m) => m.ativo).length;
   const minhaEquipe = eu.equipe_id === equipe.id;
+  // O atalho para o quadro da equipe é de quem acompanha as OS (admin e supervisor); o técnico já vê o quadro da própria equipe.
+  const gestao = ehAdmin(eu) || ehSupervisor(eu);
 
   return (
     <Screen className="perfil-pagina">
-      <Trilha passos={[{ rotulo: "Busca", href: area === "web" ? rotas.web.busca : rotas.app.busca }, { rotulo: `Equipe ${equipe.nome}` }]} />
+      {!propria && <Trilha passos={[{ rotulo: "Busca", href: rotas.app.busca }, { rotulo: `Equipe ${equipe.nome}` }]} />}
 
       <header className="perfil-capa">
         <span className="perfil-foto equipe" role="img" aria-label={`Equipe ${equipe.nome}`}>
@@ -64,14 +66,14 @@ export async function PerfilEquipe({ area, equipeId }: PerfilEquipeProps) {
           </div>
         </div>
         <div className="perfil-acoes">
-          {area === "web" && (
-            <Link className="btn btn-line btn-sm" href={`${rotas.web.quadro}?equipe_id=${equipe.id}`}>
+          {gestao && (
+            <Link className="btn btn-line btn-sm" href={`${rotas.app.lista}?equipe_id=${equipe.id}`}>
               <Icon name="grid" size={16} />
               Ver no quadro
             </Link>
           )}
           {eu.perfil === "admin" && (
-            <Link className="btn btn-line btn-sm" href={`${rotas.web.usuarios}?equipe_id=${equipe.id}`}>
+            <Link className="btn btn-line btn-sm" href={`${rotas.app.usuarios}?equipe_id=${equipe.id}`}>
               Gerenciar membros
             </Link>
           )}
@@ -125,8 +127,8 @@ export async function PerfilEquipe({ area, equipeId }: PerfilEquipeProps) {
               })}
             </ul>
           )}
-          {area === "web" && totalOs > recentes.length && (
-            <Link href={`${rotas.web.quadro}?equipe_id=${equipe.id}`} style={{ fontWeight: 600, fontSize: 14 }}>
+          {gestao && totalOs > recentes.length && (
+            <Link href={`${rotas.app.lista}?equipe_id=${equipe.id}`} style={{ fontWeight: 600, fontSize: 14 }}>
               {`Ver as ${totalOs} OS no quadro`}
             </Link>
           )}

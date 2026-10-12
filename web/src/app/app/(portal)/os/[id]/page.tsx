@@ -1,73 +1,177 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CabecalhoPagina, Colunas } from "@/components/app/AppChrome";
+import { Colunas } from "@/components/app/AppChrome";
 import { AcoesDaOs } from "@/components/app/detalhe/AcoesDaOs";
 import { AprExigidaCard } from "@/components/app/detalhe/AprExigidaCard";
 import { DadosSapCard } from "@/components/app/detalhe/DadosSapCard";
 import { HistoricoAprs } from "@/components/app/detalhe/HistoricoAprs";
 import { InstrucoesCard } from "@/components/app/detalhe/InstrucoesCard";
 import { LocalCard } from "@/components/app/detalhe/LocalCard";
-import { Badge } from "@/components/ui/Badge";
+import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
-import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
+import { AbasDaOs, abaDaConsulta } from "@/components/web/detalhe/AbasDaOs";
+import { AlertasDaOs } from "@/components/web/detalhe/AlertasDaOs";
+import { AprsDaOs } from "@/components/web/detalhe/AprsDaOs";
+import { BaixaSap } from "@/components/web/detalhe/BaixaSap";
+import { BotaoCritico } from "@/components/web/detalhe/BotaoCritico";
+import { CancelarOs } from "@/components/web/detalhe/CancelarOs";
+import { CienciaSupervisor } from "@/components/web/detalhe/CienciaSupervisor";
+import { DadosSap } from "@/components/web/detalhe/DadosSap";
+import { DetalheCabecalho } from "@/components/web/detalhe/DetalheCabecalho";
+import { DocumentoOs } from "@/components/web/detalhe/DocumentoOs";
+import { ExecucoesDaOs } from "@/components/web/detalhe/ExecucoesDaOs";
+import { HistoricoDoLocal } from "@/components/web/detalhe/HistoricoDoLocal";
+import { LinhaDoTempo } from "@/components/web/detalhe/LinhaDoTempo";
+import { carregarDetalhe, carregarHistorico } from "@/data/detalhe";
+import { api, usuarioAtual } from "@/lib/api";
 import type { ModeloResumo } from "@/lib/apr";
-import { aprAprovadaDisponivel, execucaoAberta, rotuloDaOs, rotuloDoTipo, statusDaOs, type DetalheDaOs } from "@/lib/os-app";
+import { aprAprovadaDisponivel, execucaoAberta, type DetalheDaOs as DetalheDoCampo } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
+import { ehAdmin, ehSupervisor, equipesDoSupervisor } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Detalhe da OS" };
 
-/** Detalhe da OS para o técnico: dados do SAP, local, instruções, a APR exigida e as ações que o estado da OS permite. */
-export default async function DetalhePage({ params }: PageProps<"/app/os/[id]">) {
+/**
+ * Detalhe da OS: um endereço só para admin, supervisor e técnico; a estrutura muda por perfil.
+ * - Técnico: dados do SAP, local, instruções, APR exigida e as ações que o estado da OS permite (APR, execução).
+ * - Admin: a visão de supervisão (abas Resumo, APRs e execuções, Histórico; alertas, PDF, ciência, baixa no SAP, local crítico, cancelar).
+ * - Supervisor: a mesma visão de supervisão e, na lateral, as ações de campo (ele também é técnico e executa OS).
+ */
+export default async function DetalheOsPage({ params, searchParams }: PageProps<"/app/os/[id]">) {
   const { id } = await params;
-  const detalhe = await apiOuNulo<DetalheDaOs>(`/os/${id}`);
-  if (!detalhe) notFound();
-  const { os, aprs, execucoes } = detalhe;
-  const { usuario } = await usuarioAtual();
+  const sp = await searchParams;
 
+  const [{ usuario }, detalhe] = await Promise.all([usuarioAtual(), carregarDetalhe(id)]);
+  // OS que não existe ou é de outra equipe: a `api` responde 404.
+  if (!detalhe) notFound();
+  const { os, aprs, execucoes, alertas, reprogramacoes, linha_do_tempo } = detalhe;
+
+  const admin = ehAdmin(usuario);
+  const gestao = admin || ehSupervisor(usuario);
+  // O admin é só gestão; todo técnico (o supervisor também) aplica APR e executa.
+  const executa = !admin;
+
+  // As ações de campo e o card da APR exigida usam os tipos do técnico, que são um recorte do detalhe completo.
+  const campo = detalhe as unknown as DetalheDoCampo;
+  const aberta = execucaoAberta(campo.execucoes);
   // Versão publicada mais recente do modelo da atividade (a lista vem por código e versão decrescente).
   const codigoDoModelo = os.modelo_apr_codigo ?? null;
-  const modelo = codigoDoModelo
-    ? ((await api<{ modelos: ModeloResumo[] }>("/modelos-apr", { consulta: { codigo: codigoDoModelo, publicados: true } })).modelos[0] ?? null)
-    : null;
+  const modelo =
+    executa && codigoDoModelo
+      ? ((await api<{ modelos: ModeloResumo[] }>("/modelos-apr", { consulta: { codigo: codigoDoModelo, publicados: true } })).modelos[0] ?? null)
+      : null;
+  const painelDeCampo = executa && (
+    <>
+      <AprExigidaCard modelo={modelo} codigoDoModelo={codigoDoModelo} aprs={campo.aprs} status={os.status} />
+      <AcoesDaOs os={campo.os} usuarioId={usuario.id} execucaoAberta={aberta} aprDisponivel={aprAprovadaDisponivel(campo.aprs, campo.execucoes)} />
+    </>
+  );
 
-  const aberta = execucaoAberta(execucoes);
-  const status = statusDaOs[os.status];
+  const cabecalho = (
+    <DetalheCabecalho
+      os={os}
+      secao={gestao ? "Ordem de Serviço" : "OS da equipe"}
+      acoes={admin && os.origem === "apoio" && (os.status === "liberada" || os.status === "pendente") && <CancelarOs osId={os.id} />}
+    />
+  );
+  const aviso = os.status === "cancelada" && (
+    <Notice tone="al" icon="alert">
+      <strong>OS cancelada.</strong> {os.justificativa_cancelamento}
+    </Notice>
+  );
+
+  if (!gestao) {
+    return (
+      <Screen>
+        {cabecalho}
+        {aviso}
+        <Colunas
+          principal={
+            <>
+              <LocalCard local={campo.os.local_instalacao} />
+              <DadosSapCard os={campo.os} />
+              <InstrucoesCard descricao={os.descricao} titulo={os.titulo} />
+              <HistoricoAprs aprs={campo.aprs} execucoes={campo.execucoes} osId={os.id} />
+            </>
+          }
+          lateral={painelDeCampo}
+        />
+      </Screen>
+    );
+  }
+
+  const aba = abaDaConsulta(sp.aba);
+
+  // Histórico (só na aba dele): do equipamento, quando a OS tem um, ou de todo o local (`?escopo=local`).
+  const escopo = os.equipamento && sp.escopo !== "local" ? "equipamento" : "local";
+  const paginaHistorico = Math.max(1, Number.parseInt(typeof sp.hist === "string" ? sp.hist : "1", 10) || 1);
+  const historico =
+    aba === "historico" ? await carregarHistorico(os.local_instalacao_id, escopo === "equipamento" ? os.equipamento : null, paginaHistorico) : null;
+  const hrefHistorico = (e: "equipamento" | "local", pagina: number) => {
+    const q = new URLSearchParams({ aba: "historico", escopo: e });
+    if (pagina > 1) q.set("hist", String(pagina));
+    return `${rotas.app.os(os.id)}?${q}`;
+  };
+
+  // Dá a ciência quem supervisiona a equipe da OS e não participou dela (a `api` confere os dois).
+  const supervisaEquipeDaOs = equipesDoSupervisor(usuario)?.includes(os.equipe.id) ?? false;
 
   return (
     <Screen>
-      <CabecalhoPagina trilha={[{ rotulo: "OS da equipe", href: rotas.app.lista }, { rotulo: <span className="mono">{rotuloDaOs(os)}</span> }]}>
-        <div className="row wrap g8">
-          <span className="mono" style={{ fontSize: 15, fontWeight: 600 }}>
-            {rotuloDaOs(os)}
-          </span>
-          <Badge tone={status.tone}>{status.rotulo}</Badge>
-          <Badge tone="neu">{rotuloDoTipo[os.tipo]}</Badge>
-          {os.prioridade && <Badge tone="neu">Prioridade {os.prioridade.toLowerCase()}</Badge>}
-          {os.local_instalacao.critico && <Badge tone="crit">Local crítico</Badge>}
+      {cabecalho}
+      {aviso}
+      {os.eventos_com_relogio_suspeito > 0 && (
+        <Notice tone="al" icon="clock">
+          <strong>Relógio do aparelho suspeito.</strong>{" "}
+          {os.eventos_com_relogio_suspeito === 1
+            ? "1 registro desta OS traz um horário à frente do servidor"
+            : `${os.eventos_com_relogio_suspeito} registros desta OS trazem horários à frente do servidor`}
+          . Confira os tempos antes de usar o PDF ou a exportação.
+        </Notice>
+      )}
+      {os.execucao_aberta_ha_horas !== null && (
+        <Notice tone="al" icon="alert">
+          <strong>Execução aberta há {os.execucao_aberta_ha_horas} h.</strong> Pode ter ficado esquecida em andamento.
+        </Notice>
+      )}
+      <AbasDaOs osId={os.id} atual={aba} contagens={{ aprs: aprs.length + execucoes.length }} />
+      <div className="two">
+        <div className="stack g16">
+          {aba === "resumo" && (
+            <>
+              <DadosSap os={os} />
+              <AlertasDaOs alertas={alertas} reprogramacoes={reprogramacoes} />
+            </>
+          )}
+          {aba === "aprs" && (
+            <>
+              <AprsDaOs aprs={aprs} />
+              <ExecucoesDaOs execucoes={execucoes} />
+            </>
+          )}
+          {aba === "historico" && historico && (
+            <>
+              <LinhaDoTempo eventos={linha_do_tempo} />
+              <HistoricoDoLocal
+                osId={os.id}
+                local={os.local_instalacao.codigo}
+                equipamento={os.equipamento}
+                escopo={escopo}
+                historico={historico}
+                hrefDoEscopo={(e) => hrefHistorico(e, 1)}
+                hrefDaPagina={(p) => hrefHistorico(escopo, p)}
+              />
+            </>
+          )}
         </div>
-        <h1>{os.titulo}</h1>
-      </CabecalhoPagina>
-      <Colunas
-        principal={
-          <>
-            <LocalCard local={os.local_instalacao} />
-            <DadosSapCard os={os} />
-            <InstrucoesCard descricao={os.descricao} titulo={os.titulo} />
-            <HistoricoAprs aprs={aprs} execucoes={execucoes} osId={os.id} />
-          </>
-        }
-        lateral={
-          <>
-            <AprExigidaCard modelo={modelo} codigoDoModelo={codigoDoModelo} aprs={aprs} status={os.status} />
-            <AcoesDaOs
-              os={os}
-              usuarioId={usuario.id}
-              execucaoAberta={aberta}
-              aprDisponivel={aprAprovadaDisponivel(aprs, execucoes)}
-            />
-          </>
-        }
-      />
+        <aside className="stack g16">
+          {painelDeCampo}
+          {admin && <BotaoCritico localId={os.local_instalacao.id} critico={os.local_instalacao.critico} />}
+          <DocumentoOs os={os} />
+          {os.status === "encerrada" && <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs} />}
+          <BaixaSap os={os} podeExportar={admin} />
+        </aside>
+      </div>
     </Screen>
   );
 }

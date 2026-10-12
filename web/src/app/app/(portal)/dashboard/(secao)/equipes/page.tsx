@@ -8,14 +8,17 @@ import { rotas } from "@/lib/rotas";
 
 export const metadata: Metadata = { title: "Dashboard de equipes e usuários" };
 
-/** Dashboard de equipes e usuários: por equipe e por técnico; o estado do cadastro só para o admin. */
-export default async function EquipesPage({ searchParams }: PageProps<"/web/indicadores/equipes">) {
+/**
+ * Dashboard de equipes e usuários: por equipe e por técnico; o estado do cadastro só para o admin. O técnico vê só a própria
+ * equipe, sem nada por pessoa ("Minha equipe").
+ */
+export default async function EquipesPage({ searchParams }: PageProps<"/app/dashboard/equipes">) {
   const painel = await prepararDashboard(searchParams);
   const dados = await api<Dados>("/indicadores/equipes", { consulta: painel.consulta });
   return (
     <>
-      <CabecalhoDoPainel acao={rotas.web.indicadoresEquipes} filtro={painel.filtro} de={dados.de} ate={dados.ate} equipes={painel.equipes} nomeDaEquipe={painel.nomeDaEquipe} />
-      <DashboardEquipes dados={dados} />
+      <CabecalhoDoPainel acao={rotas.app.dashboardEquipes} filtro={painel.filtro} de={dados.de} ate={dados.ate} equipes={painel.equipes} nomeDaEquipe={painel.nomeDaEquipe} />
+      <DashboardEquipes dados={dados} acompanha={painel.acompanha} />
     </>
   );
 }

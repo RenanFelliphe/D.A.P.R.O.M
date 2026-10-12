@@ -36,6 +36,7 @@ export function MenuUsuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
       <button
         type="button"
         className="who-u usuario-gatilho"
+        data-treino="menu-usuario"
         aria-label={`Menu de ${nome}`}
         aria-haspopup="true"
         aria-expanded={aberto}
@@ -51,7 +52,7 @@ export function MenuUsuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
       </button>
       {aberto && (
         <div id={id} className="sino-menu usuario-lista">
-          <Link href={rotas.web.perfil} className="usuario-item" onClick={fechar}>
+          <Link href={rotas.app.perfil} className="usuario-item" onClick={fechar}>
             <Icon name="user" size={16} />
             Perfil
           </Link>

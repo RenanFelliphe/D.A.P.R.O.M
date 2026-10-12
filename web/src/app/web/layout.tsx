@@ -1,6 +1,7 @@
-import { GestaoShell } from "@/components/shell/GestaoShell";
+import { Casca, exigirGestao } from "@/components/shell/Casca";
 
-/** Painel de gestão: barra superior e menu lateral em volta das telas. */
-export default function WebLayout({ children }: LayoutProps<"/web">) {
-  return <GestaoShell>{children}</GestaoShell>;
+/** Telas de gestão (APR, indicadores, usuários, auditoria, alertas): a casca única, só para admin e supervisor. */
+export default async function WebLayout({ children }: LayoutProps<"/web">) {
+  await exigirGestao();
+  return <Casca>{children}</Casca>;
 }

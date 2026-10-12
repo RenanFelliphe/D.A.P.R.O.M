@@ -49,8 +49,6 @@ export interface ItemReprovadoDaApr {
   texto: string;
   resposta: "sim" | "nao" | "na";
   observacao: string | null;
-  tipo: "eliminatorio" | "alerta";
-  evidencia: "foto" | "texto";
   fotos: { id: string; foto_path: string; capturada_em: string; latitude: number | null; longitude: number | null }[];
 }
 
@@ -64,7 +62,7 @@ export interface AprDaOs {
   preenchida_por: { id: string; nome: string };
   modelo: { codigo: string; versao: number; titulo: string };
   participantes: ParticipanteDaApr[];
-  respostas: { item_id: string; texto: string; reprovado: boolean; alerta_marcado: boolean }[];
+  respostas: { item_id: string; texto: string; reprovado: boolean }[];
   itens_reprovados: ItemReprovadoDaApr[];
 }
 

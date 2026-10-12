@@ -3,11 +3,11 @@ import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
 import { hora } from "@/lib/formatar";
 import type { ItemReprovadoDaApr } from "@/lib/os-app";
 
-/** Card de um item eliminatório reprovado, com a resposta, a observação e as fotos da evidência. */
+/** Card de um item reprovado, com a resposta, a observação e as fotos da evidência. */
 export function ItemReprovadoCard({ item, numero }: { item: ItemReprovadoDaApr; numero: number }) {
   return (
     <div className="card stack g6">
-      <span className="mono small">Item reprovado {numero} · Eliminatório</span>
+      <span className="mono small">Item reprovado {numero}</span>
       <p style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35 }}>{item.texto}</p>
       <div className="row between wrap">
         <Badge tone="dark" style={{ background: "var(--blq)" }}>

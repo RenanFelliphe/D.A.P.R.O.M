@@ -43,7 +43,6 @@ export default async function AprovadaPage({ params }: PageProps<"/app/os/[id]/a
           modelo: registrada.modelo,
           concluidaEm: registrada.concluida_em,
           itens: registrada.respostas.length,
-          alertas: registrada.respostas.filter((r) => r.alerta_marcado).length,
           participantes: registrada.participantes.map((p) => ({
             usuarioId: p.usuario_id,
             nome: p.nome,

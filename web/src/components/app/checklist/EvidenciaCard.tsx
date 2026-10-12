@@ -1,10 +1,11 @@
 import { AdicionarFoto } from "@/components/ui/AdicionarFoto";
 import { Field, Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
-import type { FotoDoRascunho, ItemDoModelo } from "@/lib/apr";
+import type { FotoDoRascunho, ItemReprovado } from "@/lib/apr";
 
 interface EvidenciaCardProps {
-  item: ItemDoModelo;
+  /** Item que a `api` reprovou ao validar a APR, com a evidência que ele pede. */
+  item: ItemReprovado;
   observacao: string;
   fotos: FotoDoRascunho[];
   aoObservar: (texto: string) => void;
@@ -13,20 +14,21 @@ interface EvidenciaCardProps {
   aoErroDeFoto: (mensagem: string) => void;
 }
 
-/** Evidência exigida quando um item eliminatório recebe a resposta que reprova: observação e, se o item pede, foto. */
+/** Evidência de um item reprovado, pedida depois que a `api` validou a APR: observação e, se o item pede, foto. */
 export function EvidenciaCard({ item, observacao, fotos, aoObservar, aoFotoEnviada, aoRemoverFoto, aoErroDeFoto }: EvidenciaCardProps) {
   const apenasTexto = item.evidencia === "texto";
 
   return (
-    <section className="evid" aria-label="Evidência do item reprovado" data-treino="ck-evidencia">
+    <section className="evid" aria-label="Evidência do item reprovado" data-treino="ck-evidencia" data-treino-item={item.itemId}>
       <div className="row g8" style={{ color: "var(--blq)" }}>
         <Icon name="octagon" size={18} />
-        <strong style={{ fontSize: 14 }}>Resposta reprovada · evidência obrigatória</strong>
+        <strong style={{ fontSize: 14 }}>Item reprovado · evidência obrigatória</strong>
       </div>
+      <p style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35 }}>{item.texto}</p>
       <p className="muted">
         {apenasTexto
           ? "Justifique em texto. A foto é opcional: condição pessoal não se comprova com foto, e cada pessoa tem direito de recusa."
-          : "Registre o motivo e anexe ao menos 1 foto. Você segue respondendo; a APR só é validada no fim."}
+          : "Registre o motivo e anexe ao menos 1 foto."}
       </p>
       <Field
         label={
@@ -34,9 +36,9 @@ export function EvidenciaCard({ item, observacao, fotos, aoObservar, aoFotoEnvia
             Observação <Req>· obrigatória</Req>
           </>
         }
-        htmlFor="ev-obs"
+        htmlFor={`ev-obs-${item.itemId}`}
       >
-        <textarea className="textarea" id="ev-obs" rows={3} placeholder="Descreva o motivo" value={observacao} onChange={(evento) => aoObservar(evento.target.value)} />
+        <textarea className="textarea" id={`ev-obs-${item.itemId}`} rows={3} placeholder="Descreva o motivo" value={observacao} onChange={(evento) => aoObservar(evento.target.value)} />
       </Field>
       <Field
         label={

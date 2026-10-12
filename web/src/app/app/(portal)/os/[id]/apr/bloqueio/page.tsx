@@ -53,7 +53,7 @@ export default async function BloqueioPage({ params, searchParams }: PageProps<"
         <div className="stack g4">
           <h2>Atividade impedida</h2>
           <p>
-            Supervisor será avisado. {itens.length} {varios ? "itens eliminatórios tiveram resposta bloqueante." : "item eliminatório teve resposta bloqueante."}{" "}
+            Supervisor será avisado. {itens.length} {varios ? "itens reprovaram." : "item reprovou."}{" "}
             {os.status === "pendente"
               ? "A OS fica pendente e a execução não pode começar. Uma nova APR, de qualquer pessoa da equipe, pode liberá-la."
               : "Uma nova APR, de qualquer pessoa da equipe, é necessária para executar."}

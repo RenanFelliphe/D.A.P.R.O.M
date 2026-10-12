@@ -1,7 +1,11 @@
 /**
  * APR do técnico: tipos do modelo (da `api`), o rascunho que fica no navegador até a APR ser concluída e as regras
- * puras sobre ele (perguntas, item reprovado, evidência faltando, resultado esperado, payload do evento).
- * O resultado que vale é sempre o que a `api` calcula; aqui ele só decide qual tela mostrar.
+ * puras sobre ele (perguntas, evidência faltando, payload do evento).
+ *
+ * O técnico não sabe quais itens são eliminatórios: o modelo que ele recebe não traz o tipo, a resposta que bloqueia
+ * nem a evidência do item. Quem diz se a APR passa é a `api` (`POST /aprs/avaliar`), depois que tudo foi respondido;
+ * só então aparecem os itens reprovados e a evidência que cada um pede. O resultado que vale é o que a `api` calcula
+ * ao receber a APR.
  */
 
 export type Resposta = "sim" | "nao" | "na";
@@ -20,10 +24,20 @@ export interface ItemDoModelo {
   risco_id: string | null;
   ordem: number;
   texto: string;
-  resposta_bloqueante: "sim" | "nao" | null;
-  tipo: "eliminatorio" | "alerta";
-  evidencia: "foto" | "texto";
   permite_na: boolean;
+}
+
+/** Item que reprovou, como a `api` o devolve em `POST /aprs/avaliar`, com a evidência que ele pede. */
+export interface ItemReprovado {
+  itemId: string;
+  texto: string;
+  evidencia: "foto" | "texto";
+}
+
+/** Resposta de `POST /aprs/avaliar`: o resultado das respostas e, se bloqueada, o que reprovou. */
+export interface Avaliacao {
+  resultado: "aprovada" | "bloqueada";
+  reprovados: ItemReprovado[];
 }
 
 /** Resumo de um modelo (`GET /modelos-apr`). */
@@ -102,6 +116,11 @@ export interface RascunhoApr {
   modo: "pergunta" | "revisao";
   /** Quando o técnico concluiu e validou (define o dia de validade da APR). */
   concluidaEm: string | null;
+  /**
+   * O que a `api` disse ao validar as respostas. Com `bloqueada`, as respostas ficam travadas: só falta a evidência dos
+   * reprovados e o envio. Qualquer mudança nas respostas de uma APR aprovada apaga isto e exige validar de novo.
+   */
+  avaliacao: Avaliacao | null;
   /** Participante → instante em que confirmou a assinatura do perfil (só APR aprovada). */
   assinaturas: Record<string, string>;
 }
@@ -119,23 +138,16 @@ export function perguntasDe(modelo: ModeloDoRascunho, riscosMarcados: string[]):
 /** Quantas perguntas o checklist terá com estes riscos marcados. */
 export const totalDePerguntas = (modelo: ModeloDoRascunho, riscosMarcados: string[]) => perguntasDe(modelo, riscosMarcados).length;
 
-/** Item reprovado: `eliminatorio` com a resposta igual à `resposta_bloqueante`. */
-export const estaReprovado = (item: ItemDoModelo, resposta: Resposta | undefined) =>
-  item.tipo === "eliminatorio" && item.resposta_bloqueante !== null && resposta === item.resposta_bloqueante;
-
-/** Item de alerta com a resposta que o marca: segue, mas aparece no PDF e no painel. */
-export const geraAlerta = (item: ItemDoModelo, resposta: Resposta | undefined) =>
-  item.tipo === "alerta" && item.resposta_bloqueante !== null && resposta === item.resposta_bloqueante;
-
 const vazio = (texto: string | undefined) => !texto || texto.trim() === "";
 
 /** Reprovado sem a evidência exigida: observação sempre; foto, salvo quando a evidência do item é só texto. */
-export function faltaEvidencia(r: RascunhoApr, item: ItemDoModelo): boolean {
-  const resp = r.respostas[item.id];
-  if (!estaReprovado(item, resp?.resposta)) return false;
-  if (vazio(resp?.observacao)) return true;
-  return item.evidencia === "foto" && (r.fotos[item.id]?.length ?? 0) === 0;
+export function faltaEvidencia(r: RascunhoApr, reprovado: ItemReprovado): boolean {
+  if (vazio(r.respostas[reprovado.itemId]?.observacao)) return true;
+  return reprovado.evidencia === "foto" && (r.fotos[reprovado.itemId]?.length ?? 0) === 0;
 }
+
+/** Itens que a `api` reprovou e ainda estão sem a evidência exigida. */
+export const reprovadosSemEvidencia = (r: RascunhoApr) => (r.avaliacao?.reprovados ?? []).filter((x) => faltaEvidencia(r, x));
 
 /** "NA" exige observação. */
 export const faltaObservacaoNa = (r: RascunhoApr, item: ItemDoModelo) => r.respostas[item.id]?.resposta === "na" && vazio(r.respostas[item.id]?.observacao);
@@ -145,57 +157,47 @@ export interface ResumoDoRascunho {
   respondidas: number;
   /** Perguntas sem resposta. */
   semResposta: ItemDoModelo[];
-  reprovados: ItemDoModelo[];
-  alertas: ItemDoModelo[];
-  semEvidencia: ItemDoModelo[];
   naSemObservacao: ItemDoModelo[];
-  /** Pode concluir: tudo respondido e nenhuma evidência ou observação faltando. */
+  /** Pode validar: tudo respondido e nenhum "NA" sem observação. */
   completo: boolean;
 }
 
 export function resumoDe(r: RascunhoApr): ResumoDoRascunho {
   const perguntas = perguntasDe(r.modelo, r.riscos);
   const semResposta = perguntas.filter((i) => !r.respostas[i.id]);
-  const reprovados = perguntas.filter((i) => estaReprovado(i, r.respostas[i.id]?.resposta));
-  const alertas = perguntas.filter((i) => geraAlerta(i, r.respostas[i.id]?.resposta));
-  const semEvidencia = perguntas.filter((i) => faltaEvidencia(r, i));
   const naSemObservacao = perguntas.filter((i) => faltaObservacaoNa(r, i));
   return {
     perguntas,
     respondidas: perguntas.length - semResposta.length,
     semResposta,
-    reprovados,
-    alertas,
-    semEvidencia,
     naSemObservacao,
-    completo: perguntas.length > 0 && semResposta.length === 0 && semEvidencia.length === 0 && naSemObservacao.length === 0,
+    completo: perguntas.length > 0 && semResposta.length === 0 && naSemObservacao.length === 0,
   };
 }
 
-/** Resultado que a `api` deve calcular; só decide a tela (assinaturas ou impedimento). */
-export const resultadoEsperado = (r: RascunhoApr): "aprovada" | "bloqueada" => (resumoDe(r).reprovados.length > 0 ? "bloqueada" : "aprovada");
+/** Corpo de `POST /aprs/avaliar`: só o que o modelo precisa para dizer se as respostas passam. */
+export const montarAvaliacao = (r: RascunhoApr) => ({
+  modelo_apr_id: r.modelo.id,
+  riscos: r.riscos,
+  respostas: perguntasDe(r.modelo, r.riscos).map((i) => ({ item_id: i.id, resposta: r.respostas[i.id]!.resposta })),
+});
+
+/** A `api` já reprovou esta APR: as respostas não mudam mais, só falta a evidência e o envio. */
+export const estaTravada = (r: RascunhoApr) => r.avaliacao?.resultado === "bloqueada";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Alterações do rascunho (funções puras)
 // ---------------------------------------------------------------------------------------------------------------
 
-/**
- * Registra a resposta de um item. Evidência só vale para item reprovado e observação só para reprovado ou "NA": mudar a
- * resposta para outra coisa descarta o que não se aplica mais.
- */
+/** Registra a resposta de um item. A observação só vale para "NA": mudar a resposta para outra coisa a descarta. */
 export function responder(r: RascunhoApr, item: ItemDoModelo, resposta: Resposta, agora = new Date()): RascunhoApr {
   const anterior = r.respostas[item.id];
-  const guardaObservacao = estaReprovado(item, resposta) || resposta === "na";
-  const guardaFotos = estaReprovado(item, resposta);
-  const fotos = { ...r.fotos };
-  if (!guardaFotos) delete fotos[item.id];
   return {
     ...r,
     respostas: {
       ...r.respostas,
-      [item.id]: { resposta, observacao: guardaObservacao ? (anterior?.observacao ?? "") : "", respondidaEm: agora.toISOString() },
+      [item.id]: { resposta, observacao: resposta === "na" ? (anterior?.observacao ?? "") : "", respondidaEm: agora.toISOString() },
     },
-    fotos,
   };
 }
 
@@ -217,17 +219,20 @@ export function removerFoto(r: RascunhoApr, itemId: string, fotoId: string): Ras
 // Evento `apr_concluida`
 // ---------------------------------------------------------------------------------------------------------------
 
-/** Payload exato do evento (`api/src/dominio/eventos-apr.ts`); o `os_id` vai no envelope. */
-export function montarPayload(r: RascunhoApr, resultado: "aprovada" | "bloqueada") {
+/**
+ * Payload exato do evento (`api/src/dominio/eventos-apr.ts`); o `os_id` vai no envelope. As fotos são só dos itens que
+ * a `api` reprovou (`avaliacao`).
+ */
+export function montarPayload(r: RascunhoApr) {
   const perguntas = perguntasDe(r.modelo, r.riscos);
   const concluidaEm = r.concluidaEm ?? new Date().toISOString();
-  const evidencias = perguntas
-    .filter((i) => estaReprovado(i, r.respostas[i.id]?.resposta))
+  const resultado = r.avaliacao?.resultado;
+  const evidencias = (r.avaliacao?.reprovados ?? [])
     .flatMap((i) =>
-      (r.fotos[i.id] ?? []).map((f) => ({
+      (r.fotos[i.itemId] ?? []).map((f) => ({
         id: f.id,
         arquivo_id: f.arquivoId,
-        item_id: i.id,
+        item_id: i.itemId,
         capturada_em: f.capturadaEm,
         ...(f.latitude !== undefined && f.longitude !== undefined ? { latitude: f.latitude, longitude: f.longitude } : {}),
       })),
@@ -281,6 +286,7 @@ export function novoRascunho(d: {
     indice: 0,
     modo: "pergunta",
     concluidaEm: null,
+    avaliacao: null,
     assinaturas: {},
   };
 }

@@ -1,6 +1,6 @@
-import { TecnicoShell } from "@/components/shell/TecnicoShell";
+import { Casca } from "@/components/shell/Casca";
 
-/** Área do técnico: barra superior e menu lateral em volta das telas de OS, APR, execução e fila. */
+/** Telas compartilhadas (quadro, detalhe da OS, perfil, equipe e busca) e as de campo (APR, execução, treino): a casca única por perfil. */
 export default function PortalLayout({ children }: LayoutProps<"/app">) {
-  return <TecnicoShell>{children}</TecnicoShell>;
+  return <Casca>{children}</Casca>;
 }

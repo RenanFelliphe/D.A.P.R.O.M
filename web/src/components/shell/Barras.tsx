@@ -1,6 +1,5 @@
 import type { Alerta } from "@/components/web/alertas/tipos";
 import { Icon } from "@/components/ui/Icon";
-import { sair } from "@/lib/acoes-sessao";
 import { BuscaBarra } from "./BuscaBarra";
 import { SeloTreino } from "@/components/treino/SeloTreino";
 import { MenuUsuario } from "./MenuUsuario";
@@ -26,62 +25,36 @@ function Marca({ subtitulo }: { subtitulo: string }) {
   );
 }
 
-function Usuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
-  return (
-    <div className="who-u">
-      <span className="av">{iniciais}</span>
-      <span>
-        <strong>{nome}</strong>
-        <small>{cargo}</small>
-      </span>
-      <form action={sair}>
-        <button className="btn btn-ghost btn-sm" type="submit" title="Sair deste navegador">
-          Sair
-        </button>
-      </form>
-    </div>
-  );
-}
-
-/** Barra superior do painel de gestão: marca, busca global, alertas e usuário. */
-export function BarraGestao({
-  usuario,
-  naoLidos,
-  recentes,
-}: {
+interface BarraProps {
   usuario: UsuarioDaBarra;
-  naoLidos: number;
-  recentes: Alerta[];
-}) {
-  return (
-    <header className="topbar">
-      <Marca subtitulo="Painel de gestão" />
-      <BuscaBarra area="web" />
-      <div className="right">
-        <SinoAlertas naoLidos={naoLidos} recentes={recentes} />
-        <MenuUsuario {...usuario} />
-      </div>
-    </header>
-  );
+  /** Texto abaixo da marca: o papel de quem está usando. */
+  subtitulo: string;
+  /** Alertas das equipes (admin e supervisor); sem isso o sino não aparece. */
+  alertas?: { naoLidos: number; recentes: Alerta[] };
+  /** Campo de treino: troca a situação da conexão pelo selo do treino. */
+  treino?: boolean;
+  /** Técnico pendente fora do treino: a busca global é da `api` real e ele ainda não pode usá-la. */
+  semBusca?: boolean;
 }
 
-/** Barra superior da área do técnico: marca, busca global, situação da conexão e usuário. */
-export function BarraTecnico({ usuario, treino, semBusca }: { usuario: UsuarioDaBarra; treino?: boolean; semBusca?: boolean }) {
+/** Barra superior das áreas logadas: marca, busca global e, à direita, o que cada papel usa (alertas, conexão ou treino) e o usuário. */
+export function Barra({ usuario, subtitulo, alertas, treino, semBusca }: BarraProps) {
   return (
     <header className="topbar">
-      <Marca subtitulo={treino ? "Campo de treino" : "Técnico em campo"} />
-      {/* Técnico pendente fora do treino: a busca global é da `api` real e ele ainda não pode usá-la. */}
-      {semBusca ? <div className="grow" /> : <BuscaBarra area="app" />}
+      <Marca subtitulo={subtitulo} />
+      {semBusca ? <div className="grow" /> : <BuscaBarra />}
       <div className="right">
         {treino ? (
           <SeloTreino />
+        ) : alertas ? (
+          <SinoAlertas naoLidos={alertas.naoLidos} recentes={alertas.recentes} />
         ) : (
           <span className="net on">
             <Icon name="check" size={16} />
             Online
           </span>
         )}
-        <Usuario {...usuario} />
+        <MenuUsuario {...usuario} />
       </div>
     </header>
   );

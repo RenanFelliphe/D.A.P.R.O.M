@@ -2,7 +2,6 @@ import type { CSSProperties } from "react";
 import { dataDoDia } from "@/lib/formatar";
 import type { OsDetalhada } from "@/lib/os-app";
 import { cx } from "@/lib/cx";
-import { Recolhivel } from "./Recolhivel";
 
 const lista: CSSProperties = {
   margin: 0,
@@ -19,7 +18,7 @@ interface Campo {
   mono?: boolean;
 }
 
-/** Card com os dados da OS vindos do SAP; campo que o SAP não trouxe não aparece. */
+/** Card com os dados da OS, sempre aberto; campo que o SAP não trouxe não aparece. */
 export function DadosSapCard({ os }: { os: OsDetalhada }) {
   const campos: Campo[] = [
     { rotulo: "Ordem", valor: os.numero_ordem, mono: true },
@@ -33,7 +32,8 @@ export function DadosSapCard({ os }: { os: OsDetalhada }) {
     { rotulo: "Status no SAP", valor: os.status_sap, mono: true },
   ];
   return (
-    <Recolhivel titulo="Dados do SAP">
+    <div className="card stack g8">
+      <h2 style={{ fontSize: 15, fontWeight: 600 }}>Dados</h2>
       <dl style={lista}>
         {campos
           .filter((campo) => campo.valor)
@@ -48,6 +48,6 @@ export function DadosSapCard({ os }: { os: OsDetalhada }) {
             </div>
           ))}
       </dl>
-    </Recolhivel>
+    </div>
   );
 }

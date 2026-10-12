@@ -5,5 +5,5 @@ export const metadata: Metadata = { title: "Equipe" };
 
 export default async function EquipePage({ params }: PageProps<"/app/equipes/[id]">) {
   const { id } = await params;
-  return <PerfilEquipe area="app" equipeId={id} />;
+  return <PerfilEquipe equipeId={id} />;
 }

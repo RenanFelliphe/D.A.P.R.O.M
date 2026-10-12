@@ -27,11 +27,11 @@ export default async function PdfDaOsPage({ params }: PageProps<"/doc/os/[id]">)
   return (
     <Screen>
       <nav className="crumb" aria-label="Você está em">
-        <Link href={rotas.web.quadro} style={{ fontWeight: 500 }}>
+        <Link href={rotas.app.lista} style={{ fontWeight: 500 }}>
           Ordem de Serviço
         </Link>{" "}
         /{" "}
-        <Link href={rotas.web.os(os.id)} className="mono" style={{ fontWeight: 500 }}>
+        <Link href={rotas.app.os(os.id)} className="mono" style={{ fontWeight: 500 }}>
           OS {numero}
         </Link>{" "}
         / PDF
@@ -45,7 +45,7 @@ export default async function PdfDaOsPage({ params }: PageProps<"/doc/os/[id]">)
           </span>
         </div>
         <div className="row g8">
-          <Link className="btn btn-line btn-sm" href={rotas.web.os(os.id)}>
+          <Link className="btn btn-line btn-sm" href={rotas.app.os(os.id)}>
             <Icon name="left" size={16} />
             Voltar ao detalhe
           </Link>
@@ -66,7 +66,7 @@ export default async function PdfDaOsPage({ params }: PageProps<"/doc/os/[id]">)
       ) : (
         <Notice tone="info" icon="info">
           <strong>A OS ainda não foi encerrada.</strong> O PDF com a APR e a execução é gerado quando o técnico encerrar a OS.{" "}
-          <Link href={rotas.web.os(os.id)} style={{ fontWeight: 600 }}>
+          <Link href={rotas.app.os(os.id)} style={{ fontWeight: 600 }}>
             Voltar ao detalhe
           </Link>
         </Notice>
