@@ -125,7 +125,8 @@ export async function temposDeExecucao(db: Db, eu: UsuarioAutenticado, f: { inic
         eq(execucao.resultado, "encerrada"),
         sql`${execucao.fim} is not null`,
         sql`${execucao.inicio} >= (${inicio}::timestamp at time zone 'America/Sao_Paulo') and ${execucao.inicio} < (${fim}::timestamp at time zone 'America/Sao_Paulo')`,
-        condicaoEscopo(eu),
+        // O trabalho da própria pessoa conta mesmo em OS de uma equipe fora do escopo atual dela (mudou de equipe).
+        f.usuarioId === eu.id ? undefined : condicaoEscopo(eu),
         equipeId ? eq(os.equipeId, equipeId) : undefined,
         f.usuarioId ? eq(execucao.executorId, f.usuarioId) : undefined,
       ),

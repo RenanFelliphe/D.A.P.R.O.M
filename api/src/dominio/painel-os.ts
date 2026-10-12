@@ -215,8 +215,12 @@ type Resposta = "sim" | "nao" | "na";
 /** Item reprovado: `eliminatorio` com a resposta igual à `resposta_bloqueante` (APR). */
 const reprovado = (tipo: string, resposta: Resposta, bloqueante: string | null) => tipo === "eliminatorio" && bloqueante !== null && resposta === bloqueante;
 
-/** Todas as APRs da OS (bloqueadas e aprovadas), da mais antiga para a mais recente, com tudo o que a auditoria precisa. */
-async function carregarAprs(db: Db, osId: string) {
+/**
+ * Todas as APRs da OS (bloqueadas e aprovadas), da mais antiga para a mais recente, com tudo o que a auditoria precisa.
+ * Só o admin vê o que é eliminatório ou de alerta (`tipo`, `evidencia`, `resposta_bloqueante`, `alerta_marcado`); o
+ * técnico fica sabendo apenas quais itens reprovaram, depois que a APR é validada.
+ */
+async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
   const linhas = await db
     .select({
       id: apr.id,
@@ -298,21 +302,26 @@ async function carregarAprs(db: Db, osId: string) {
       .filter((r) => r.aprId === l.id)
       .map((r) => {
         const reprov = reprovado(r.tipo, r.resposta, r.respostaBloqueante);
-        return {
+        const comum = {
           itemId: r.itemId,
           secao: r.secao,
           ordem: r.ordem,
           texto: r.texto,
-          tipo: r.tipo,
-          evidencia: r.evidencia,
-          respostaBloqueante: r.respostaBloqueante,
           riscoId: r.riscoId,
           resposta: r.resposta,
           observacao: r.observacao,
           respondidaEm: r.respondidaEm,
           reprovado: reprov,
-          alertaMarcado: r.tipo === "alerta" && r.respostaBloqueante !== null && r.resposta === r.respostaBloqueante,
         };
+        return comClassificacao
+          ? {
+              ...comum,
+              tipo: r.tipo,
+              evidencia: r.evidencia,
+              respostaBloqueante: r.respostaBloqueante,
+              alertaMarcado: r.tipo === "alerta" && r.respostaBloqueante !== null && r.resposta === r.respostaBloqueante,
+            }
+          : comum;
       });
     return {
       id: l.id,
@@ -327,15 +336,14 @@ async function carregarAprs(db: Db, osId: string) {
         .map(({ aprId: _a, ...p }) => p),
       riscos: riscos.filter((r) => r.aprId === l.id).map(({ aprId: _a, ...r }) => r),
       respostas: completas,
-      itensReprovados: completas
-        .filter((r) => r.reprovado)
+      itensReprovados: respostas
+        .filter((r) => r.aprId === l.id && reprovado(r.tipo, r.resposta, r.respostaBloqueante))
         .map((r) => ({
           itemId: r.itemId,
           texto: r.texto,
           resposta: r.resposta,
           observacao: r.observacao,
-          tipo: r.tipo,
-          evidencia: r.evidencia,
+          ...(comClassificacao ? { tipo: r.tipo, evidencia: r.evidencia } : {}),
           fotos: fotos
             .filter((f) => f.aprId === l.id && f.itemId === r.itemId)
             .map((f) => ({ id: f.id, fotoPath: f.fotoPath, capturadaEm: f.capturadaEm, latitude: f.latitude, longitude: f.longitude })),
@@ -427,7 +435,7 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
   const equipeAnterior = alias(equipe, "equipe_anterior");
   const equipeNova = alias(equipe, "equipe_nova");
   const [aprs, execucoes, alertas, reprogramacoes, abertas, [suspeitos]] = await Promise.all([
-    carregarAprs(db, osId),
+    carregarAprs(db, osId, eu.perfil === "admin"),
     carregarExecucoes(db, osId),
     db
       .select({
@@ -560,7 +568,7 @@ function montarLinhaDoTempo(d: {
 /** O histórico de APRs da OS (`GET /os/{id}/aprs`). */
 export async function listarAprsDaOs(db: Db, eu: UsuarioAutenticado, osId: string) {
   await osVisivel(db, eu, osId);
-  return carregarAprs(db, osId);
+  return carregarAprs(db, osId, eu.perfil === "admin");
 }
 
 /** A pessoa executou, preencheu ou assinou a APR de alguma execução da OS: não pode dar ciência nela. */

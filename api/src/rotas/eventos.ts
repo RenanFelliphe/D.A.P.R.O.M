@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Deps } from "../deps";
 import { processarEventos, esquemaEnvio } from "../dominio/eventos";
+import { avaliarApr, esquemaAvaliacaoApr } from "../dominio/eventos-apr";
 import { montarSnapshot } from "../dominio/sync";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { proibido } from "../http/erros";
@@ -28,6 +29,16 @@ export function rotasEventos(deps: Deps, { autenticar }: Autenticacao) {
       acessoRevogado = true;
     }
     return responder(c, { ...resultado, ...(acessoRevogado ? { acessoRevogado } : {}) });
+  });
+
+  /**
+   * `POST /aprs/avaliar`: o resultado das respostas (`aprovada` ou `bloqueada`) e, se bloqueada, os itens reprovados com a
+   * evidência que cada um pede. Não grava nada. O modelo que o técnico recebe não diz o que é eliminatório; é aqui,
+   * depois de responder tudo, que ele fica sabendo.
+   */
+  r.post("/aprs/avaliar", autenticar(), async (c) => {
+    if (c.get("usuario").perfil !== "tecnico") throw proibido("Só o perfil técnico aplica APR e executa OS");
+    return responder(c, await avaliarApr(deps.db, await lerCorpo(c, esquemaAvaliacaoApr)));
   });
 
   /** Só do modo offline: baixa a cópia local da equipe. O `cursor` é opcional e, por ora, ignorado (snapshot completo). */

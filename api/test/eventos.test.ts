@@ -412,6 +412,9 @@ describe("Eventos de campo: APR, execução e sync", () => {
     assert.equal(snap.aprs.find((a: any) => a.id === apr.id).participantes.length, 2);
     assert.equal(snap.execucoes.find((x: any) => x.id === e.id).resultado, null);
     assert.ok(snap.modelos_apr.length >= 8 && snap.modelos_apr[0].itens.length > 0 && snap.modelos_apr[0].riscos.length > 0);
+    for (const m of snap.modelos_apr) {
+      for (const i of m.itens) assert.deepEqual(["tipo", "resposta_bloqueante", "evidencia"].filter((c) => c in i), [], "a cópia offline não diz o que é eliminatório");
+    }
     assert.ok(snap.atividades.length > 100);
     assert.ok(snap.locais.some((l: any) => l.id === localId));
     assert.ok(snap.usuarios.some((u: any) => u.id === colega.id) && snap.usuarios.every((u: any) => !("email" in u)));
@@ -419,6 +422,56 @@ describe("Eventos de campo: APR, execução e sync", () => {
 
     assert.equal((await amb.req("POST", "/sync/pull", { como: admin })).status, 403);
     assert.equal((await amb.req("POST", "/sync/pull")).status, 401);
+  });
+
+  it("o técnico não sabe o que é eliminatório: o modelo dele vem sem tipo, resposta bloqueante e evidência; o admin vê tudo", async () => {
+    for (const como of [tecnico, supervisor]) {
+      const m = await amb.esperar(200, "GET", "/modelos-apr/APR%2001/versoes/publicada", { como });
+      assert.ok(m.itens.length > 0);
+      for (const i of m.itens) {
+        assert.deepEqual(["tipo", "resposta_bloqueante", "evidencia"].filter((c) => c in i), [], `${como.matricula} recebeu a classificação do item`);
+        assert.ok(i.id && i.texto && "permite_na" in i);
+      }
+    }
+    const doAdmin = await amb.esperar(200, "GET", "/modelos-apr/APR%2001/versoes/publicada", { como: admin });
+    assert.ok(doAdmin.itens.every((i: any) => i.tipo && "resposta_bloqueante" in i && i.evidencia));
+    assert.ok(doAdmin.itens.some((i: any) => i.tipo === "eliminatorio"));
+  });
+
+  it("POST /aprs/avaliar: diz aprovada ou bloqueada e quais itens reprovaram, sem gravar nada", async () => {
+    const o = await novaOs();
+    const corpo = (p: Awaited<ReturnType<typeof payloadApr>>) => ({ modelo_apr_id: p.modelo_apr_id, riscos: p.riscos, respostas: p.respostas.map(({ item_id, resposta }) => ({ item_id, resposta })) });
+    const aprsDaOs = async () => (await amb.sql<{ n: number }>("select count(*)::int as n from apr where os_id = $1", [o.id]))[0]!.n;
+
+    const boa = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpo(await payloadApr(o.id)) });
+    assert.deepEqual(boa, { resultado: "aprovada", reprovados: [] });
+
+    const ruim = await payloadApr(o.id, { bloquear: true });
+    const reprovadoId = ruim.evidencias[0]!.item_id;
+    const item = modelo.itens.find((i) => i.id === reprovadoId)!;
+    const mau = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpo(ruim) });
+    assert.equal(mau.resultado, "bloqueada");
+    assert.deepEqual(mau.reprovados, [{ item_id: item.id, texto: item.texto, evidencia: item.evidencia }]);
+    assert.equal(await aprsDaOs(), 0, "avaliar não registra APR");
+
+    // Respostas incompletas, item de outro modelo, perfil errado e sem token.
+    assert.equal((await amb.req("POST", "/aprs/avaliar", { como: tecnico, json: corpo(await payloadApr(o.id, { incompleta: true })) })).status, 422);
+    assert.equal((await amb.req("POST", "/aprs/avaliar", { como: tecnico, json: { ...corpo(ruim), respostas: [{ item_id: randomUUID(), resposta: "sim" }] } })).status, 422);
+    assert.equal((await amb.req("POST", "/aprs/avaliar", { como: admin, json: corpo(ruim) })).status, 403);
+    assert.equal((await amb.req("POST", "/aprs/avaliar", { json: corpo(ruim) })).status, 401);
+  });
+
+  it("evento que veio da fila offline sem a evidência dos reprovados é aceito: o aparelho não pôde perguntar", async () => {
+    const o = await novaOs();
+    const duasHorasAtras = new Date(amb.relogio.agora.getTime() - 2 * 3600_000).toISOString();
+    const p = await payloadApr(o.id, { bloquear: true, semObservacao: true, comFoto: false, concluidaEm: duasHorasAtras });
+    const r = await enviar(tecnico, evento("apr_concluida", p, o.id, duasHorasAtras));
+    assert.deepEqual(r.aprs, [{ id: p.id, resultado: "bloqueada" }]);
+    assert.equal(await statusDa(o.id), "pendente");
+    // O mesmo envio online continua exigindo a evidência.
+    const online = await novaOs();
+    const semProva = await enviar(tecnico, evento("apr_concluida", await payloadApr(online.id, { bloquear: true, semObservacao: true, comFoto: false }), online.id));
+    assert.equal(semProva.rejeitados[0].codigo, "evidencia_faltando");
   });
 
   it("modelo excluído (arquivado): sai da cópia offline de quem não o usou, mas a APR respondida nele ainda é aceita", async () => {

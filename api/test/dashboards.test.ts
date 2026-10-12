@@ -224,9 +224,67 @@ describe("Dashboards de Indicadores e exportação", () => {
     });
   });
 
-  it("perfis: técnico 403, sem login 401; supervisor pedindo outra equipe 403; período inválido 422", async () => {
+  describe("técnico (sem supervisão): só a equipe, sem desempenho de colegas", () => {
+    it("vê o dashboard da própria equipe e sem as pendências de gestão", async () => {
+      const r = await pedir("/indicadores/geral", u.ana!);
+      assert.equal(r.encerradas.total, 2); // o1 e o2, da Equipe Norte
+      assert.equal(r.pendencias.sem_ciencia, null);
+      assert.equal(r.pendencias.a_exportar, null);
+      assert.equal(r.pendencias.atividades_sem_modelo, null);
+      assert.equal(r.pendencias.execucoes_esquecidas, 0);
+    });
+
+    it("equipes e usuários: só a própria equipe, sem a lista de técnicos nem a contagem de quem executou", async () => {
+      const r = await pedir("/indicadores/equipes", u.ana!);
+      assert.deepEqual(r.equipes.map((e: any) => e.nome), ["Equipe Norte"]);
+      assert.deepEqual(r.tecnicos, []);
+      assert.equal(r.totais.tecnicos_com_execucao, null);
+      assert.equal(r.cadastro, null);
+    });
+
+    it("OS: as interrupções recentes não dizem quem interrompeu", async () => {
+      const r = await pedir("/indicadores/os", u.carla!);
+      assert.equal(r.interrupcoes.total, 1);
+      assert.equal(r.interrupcoes.recentes[0].executor, null);
+    });
+
+    it("não consulta outra equipe nem o dashboard do supervisor com nomes", async () => {
+      assert.equal((await amb.req("GET", "/indicadores/geral", { como: u.ana, consulta: { equipe_id: sul } })).status, 403);
+      const doSupervisor = await pedir("/indicadores/os", u.carla!);
+      assert.equal(doSupervisor.carteira.liberadas, 1); // só a Equipe Sul
+    });
+  });
+
+  describe("GET /indicadores/meus", () => {
+    it("traz só o que a própria pessoa fez", async () => {
+      const r = await pedir("/indicadores/meus", u.ana!);
+      assert.equal(r.encerradas.total, 1); // o1; o8 é do período anterior
+      assert.equal(r.encerradas.anterior, 1);
+      assert.equal(r.tempo.execucoes, 1);
+      assert.equal(r.tempo.tempo_liquido_medio_min, 120);
+      assert.equal(r.aprs.total, 1);
+      assert.equal(r.interrupcoes.total, 0);
+    });
+
+    it("não mistura o trabalho de colegas (Bruno encerrou a o2; Carla interrompeu a o6)", async () => {
+      assert.equal((await pedir("/indicadores/meus", u.bruno!)).encerradas.total, 1);
+      const carla = await pedir("/indicadores/meus", u.carla!);
+      assert.equal(carla.encerradas.total, 0);
+      assert.equal(carla.interrupcoes.total, 1);
+      assert.equal(carla.aprs.bloqueadas, 1);
+    });
+
+    it("supervisor também tem o dele; admin 403; sem login 401; sem equipe_id nem usuario_id para espiar outro", async () => {
+      assert.equal((await amb.req("GET", "/indicadores/meus", { como: u.supervisor })).status, 200);
+      assert.equal((await amb.req("GET", "/indicadores/meus", { como: u.admin })).status, 403);
+      assert.equal((await amb.req("GET", "/indicadores/meus")).status, 401);
+      const comIntruso = await pedir("/indicadores/meus", u.bruno!, { usuario_id: u.ana!.id, equipe_id: sul });
+      assert.equal(comIntruso.encerradas.total, 1); // continua sendo o do Bruno
+    });
+  });
+
+  it("perfis: sem login 401; supervisor pedindo outra equipe 403; período inválido 422", async () => {
     for (const caminho of ["/indicadores/geral", "/indicadores/os", "/indicadores/equipes"]) {
-      assert.equal((await amb.req("GET", caminho, { como: u.ana })).status, 403, caminho);
       assert.equal((await amb.req("GET", caminho)).status, 401, caminho);
       assert.equal((await amb.req("GET", caminho, { como: u.supervisor, consulta: { equipe_id: sul } })).status, 403, caminho);
       assert.equal((await amb.req("GET", caminho, { como: u.admin, consulta: { periodo: "ontem" } })).status, 422, caminho);

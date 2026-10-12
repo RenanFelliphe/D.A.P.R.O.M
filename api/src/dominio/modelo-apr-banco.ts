@@ -65,9 +65,20 @@ export async function lerRiscosEItens(db: Db, modeloAprId: string) {
   };
 }
 
-/** Modelo completo (dados, PAE, riscos e itens) como a API o entrega. */
-export async function modeloCompleto(db: Db, linha: typeof modeloApr.$inferSelect) {
-  const { riscos, itens } = await lerRiscosEItens(db, linha.id);
+/**
+ * Tira do item o que diz se ele é eliminatório ou de alerta (tipo, resposta bloqueante e evidência). Só quem edita o
+ * modelo (admin) vê isso: se o técnico soubesse, bastaria responder "certo" nesses itens para fazer o serviço.
+ */
+export function semClassificacao<T extends { tipo: unknown; respostaBloqueante: unknown; evidencia: unknown }>(item: T): Omit<T, "tipo" | "respostaBloqueante" | "evidencia"> {
+  const { tipo: _t, respostaBloqueante: _r, evidencia: _e, ...resto } = item;
+  return resto;
+}
+
+/** Modelo completo (dados, PAE, riscos e itens) como a API o entrega; `comClassificacao: false` esconde o que é eliminatório. */
+export async function modeloCompleto(db: Db, linha: typeof modeloApr.$inferSelect, comClassificacao = true) {
+  const lido = await lerRiscosEItens(db, linha.id);
+  const riscos = lido.riscos;
+  const itens = comClassificacao ? lido.itens : lido.itens.map(semClassificacao);
   return {
     id: linha.id,
     codigo: linha.codigo,

@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { apr, atividade, equipe, execucao, localInstalacao, os, PERFIS, reprogramacao, usuario, type Perfil } from "../db/schema";
-import { veTodasAsEquipes, type UsuarioAutenticado } from "../http/autenticacao";
+import { ehSupervisor, veTodasAsEquipes, type UsuarioAutenticado } from "../http/autenticacao";
 import { condicaoEscopo, diaNoFuso, noEscopo, todas } from "./painel-comum";
 import { situacaoDasPreventivas, temposDeExecucao } from "./painel-indicadores";
 import { diaDoInstante, diaEntre, faixaDoDia, instanteEntre, resolverPeriodo, type Periodo } from "./periodo";
@@ -24,6 +24,12 @@ const INTERRUPCOES_RECENTES = 5;
 const LOCAIS_NO_RANKING = 6;
 
 /** A equipe da OS dentro do escopo e do filtro. */
+/**
+ * Quem acompanha a equipe (admin e supervisor) vê também os dados de cada pessoa e as pendências de gestão. O técnico que não
+ * supervisiona vê só o que é da equipe como um todo: nada que revele o desempenho de um colega.
+ */
+export const acompanhaAEquipe = (eu: UsuarioAutenticado) => veTodasAsEquipes(eu) || ehSupervisor(eu);
+
 const daEquipe = (eu: UsuarioAutenticado, equipeId?: string) => todas(condicaoEscopo(eu), equipeId ? eq(os.equipeId, equipeId) : undefined);
 
 /** Foto da carteira: OS abertas por status, as atrasadas, as de local crítico e as de apoio ainda abertas. */
@@ -47,7 +53,7 @@ async function carteira(db: Db, filtroOs: SQL | undefined, hoje: string) {
  * OS encerradas por faixa e por tipo, pelo fim da Execução que as encerrou, mais o total do período anterior. Uma OS
  * só tem uma Execução `encerrada`, então cada linha é uma OS.
  */
-async function encerradas(db: Db, filtroOs: SQL | undefined, p: ReturnType<typeof resolverPeriodo>) {
+export async function encerradas(db: Db, filtroOs: SQL | undefined, p: ReturnType<typeof resolverPeriodo>) {
   const dia = diaDoInstante(execucao.fim);
   const linhas = await db
     .select({ dia, tipo: os.tipo, total: contagem })
@@ -73,7 +79,7 @@ async function encerradas(db: Db, filtroOs: SQL | undefined, p: ReturnType<typeo
 }
 
 /** APRs concluídas no período e no anterior, com as bloqueadas. */
-async function contarAprs(db: Db, filtroOs: SQL | undefined, p: ReturnType<typeof resolverPeriodo>) {
+export async function contarAprs(db: Db, filtroOs: SQL | undefined, p: ReturnType<typeof resolverPeriodo>) {
   const noAtual = instanteEntre(apr.concluidaEm, p.inicio, p.fim);
   const [linha] = await db
     .select({
@@ -89,7 +95,7 @@ async function contarAprs(db: Db, filtroOs: SQL | undefined, p: ReturnType<typeo
 }
 
 /** Execuções interrompidas por risco no período: o total e as mais recentes, com o motivo. */
-async function interrupcoes(db: Db, filtroOs: SQL | undefined, p: ReturnType<typeof resolverPeriodo>) {
+export async function interrupcoes(db: Db, filtroOs: SQL | undefined, p: ReturnType<typeof resolverPeriodo>, comExecutor = true) {
   const onde = todas(eq(execucao.resultado, "interrompida"), instanteEntre(execucao.fim, p.inicio, p.fim), filtroOs);
   const [total, recentes] = await Promise.all([
     db.select({ total: contagem }).from(execucao).innerJoin(os, eq(os.id, execucao.osId)).where(onde),
@@ -102,28 +108,35 @@ async function interrupcoes(db: Db, filtroOs: SQL | undefined, p: ReturnType<typ
       .orderBy(desc(execucao.fim))
       .limit(INTERRUPCOES_RECENTES),
   ]);
-  return { total: total[0]?.total ?? 0, recentes };
+  // Para quem não acompanha a equipe a lista não diz quem interrompeu.
+  return { total: total[0]?.total ?? 0, recentes: recentes.map((r) => ({ ...r, executor: comExecutor ? r.executor : null })) };
 }
 
-/** O que pede ação agora: baixa no SAP, ciência do supervisor, execução esquecida aberta e atividade sem modelo. */
-async function pendencias(db: Db, filtroOs: SQL | undefined, agora: Date) {
+/**
+ * O que pede ação agora: baixa no SAP, ciência do supervisor, execução esquecida aberta e atividade sem modelo. Quem não
+ * acompanha a equipe recebe só a execução esquecida (as demais são de gestão: `null`).
+ */
+async function pendencias(db: Db, filtroOs: SQL | undefined, agora: Date, gestao: boolean) {
   const esquecida = new Date(agora.getTime() - HORAS_DE_EXECUCAO_ESQUECIDA * 3_600_000);
-  const [[osPendentes], [abertas], [semModelo]] = await Promise.all([
-    db
-      .select({
-        aExportar: contarSe(sql`${os.status} = 'encerrada' and ${os.exportadaSapEm} is null`),
-        semCiencia: contarSe(sql`${os.status} = 'encerrada' and ${os.cienciaEm} is null`),
-      })
-      .from(os)
-      .where(filtroOs),
+  const [osPendentes, [abertas], semModelo] = await Promise.all([
+    gestao
+      ? db
+          .select({
+            aExportar: contarSe(sql`${os.status} = 'encerrada' and ${os.exportadaSapEm} is null`),
+            semCiencia: contarSe(sql`${os.status} = 'encerrada' and ${os.cienciaEm} is null`),
+          })
+          .from(os)
+          .where(filtroOs)
+          .then(([l]) => l!)
+      : null,
     db
       .select({ total: contagem })
       .from(execucao)
       .innerJoin(os, eq(os.id, execucao.osId))
       .where(todas(isNull(execucao.resultado), sql`${execucao.inicio} < ${esquecida}`, filtroOs)),
-    db.select({ total: contagem }).from(atividade).where(isNull(atividade.modeloAprCodigo)),
+    gestao ? db.select({ total: contagem }).from(atividade).where(isNull(atividade.modeloAprCodigo)).then(([l]) => l!.total) : null,
   ]);
-  return { aExportar: osPendentes!.aExportar, semCiencia: osPendentes!.semCiencia, execucoesEsquecidas: abertas!.total, atividadesSemModelo: semModelo!.total };
+  return { aExportar: osPendentes?.aExportar ?? null, semCiencia: osPendentes?.semCiencia ?? null, execucoesEsquecidas: abertas!.total, atividadesSemModelo: semModelo };
 }
 
 /** Dashboard geral: a carteira de agora, o resumo do período (OS, preventivas, APRs, tempo, interrupções) e as pendências. */
@@ -138,7 +151,7 @@ export async function dashboardGeral(db: Db, eu: UsuarioAutenticado, f: FiltroDo
     temposDeExecucao(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }),
     contarAprs(db, filtroOs, p),
     interrupcoes(db, filtroOs, p),
-    pendencias(db, filtroOs, agora),
+    pendencias(db, filtroOs, agora, acompanhaAEquipe(eu)),
   ]);
   return {
     periodo: p.periodo,
@@ -177,7 +190,7 @@ export async function dashboardDeOs(db: Db, eu: UsuarioAutenticado, f: FiltroDoD
       .where(todas(diaEntre(os.dataInicioProg, p.inicio, p.fim), filtroOs)),
     situacaoDasPreventivas(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }, hoje),
     temposDeExecucao(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }),
-    interrupcoes(db, filtroOs, p),
+    interrupcoes(db, filtroOs, p, acompanhaAEquipe(eu)),
     db.select({ total: contagem }).from(reprogramacao).innerJoin(os, eq(os.id, reprogramacao.osId)).where(todas(instanteEntre(reprogramacao.criadaEm, p.inicio, p.fim), filtroOs)),
     db
       .select({ id: localInstalacao.id, codigo: localInstalacao.codigo, critico: localInstalacao.critico, encerradas: contagem })
@@ -223,6 +236,7 @@ export async function dashboardDeEquipes(db: Db, eu: UsuarioAutenticado, f: Filt
     noEscopo(eu, equipe.id),
     f.equipeId ? eq(equipe.id, f.equipeId) : undefined,
   );
+  const pessoal = acompanhaAEquipe(eu);
   const aprNoPeriodo = todas(instanteEntre(apr.concluidaEm, p.inicio, p.fim), filtroOs);
   const interrompida = todas(eq(execucao.resultado, "interrompida"), instanteEntre(execucao.fim, p.inicio, p.fim), filtroOs);
   const bloqueadas = contarSe(sql`${apr.resultado} = 'bloqueada'`);
@@ -317,12 +331,13 @@ export async function dashboardDeEquipes(db: Db, eu: UsuarioAutenticado, f: Filt
     totais: {
       equipes: equipes.length,
       tecnicosAtivos: tecnicosAtivos.length,
-      tecnicosComExecucao: tempo.porUsuario.length,
+      // O desempenho de cada colega não aparece para quem não acompanha a equipe.
+      tecnicosComExecucao: pessoal ? tempo.porUsuario.length : null,
       execucoes: tempo.execucoes,
       tempoLiquidoMedioMin: tempo.tempoLiquidoMedioMin,
     },
     equipes: linhasDeEquipe,
-    tecnicos,
+    tecnicos: pessoal ? tecnicos : [],
     cadastro: f.comCadastro ? await estadoDoCadastro(db, f.equipeId) : null,
   };
 }

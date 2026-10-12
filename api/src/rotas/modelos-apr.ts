@@ -233,11 +233,14 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
     return responder(c, { codigo, versoes: restauradas.length });
   });
 
-  /** Modelo completo para o editor e para aplicar a APR. `publicada` = a publicada mais recente do código. */
+  /**
+   * Modelo completo para o editor e para aplicar a APR. `publicada` = a publicada mais recente do código. Quem não
+   * edita (o técnico) recebe os itens sem `tipo`, `resposta_bloqueante` e `evidencia`: não pode saber o que é eliminatório.
+   */
   r.get("/modelos-apr/:codigo/versoes/:versao", autenticar(), async (c) => {
     const veRascunho = editaModelos(c.get("usuario").perfil);
     const linha = await resolverVersao(deps.db, c.req.param("codigo"), c.req.param("versao"), veRascunho);
-    return responder(c, await modeloCompleto(deps.db, linha));
+    return responder(c, await modeloCompleto(deps.db, linha, veRascunho));
   });
 
   /**

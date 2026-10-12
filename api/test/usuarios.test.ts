@@ -223,6 +223,10 @@ describe("Plataforma, usuários e equipes", () => {
 
     const doTecnico = await amb.esperar(200, "GET", `/usuarios/${colega.id}`, { como: tecnico });
     assert.ok(!("email" in doTecnico.usuario));
+    // O desempenho de um colega (OS encerradas, tempo) não aparece para um técnico comum; o dele mesmo, sim.
+    assert.equal(doTecnico.resumo, null);
+    assert.deepEqual(doTecnico.execucoes, []);
+    assert.ok((await amb.esperar(200, "GET", `/usuarios/${tecnico.id}`, { como: tecnico })).resumo);
     assert.equal((await amb.req("GET", `/usuarios/${inativo.id}`, { como: tecnico })).status, 404);
     assert.equal((await amb.req("GET", `/usuarios/${de_fora.id}`, { como: tecnico })).status, 404);
     assert.equal((await amb.req("GET", `/usuarios/${crypto.randomUUID()}`, { como: admin })).status, 404);

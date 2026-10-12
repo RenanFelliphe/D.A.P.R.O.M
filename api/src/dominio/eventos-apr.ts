@@ -1,6 +1,8 @@
 import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
+import type { Db } from "../db/conexao";
 import { APR_FUNCOES, APR_RESPOSTAS, APR_RESULTADOS, apr, aprParticipante, aprResposta, aprRisco, evidencia, execucao, itemModeloApr, modeloApr, riscoModeloApr, usuario } from "../db/schema";
+import { invalido } from "../http/erros";
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas } from "./alertas";
 import { avisarConflitoDePlanejamento, carregarOsDoUsuario, evidenciaPayload, exigirArquivo, lerPayload, rejeitar, type Contexto } from "./eventos-base";
@@ -24,6 +26,48 @@ const esquemaApr = z.object({
 });
 
 const vazio = (s: string | null | undefined) => !s || s.trim() === "";
+
+/** Item reprovado = eliminatório respondido com a resposta bloqueante. É o único lugar que decide isso. */
+const reprovou = (item: { tipo: string; respostaBloqueante: string | null }, resposta: string | undefined) =>
+  item.tipo === "eliminatorio" && item.respostaBloqueante !== null && resposta === item.respostaBloqueante;
+
+export const esquemaAvaliacaoApr = z.object({
+  modelo_apr_id: uuid,
+  riscos: z.array(uuid).default([]),
+  respostas: z.array(z.object({ item_id: uuid, resposta: z.enum(APR_RESPOSTAS) })),
+});
+
+/**
+ * Valida as respostas contra o modelo, sem gravar nada, e diz o que acontece: `aprovada` ou `bloqueada`, e, se bloqueada,
+ * quais itens reprovaram e a evidência que cada um pede. É a única hora em que o técnico fica sabendo quais itens são
+ * eliminatórios: o modelo que ele recebe não traz essa informação e o checklist não a mostra. Chamar o endpoint não
+ * registra a APR; quem decide o resultado que vale é `aplicarAprConcluida`.
+ */
+export async function avaliarApr(db: Db, bruto: z.infer<typeof esquemaAvaliacaoApr>) {
+  const [modelo] = await db.select().from(modeloApr).where(eq(modeloApr.id, bruto.modelo_apr_id));
+  if (!modelo || !modelo.publicadoEm) throw invalido("modelo_invalido", "Modelo de APR inexistente ou não publicado");
+
+  const riscosDoModelo = await db.select({ id: riscoModeloApr.id }).from(riscoModeloApr).where(eq(riscoModeloApr.modeloAprId, modelo.id));
+  const idsDeRisco = new Set(riscosDoModelo.map((r) => r.id));
+  if (bruto.riscos.some((r) => !idsDeRisco.has(r))) throw invalido("risco_invalido", "Risco que não pertence ao modelo da APR");
+  const marcados = new Set(bruto.riscos);
+
+  const itens = await db.select().from(itemModeloApr).where(eq(itemModeloApr.modeloAprId, modelo.id));
+  const itemPorId = new Map(itens.map((i) => [i.id, i]));
+  const respostaPorItem = new Map<string, string>();
+  for (const r of bruto.respostas) {
+    if (!itemPorId.has(r.item_id)) throw invalido("item_invalido", "Resposta a um item que não pertence ao modelo da APR");
+    respostaPorItem.set(r.item_id, r.resposta);
+  }
+  const faltando = itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.riscoId!)) && !respostaPorItem.has(i.id));
+  if (faltando.length > 0) throw invalido("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
+
+  const reprovados = itens
+    .filter((i) => respostaPorItem.has(i.id) && reprovou(i, respostaPorItem.get(i.id)))
+    .sort((a, b) => a.ordem - b.ordem)
+    .map((i) => ({ itemId: i.id, texto: i.texto, evidencia: i.evidencia }));
+  return { resultado: reprovados.length > 0 ? ("bloqueada" as const) : ("aprovada" as const), reprovados };
+}
 
 /**
  * `apr_concluida`: grava a APR inteira (participantes, riscos, respostas, fotos), recalcula o resultado a partir das
@@ -93,15 +137,16 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   const faltando = itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.riscoId!)) && !respostaPorItem.has(i.id));
   if (faltando.length > 0) throw rejeitar("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
 
-  // Item reprovado = eliminatório com a resposta bloqueante: exige observação e, se o item pede foto, ao menos uma.
-  const reprovados = itens.filter((i) => i.tipo === "eliminatorio" && respostaPorItem.get(i.id)?.resposta === i.respostaBloqueante);
+  // Item reprovado: exige observação e, se o item pede foto, ao menos uma. O aparelho só conhece os reprovados depois de
+  // `POST /aprs/avaliar`; o que veio da fila offline não pôde perguntar, então a APR vale mesmo sem a evidência.
+  const reprovados = itens.filter((i) => reprovou(i, respostaPorItem.get(i.id)?.resposta));
   for (const e of p.evidencias) {
     if (!e.item_id || !respostaPorItem.has(e.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
   }
   const semEvidencia = reprovados.filter(
     (i) => vazio(respostaPorItem.get(i.id)!.observacao) || (i.evidencia === "foto" && !p.evidencias.some((e) => e.item_id === i.id)),
   );
-  if (semEvidencia.length > 0) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
+  if (semEvidencia.length > 0 && !ctx.offline) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
   for (const e of p.evidencias) await exigirArquivo(ctx, "fotos", e.arquivo_id ?? e.id);
 
   const resultado = reprovados.length > 0 ? "bloqueada" : "aprovada";
@@ -138,7 +183,12 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   ctx.saida.aprs.push({ id: p.id, resultado });
 
   if (resultado === "bloqueada") {
-    const detalhe = reprovados.map((i) => `${i.texto} — ${respostaPorItem.get(i.id)!.observacao?.trim()}`).join("; ");
+    const detalhe = reprovados
+      .map((i) => {
+        const observacao = respostaPorItem.get(i.id)!.observacao?.trim();
+        return observacao ? `${i.texto} — ${observacao}` : i.texto;
+      })
+      .join("; ");
     ctx.saida.alertas.push(
       ...(await criarAlertas(ctx.tx, { tipo: "bloqueio", osId: ordem.id, equipeId: ordem.equipeId, detalhe: `APR bloqueada (${reprovados.length} item(ns) reprovado(s)): ${detalhe}` })),
     );

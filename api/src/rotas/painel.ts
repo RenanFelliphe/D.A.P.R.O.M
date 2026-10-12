@@ -8,6 +8,7 @@ import { dashboardDeEquipes, dashboardDeOs, dashboardGeral } from "../dominio/da
 import { exportarParaSap, MENSAGEM_SEM_NOVAS, nomeDoArquivo, TIPO_XLSX } from "../dominio/painel-exportacao";
 import { equipeDoIndicador, historicoDoLocal, indicadoresDeTempo, indicadoresMensais } from "../dominio/painel-indicadores";
 import { darCiencia, detalharOs, listarAprsDaOs, listarOs } from "../dominio/painel-os";
+import { meusResultados } from "../dominio/meus-resultados";
 import { esquemaPeriodo } from "../dominio/periodo";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { esquemaPaginacao, meta } from "../http/paginacao";
@@ -70,11 +71,12 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
     return responder(c, await indicadoresDeTempo(deps.db, c.get("usuario"), f));
   });
 
-  // ---- Dashboards de Indicadores e exportação ---------------------------------------------------------------------
-  // Todos com o mesmo filtro: `?periodo=7d|30d|90d|12m|AAAA-MM` (30 dias se ausente) e `?equipe_id=`. O supervisor só
-  // vê a própria equipe (pedir outra é `403`); os demais perfis de gestão veem todas.
+  // ---- Dashboards ---------------------------------------------------------------------------------------------------
+  // Todos com o mesmo filtro: `?periodo=7d|30d|90d|12m|AAAA-MM` (30 dias se ausente) e `?equipe_id=`. Todo perfil vê o seu
+  // escopo: o admin, todas as equipes; supervisor e técnico, as suas (pedir outra é `403`). Quem não supervisiona só recebe o
+  // que é da equipe como um todo, nunca o desempenho de um colega (ver `acompanhaAEquipe`).
 
-  const gestao = exigirPerfil("supervisor", "admin");
+  const gestao = exigirPerfil("supervisor", "admin", "tecnico");
   const lerFiltro = (c: Parameters<typeof lerConsulta>[0]) => {
     const f = lerConsulta(c, z.object({ periodo: esquemaPeriodo, equipe_id: uuid.optional() }));
     return { periodo: f.periodo, equipeId: equipeDoIndicador(c.get("usuario"), f.equipe_id) };
@@ -90,7 +92,13 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
     return responder(c, await dashboardDeOs(deps.db, c.get("usuario"), lerFiltro(c), deps.agora()));
   });
 
-  /** Dashboard de equipes e usuários: por equipe e por técnico; o estado do cadastro só para o admin. */
+  /** Meus resultados: o dashboard da própria pessoa (técnico e supervisor). O admin não executa OS e recebe `403`. */
+  r.get("/indicadores/meus", autenticar(), exigirPerfil("tecnico"), async (c) => {
+    const f = lerConsulta(c, z.object({ periodo: esquemaPeriodo }));
+    return responder(c, await meusResultados(deps.db, c.get("usuario"), f, deps.agora()));
+  });
+
+  /** Dashboard de equipes e usuários: por equipe e por técnico (esses dois últimos só para quem acompanha a equipe); o estado do cadastro só para o admin. */
   r.get("/indicadores/equipes", autenticar(), gestao, async (c) => {
     const eu = c.get("usuario");
     return responder(c, await dashboardDeEquipes(deps.db, eu, { ...lerFiltro(c), comCadastro: eu.perfil === "admin" }, deps.agora()));

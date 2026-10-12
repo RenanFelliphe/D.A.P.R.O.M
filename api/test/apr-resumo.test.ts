@@ -95,6 +95,18 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
     assert.deepEqual(r.alertas_registrados, [{ modelo: "APR 03", texto: "Requer iluminação auxiliar?", secao: "verificacao", total: 2 }]);
   });
 
+  it("os rankings dizem o que é eliminatório e o que é alerta: só o admin os recebe; técnico e supervisor ficam com os totais", async () => {
+    for (const como of [tecnico, usuarios.supervisor]) {
+      const r = await resumo({}, como);
+      assert.equal(r.itens_que_bloqueiam, null);
+      assert.equal(r.alertas_registrados, null);
+      assert.equal(r.totais.alertas, null);
+      assert.ok(r.totais.aprs > 0 && r.totais.bloqueadas > 0, "os totais de APR continuam");
+    }
+    const doAdmin = await resumo({}, usuarios.admin);
+    assert.ok(doAdmin.itens_que_bloqueiam.length > 0 && doAdmin.alertas_registrados.length > 0 && doAdmin.totais.alertas > 0);
+  });
+
   it("APRs por modelo e por equipe, da que tem mais APRs à que tem menos", async () => {
     const r = await resumo();
     assert.deepEqual(r.por_modelo, [
@@ -141,13 +153,16 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
     assert.deepEqual(sul.por_equipe.map((e: any) => e.nome), ["Equipe Sul"]);
   });
 
-  it("toda a gestão vê; o supervisor só a própria equipe (outra é 403); técnico 403; período inválido 422", async () => {
+  it("todo perfil vê o seu escopo; o supervisor e o técnico só a própria equipe (outra é 403); período inválido 422", async () => {
     await resumo({}, usuarios.admin);
     const doSupervisor = await resumo({}, usuarios.supervisor);
     assert.equal(doSupervisor.totais.aprs, 4);
     assert.deepEqual(doSupervisor.por_equipe.map((e: any) => e.nome), ["Equipe Norte"]);
     assert.equal((await amb.req("GET", "/aprs/resumo", { como: usuarios.supervisor, consulta: { equipe_id: equipeB } })).status, 403);
-    assert.equal((await amb.req("GET", "/aprs/resumo", { como: tecnico })).status, 403);
+    // O técnico vê o resumo da equipe dele (nada por pessoa), mas não o de outra equipe.
+    const doTecnico = await resumo({}, tecnico);
+    assert.deepEqual(doTecnico.por_equipe.map((e: any) => e.nome), ["Equipe Norte"]);
+    assert.equal((await amb.req("GET", "/aprs/resumo", { como: tecnico, consulta: { equipe_id: equipeB } })).status, 403);
     assert.equal((await amb.req("GET", "/aprs/resumo")).status, 401);
     for (const periodo of ["1a", "2026-13", "2026-1"]) {
       assert.equal((await amb.req("GET", "/aprs/resumo", { como: admin, consulta: { periodo } })).status, 422, periodo);

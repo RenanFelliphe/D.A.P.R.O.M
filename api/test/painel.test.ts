@@ -413,7 +413,8 @@ describe("Painel: quadro, detalhe e ciência", () => {
 
   describe("GET /os/{id}", () => {
     it("devolve o detalhe completo: OS, APRs, execuções, alertas, reprogramações e linha do tempo", async () => {
-      const c = await amb.esperar(200, "GET", `/os/${osPendente.id}`, { como: supA });
+      // Só o admin vê o que é eliminatório e o que é alerta (tipo, evidência, resposta bloqueante, alerta marcado).
+      const c = await amb.esperar(200, "GET", `/os/${osPendente.id}`, { como: admin });
       assert.deepEqual(Object.keys(c).sort(), ["alertas", "aprs", "execucoes", "linha_do_tempo", "os", "reprogramacoes"]);
 
       assert.equal(c.os.id, osPendente.id);
@@ -491,6 +492,21 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.equal(c.reprogramacoes[0].data_anterior, "2026-10-05");
       assert.equal(c.reprogramacoes[0].data_nova, "2026-10-10");
       assert.equal(c.reprogramacoes[0].equipe_anterior_nome, "Instrumentação");
+    });
+
+    it("técnico e supervisor não recebem o que é eliminatório nem o que é alerta; sabem só o que reprovou", async () => {
+      for (const u of [tecA, supA]) {
+        for (const aprs of [(await amb.esperar(200, "GET", `/os/${osPendente.id}`, { como: u })).aprs, (await amb.esperar(200, "GET", `/os/${osPendente.id}/aprs`, { como: u })).aprs]) {
+          const [bloqueada] = aprs;
+          for (const r of bloqueada.respostas) {
+            for (const campo of ["tipo", "evidencia", "resposta_bloqueante", "alerta_marcado"]) assert.equal(campo in r, false, `${u.matricula}: resposta traz ${campo}`);
+          }
+          assert.deepEqual(bloqueada.respostas.map((r: any) => [r.resposta, r.reprovado]), [["nao", true], ["sim", false], ["nao", false]]);
+          assert.equal(bloqueada.itens_reprovados.length, 1);
+          assert.equal(bloqueada.itens_reprovados[0].texto, "Há EPI adequado?");
+          for (const campo of ["tipo", "evidencia"]) assert.equal(campo in bloqueada.itens_reprovados[0], false);
+        }
+      }
     });
 
     it("a linha do tempo une APRs, execução, pausas, alertas e reprogramações em ordem cronológica", async () => {

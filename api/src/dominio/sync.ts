@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { apr, aprParticipante, atividade, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
+import { semClassificacao } from "./modelo-apr-banco";
 import { usuarioParaApi } from "./usuarios";
 
 const DIAS_DE_HISTORICO = 60;
@@ -64,7 +65,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
     execucoes: execucoes.map((e) => ({ ...e, pausas: pausas.filter((p) => p.execucaoId === e.id) })),
     locais,
     atividades,
-    modelosApr: modelos.map((m) => ({ ...m, riscos: riscos.filter((r) => r.modeloAprId === m.id), itens: itens.filter((i) => i.modeloAprId === m.id) })),
+    modelosApr: modelos.map((m) => ({ ...m, riscos: riscos.filter((r) => r.modeloAprId === m.id), itens: itens.filter((i) => i.modeloAprId === m.id).map(semClassificacao) })),
     usuarios: equipe.map((u) => usuarioParaApi(u, { semEmail: true })),
     cursor: agora.toISOString(),
   };

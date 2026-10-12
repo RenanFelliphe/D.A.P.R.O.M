@@ -7,7 +7,7 @@ import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeUsuarios, usuariosVisiveis } from "../dominio/busca";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
 import { equipeParaApi, gerarSenhaInicial, nomesDosCriadores, usuarioParaApi } from "../dominio/usuarios";
-import { equipesDoEscopo, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
+import { ehSupervisor, equipesDoEscopo, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
 import { codigoPostgres, conflito, invalido, naoEncontrado, proibido } from "../http/erros";
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
@@ -322,8 +322,11 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
           .orderBy(asc(usuario.nome))
       : [];
 
+    // O que cada pessoa fez (OS encerradas e tempo) é de quem acompanha a equipe, do admin e dela mesma: um técnico comum não
+    // vê o desempenho de um colega.
+    const verTrabalho = admin || alvo.id === eu.id || ehSupervisor(eu);
     const doAlvo = eq(execucao.executorId, alvo.id);
-    const [totais] = await deps.db
+    const [totais] = !verTrabalho ? [undefined] : await deps.db
       .select({
         encerradas: sql<number>`count(*) filter (where ${execucao.resultado} = 'encerrada')::int`,
         emAndamento: sql<number>`count(*) filter (where ${execucao.resultado} is null)::int`,
@@ -331,7 +334,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       })
       .from(execucao)
       .where(doAlvo);
-    const linhas = await deps.db
+    const linhas = !verTrabalho ? [] : await deps.db
       .select({
         id: execucao.id,
         osId: execucao.osId,
@@ -359,7 +362,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       equipe: dadosDaEquipe ? equipeParaApi(dadosDaEquipe) : null,
       supervisor: supervisor ?? null,
       membros,
-      resumo: { osEncerradas: totais?.encerradas ?? 0, emAndamento: totais?.emAndamento ?? 0, ultimaEncerradaEm: totais?.ultimaEm ?? null },
+      resumo: verTrabalho ? { osEncerradas: totais?.encerradas ?? 0, emAndamento: totais?.emAndamento ?? 0, ultimaEncerradaEm: totais?.ultimaEm ?? null } : null,
       execucoes,
     });
   });

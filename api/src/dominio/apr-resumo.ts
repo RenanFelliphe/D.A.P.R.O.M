@@ -92,6 +92,8 @@ export async function resumoDasAprs(db: Db, eu: UsuarioAutenticado, f: { periodo
       .filter((r) => r.tipo === tipo)
       .slice(0, ITENS_NO_RANKING)
       .map(({ modelo, texto, secao, total }) => ({ modelo, texto, secao, total }));
+  // Os rankings dizem quais itens são eliminatórios e quais são de alerta: só o admin, que edita os modelos, os vê.
+  const veClassificacao = eu.perfil === "admin";
 
   return {
     periodo: f.periodo,
@@ -102,13 +104,13 @@ export async function resumoDasAprs(db: Db, eu: UsuarioAutenticado, f: { periodo
       aprs: totais.aprovadas + totais.bloqueadas,
       ...totais,
       /** Vezes em que um item de alerta recebeu a resposta que o modelo marca (registrado, sem bloquear). */
-      alertas: reprovados.filter((r) => r.tipo === "alerta").reduce((soma, r) => soma + r.total, 0),
+      alertas: veClassificacao ? reprovados.filter((r) => r.tipo === "alerta").reduce((soma, r) => soma + r.total, 0) : null,
       semModeloLigado: semModelo?.total ?? 0,
     },
     anterior: { aprs: doAnterior.aprovadas + doAnterior.bloqueadas, bloqueadas: doAnterior.bloqueadas },
     serie,
-    itensQueBloqueiam: ranking("eliminatorio"),
-    alertasRegistrados: ranking("alerta"),
+    itensQueBloqueiam: veClassificacao ? ranking("eliminatorio") : null,
+    alertasRegistrados: veClassificacao ? ranking("alerta") : null,
     porModelo,
     porEquipe,
   };
