@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
 import {
@@ -28,6 +28,7 @@ import { podeVerEquipe, type UsuarioAutenticado } from "../http/autenticacao";
 import { conflito, naoEncontrado } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { enfileirarTarefa } from "../servicos/fila";
+import { buscaDeOs } from "./busca";
 import {
   condicaoEscopo,
   diaBr,
@@ -36,7 +37,6 @@ import {
   estaAtrasada,
   intervaloDoMes,
   ordenarPorInstante,
-  padraoContem,
   tempoDaExecucao,
   todas,
 } from "./painel-comum";
@@ -53,6 +53,7 @@ export interface FiltrosOs extends Paginacao {
   /** `true`: já exportada para o SAP; `false`: ainda não (a pré-visualização da exportação). */
   exportada?: boolean;
   numero_ordem?: string;
+  /** Número, título, código do local, nota ou cliente (ver `dominio/busca.ts`). */
   busca?: string;
 }
 
@@ -73,14 +74,7 @@ function condicoesDoQuadro(eu: UsuarioAutenticado, f: FiltrosOs, comStatus: bool
     comStatus && f.status ? eq(os.status, f.status) : undefined,
     f.exportada === undefined ? undefined : f.exportada ? isNotNull(os.exportadaSapEm) : isNull(os.exportadaSapEm),
     f.numero_ordem ? eq(os.numeroOrdem, f.numero_ordem.trim()) : undefined,
-    busca
-      ? or(
-          ilike(os.numeroOrdem, padraoContem(busca)),
-          ilike(os.titulo, padraoContem(busca)),
-          ilike(os.equipamento, padraoContem(busca)),
-          ilike(localInstalacao.codigo, padraoContem(busca)),
-        )
-      : undefined,
+    busca ? buscaDeOs(busca) : undefined,
   );
 }
 
@@ -114,6 +108,7 @@ export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosO
     .select({
       id: os.id,
       numeroOrdem: os.numeroOrdem,
+      numeroNota: os.numeroNota,
       tipo: os.tipo,
       titulo: os.titulo,
       status: os.status,
@@ -121,6 +116,7 @@ export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosO
       equipeNome: equipe.nome,
       localId: localInstalacao.id,
       localCodigo: localInstalacao.codigo,
+      localCliente: localInstalacao.cliente,
       localCritico: localInstalacao.critico,
       equipamento: os.equipamento,
       prioridade: os.prioridade,
@@ -158,12 +154,13 @@ export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosO
     itens: linhas.map((l) => ({
       id: l.id,
       numeroOrdem: l.numeroOrdem,
+      numeroNota: l.numeroNota,
       tipo: l.tipo,
       titulo: l.titulo,
       status: l.status,
       equipeId: l.equipeId,
       equipeNome: l.equipeNome,
-      localInstalacao: { id: l.localId, codigo: l.localCodigo, critico: l.localCritico },
+      localInstalacao: { id: l.localId, codigo: l.localCodigo, cliente: l.localCliente, critico: l.localCritico },
       equipamento: l.equipamento,
       prioridade: l.prioridade,
       dataInicioProg: l.dataInicioProg,

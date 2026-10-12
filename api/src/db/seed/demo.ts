@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNotNull, like, sql } from "drizzle-orm";
 import type { Deps } from "../../deps";
-import { gerarSenhaInicial } from "../../dominio/usuarios";
+import { emailDoNome, gerarSenhaInicial } from "../../dominio/usuarios";
 import { processarEventos } from "../../dominio/eventos";
 import type { UsuarioAutenticado } from "../../http/autenticacao";
-import { emailInterno } from "../../servicos/auth";
 import { enfileirarTarefa } from "../../servicos/fila";
 import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, reprogramacao, riscoModeloApr, usuario, type Perfil } from "../schema";
 import { assinaturaDemo, fotoDemo } from "./imagens-demo";
@@ -30,7 +29,7 @@ interface ModeloCarregado {
 
 export interface ResultadoDemo {
   jaPopulado: boolean;
-  usuariosCriados: { matricula: string; perfil: Perfil; senha: string }[];
+  usuariosCriados: { email: string; matricula: string; perfil: Perfil; senha: string }[];
   contagem: Record<string, number>;
 }
 
@@ -79,18 +78,19 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     let u = await carregarUsuario(matricula);
     if (!u) {
       const senha = gerarSenhaInicial();
-      const conta = await deps.auth.criarConta(emailInterno(matricula), senha);
+      const email = emailDoNome(nome);
+      const conta = await deps.auth.criarConta(email, senha);
       await db.insert(usuario).values({
         id: conta.id,
         nome,
         matricula,
-        email: perfil === "supervisor" ? `${matricula}@daprom.local` : null,
+        email,
         cargo,
         perfil,
         equipeId: centro ? equipes[centro]! : null,
         senhaProvisoria: true,
       });
-      criados.push({ matricula, perfil, senha });
+      criados.push({ email, matricula, perfil, senha });
       u = (await carregarUsuario(matricula))!;
     }
     usuarios[matricula] = u;
@@ -172,17 +172,17 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     fim?: number;
     atividade?: string | null;
     solicitante?: string | null;
-    origem?: "sap" | "planilha" | "manual";
+    origem?: "sap" | "planilha" | "apoio";
     apoioDe?: string;
   }
   const criarOs = async (d: DadosOs) => {
     const tipo = d.tipo ?? "corretiva";
-    const manual = d.origem === "manual";
+    const apoio = d.origem === "apoio";
     const [o] = await db
       .insert(os)
       .values({
-        numeroOrdem: manual ? null : String(numero++),
-        numeroNota: manual ? null : String(10_006_000 + numero),
+        numeroOrdem: apoio ? null : String(numero++),
+        numeroNota: apoio ? null : String(10_006_000 + numero),
         tipo,
         tipoAtividade: tipo === "corretiva" ? "Z01-Manutenção Corretiva" : "Z02-Manutenção Preventiva",
         codigoAtividade: d.atividade ?? null,
@@ -191,14 +191,14 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
         equipamento: d.equipamento ?? null,
         localInstalacaoId: d.local,
         equipeId: d.equipe ?? equipes.SERV_ESP!,
-        planoManutencao: tipo === "preventiva" && !manual ? "10573" : null,
-        itemManutencao: tipo === "preventiva" && !manual ? "10603" : null,
+        planoManutencao: tipo === "preventiva" && !apoio ? "10573" : null,
+        itemManutencao: tipo === "preventiva" && !apoio ? "10603" : null,
         prioridade: d.prioridade ?? "Médio",
         dataInicioProg: dia(d.inicio),
         dataFimProg: d.fim === undefined ? null : dia(d.fim),
         dataOrdem: dia(d.inicio + 10),
-        criadoPorSap: manual ? null : "RFAVARO",
-        statusSap: manual ? null : "LIB IMPR",
+        criadoPorSap: apoio ? null : "RFAVARO",
+        statusSap: apoio ? null : "LIB IMPR",
         solicitante: d.solicitante ?? null,
         osOrigemId: d.apoioDe ?? null,
         origem: d.origem ?? "sap",
@@ -371,7 +371,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const idOriginal = await criarOs({ titulo: "Reaperto de bornes em painel de retificação", equipamento: "Painel PN-14", local: L.erp, prioridade: "Muito alto", inicio: 3, fim: 2 });
   apr = await aprovar(tec1, idOriginal, apr01, dupla, em(2, 9, 0));
   await executar(tec1, idOriginal, apr, dupla, { inicio: em(2, 9, 15), duracaoMin: 40, resultado: "interrompida", motivo: "Umidade no painel com risco de curto-circuito; atividade interrompida até a secagem." });
-  const idApoio = await criarOs({ titulo: "Apoio: secagem e inspeção elétrica do painel PN-14", equipamento: "Painel PN-14", local: L.erp, equipe: equipes.INSTRUM, prioridade: "Muito alto", inicio: 2, fim: 1, apoioDe: idOriginal, origem: "manual" });
+  const idApoio = await criarOs({ titulo: "Apoio: secagem e inspeção elétrica do painel PN-14", equipamento: "Painel PN-14", local: L.erp, equipe: equipes.INSTRUM, prioridade: "Muito alto", inicio: 2, fim: 1, apoioDe: idOriginal, origem: "apoio" });
   apr = await aprovar(tec3, idApoio, apr01, duplaI, em(1, 8, 40));
   await executar(tec3, idApoio, apr, duplaI, { inicio: em(1, 8, 55), duracaoMin: 150, fotos: 2, descricao: "Painel seco e inspecionado; isolação medida e liberada para a equipe de Serviços Especiais retomar." });
 
@@ -403,6 +403,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     { titulo: "Manutenção de válvulas em ponto de recebimento", tipo: "preventiva", equipamento: "Válvula VB-21", local: L.pr, prioridade: "Muito alto", inicio: -3, fim: -4, atividade: ativ[2] },
     { titulo: "Inspeção de rede de distribuição", tipo: "preventiva", equipamento: "Rede RD-118", local: L.lin, prioridade: "Baixo", inicio: -6, fim: -8, atividade: ativ[3] },
     { titulo: "Verificação de vazamento reportado por cliente", equipamento: "Ramal residencial", local: L.sul, prioridade: "Muito alto", inicio: 0, fim: 0, solicitante: "Cliente: Condomínio Jardins" },
+    { titulo: "Corretiva urgente: odor de gás em quadra residencial", equipamento: "Rede RD-077", local: L.vv, prioridade: "Muito alto", inicio: 0, fim: 0, solicitante: "Corpo de Bombeiros" },
     { titulo: "Calibração de manômetros da estação", tipo: "preventiva", equipamento: "Manômetros MN-04/05/06", local: L.vit, equipe: equipes.INSTRUM, prioridade: "Médio", inicio: 2, fim: 1 },
     { titulo: "Troca de transmissor de temperatura", equipamento: "Transmissor TT-22", local: L.cari, equipe: equipes.INSTRUM, prioridade: "Alto", inicio: -1, fim: -2 },
     { titulo: "Coleta e análise de amostra de gás", tipo: "preventiva", equipamento: "Cromatógrafo CG-01", local: L.sul, equipe: equipes.LAB_QUI, prioridade: "Médio", inicio: -2, fim: -3 },
@@ -415,10 +416,9 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   await db.insert(reprogramacao).values({ osId: reprog, usuarioId: ana.id, dataAnterior: dia(5), dataNova: dia(-2), equipeAnteriorId: equipes.SERV_ESP!, equipeNovaId: equipes.SERV_ESP!, justificativa: "Aguardando liberação de acesso à estação pelo cliente." });
   await db.update(os).set({ dataInicioProg: dia(-2), dataFimProg: dia(-3) }).where(eq(os.id, reprog));
 
-  // ================= MANUAIS ========================================================================================
-  await criarOs({ titulo: "Corretiva urgente: odor de gás em quadra residencial", equipamento: "Rede RD-077", local: L.vv, prioridade: "Muito alto", inicio: 0, fim: 0, origem: "manual", solicitante: "Corpo de Bombeiros" });
-  const cancelada = await criarOs({ titulo: "Corretiva aberta em duplicidade", local: L.gua, prioridade: "Baixo", inicio: 4, fim: 4, origem: "manual" });
-  await db.update(os).set({ status: "cancelada", canceladaEm: minutosAtras(60 * 24 * 3), canceladaPor: ana.id, justificativaCancelamento: "OS aberta em duplicidade; a original segue em andamento." }).where(eq(os.id, cancelada));
+  // ================= APOIO CANCELADO ================================================================================
+  const cancelada = await criarOs({ titulo: "Apoio aberto em duplicidade", local: L.erp, equipe: equipes.INSTRUM, prioridade: "Baixo", inicio: 4, fim: 4, apoioDe: idOriginal, origem: "apoio" });
+  await db.update(os).set({ status: "cancelada", canceladaEm: minutosAtras(60 * 24 * 3), canceladaPor: ana.id, justificativaCancelamento: "Apoio aberto em duplicidade; o primeiro segue em andamento." }).where(eq(os.id, cancelada));
 
   // ================= ALERTAS: parte já lida =========================================================================
   const lidos = await db.select({ id: alerta.id }).from(alerta).orderBy(alerta.criadoEm);

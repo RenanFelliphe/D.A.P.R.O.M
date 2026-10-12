@@ -9,7 +9,7 @@ export interface UsuarioAutenticado {
   id: string;
   nome: string;
   matricula: string;
-  email: string | null;
+  email: string;
   perfil: Perfil;
   equipeId: string | null;
   ativo: boolean;

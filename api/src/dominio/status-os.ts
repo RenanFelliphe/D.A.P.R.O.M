@@ -4,7 +4,7 @@ import { apr, execucao, os, type OsStatus } from "../db/schema";
 
 /**
  * Deriva o `status` da OS a partir das APRs e Execuções (Decisão-chave 3: nenhum cliente o grava), nesta ordem:
- * `cancelada` se já foi cancelada (SAP ou OS manual, e fica); `encerrada` se há Execução encerrada; `em_execucao` se há
+ * `cancelada` se já foi cancelada (SAP ou OS de apoio, e fica); `encerrada` se há Execução encerrada; `em_execucao` se há
  * Execução em andamento (inclui em pausa); `pendente` se há APR bloqueada, ou Execução interrompida ou suspensa;
  * `liberada` nos demais casos. A Execução cancelada por engano não conta, então a OS volta ao status anterior.
  */

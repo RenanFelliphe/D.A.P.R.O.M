@@ -43,7 +43,7 @@ export function paginaApr(c: Cursor, d: DadosPdf) {
   cabecalho(c, `ANÁLISE PRELIMINAR DE RISCO — ${d.modelo.codigo}\n${d.modelo.titulo}`, `Versão ${String(d.modelo.versao).padStart(2, "0")}\nData: ${dataIsoBr(d.modelo.dataDocumento)}`);
 
   linhaDeCelulas(c, [
-    { fracao: 0.25, rotulo: "ORDEM", valor: d.os.numeroOrdem ?? "OS manual (sem ordem SAP)", negrito: true },
+    { fracao: 0.25, rotulo: "ORDEM", valor: d.os.numeroOrdem ?? "OS de apoio (sem ordem SAP)", negrito: true },
     { fracao: 0.45, rotulo: "INSTALAÇÃO / LOCAL", valor: d.local.codigo },
     { fracao: 0.15, rotulo: "DATA", valor: dataBr(d.apr.concluidaEm) },
     { fracao: 0.15, rotulo: "HORA", valor: horaBr(d.apr.concluidaEm) },

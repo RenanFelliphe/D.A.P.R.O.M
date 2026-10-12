@@ -25,9 +25,10 @@ export const usuario = pgTable(
     /** = id do Supabase Auth: a api o informa, não há default. */
     id: uuid().primaryKey(),
     nome: text().notNull(),
-    /** É o login; no Supabase Auth vira `<matrícula>@daprom.local`. */
+    /** Identificação definitiva da pessoa na empresa (PDF e SAP); não é o login. */
     matricula: text().notNull().unique(),
-    email: text(),
+    /** E-mail institucional, sempre em minúsculas: é o login (o mesmo e-mail da conta no Supabase Auth) e o destino dos alertas. */
+    email: text().notNull().unique(),
     /** Aparece sob a assinatura na OS impressa, ex.: Técnico em Elétrica, Engenheiro Mecânico. */
     cargo: text(),
     /** Registro profissional impresso na OS (CREA), ex.: ES-050003/D. */
@@ -42,7 +43,7 @@ export const usuario = pgTable(
   },
   (t) => [
     check("usuario_perfil_check", emLista(t.perfil, PERFIS)),
-    check("usuario_supervisor_com_email", sql`${t.perfil} <> 'supervisor' or ${t.email} is not null`),
+    check("usuario_email_minusculo", sql`${t.email} = lower(${t.email})`),
     check("usuario_assinatura_completa", sql`(${t.assinaturaPath} is null) = (${t.assinaturaEm} is null)`),
     index("usuario_equipe_idx").on(t.equipeId).where(sql`${t.ativo}`),
     index("usuario_perfil_idx").on(t.perfil).where(sql`${t.ativo}`),

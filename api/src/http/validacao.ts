@@ -6,6 +6,9 @@ z.config(z.locales.pt());
 
 export const uuid = z.string().uuid();
 
+/** E-mail institucional: é o login, então vale em minúsculas e sem espaços nas pontas (como é gravado e comparado). */
+export const emailInstitucional = z.string().trim().toLowerCase().email("E-mail inválido");
+
 function falhar(erro: z.ZodError): never {
   const primeira = erro.issues[0];
   const campo = primeira?.path.join(".");

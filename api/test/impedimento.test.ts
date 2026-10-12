@@ -6,11 +6,13 @@ import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 const ID_INEXISTENTE = "00000000-0000-4000-8000-000000000000";
 
-describe("Impedimento: reprogramar, cancelar OS manual e alertas", () => {
+describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
   let amb: Ambiente;
   let equipeA: string;
   let equipeB: string;
   let localId: string;
+  /** OS lida do SAP que as OS de apoio destes testes destravam. */
+  let osOrigemId: string;
   let supervisorA: UsuarioDeTeste;
   let supervisorB: UsuarioDeTeste;
   let analista: UsuarioDeTeste;
@@ -31,16 +33,21 @@ describe("Impedimento: reprogramar, cancelar OS manual e alertas", () => {
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA });
     const [local] = await amb.db.insert(localInstalacao).values({ codigo: "LOCAL/TESTE" }).returning({ id: localInstalacao.id });
     localId = local!.id;
+    const [origem] = await amb.db
+      .insert(os)
+      .values({ numeroOrdem: "3999999", tipo: "corretiva", titulo: "OS de origem", localInstalacaoId: localId, equipeId: equipeA, dataInicioProg: "2026-10-20", origem: "sap" })
+      .returning({ id: os.id });
+    osOrigemId = origem!.id;
   });
   after(() => amb.fechar());
 
-  async function criarOs(o: { equipeId?: string; status?: OsStatus; origem?: "sap" | "manual"; inicio?: string; fim?: string | null } = {}) {
+  async function criarOs(o: { equipeId?: string; status?: OsStatus; origem?: "sap" | "apoio"; inicio?: string; fim?: string | null } = {}) {
     contador++;
-    const origem = o.origem ?? "manual";
+    const origem = o.origem ?? "apoio";
     const [linha] = await amb.db
       .insert(os)
       .values({
-        numeroOrdem: origem === "manual" ? null : `4000${contador}`,
+        numeroOrdem: origem === "apoio" ? null : `4000${contador}`,
         tipo: "corretiva",
         titulo: `OS de teste ${contador}`,
         localInstalacaoId: localId,
@@ -49,6 +56,7 @@ describe("Impedimento: reprogramar, cancelar OS manual e alertas", () => {
         dataFimProg: o.fim === undefined ? null : o.fim,
         status: o.status ?? "liberada",
         origem,
+        osOrigemId: origem === "apoio" ? osOrigemId : null,
       })
       .returning();
     return linha!;
@@ -199,7 +207,7 @@ describe("Impedimento: reprogramar, cancelar OS manual e alertas", () => {
   });
 
   describe("POST /os/:id/cancelar", () => {
-    it("analista cancela OS manual liberada ou pendente e grava quem, quando e por quê", async () => {
+    it("analista cancela OS de apoio liberada ou pendente e grava quem, quando e por quê", async () => {
       for (const status of ["liberada", "pendente"] as const) {
         const o = await criarOs({ status });
         const r = await amb.esperar(200, "POST", `/os/${o.id}/cancelar`, { como: analista, json: { justificativa: "  Aberta em duplicidade " } });
@@ -222,7 +230,7 @@ describe("Impedimento: reprogramar, cancelar OS manual e alertas", () => {
       const o = await criarOs({ origem: "sap" });
       const r = await amb.req("POST", `/os/${o.id}/cancelar`, { como: analista, json: { justificativa: "x" } });
       assert.equal(r.status, 422);
-      assert.equal(r.corpo.erro.mensagem, "Só OS manual pode ser cancelada pelo sistema");
+      assert.equal(r.corpo.erro.mensagem, "Só OS de apoio pode ser cancelada pelo sistema");
       assert.equal((await lerOs(o.id)).status, "liberada");
     });
 

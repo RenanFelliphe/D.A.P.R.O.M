@@ -6,7 +6,8 @@ import { equipe, usuario } from "./usuarios";
 
 export const OS_TIPOS = ["corretiva", "preventiva"] as const;
 export const OS_STATUS = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada"] as const;
-export const OS_ORIGENS = ["sap", "planilha", "manual"] as const;
+/** A OS entra pela leitura do SAP ou pela planilha; só a de apoio nasce no sistema, ligada à OS que ela destrava. */
+export const OS_ORIGENS = ["sap", "planilha", "apoio"] as const;
 export const IMPORTACAO_ORIGENS = ["api", "planilha"] as const;
 
 export type OsStatus = (typeof OS_STATUS)[number];
@@ -31,7 +32,7 @@ export const os = pgTable(
   "os",
   {
     id: uuid().primaryKey().defaultRandom(),
-    /** Ordem SAP; a manual sem SAP fica nula. */
+    /** Ordem SAP; a OS de apoio, que o SAP ainda não conhece, fica nula. */
     numeroOrdem: text().unique(),
     numeroNota: text(),
     /** `corretiva` (YBA1) ou `preventiva` (YBA2). */
@@ -72,7 +73,7 @@ export const os = pgTable(
     statusSap: text(),
     /** Geralmente vazio; aparece no PDF quando existe. */
     solicitante: text(),
-    /** Preenchido em OS de apoio. */
+    /** Preenchido só na OS de apoio (`origem = 'apoio'`): a OS que ela destrava. */
     osOrigemId: uuid().references((): AnyPgColumn => os.id),
     origem: text({ enum: OS_ORIGENS }).notNull(),
     /** PDF da OS no bucket `pdfs`; um por OS. */
@@ -81,7 +82,7 @@ export const os = pgTable(
     cienciaPor: uuid().references(() => usuario.id),
     cienciaEm: instante(),
     exportadaSapEm: instante(),
-    /** Cancelamento: a OS manual é cancelada na web com justificativa; quando o SAP cancela, só `canceladaEm` é preenchido. */
+    /** Cancelamento: a OS de apoio é cancelada na web com justificativa; quando o SAP cancela, só `canceladaEm` é preenchido. */
     canceladaEm: instante(),
     canceladaPor: uuid().references(() => usuario.id),
     justificativaCancelamento: text(),
@@ -92,7 +93,8 @@ export const os = pgTable(
     check("os_tipo_check", emLista(t.tipo, OS_TIPOS)),
     check("os_status_check", emLista(t.status, OS_STATUS)),
     check("os_origem_check", emLista(t.origem, OS_ORIGENS)),
-    check("os_numero_ordem_obrigatorio", sql`${t.numeroOrdem} is not null or ${t.origem} = 'manual'`),
+    check("os_numero_ordem_obrigatorio", sql`${t.numeroOrdem} is not null or ${t.origem} = 'apoio'`),
+    check("os_apoio_ligada", sql`(${t.origem} = 'apoio') = (${t.osOrigemId} is not null)`),
     check("os_datas_programadas", sql`${t.dataFimProg} is null or ${t.dataFimProg} >= ${t.dataInicioProg}`),
     check("os_apoio_nao_aponta_para_si", sql`${t.osOrigemId} is null or ${t.osOrigemId} <> ${t.id}`),
     check("os_ciencia_completa", sql`(${t.cienciaPor} is null) = (${t.cienciaEm} is null)`),

@@ -33,3 +33,19 @@ export function gerarSenhaInicial(tamanho = 10): string {
   for (let i = 0; i < tamanho; i++) senha += ALFABETO[randomInt(ALFABETO.length)];
   return senha;
 }
+
+/** Domínio do e-mail institucional dos dados fictícios (demonstração e modo local). */
+export const DOMINIO_DEMO = "empresa.com.br";
+
+/** E-mail no padrão da empresa, primeiro nome e último sobrenome (`Sandra Supervisora` → `sandra.supervisora@empresa.com.br`). */
+export function emailDoNome(nome: string, dominio = DOMINIO_DEMO): string {
+  const partes = nome
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .split(/\s+/)
+    .map((p) => p.replace(/[^a-z0-9]/g, ""))
+    .filter(Boolean);
+  const local = partes.length > 1 ? `${partes[0]}.${partes[partes.length - 1]}` : (partes[0] ?? "usuario");
+  return `${local}@${dominio}`;
+}

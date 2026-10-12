@@ -23,7 +23,8 @@ import { carregarDadosIniciais } from "./db/seed/carregar";
 import type { Deps } from "./deps";
 import { executarLeitura } from "./servicos/leitura-sap";
 import { ArmazenamentoEmMemoria } from "./servicos/armazenamento";
-import { AuthEmMemoria, emailInterno } from "./servicos/auth";
+import { DOMINIO_DEMO, emailDoNome } from "./dominio/usuarios";
+import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
@@ -81,13 +82,16 @@ async function main() {
   const assinaturaId = "00000000-0000-4000-8000-000000000001";
   await armazenamento.gravar("assinaturas", assinaturaId, PNG, "image/png");
 
+  const logins: string[] = [];
   async function criar(matricula: string, nome: string, perfil: Perfil, centro: string | null, extra: { cargo?: string; email?: string } = {}) {
-    const conta = await auth.criarConta(emailInterno(matricula), SENHA);
+    const email = extra.email ?? emailDoNome(nome);
+    const conta = await auth.criarConta(email, SENHA);
+    logins.push(`${email} (${perfil})`);
     await db.insert(usuario).values({
       id: conta.id,
       nome,
       matricula,
-      email: extra.email ?? (perfil === "supervisor" ? `${matricula}@daprom.local` : null),
+      email,
       cargo: extra.cargo ?? null,
       perfil,
       equipeId: centro ? equipes[centro]! : null,
@@ -98,7 +102,7 @@ async function main() {
     return conta.id;
   }
 
-  await criar("adm", "Administrador", "admin", null);
+  await criar("adm", "Administrador", "admin", null, { email: `admin@${DOMINIO_DEMO}` });
   await criar("ana", "Ana Analista", "analista", null);
   await criar("seg", "Sérgio Segurança", "seguranca", null);
   const sup1 = await criar("sup1", "Sandra Supervisora", "supervisor", "SERV_ESP");
@@ -121,7 +125,7 @@ async function main() {
   serve({ fetch: raiz.fetch, port: PORTA }, async ({ port }) => {
     const leitura = await executarLeitura(deps, {});
     console.log(`api local em http://localhost:${port} — OS do SAP simulado: ${leitura.criadas} novas, ${leitura.atualizadas} atualizadas`);
-    console.log(`Usuários (senha ${SENHA}): adm, ana, seg, sup1, sup2, tec1, tec2, tec3`);
+    console.log(`Usuários (senha ${SENHA}):\n  ${logins.join("\n  ")}`);
   });
   process.on("SIGINT", () => {
     parar();

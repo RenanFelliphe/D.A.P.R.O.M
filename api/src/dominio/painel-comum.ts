@@ -104,7 +104,4 @@ export const arredondar = (valor: number, casas = 1) => {
   return Math.round(valor * f) / f;
 };
 
-/** Escapa `%`, `_` e `\` para uma busca `ilike` literal. */
-export const padraoContem = (texto: string) => `%${texto.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-
 export const ordenarPorInstante = <T extends { em: Date }>(itens: T[]) => itens.map((item, i) => ({ item, i })).sort((a, b) => a.item.em.getTime() - b.item.em.getTime() || a.i - b.i).map((x) => x.item);

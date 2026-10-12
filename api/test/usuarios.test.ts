@@ -27,7 +27,7 @@ describe("Plataforma, usuários e equipes", () => {
   });
 
   it("recusa perfil sem permissão (403) e aceita o admin", async () => {
-    const corpo = { nome: "Maria", matricula: "M900", perfil: "tecnico", senha_inicial: "senha-inicial-1" };
+    const corpo = { nome: "Maria Souza", matricula: "M900", email: "maria.souza@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" };
     assert.equal((await amb.req("POST", "/usuarios", { como: tecnico, json: corpo })).status, 403);
     const criado = await amb.esperar(201, "POST", "/usuarios", { como: admin, json: corpo });
     assert.match(criado.id, /^[0-9a-f-]{36}$/);
@@ -36,25 +36,38 @@ describe("Plataforma, usuários e equipes", () => {
   it("matrícula repetida é 409, sem diferenciar maiúsculas", async () => {
     const r = await amb.req("POST", "/usuarios", {
       como: admin,
-      json: { nome: "Outra", matricula: "m900", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
+      json: { nome: "Outra Pessoa", matricula: "m900", email: "outra.pessoa@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
     });
     assert.equal(r.status, 409);
     assert.equal(r.corpo.erro.codigo, "matricula_duplicada");
     assert.equal(r.corpo.erro.mensagem, "Matrícula já cadastrada");
   });
 
-  it("valida o corpo: supervisor sem e-mail e matrícula com caracteres inválidos", async () => {
+  it("e-mail repetido é 409, sem diferenciar maiúsculas", async () => {
+    const r = await amb.req("POST", "/usuarios", {
+      como: admin,
+      json: { nome: "Maria Souza", matricula: "M901", email: "Maria.Souza@Empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
+    });
+    assert.equal(r.status, 409);
+    assert.equal(r.corpo.erro.codigo, "email_duplicado");
+  });
+
+  it("valida o corpo: o e-mail é obrigatório (inclusive do supervisor) e precisa ser um e-mail", async () => {
     const semEmail = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", matricula: "S1", perfil: "supervisor", senha_inicial: "senha-inicial-1" } });
     assert.equal(semEmail.status, 422);
-    const ruim = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", matricula: "a b@c", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
+    assert.equal(semEmail.corpo.erro.codigo, "validacao");
+    const ruim = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", matricula: "S2", email: "isto não é e-mail", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
     assert.equal(ruim.status, 422);
     assert.equal(ruim.corpo.erro.codigo, "validacao");
+    const semMatricula = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", email: "s@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
+    assert.equal(semMatricula.status, 422);
   });
 
   it("primeiro login com senha inicial: entra, mas só troca a senha", async () => {
-    const login = await amb.esperar(200, "POST", "/auth/login", { json: { matricula: "M900", senha: "senha-inicial-1" } });
+    const login = await amb.esperar(200, "POST", "/auth/login", { json: { email: "maria.souza@empresa.com.br", senha: "senha-inicial-1" } });
     assert.equal(login.senha_provisoria, true);
     assert.equal(login.usuario.matricula, "M900");
+    assert.equal(login.usuario.email, "maria.souza@empresa.com.br");
     const novo: UsuarioDeTeste = { ...tecnico, token: login.access_token };
 
     assert.equal((await amb.req("GET", "/equipes", { como: novo })).status, 403);
@@ -69,20 +82,60 @@ describe("Plataforma, usuários e equipes", () => {
     await amb.esperar(200, "POST", "/auth/trocar-senha", { como: novo, json: { senha_atual: "senha-inicial-1", senha_nova: "outra-senha-9" } });
 
     await amb.esperar(200, "GET", "/equipes", { como: novo });
-    assert.equal((await amb.req("POST", "/auth/login", { json: { matricula: "M900", senha: "senha-inicial-1" } })).status, 401);
-    const de_novo = await amb.esperar(200, "POST", "/auth/login", { json: { matricula: "m900", senha: "outra-senha-9" } });
+    assert.equal((await amb.req("POST", "/auth/login", { json: { email: "maria.souza@empresa.com.br", senha: "senha-inicial-1" } })).status, 401);
+    const de_novo = await amb.esperar(200, "POST", "/auth/login", { json: { email: "Maria.Souza@empresa.com.br", senha: "outra-senha-9" } });
     assert.equal(de_novo.senha_provisoria, false);
   });
 
-  it("login com senha errada ou matrícula desconhecida é 401 com a mesma mensagem", async () => {
-    const a = await amb.req("POST", "/auth/login", { json: { matricula: tecnico.matricula, senha: "nao-e-essa" } });
-    const b = await amb.req("POST", "/auth/login", { json: { matricula: "naoexiste", senha: "x" } });
-    assert.equal(a.status, 401);
-    assert.deepEqual(a.corpo, b.corpo);
+  it("login: e-mail não cadastrado é `usuario_inexistente`, senha errada é `senha_incorreta` (ambos 401); a matrícula não é login", async () => {
+    const semUsuario = await amb.req("POST", "/auth/login", { json: { email: "nao.existe@empresa.com.br", senha: "x" } });
+    assert.equal(semUsuario.status, 401);
+    assert.equal(semUsuario.corpo.erro.codigo, "usuario_inexistente");
+    const senhaErrada = await amb.req("POST", "/auth/login", { json: { email: tecnico.email, senha: "nao-e-essa" } });
+    assert.equal(senhaErrada.status, 401);
+    assert.equal(senhaErrada.corpo.erro.codigo, "senha_incorreta");
+    assert.equal((await amb.req("POST", "/auth/login", { json: { email: tecnico.matricula, senha: SENHA_PADRAO } })).status, 422);
+  });
+
+  it("PATCH /usuarios: trocar o e-mail muda o login, mantém a senha e recusa e-mail já usado", async () => {
+    const alvo = await amb.criarUsuario({ perfil: "tecnico", equipeId });
+    const outro = await amb.criarUsuario({ perfil: "tecnico", equipeId });
+    const novo = `${alvo.matricula.toLowerCase()}.novo@empresa.com.br`;
+    const dup = await amb.req("PATCH", `/usuarios/${alvo.id}`, { como: admin, json: { email: outro.email.toUpperCase() } });
+    assert.equal(dup.status, 409);
+    assert.equal(dup.corpo.erro.codigo, "email_duplicado");
+    await amb.esperar(200, "PATCH", `/usuarios/${alvo.id}`, { como: admin, json: { email: novo } });
+    assert.equal((await amb.req("POST", "/auth/login", { json: { email: alvo.email, senha: SENHA_PADRAO } })).status, 401);
+    const login = await amb.esperar(200, "POST", "/auth/login", { json: { email: novo, senha: SENHA_PADRAO } });
+    assert.equal(login.usuario.email, novo);
+  });
+
+  it("DELETE /usuarios: só o admin remove; some do banco e do login; não remove a si mesmo", async () => {
+    const alvo = await amb.criarUsuario({ perfil: "tecnico", equipeId });
+    assert.equal((await amb.req("DELETE", `/usuarios/${alvo.id}`, { como: tecnico })).status, 403);
+    assert.equal((await amb.req("DELETE", `/usuarios/${admin.id}`, { como: admin })).status, 422);
+    assert.equal((await amb.req("DELETE", `/usuarios/${crypto.randomUUID()}`, { como: admin })).status, 404);
+
+    await amb.esperar(200, "DELETE", `/usuarios/${alvo.id}`, { como: admin });
+    const lista = await amb.esperar(200, "GET", "/usuarios", { como: admin, consulta: { tamanho: 200 } });
+    assert.ok(!lista.usuarios.some((u: any) => u.id === alvo.id));
+    const login = await amb.req("POST", "/auth/login", { json: { email: alvo.email, senha: SENHA_PADRAO } });
+    assert.equal(login.corpo.erro.codigo, "usuario_inexistente");
+    assert.equal(await amb.auth.entrar(alvo.email, SENHA_PADRAO), null, "a conta de acesso também foi removida");
+  });
+
+  it("DELETE /usuarios: quem já tem histórico (supervisor de equipe) não é removido: 409 e continua cadastrado", async () => {
+    const equipe = await amb.criarEquipe();
+    const sup = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipe.id });
+    await amb.esperar(200, "PATCH", `/equipes/${equipe.id}`, { como: admin, json: { supervisor_id: sup.id } });
+    const r = await amb.req("DELETE", `/usuarios/${sup.id}`, { como: admin });
+    assert.equal(r.status, 409);
+    assert.equal(r.corpo.erro.codigo, "usuario_com_historico");
+    await amb.esperar(200, "POST", "/auth/login", { json: { email: sup.email, senha: SENHA_PADRAO } });
   });
 
   it("refresh devolve novo token", async () => {
-    const login = await amb.esperar(200, "POST", "/auth/login", { json: { matricula: tecnico.matricula, senha: SENHA_PADRAO } });
+    const login = await amb.esperar(200, "POST", "/auth/login", { json: { email: tecnico.email, senha: SENHA_PADRAO } });
     const novo = await amb.esperar(200, "POST", "/auth/refresh", { json: { refresh_token: login.refresh_token } });
     assert.ok(novo.access_token);
     assert.equal((await amb.req("POST", "/auth/refresh", { json: { refresh_token: "invalido" } })).status, 401);
@@ -132,6 +185,90 @@ describe("Plataforma, usuários e equipes", () => {
     assert.ok(colega.id);
   });
 
+  it("GET /usuarios?busca: acha por nome, matrícula ou e-mail (o técnico também, sem receber o e-mail) e respeita o escopo do técnico", async () => {
+    const alvo = await amb.criarUsuario({ perfil: "tecnico", equipeId, nome: "Zeferino Buscável" });
+    const porNome = await amb.esperar(200, "GET", "/usuarios", { como: admin, consulta: { busca: "zeferino" } });
+    assert.deepEqual(porNome.usuarios.map((u: any) => u.id), [alvo.id]);
+    const porMatricula = await amb.esperar(200, "GET", "/usuarios", { como: admin, consulta: { busca: alvo.matricula } });
+    assert.ok(porMatricula.usuarios.some((u: any) => u.id === alvo.id));
+    const porEmail = await amb.esperar(200, "GET", "/usuarios", { como: admin, consulta: { busca: alvo.email } });
+    assert.ok(porEmail.usuarios.some((u: any) => u.id === alvo.id));
+    // o curinga do ilike não vaza: "%" é buscado como texto
+    assert.equal((await amb.esperar(200, "GET", "/usuarios", { como: admin, consulta: { busca: "%" } })).usuarios.length, 0);
+    // o técnico acha o colega pelo e-mail, mas a resposta continua sem e-mail
+    const doTecnico = await amb.esperar(200, "GET", "/usuarios", { como: tecnico, consulta: { busca: alvo.email } });
+    assert.deepEqual(doTecnico.usuarios.map((u: any) => u.id), [alvo.id]);
+    assert.ok(!("email" in doTecnico.usuarios[0]));
+    // de outra equipe, nem pelo e-mail
+    const deFora = await amb.criarUsuario({ perfil: "tecnico", equipeId: (await amb.criarEquipe()).id });
+    assert.equal((await amb.esperar(200, "GET", "/usuarios", { como: tecnico, consulta: { busca: deFora.email } })).usuarios.length, 0);
+  });
+
+  it("GET /usuarios/{id}: perfil com equipe e membros; e-mail e contas inativas só para o admin; fora do escopo é 404", async () => {
+    const colega = await amb.criarUsuario({ perfil: "tecnico", equipeId, nome: "Colega de Perfil" });
+    const inativo = await amb.criarUsuario({ perfil: "tecnico", equipeId, nome: "Perfil Inativo", ativo: false });
+    const outraEquipe = await amb.criarEquipe();
+    const de_fora = await amb.criarUsuario({ perfil: "tecnico", equipeId: outraEquipe.id, nome: "Perfil de Fora" });
+
+    const doAdmin = await amb.esperar(200, "GET", `/usuarios/${colega.id}`, { como: admin });
+    assert.equal(doAdmin.usuario.id, colega.id);
+    assert.ok(doAdmin.usuario.email);
+    assert.equal(doAdmin.equipe.id, equipeId);
+    assert.ok(doAdmin.membros.some((m: any) => m.id === colega.id));
+    assert.ok(Array.isArray(doAdmin.execucoes));
+    assert.equal(doAdmin.resumo.os_encerradas, 0);
+    await amb.esperar(200, "GET", `/usuarios/${inativo.id}`, { como: admin });
+
+    const doTecnico = await amb.esperar(200, "GET", `/usuarios/${colega.id}`, { como: tecnico });
+    assert.ok(!("email" in doTecnico.usuario));
+    assert.equal((await amb.req("GET", `/usuarios/${inativo.id}`, { como: tecnico })).status, 404);
+    assert.equal((await amb.req("GET", `/usuarios/${de_fora.id}`, { como: tecnico })).status, 404);
+    assert.equal((await amb.req("GET", `/usuarios/${crypto.randomUUID()}`, { como: admin })).status, 404);
+  });
+
+  it("GET /equipes/{id}: perfil da equipe com supervisor, membros e OS; técnico de outra equipe leva 404", async () => {
+    const outra = await amb.criarEquipe();
+    const dela = await amb.criarUsuario({ perfil: "tecnico", equipeId: outra.id, nome: "Membro da Outra" });
+    const inativo = await amb.criarUsuario({ perfil: "tecnico", equipeId: outra.id, nome: "Membro Inativo", ativo: false });
+
+    const doAdmin = await amb.esperar(200, "GET", `/equipes/${outra.id}`, { como: admin });
+    assert.equal(doAdmin.equipe.id, outra.id);
+    const idsDoAdmin = doAdmin.membros.map((m: any) => m.id);
+    assert.ok(idsDoAdmin.includes(dela.id) && idsDoAdmin.includes(inativo.id));
+    assert.ok(Array.isArray(doAdmin.os_recentes));
+    assert.equal(typeof doAdmin.total_os, "number");
+    assert.ok("liberada" in doAdmin.contagem_por_status);
+
+    const propria = await amb.esperar(200, "GET", `/equipes/${equipeId}`, { como: tecnico });
+    assert.equal(propria.equipe.id, equipeId);
+    assert.equal((await amb.req("GET", `/equipes/${outra.id}`, { como: tecnico })).status, 404);
+    assert.equal((await amb.req("GET", `/equipes/${crypto.randomUUID()}`, { como: admin })).status, 404);
+  });
+
+  it("GET /equipes?busca: acha por nome ou centro de trabalho, com membros; técnico só vê a própria equipe", async () => {
+    const [propria] = (await amb.esperar(200, "GET", "/equipes", { como: admin, consulta: { tamanho: 200 } })).equipes.filter((e: any) => e.id === equipeId);
+    const doAdmin = await amb.esperar(200, "GET", "/equipes", { como: admin, consulta: { busca: propria.nome } });
+    const achada = doAdmin.equipes.find((e: any) => e.id === equipeId);
+    assert.ok(achada);
+    assert.equal(typeof achada.total_membros, "number");
+    assert.ok("supervisor_nome" in achada);
+    const porCentro = await amb.esperar(200, "GET", "/equipes", { como: admin, consulta: { busca: propria.centro_trabalho } });
+    assert.ok(porCentro.equipes.some((e: any) => e.id === equipeId));
+    assert.equal((await amb.esperar(200, "GET", "/equipes", { como: admin, consulta: { busca: "%" } })).equipes.length, 0);
+
+    const doTecnico = await amb.esperar(200, "GET", "/equipes", { como: tecnico, consulta: { busca: propria.nome } });
+    assert.deepEqual(doTecnico.equipes.map((e: any) => e.id), [equipeId]);
+    const outra = await amb.criarEquipe();
+    const semAcesso = await amb.esperar(200, "GET", "/equipes", { como: tecnico, consulta: { busca: outra.nome } });
+    assert.equal(semAcesso.equipes.length, 0);
+
+    // sem texto: `global=true` lista no modo da busca, e `id` restringe a uma equipe
+    const lista = await amb.esperar(200, "GET", "/equipes", { como: admin, consulta: { global: true, id: equipeId } });
+    assert.deepEqual(lista.equipes.map((e: any) => e.id), [equipeId]);
+    const doTecnicoSemTexto = await amb.esperar(200, "GET", "/equipes", { como: tecnico, consulta: { global: true } });
+    assert.deepEqual(doTecnicoSemTexto.equipes.map((e: any) => e.id), [equipeId]);
+  });
+
   it("PATCH /usuarios: desativado perde o acesso na hora; admin não desativa a si mesmo; reativar restaura", async () => {
     const alvo = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     await amb.esperar(200, "GET", "/equipes", { como: alvo });
@@ -139,7 +276,7 @@ describe("Plataforma, usuários e equipes", () => {
     const r = await amb.req("GET", "/equipes", { como: alvo });
     assert.equal(r.status, 401);
     assert.equal(r.corpo.erro.codigo, "acesso_revogado");
-    assert.equal((await amb.req("POST", "/auth/login", { json: { matricula: alvo.matricula, senha: SENHA_PADRAO } })).status, 401);
+    assert.equal((await amb.req("POST", "/auth/login", { json: { email: alvo.email, senha: SENHA_PADRAO } })).status, 401);
 
     assert.equal((await amb.req("PATCH", `/usuarios/${admin.id}`, { como: admin, json: { ativo: false } })).status, 422);
     await amb.esperar(200, "PATCH", `/usuarios/${alvo.id}`, { como: admin, json: { ativo: true, nome: "Reativado" } });
@@ -151,8 +288,8 @@ describe("Plataforma, usuários e equipes", () => {
     const alvo = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     const { senha_inicial } = await amb.esperar(200, "POST", `/usuarios/${alvo.id}/redefinir-senha`, { como: admin });
     assert.ok(senha_inicial.length >= 8);
-    assert.equal((await amb.req("POST", "/auth/login", { json: { matricula: alvo.matricula, senha: SENHA_PADRAO } })).status, 401);
-    const login = await amb.esperar(200, "POST", "/auth/login", { json: { matricula: alvo.matricula, senha: senha_inicial } });
+    assert.equal((await amb.req("POST", "/auth/login", { json: { email: alvo.email, senha: SENHA_PADRAO } })).status, 401);
+    const login = await amb.esperar(200, "POST", "/auth/login", { json: { email: alvo.email, senha: senha_inicial } });
     assert.equal(login.senha_provisoria, true);
     assert.equal((await amb.req("POST", `/usuarios/${alvo.id}/redefinir-senha`, { como: tecnico })).status, 403);
   });

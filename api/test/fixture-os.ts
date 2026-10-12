@@ -165,6 +165,7 @@ async function criarUsuarioSemLogin(amb: Ambiente, d: { nome: string; matricula:
     id,
     nome: d.nome,
     matricula: d.matricula,
+    email: `${d.matricula.toLowerCase()}@empresa.com.br`,
     cargo: d.cargo,
     registroProfissional: d.registro,
     perfil: "tecnico",

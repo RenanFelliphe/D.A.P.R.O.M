@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { listarAlertas, marcarComoLido } from "../dominio/impedimento-alertas";
-import { cancelarOsManual, reprogramarOs } from "../dominio/impedimento-os";
+import { cancelarOsDeApoio, reprogramarOs } from "../dominio/impedimento-os";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { invalido } from "../http/erros";
 import { esquemaPaginacao, meta } from "../http/paginacao";
@@ -23,7 +23,7 @@ const dataValida = dataIso.refine((v) => {
   return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v);
 }, "Data inexistente");
 
-/** Ações do supervisor sobre uma OS (reprogramar, cancelar a manual) e a caixa de alertas. */
+/** Ações do supervisor sobre uma OS (reprogramar, cancelar a de apoio) e a caixa de alertas. */
 export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
@@ -43,7 +43,7 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ justificativa }));
     const motivo = justificativaObrigatoria(dados.justificativa);
-    return responder(c, await cancelarOsManual(deps.db, c.get("usuario"), id, motivo, deps.agora()));
+    return responder(c, await cancelarOsDeApoio(deps.db, c.get("usuario"), id, motivo, deps.agora()));
   });
 
   r.get("/alertas", autenticar(), exigirPerfil("supervisor", "analista", "seguranca", "admin"), async (c) => {

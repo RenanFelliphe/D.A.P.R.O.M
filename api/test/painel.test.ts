@@ -51,7 +51,9 @@ interface DadosOs {
   fim?: string | null;
   equipamento?: string | null;
   prioridade?: string | null;
-  origem?: "sap" | "planilha" | "manual";
+  origem?: "sap" | "planilha" | "apoio";
+  /** A OS que o apoio destrava; obrigatória quando `origem` é `apoio`. */
+  osOrigemId?: string;
   comPdf?: boolean;
   exportadaEm?: Date;
   ciencia?: { por: string; em: Date };
@@ -65,7 +67,7 @@ async function criarOs(amb: Ambiente, d: DadosOs) {
     .values({
       numeroOrdem: numero,
       tipo: d.tipo ?? "preventiva",
-      titulo: d.titulo ?? `OS ${numero ?? "manual"}`,
+      titulo: d.titulo ?? `OS ${numero ?? "de apoio"}`,
       equipamento: d.equipamento ?? null,
       prioridade: d.prioridade ?? null,
       localInstalacaoId: d.localId,
@@ -73,7 +75,8 @@ async function criarOs(amb: Ambiente, d: DadosOs) {
       dataInicioProg: d.inicio ?? "2026-10-20",
       dataFimProg: d.fim ?? null,
       status: d.status ?? "liberada",
-      origem: d.origem ?? (numero === null ? "manual" : "sap"),
+      origem: d.origem ?? (numero === null ? "apoio" : "sap"),
+      osOrigemId: d.osOrigemId ?? null,
       pdfPath: d.comPdf ? "pdf-x" : null,
       pdfEm: d.comPdf ? AGORA : null,
       exportadaSapEm: d.exportadaEm ?? null,
@@ -294,13 +297,13 @@ describe("Painel: quadro, detalhe e ciência", () => {
 
       assert.deepEqual(Object.keys(por("4001")).sort(), [
         "atrasada", "ciencia_em", "data_fim_prog", "data_inicio_prog", "equipamento", "equipe_id", "equipe_nome", "execucao_aberta_ha_horas",
-        "id", "local_instalacao", "numero_ordem", "pdf_pronto", "prioridade", "status", "tipo", "titulo",
+        "id", "local_instalacao", "numero_nota", "numero_ordem", "pdf_pronto", "prioridade", "status", "tipo", "titulo",
       ]);
       assert.equal(por("4001").titulo, "Inspeção de retificador");
       assert.equal(por("4001").equipamento, "Retificador 1");
       assert.equal(por("4001").prioridade, "Muito alto");
       assert.equal(por("4001").equipe_nome, "Serviços Especiais");
-      assert.deepEqual(por("4001").local_instalacao, { id: localComum.id, codigo: "ERS SERRA", critico: false });
+      assert.deepEqual(por("4001").local_instalacao, { id: localComum.id, codigo: "ERS SERRA", cliente: null, critico: false });
       assert.equal(por("4002").local_instalacao.critico, true);
 
       assert.equal(por("4003").atrasada, true, "pendente com data_fim_prog anterior a hoje");
@@ -875,16 +878,16 @@ describe("Painel: exportação para o SAP", () => {
     // Encerradas com número: uma com ciência e duas pessoas, outra que cruza o dia no fuso de SP.
     o.e1 = await criarOs(amb, { ...base, numero: "5002", status: "encerrada", ciencia: { por: supA.id, em: h("2026-10-14T18:00:00Z") } });
     o.e2 = await criarOs(amb, { ...base, numero: "5001", status: "encerrada" });
-    o.manual = await criarOs(amb, { ...base, equipeId: equipeB, numero: null, status: "encerrada", titulo: "Troca de manômetro", origem: "manual" });
+    o.apoio = await criarOs(amb, { ...base, equipeId: equipeB, numero: null, status: "encerrada", titulo: "Troca de manômetro", origem: "apoio", osOrigemId: o.e1.id });
     o.antiga = await criarOs(amb, { ...base, numero: "5003", status: "encerrada", exportadaEm: jaExportada });
     o.p1 = await criarOs(amb, { ...base, numero: "5005", status: "pendente", titulo: "Caixa cheia" });
     o.p2 = await criarOs(amb, { ...base, numero: "5006", status: "pendente", titulo: "Válvula" });
-    o.p3 = await criarOs(amb, { ...base, numero: null, status: "pendente", titulo: "Apoio civil", origem: "manual" });
+    o.p3 = await criarOs(amb, { ...base, numero: null, status: "pendente", titulo: "Apoio civil", origem: "apoio", osOrigemId: o.e1.id });
     o.liberada = await criarOs(amb, { ...base, numero: "5008", status: "liberada" });
 
     await criarExecucao(amb, { osId: o.e1.id, modelo, executorId: tecA.id, inicio: h("2026-10-14T12:00:00Z"), fim: h("2026-10-14T15:30:00Z"), pessoas: 2, assinaturas: [tecB.id, tecA.id], pausas: [{ inicio: h("2026-10-14T13:00:00Z"), fim: h("2026-10-14T13:30:00Z") }], descricao: "Retificador inspecionado" });
     await criarExecucao(amb, { osId: o.e2.id, modelo, executorId: tecA.id, inicio: h("2026-10-14T01:00:00Z"), fim: h("2026-10-14T02:30:00Z"), descricao: "Leitura concluída" });
-    await criarExecucao(amb, { osId: o.manual.id, modelo, executorId: tecB.id, inicio: h("2026-10-13T12:00:00Z"), fim: h("2026-10-13T13:00:00Z"), descricao: "Troca feita" });
+    await criarExecucao(amb, { osId: o.apoio.id, modelo, executorId: tecB.id, inicio: h("2026-10-13T12:00:00Z"), fim: h("2026-10-13T13:00:00Z"), descricao: "Troca feita" });
     await criarExecucao(amb, { osId: o.antiga.id, modelo, executorId: tecA.id, inicio: h("2026-09-20T12:00:00Z"), fim: h("2026-09-20T13:00:00Z") });
 
     await amb.db.insert(alerta).values({ tipo: "bloqueio", osId: o.p1.id, destinatarioId: supA.id, detalhe: "APR bloqueada: Há EPI adequado?", criadoEm: h("2026-10-13T12:05:00Z") });
@@ -974,7 +977,7 @@ describe("Painel: exportação para o SAP", () => {
     const em = (id: string) => linhas.find((l) => l.id === id)!.em?.toISOString() ?? null;
     assert.equal(em(o.e1!.id), AGORA.toISOString());
     assert.equal(em(o.e2!.id), AGORA.toISOString());
-    assert.equal(em(o.manual!.id), AGORA.toISOString());
+    assert.equal(em(o.apoio!.id), AGORA.toISOString());
     assert.equal(em(o.antiga!.id), jaExportada.toISOString(), "a exportação anterior não é sobrescrita");
     for (const k of ["p1", "p2", "p3", "liberada"]) assert.equal(em(o[k]!.id), null, `${k} não é exportada`);
   });

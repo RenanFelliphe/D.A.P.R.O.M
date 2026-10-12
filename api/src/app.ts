@@ -4,6 +4,7 @@ import { criarAutenticacao } from "./http/autenticacao";
 import { tratarErro } from "./http/erros";
 import { rotasArquivos } from "./rotas/arquivos";
 import { rotasAuth } from "./rotas/auth";
+import { rotasBusca } from "./rotas/busca";
 import { rotasEquipes } from "./rotas/equipes";
 import { rotasEventos } from "./rotas/eventos";
 import { rotasImpedimento } from "./rotas/impedimento";
@@ -33,6 +34,7 @@ export function criarApp(deps: Deps) {
   app.route("/", rotasMe(deps, auth));
   app.route("/", rotasUsuarios(deps, auth));
   app.route("/", rotasEquipes(deps, auth));
+  app.route("/", rotasBusca(deps, auth));
   app.route("/", rotasArquivos(deps, auth));
   app.route("/", rotasSap(deps, auth));
   app.route("/", rotasModelosApr(deps, auth));

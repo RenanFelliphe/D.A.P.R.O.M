@@ -15,7 +15,7 @@ import { equipe, usuario, type Perfil } from "../src/db/schema";
 import { carregarDadosIniciais } from "../src/db/seed/carregar";
 import type { Deps } from "../src/deps";
 import { ArmazenamentoEmMemoria } from "../src/servicos/armazenamento";
-import { AuthEmMemoria, emailInterno } from "../src/servicos/auth";
+import { AuthEmMemoria } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
 import type { ClienteSap, OrdemSap } from "../src/servicos/sap";
 
@@ -56,6 +56,8 @@ export class SapEmMemoria implements ClienteSap {
 export interface UsuarioDeTeste {
   id: string;
   matricula: string;
+  /** O login. */
+  email: string;
   senha: string;
   token: string;
   perfil: Perfil;
@@ -96,17 +98,18 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   }
 
   /** Cria o usuário no banco e na autenticação em memória, já com a senha trocada, e devolve o token de acesso. */
-  async function criarUsuario(dados: { perfil: Perfil; equipeId?: string | null; nome?: string; matricula?: string; email?: string | null; senhaProvisoria?: boolean; ativo?: boolean; comAssinatura?: boolean }): Promise<UsuarioDeTeste> {
+  async function criarUsuario(dados: { perfil: Perfil; equipeId?: string | null; nome?: string; matricula?: string; email?: string; senhaProvisoria?: boolean; ativo?: boolean; comAssinatura?: boolean }): Promise<UsuarioDeTeste> {
     contador++;
     const matricula = dados.matricula ?? `M${contador}${randomUUID().slice(0, 4)}`;
-    const conta = await auth.criarConta(emailInterno(matricula), SENHA_PADRAO);
+    const email = dados.email ?? `${matricula.toLowerCase()}@empresa.com.br`;
+    const conta = await auth.criarConta(email, SENHA_PADRAO);
     const assinatura = dados.comAssinatura === false ? null : randomUUID();
     if (assinatura) await armazenamento.gravar("assinaturas", assinatura, new Uint8Array([1, 2, 3]), "image/png");
     await db.insert(usuario).values({
       id: conta.id,
       nome: dados.nome ?? `Usuário ${contador}`,
       matricula,
-      email: dados.email === undefined ? (dados.perfil === "supervisor" ? `${matricula}@empresa.com` : null) : dados.email,
+      email,
       perfil: dados.perfil,
       equipeId: dados.equipeId ?? null,
       senhaProvisoria: dados.senhaProvisoria ?? false,
@@ -114,8 +117,8 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
       assinaturaPath: assinatura,
       assinaturaEm: assinatura ? relogio.agora : null,
     });
-    const sessao = (await auth.entrar(emailInterno(matricula), SENHA_PADRAO))!;
-    return { id: conta.id, matricula, senha: SENHA_PADRAO, token: sessao.accessToken, perfil: dados.perfil, equipeId: dados.equipeId ?? null };
+    const sessao = (await auth.entrar(email, SENHA_PADRAO))!;
+    return { id: conta.id, matricula, email, senha: SENHA_PADRAO, token: sessao.accessToken, perfil: dados.perfil, equipeId: dados.equipeId ?? null };
   }
 
   async function req(metodo: string, caminho: string, o: OpcoesReq = {}) {

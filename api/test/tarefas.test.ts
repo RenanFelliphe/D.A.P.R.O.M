@@ -270,14 +270,15 @@ describe("E-mail de alerta de bloqueio", () => {
     assert.ok(m.texto.includes(`https://storage.local/fotos/${foto}`));
   });
 
-  it("destinatário sem e-mail: conclui sem enviar e não marca email_enviado_em", async () => {
+  it("todo usuário tem e-mail institucional: o analista (destinatário quando a equipe não tem supervisor) também recebe", async () => {
     const o = await criarOs(amb, { equipeId });
     const a = await criarAlerta(amb, { osId: o.osId, destinatarioId: analista.id });
     const antes = amb.email.enviados.length;
     await manipularEmailAlerta(amb.deps, tarefaDe(a.id));
-    assert.equal(amb.email.enviados.length, antes);
+    assert.equal(amb.email.enviados.length, antes + 1);
+    assert.equal(amb.email.enviados.at(-1)!.para, analista.email);
     const [depois] = await amb.db.select().from(alerta).where(eq(alerta.id, a.id));
-    assert.equal(depois!.emailEnviadoEm, null);
+    assert.deepEqual(depois!.emailEnviadoEm, amb.relogio.agora);
   });
 
   it("só o bloqueio vai por e-mail; alerta inexistente ou tarefa sem referência falham", async () => {

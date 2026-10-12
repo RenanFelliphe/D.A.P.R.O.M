@@ -4,7 +4,7 @@ import { equipe, os, reprogramacao, type OsStatus } from "../db/schema";
 import { podeVerEquipe, type UsuarioAutenticado } from "../http/autenticacao";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
 
-/** Status em que a OS manual ainda pode ser cancelada pelo sistema. */
+/** Status em que a OS de apoio ainda pode ser cancelada pelo sistema. */
 const STATUS_CANCELAVEIS: readonly OsStatus[] = ["liberada", "pendente"];
 /** Reprogramar não faz sentido depois do fim da OS. */
 const STATUS_REPROGRAMAVEIS_NEGADOS: readonly OsStatus[] = ["encerrada", "cancelada"];
@@ -69,12 +69,12 @@ export async function reprogramarOs(
   });
 }
 
-/** Cancela a OS manual (a do SAP é cancelada pelo próprio SAP, na leitura). Só `liberada` ou `pendente`. */
-export async function cancelarOsManual(db: Db, eu: UsuarioAutenticado, osId: string, justificativa: string, agora: Date) {
+/** Cancela a OS de apoio (a do SAP é cancelada pelo próprio SAP, na leitura). Só `liberada` ou `pendente`. */
+export async function cancelarOsDeApoio(db: Db, eu: UsuarioAutenticado, osId: string, justificativa: string, agora: Date) {
   return db.transaction(async (tx) => {
     const [atual] = await tx.select().from(os).where(eq(os.id, osId)).for("update");
     if (!atual) throw naoEncontrado("OS não encontrada");
-    if (atual.origem !== "manual") throw invalido("os_nao_manual", "Só OS manual pode ser cancelada pelo sistema");
+    if (atual.origem !== "apoio") throw invalido("os_nao_apoio", "Só OS de apoio pode ser cancelada pelo sistema");
     if (!STATUS_CANCELAVEIS.includes(atual.status)) {
       throw conflito("status_invalido_para_cancelar", `OS ${atual.status.replace("_", " ")} não pode ser cancelada`);
     }

@@ -1,14 +1,16 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { equipe, usuario } from "../db/schema";
+import { buscaDeEquipes, equipesVisiveis } from "../dominio/busca";
+import { listarOs } from "../dominio/painel-os";
 import { equipeParaApi } from "../dominio/usuarios";
-import type { Autenticacao, Ambiente } from "../http/autenticacao";
+import { podeVerEquipe, type Autenticacao, type Ambiente } from "../http/autenticacao";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
-import { lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
+import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
 
 async function exigirSupervisor(deps: Deps, supervisorId: string | null | undefined) {
   if (!supervisorId) return;
@@ -53,13 +55,85 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
     return responder(c, {});
   });
 
-  /** Qualquer perfil lê: as telas filtram por equipe. */
+  /**
+   * Qualquer perfil lê: as telas filtram por equipe. Com `busca` (nome ou centro de trabalho) ou `global=true` é a busca
+   * global: fica só o que o perfil enxerga (técnico e supervisor, a própria equipe), aceita os filtros `id` e
+   * `supervisor_id`, e cada equipe traz o supervisor e o total de membros ativos.
+   */
   r.get("/equipes", autenticar(), async (c) => {
-    const p = lerConsulta(c, esquemaPaginacao);
+    const p = lerConsulta(c, esquemaPaginacao.extend({
+        busca: z.string().trim().min(1).optional(),
+        global: booleanoDaConsulta,
+        id: uuid.optional(),
+        supervisor_id: uuid.optional(),
+      }),
+    );
     const { limit, offset } = limiteEDeslocamento(p);
-    const linhas = await deps.db.select().from(equipe).orderBy(asc(equipe.nome)).limit(limit).offset(offset);
-    return responder(c, { equipes: linhas.map(equipeParaApi), ...meta(p, await contar(deps.db, equipe)) });
+    if (!p.busca && !p.global) {
+      const linhas = await deps.db.select().from(equipe).orderBy(asc(equipe.nome)).limit(limit).offset(offset);
+      return responder(c, { equipes: linhas.map(equipeParaApi), ...meta(p, await contar(deps.db, equipe)) });
+    }
+
+    const eu = c.get("usuario");
+    const condicoes: (SQL | undefined)[] = [
+      p.busca ? buscaDeEquipes(p.busca) : undefined,
+      p.id ? eq(equipe.id, p.id) : undefined,
+      p.supervisor_id ? eq(equipe.supervisorId, p.supervisor_id) : undefined,
+      equipesVisiveis(eu),
+    ];
+    const onde = and(...condicoes);
+    const linhas = await deps.db.select().from(equipe).where(onde).orderBy(asc(equipe.nome)).limit(limit).offset(offset);
+    const ids = linhas.map((e) => e.id);
+    const totais = ids.length
+      ? await deps.db
+          .select({ equipeId: usuario.equipeId, n: sql<number>`count(*)::int` })
+          .from(usuario)
+          .where(and(inArray(usuario.equipeId, ids), eq(usuario.ativo, true)))
+          .groupBy(usuario.equipeId)
+      : [];
+    const supervisorIds = linhas.flatMap((e) => (e.supervisorId ? [e.supervisorId] : []));
+    const supervisores = supervisorIds.length
+      ? await deps.db.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(inArray(usuario.id, supervisorIds))
+      : [];
+    return responder(c, {
+      equipes: linhas.map((e) => ({
+        ...equipeParaApi(e),
+        supervisorNome: supervisores.find((s) => s.id === e.supervisorId)?.nome ?? null,
+        totalMembros: totais.find((t) => t.equipeId === e.id)?.n ?? 0,
+      })),
+      ...meta(p, await contar(deps.db, equipe, onde)),
+    });
+  });
+
+  /**
+   * Perfil da equipe: dados, supervisor, membros, a situação das OS e as mais recentes. Quem não enxerga a equipe
+   * (técnico e supervisor de outra equipe) recebe `404`; só o admin vê membros inativos.
+   */
+  r.get("/equipes/:id", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    const id = lerId(c);
+    const [e] = await deps.db.select().from(equipe).where(eq(equipe.id, id));
+    if (!e || !podeVerEquipe(eu, id)) throw naoEncontrado("Equipe não encontrada");
+
+    const admin = eu.perfil === "admin";
+    const [supervisor] = e.supervisorId
+      ? await deps.db
+          .select({ id: usuario.id, nome: usuario.nome, matricula: usuario.matricula, cargo: usuario.cargo })
+          .from(usuario)
+          .where(eq(usuario.id, e.supervisorId))
+      : [];
+    const membros = await deps.db
+      .select({ id: usuario.id, nome: usuario.nome, matricula: usuario.matricula, cargo: usuario.cargo, perfil: usuario.perfil, ativo: usuario.ativo })
+      .from(usuario)
+      .where(admin ? eq(usuario.equipeId, id) : and(eq(usuario.equipeId, id), eq(usuario.ativo, true)))
+      .orderBy(asc(usuario.nome));
+    const { itens, total, contagemPorStatus } = await listarOs(deps.db, eu, { equipe_id: id, pagina: 1, tamanho: OS_RECENTES_DA_EQUIPE }, deps.agora());
+
+    return responder(c, { equipe: equipeParaApi(e), supervisor: supervisor ?? null, membros, contagemPorStatus, totalOs: total, osRecentes: itens });
   });
 
   return r;
 }
+
+/** Quantas OS aparecem no perfil da equipe. */
+const OS_RECENTES_DA_EQUIPE = 8;

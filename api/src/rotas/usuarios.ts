@@ -1,22 +1,20 @@
-import { and, asc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
-import { equipe, PERFIS, usuario } from "../db/schema";
-import { gerarSenhaInicial, usuarioParaApi } from "../dominio/usuarios";
+import { equipe, execucao, execucaoPausa, localInstalacao, os, PERFIS, usuario } from "../db/schema";
+import { buscaDeUsuarios, usuariosVisiveis } from "../dominio/busca";
+import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
+import { equipeParaApi, gerarSenhaInicial, usuarioParaApi } from "../dominio/usuarios";
 import { equipeDoEscopo, type Autenticacao, type Ambiente } from "../http/autenticacao";
-import { conflito, invalido, naoEncontrado } from "../http/erros";
+import { codigoPostgres, conflito, invalido, naoEncontrado } from "../http/erros";
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
-import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
-import { emailInterno } from "../servicos/auth";
+import { booleanoDaConsulta, emailInstitucional, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
 import { senhaNova } from "./auth";
 
-/** A matrícula vira a parte local do e-mail interno do Supabase Auth, então só aceita caracteres de e-mail. */
-const matricula = z
-  .string()
-  .trim()
-  .regex(/^[A-Za-z0-9._-]{1,40}$/, "Use só letras, números, ponto, hífen e sublinhado");
+/** Identificação definitiva da pessoa na empresa; não é o login (o login é o e-mail institucional). */
+const matricula = z.string().trim().min(1).max(40);
 
 const textoOpcional = z.string().trim().min(1).nullable().optional();
 
@@ -36,7 +34,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       z.object({
         nome: textoObrigatorio,
         matricula,
-        email: z.string().trim().email().nullable().optional(),
+        email: emailInstitucional,
         perfil: z.enum(PERFIS),
         equipe_id: uuid.nullable().optional(),
         cargo: textoOpcional,
@@ -44,19 +42,20 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
         senha_inicial: senhaNova,
       }),
     );
-    if (dados.perfil === "supervisor" && !dados.email) throw invalido("email_obrigatorio", "Supervisor precisa de e-mail para receber alertas");
     await exigirEquipe(deps, dados.equipe_id);
 
     const [existente] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(sql`lower(${usuario.matricula})`, dados.matricula.toLowerCase()));
     if (existente) throw conflito("matricula_duplicada", "Matrícula já cadastrada");
+    const [emailUsado] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, dados.email));
+    if (emailUsado) throw conflito("email_duplicado", "E-mail já cadastrado");
 
-    const conta = await deps.auth.criarConta(emailInterno(dados.matricula), dados.senha_inicial);
+    const conta = await deps.auth.criarConta(dados.email, dados.senha_inicial);
     try {
       await deps.db.insert(usuario).values({
         id: conta.id,
         nome: dados.nome,
         matricula: dados.matricula,
-        email: dados.email ?? null,
+        email: dados.email,
         cargo: dados.cargo ?? null,
         registroProfissional: dados.registro_profissional ?? null,
         perfil: dados.perfil,
@@ -77,7 +76,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       c,
       z.object({
         nome: textoObrigatorio.optional(),
-        email: z.string().trim().email().nullable().optional(),
+        email: emailInstitucional.optional(),
         perfil: z.enum(PERFIS).optional(),
         equipe_id: uuid.nullable().optional(),
         cargo: textoOpcional,
@@ -91,27 +90,61 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     if (id === eu.id && (dados.ativo === false || (dados.perfil && dados.perfil !== "admin"))) {
       throw invalido("auto_alteracao", "Você não pode desativar nem rebaixar o próprio usuário");
     }
-    const perfilFinal = dados.perfil ?? atual.perfil;
-    const emailFinal = dados.email === undefined ? atual.email : dados.email;
-    if (perfilFinal === "supervisor" && !emailFinal) throw invalido("email_obrigatorio", "Supervisor precisa de e-mail para receber alertas");
     await exigirEquipe(deps, dados.equipe_id);
 
-    await deps.db
-      .update(usuario)
-      .set({
-        ...(dados.nome !== undefined && { nome: dados.nome }),
-        ...(dados.email !== undefined && { email: dados.email }),
-        ...(dados.perfil !== undefined && { perfil: dados.perfil }),
-        ...(dados.equipe_id !== undefined && { equipeId: dados.equipe_id }),
-        ...(dados.cargo !== undefined && { cargo: dados.cargo }),
-        ...(dados.registro_profissional !== undefined && { registroProfissional: dados.registro_profissional }),
-        ...(dados.ativo !== undefined && { ativo: dados.ativo }),
-      })
-      .where(eq(usuario.id, id));
+    // O e-mail é o login: a conta no serviço de acesso troca junto, e volta ao anterior se o banco recusar.
+    const trocaEmail = dados.email !== undefined && dados.email !== atual.email;
+    if (trocaEmail) {
+      const [emailUsado] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, dados.email!));
+      if (emailUsado) throw conflito("email_duplicado", "E-mail já cadastrado");
+      await deps.auth.atualizarEmail(id, dados.email!);
+    }
+
+    try {
+      await deps.db
+        .update(usuario)
+        .set({
+          ...(dados.nome !== undefined && { nome: dados.nome }),
+          ...(dados.email !== undefined && { email: dados.email }),
+          ...(dados.perfil !== undefined && { perfil: dados.perfil }),
+          ...(dados.equipe_id !== undefined && { equipeId: dados.equipe_id }),
+          ...(dados.cargo !== undefined && { cargo: dados.cargo }),
+          ...(dados.registro_profissional !== undefined && { registroProfissional: dados.registro_profissional }),
+          ...(dados.ativo !== undefined && { ativo: dados.ativo }),
+        })
+        .where(eq(usuario.id, id));
+    } catch (erro) {
+      if (trocaEmail) await deps.auth.atualizarEmail(id, atual.email).catch(() => {});
+      throw erro;
+    }
 
     // Desativar bloqueia a `api` na hora; o Supabase só é revogado depois que a fila offline pendente subir
     // (ver `POST /eventos`). Reativar desfaz uma revogação anterior.
     if (dados.ativo === true && !atual.ativo) await deps.auth.restaurar(id);
+    return responder(c, {});
+  });
+
+  /**
+   * Remove o usuário e a conta de acesso. Só vale para quem nunca deixou registro: quem já fez APR, execução, assinatura,
+   * evento ou recebeu alerta (ou supervisiona uma equipe) está amarrado ao histórico, e o banco recusa; nesse caso a saída
+   * é desativar.
+   */
+  r.delete("/usuarios/:id", autenticar(), exigirPerfil("admin"), async (c) => {
+    const id = lerId(c);
+    const eu = c.get("usuario");
+    if (id === eu.id) throw invalido("auto_alteracao", "Você não pode remover o próprio usuário");
+    const [alvo] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.id, id));
+    if (!alvo) throw naoEncontrado("Usuário não encontrado");
+
+    try {
+      await deps.db.delete(usuario).where(eq(usuario.id, id));
+    } catch (erro) {
+      if (codigoPostgres(erro) === "23503") {
+        throw conflito("usuario_com_historico", "Este usuário tem histórico (APR, execução, assinatura, alerta ou equipe sob sua supervisão) e não pode ser removido. Desative-o.");
+      }
+      throw erro;
+    }
+    await deps.auth.excluirConta(id);
     return responder(c, {});
   });
 
@@ -127,31 +160,106 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
 
   /**
    * Admin vê tudo. Os demais perfis só precisam dos colegas (lista de participantes da APR): ficam só os ativos, da
-   * própria equipe quando o perfil é de equipe, e sem e-mail.
+   * própria equipe quando o perfil é de equipe, e sem e-mail. `busca` procura no nome, matrícula, cargo, e-mail e CREA
+   * (ver `dominio/busca.ts`); o e-mail serve de busca para todos, mas só o admin o recebe.
    */
   r.get("/usuarios", autenticar(), async (c) => {
     const eu = c.get("usuario");
     const filtros = lerConsulta(
       c,
-      esquemaPaginacao.extend({ equipe_id: uuid.optional(), perfil: z.enum(PERFIS).optional(), ativo: booleanoDaConsulta }),
+      esquemaPaginacao.extend({ equipe_id: uuid.optional(), perfil: z.enum(PERFIS).optional(), ativo: booleanoDaConsulta, busca: z.string().trim().min(1).optional() }),
     );
     const admin = eu.perfil === "admin";
-    const escopo = admin ? null : equipeDoEscopo(eu);
-    if (!admin && escopo === null && eu.equipeId === null && (eu.perfil === "tecnico" || eu.perfil === "supervisor")) {
-      return responder(c, { usuarios: [], ...meta(filtros, 0) });
-    }
 
     const condicoes: (SQL | undefined)[] = [
-      escopo ? eq(usuario.equipeId, escopo) : filtros.equipe_id ? eq(usuario.equipeId, filtros.equipe_id) : undefined,
+      usuariosVisiveis(eu),
+      // Quem só enxerga a própria equipe não amplia o escopo pelo filtro.
+      equipeDoEscopo(eu) === null && filtros.equipe_id ? eq(usuario.equipeId, filtros.equipe_id) : undefined,
       filtros.perfil ? eq(usuario.perfil, filtros.perfil) : undefined,
-      admin ? (filtros.ativo === undefined ? undefined : eq(usuario.ativo, filtros.ativo)) : eq(usuario.ativo, true),
+      filtros.busca ? buscaDeUsuarios(filtros.busca) : undefined,
+      admin && filtros.ativo !== undefined ? eq(usuario.ativo, filtros.ativo) : undefined,
     ];
     const onde = and(...condicoes);
 
-    const linhas = await deps.db.select().from(usuario).where(onde).orderBy(asc(usuario.nome)).limit(limiteEDeslocamento(filtros).limit).offset(limiteEDeslocamento(filtros).offset);
+    const { limit, offset } = limiteEDeslocamento(filtros);
+    const linhas = await deps.db.select().from(usuario).where(onde).orderBy(asc(usuario.nome)).limit(limit).offset(offset);
     const total = await contar(deps.db, usuario, onde);
     return responder(c, { usuarios: linhas.map((u) => usuarioParaApi(u, { semEmail: !admin })), ...meta(filtros, total) });
   });
 
+  /**
+   * Perfil de uma pessoa: dados, equipe com os membros e as últimas OS que ela encerrou. O admin vê qualquer conta
+   * (inclusive e-mail e inativas); os demais só enxergam colegas ativos do próprio escopo, como na listagem, e recebem
+   * `404` para o resto.
+   */
+  r.get("/usuarios/:id", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    const id = lerId(c);
+    const admin = eu.perfil === "admin";
+    const [alvo] = await deps.db.select().from(usuario).where(eq(usuario.id, id));
+    if (!alvo) throw naoEncontrado("Usuário não encontrado");
+    if (!admin) {
+      const escopo = equipeDoEscopo(eu);
+      const semEquipe = escopo === null && eu.equipeId === null && (eu.perfil === "tecnico" || eu.perfil === "supervisor");
+      if (!alvo.ativo || semEquipe || (escopo !== null && alvo.equipeId !== escopo)) throw naoEncontrado("Usuário não encontrado");
+    }
+
+    const [dadosDaEquipe] = alvo.equipeId ? await deps.db.select().from(equipe).where(eq(equipe.id, alvo.equipeId)) : [];
+    const [supervisor] = dadosDaEquipe?.supervisorId
+      ? await deps.db.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(eq(usuario.id, dadosDaEquipe.supervisorId))
+      : [];
+    const membros = alvo.equipeId
+      ? await deps.db
+          .select({ id: usuario.id, nome: usuario.nome, matricula: usuario.matricula, cargo: usuario.cargo, perfil: usuario.perfil })
+          .from(usuario)
+          .where(and(eq(usuario.equipeId, alvo.equipeId), eq(usuario.ativo, true)))
+          .orderBy(asc(usuario.nome))
+      : [];
+
+    const doAlvo = eq(execucao.executorId, alvo.id);
+    const [totais] = await deps.db
+      .select({
+        encerradas: sql<number>`count(*) filter (where ${execucao.resultado} = 'encerrada')::int`,
+        emAndamento: sql<number>`count(*) filter (where ${execucao.resultado} is null)::int`,
+        ultimaEm: sql<Date | null>`max(${execucao.fim}) filter (where ${execucao.resultado} = 'encerrada')`,
+      })
+      .from(execucao)
+      .where(doAlvo);
+    const linhas = await deps.db
+      .select({
+        id: execucao.id,
+        osId: execucao.osId,
+        numeroOrdem: os.numeroOrdem,
+        titulo: os.titulo,
+        localCodigo: localInstalacao.codigo,
+        inicio: execucao.inicio,
+        fim: execucao.fim,
+        pdfPath: os.pdfPath,
+      })
+      .from(execucao)
+      .innerJoin(os, eq(os.id, execucao.osId))
+      .innerJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
+      .where(and(doAlvo, eq(execucao.resultado, "encerrada")))
+      .orderBy(desc(execucao.fim), desc(execucao.id))
+      .limit(ULTIMAS_OS_DO_PERFIL);
+    const pausas = linhas.length ? await deps.db.select().from(execucaoPausa).where(inArray(execucaoPausa.execucaoId, linhas.map((l) => l.id))) : [];
+    const execucoes = linhas.map(({ pdfPath, ...l }) => {
+      const tempo = tempoDaExecucao(l, pausas.filter((p) => p.execucaoId === l.id));
+      return { ...l, tempoLiquidoMin: tempo ? emMinutos(tempo.liquidoMs) : null, pdfPronto: pdfPath !== null };
+    });
+
+    return responder(c, {
+      usuario: usuarioParaApi(alvo, { semEmail: !admin }),
+      equipe: dadosDaEquipe ? equipeParaApi(dadosDaEquipe) : null,
+      supervisor: supervisor ?? null,
+      membros,
+      resumo: { osEncerradas: totais?.encerradas ?? 0, emAndamento: totais?.emAndamento ?? 0, ultimaEncerradaEm: totais?.ultimaEm ?? null },
+      execucoes,
+    });
+  });
+
   return r;
 }
+
+/** Quantas OS encerradas aparecem no perfil. */
+const ULTIMAS_OS_DO_PERFIL = 10;

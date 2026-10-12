@@ -34,7 +34,7 @@ try {
     console.log("Dados de demonstração criados:", resultado.contagem);
     if (resultado.usuariosCriados.length > 0) {
       console.log("\nUsuários novos (senha inicial provisória: a pessoa define a dela no primeiro acesso):");
-      for (const u of resultado.usuariosCriados) console.log(`  ${u.matricula.padEnd(6)} ${u.perfil.padEnd(10)} ${u.senha}`);
+      for (const u of resultado.usuariosCriados) console.log(`  ${u.email.padEnd(36)} ${u.perfil.padEnd(10)} ${u.senha}`);
     }
   }
 } finally {

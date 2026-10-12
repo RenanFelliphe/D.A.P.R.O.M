@@ -22,6 +22,8 @@ export interface ProvedorAuth {
   entrar(email: string, senha: string): Promise<Sessao | null>;
   renovar(refreshToken: string): Promise<Sessao | null>;
   definirSenha(id: string, senha: string): Promise<void>;
+  /** Troca o e-mail (o login) da conta; a conta continua com a mesma senha e o mesmo id. */
+  atualizarEmail(id: string, email: string): Promise<void>;
   /** Bloqueia a conta e derruba as sessões (usuário desativado, depois de enviar a fila offline). */
   revogar(id: string): Promise<void>;
   /** Desfaz `revogar` (usuário reativado). */
@@ -33,8 +35,6 @@ export interface ProvedorAuth {
 export function cabecalhosDeServico(chave: string): Record<string, string> {
   return chave.startsWith("eyJ") ? { apikey: chave, Authorization: `Bearer ${chave}` } : { apikey: chave };
 }
-
-export const emailInterno = (matricula: string) => `${matricula.trim().toLowerCase()}@daprom.local`;
 
 /** Supabase Auth (GoTrue) pela API REST, com a chave de serviço: só a `api` a tem. */
 export class AuthSupabase implements ProvedorAuth {
@@ -104,6 +104,12 @@ export class AuthSupabase implements ProvedorAuth {
     if (!r.ok) throw new ErroApi(502, "auth_indisponivel", "Não foi possível trocar a senha");
   }
 
+  async atualizarEmail(id: string, email: string) {
+    const r = await this.chamar(`/admin/users/${id}`, { method: "PUT", body: { email, email_confirm: true } });
+    if (r.status === 422 || r.status === 400) throw new ErroApi(422, "conta_recusada", "O serviço de acesso recusou o e-mail");
+    if (!r.ok) throw new ErroApi(502, "auth_indisponivel", "Não foi possível trocar o e-mail de acesso");
+  }
+
   async revogar(id: string) {
     await this.chamar(`/admin/users/${id}`, { method: "PUT", body: { ban_duration: "876000h" } });
   }
@@ -167,6 +173,14 @@ export class AuthEmMemoria implements ProvedorAuth {
 
   async definirSenha(id: string, senha: string) {
     for (const conta of this.contas.values()) if (conta.id === id) conta.senha = senha;
+  }
+
+  async atualizarEmail(id: string, email: string) {
+    const atual = [...this.contas].find(([, conta]) => conta.id === id);
+    if (!atual || atual[0] === email) return;
+    if (this.contas.has(email)) throw new ErroApi(409, "duplicado", "Conta já existe");
+    this.contas.delete(atual[0]);
+    this.contas.set(email, atual[1]);
   }
 
   async revogar(id: string) {
