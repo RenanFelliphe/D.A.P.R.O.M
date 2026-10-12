@@ -14,7 +14,7 @@ O objetivo é apoiar a operação para que cada OS tenha sua própria APR, a exe
 
 ## Fluxo operacional especificado
 
-1. **Receber a OS:** as ordens são originadas no SAP e chegam à plataforma por uma API de leitura ou, como alternativa, por importação de planilha. A equipe indicada na ordem é usada para apresentar os participantes; os dados de atribuição não são recriados manualmente como regra geral.
+1. **Receber a OS:** as ordens são originadas no SAP e chegam à plataforma por uma API de leitura ou, como alternativa, por importação de planilha. A plataforma não cria OS por iniciativa do usuário: a única que nasce nela é a OS de apoio, aberta pelo supervisor ou pelo analista a partir de um impedimento e ligada à OS original. A equipe indicada na ordem é usada para apresentar os participantes; os dados de atribuição não são recriados manualmente.
 2. **Analisar os riscos:** antes de executar, a equipe realiza uma APR nova, exclusiva para aquela OS e para aquela tentativa. As respostas não são copiadas nem pré-preenchidas a partir de outra APR. O modelo é selecionado a partir do tipo/código da atividade e mantido em uma tabela editável pela Segurança do Trabalho.
 3. **Validar a APR:** o checklist é respondido por inteiro antes da validação. Respostas reprovadas em itens eliminatórios impedem a execução; todos os itens reprovados devem ser documentados, com foto quando se tratar de um obstáculo físico ou justificativa em texto quando a evidência visual não for adequada, como no direito de recusa.
 4. **Manter a OS pendente quando houver impedimento:** a APR bloqueada é preservada no histórico, a OS continua pendente e o supervisor é avisado. A equipe pode retomar a OS com uma APR totalmente nova, sem duplicar a ordem nem depender de reprogramação prévia.
@@ -47,7 +47,7 @@ A aplicação `web` reúne as telas de campo, de gestão e do documento:
 
 - Visualização de referência do PDF de duas páginas, com uma página para a APR e outra para a OS.
 
-**As telas são uma demonstração de fluxo e interface, não módulos funcionais conectados.** A importação, sincronização, notificações, login, armazenamento de fotos, edição de modelos, geração/baixa de documentos e indicadores reais não são executados por serviços de backend neste repositório. Interações como câmera, criação de OS e algumas exportações são representadas visualmente ou por mensagens de demonstração.
+**As telas são uma demonstração de fluxo e interface, não módulos funcionais conectados.** A importação, sincronização, notificações, login, armazenamento de fotos, edição de modelos, geração/baixa de documentos e indicadores reais não são executados por serviços de backend neste repositório. Interações como câmera e algumas exportações são representadas visualmente ou por mensagens de demonstração.
 
 ## Regras de negócio centrais
 
@@ -83,7 +83,7 @@ Sem Supabase nem Docker, a `api` tem um modo local (banco, autenticação e arqu
 
 ```bash
 cd api && pnpm install && pnpm dev:local    # http://localhost:3333
-cd web && pnpm install && pnpm dev          # http://localhost:3000, abre na tela de entrada (matrícula tec1, sup1, ana, seg ou adm)
+cd web && pnpm install && pnpm dev          # http://localhost:3000, abre na tela de entrada (e-mail institucional: `tiago.tecnico@empresa.com.br`, `sandra.supervisora@empresa.com.br`, `ana.analista@empresa.com.br`, `sergio.seguranca@empresa.com.br` ou `admin@empresa.com.br`)
 ```
 
 A área do técnico fica em `/app/*` e o painel de gestão em `/web/*`; o perfil define o que cada pessoa vê. Detalhes em [web/README.md](./web/README.md) e [api/README.md](./api/README.md).

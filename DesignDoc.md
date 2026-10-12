@@ -67,7 +67,7 @@ Site (https://esgasplanomanutencao.lovable.app/controle)
 --
 
 ## Correções
-- As OS não serão escritas/definidas através do sistema e sim, através do SAP. Nosso sistema deve, ler as OS do SAP (Por importação manual ou por requisição HTTP de uma API) e renderizá-las na nossa plataforma para que o funcionário possa aplicar uma APR em cima dela.
+- As OS não serão escritas/definidas através do sistema e sim, através do SAP. Nosso sistema deve, ler as OS do SAP (Por importação manual ou por requisição HTTP de uma API) e renderizá-las na nossa plataforma para que o funcionário possa aplicar uma APR em cima dela. A única OS que nasce no sistema é a OS de apoio, aberta pelo supervisor ou pelo analista a partir de um impedimento e ligada à OS original.
 
 - A API do SAP existe, mas o protótipo não usa dados reais. Criaremos uma API que simula a real, com dados fictícios e o mesmo contrato; trocar para a real deve mudar só o endereço e as credenciais. A importação por planilha continua como alternativa.
 

@@ -1,5 +1,7 @@
 # Contexto da sessão — 10/10/2026
 
+> **Atualização (2026-10-11):** a OS manual e o `POST /locais` foram retirados; ver a [especificação](../.design/especificacao.md).
+
 > Registro do que foi decidido e produzido nesta sessão: estado do projeto, plano do MVP, correções na especificação, questões em aberto, validação do fluxograma, o protótipo visual, o relatório das telas e o protótipo navegável. Os documentos de origem continuam sendo a referência; este arquivo junta tudo para quem retomar o trabalho, inclusive em outra conta ou sessão de IA.
 >
 > Atualizado no fim da sessão, depois de o time reorganizar o repositório (seção 2). Os caminhos deste arquivo valem para a organização atual.

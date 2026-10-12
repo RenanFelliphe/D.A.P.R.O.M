@@ -2,7 +2,7 @@
 
 PostgreSQL (Supabase na hospedagem, Postgres comum no desenvolvimento). O schema é descrito em TypeScript com o [Drizzle ORM](https://orm.drizzle.team) em [`src/db/schema/`](../src/db/schema) e segue a [especificação](../../base/.design/especificacao.md): cada tabela e coluna vem de lá.
 
-**O schema é a fonte de verdade.** As migrações em [`migrations/`](migrations) são geradas dele, não escritas à mão (exceto `0001_gatilhos.sql`, ver abaixo).
+**O schema é a fonte de verdade.** As migrações em [`migrations/`](migrations) são geradas dele, não escritas à mão (exceto `0001_gatilhos.sql` e os passos de dados da `0003` e da `0004`, ver abaixo).
 
 | Arquivo do schema | Tabelas |
 |---|---|
@@ -37,8 +37,10 @@ Geradas pelo `drizzle-kit`, aplicadas em ordem, uma única vez cada, e registrad
 | Arquivo | Conteúdo |
 |---|---|
 | `0000_schema.sql` | as 21 tabelas, `CHECK`s, índices (inclusive parciais), chaves estrangeiras (inclusive a composta de `evidencia`) e RLS ligado; gerado do schema |
-| `0002_os_cancelamento.sql` | `os.cancelada_em`, `cancelada_por` e `justificativa_cancelamento` (justificativa do cancelamento da OS manual), com `CHECK`; gerado do schema |
+| `0002_os_cancelamento.sql` | `os.cancelada_em`, `cancelada_por` e `justificativa_cancelamento` (justificativa do cancelamento da OS de apoio), com `CHECK`; gerado do schema |
 | `0001_gatilhos.sql` | o que o schema não descreve: `os.atualizada_em` automático e a imutabilidade de modelo publicado e de seus itens; SQL escrito à mão |
+| `0003_email_institucional.sql` | e-mail institucional obrigatório e único em `usuario` (é o login), em minúsculas; os usuários que já existiam recebem um e-mail provisório (`<matrícula>@empresa.com.br`) até `pnpm usuarios:migrar-emails` trocar pelo real; gerado do schema, com os `UPDATE` dos existentes escritos à mão |
+| `0004_os_origem_apoio.sql` | `os.origem` passa a `sap \| planilha \| apoio` (a OS de apoio, antes gravada como `manual`, ganha origem própria): converte a `manual` ligada a uma OS de origem em `apoio`, apaga a `manual` sem vínculo que nunca foi usada (sem APR, execução, evento, alerta, reprogramação nem OS de apoio filha) e **para com uma mensagem** se sobrar alguma `manual` já usada, para ser tratada à mão; troca o `CHECK` `os_origem_check` e o `os_numero_ordem_obrigatorio` (número da ordem obrigatório, salvo na OS de apoio) e cria o `CHECK` `os_apoio_ligada` (`origem = 'apoio'` se e somente se há `os_origem_id`); gerada do schema, com os passos de dados escritos à mão |
 
 O Painel não tem tabela própria: lê as acima.
 
@@ -106,8 +108,9 @@ O banco recusa o que é sempre inválido, em qualquer cliente. As regras que dep
 **No banco**
 - Valores permitidos de perfil, status, resultado, tipo de evento, tipo de alerta, etc. (`check`).
 - Unicidade: matrícula, centro de trabalho, número da ordem SAP, versão de modelo, resposta por item, assinatura por participante.
+- Origem da OS: `sap`, `planilha` ou `apoio`. Só a OS de apoio pode ficar sem número da ordem, e toda OS de apoio tem `os_origem_id` (e só ela): `origem = 'apoio'` se e somente se há `os_origem_id` (`os_apoio_ligada`).
 - Exatamente um `responsavel` por APR, no máximo uma pausa aberta por execução, e uma APR amparando uma única execução (a cancelada não conta, porque cancelar por engano devolve a APR para uso).
-- Execução encerrada exige fim e descrição; interrompida exige fim e motivo; "NA" exige observação; reprogramação exige justificativa; supervisor exige e-mail.
+- Execução encerrada exige fim e descrição; interrompida exige fim e motivo; "NA" exige observação; reprogramação exige justificativa; usuário exige e-mail institucional único e em minúsculas (é o login); a matrícula é só identificação.
 - Toda medida preventiva pertence a um risco, e item de verificação não tem risco.
 - Foto de item só vale para um item que a APR respondeu; foto precisa de uma execução ou de uma APR; GPS vem completo ou não vem.
 - Modelo publicado, seus riscos e seus itens são imutáveis (gatilho em `0001_gatilhos.sql`).

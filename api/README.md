@@ -15,7 +15,7 @@ pnpm dev         # precisa das variáveis abaixo e de um Supabase (nuvem ou loca
 pnpm dev:local   # sem Supabase: banco em memória (PGlite), auth e arquivos em memória, SAP simulado e usuários de exemplo
 ```
 
-**Modo local (`pnpm dev:local`, [`src/local.ts`](src/local.ts)):** a `api` inteira num só processo, para desenvolver o `web` e o `mobile`. Cria as equipes Serviços Especiais, Instrumentação e Laboratório Químico e um usuário por perfil, todos com a senha `daprom123` (`adm`, `ana`, `seg`, `sup1`, `sup2`, `tec1`, `tec2`, `tec3`), lê as 11 OS das fixtures pelo simulador do SAP e serve as fotos em `/arquivos-locais`. Tudo some quando o processo termina; nunca é para produção.
+**Modo local (`pnpm dev:local`, [`src/local.ts`](src/local.ts)):** a `api` inteira num só processo, para desenvolver o `web` e o `mobile`. Cria as equipes Serviços Especiais, Instrumentação e Laboratório Químico e um usuário por perfil, todos com a senha `daprom123`. O login é o e-mail institucional, no padrão primeiro nome e último sobrenome com domínio `@empresa.com.br` (`admin`, `ana.analista`, `sergio.seguranca`, `sandra.supervisora`, `saulo.supervisor`, `tiago.tecnico`, `tais.tecnica`, `tomas.tecnico`); a `api` os lista ao subir. lê as 11 OS das fixtures pelo simulador do SAP e serve as fotos em `/arquivos-locais`. Tudo some quando o processo termina; nunca é para produção.
 
 Variáveis de ambiente (todas lidas em [`src/config.ts`](src/config.ts)): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_SIMULADO` (`true` liga o simulador em `/sap-simulado`), `SAP_LEITURA_INTERVALO_MIN` (padrão 15), `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`, `PORT` (padrão 3333). Com `SAP_SIMULADO=true`, aponte `SAP_API_URL` para `http://localhost:3333/sap-simulado` e `SAP_API_TOKEN` para o token que o simulador exige.
 
@@ -32,14 +32,14 @@ O que não dá para provar com as versões em memória: Auth, Storage e Postgres
 1. **Projeto Supabase** (supabase.com, plano gratuito). Em *Project Settings*: a URL do projeto (`SUPABASE_URL`), a chave `service_role` (*API Keys*; `SUPABASE_SERVICE_ROLE_KEY`) e a string de conexão do Postgres (*Database › Connection string*; `DATABASE_URL`). Use a conexão **Session pooler** (porta 5432 do pooler) ou a direta, nunca a Transaction pooler (6543): as migrações usam trava de sessão (`pg_advisory_lock`). A conexão direta é só IPv6; sem IPv6, use o Session pooler.
 2. **`.env` na raiz** (copie de `.env.example`) com essas três variáveis. `SUPABASE_JWT_SECRET` só é preciso se o projeto usa o segredo legado (HS256); com chaves assimétricas a `api` confere o token pelo JWKS do projeto.
 3. **Subir a `api`**: `cd api && pnpm dev` (lê o `.env` da raiz). Ela aplica as migrações, carrega os 8 modelos de APR, cria os 4 buckets privados (`fotos`, `assinaturas`, `pdfs`, `importacoes`) e abre a porta; `curl localhost:3333/saude` deve dar `{"banco":"ok"}`. Com `SAP_SIMULADO=true` e `SAP_API_URL=http://localhost:3333/sap-simulado`, as OS do simulador entram em até 15 minutos (ou pelo botão "Ler agora").
-4. **Primeiro admin**: `pnpm admin:criar -- --matricula adm --nome "Administrador" --senha "senha-inicial-123"` (a conta nasce com senha provisória).
-5. **Subir o `web`**: `cd web && pnpm dev`, entrar em http://localhost:3000 com `adm` (será pedida a senha nova) e, em *Equipes e usuários*, criar a equipe (centro de trabalho `SERV_ESP`, o das OS do simulador), um supervisor (com e-mail), dois técnicos e um analista.
+4. **Primeiro admin**: `pnpm admin:criar -- --email admin@empresa.com.br --matricula adm --nome "Administrador" --senha "senha-inicial-123"` (a conta nasce com senha provisória). O e-mail é o login; a matrícula só identifica a pessoa. Se o banco já tinha usuários do tempo do login por matrícula, rode `pnpm usuarios:migrar-emails` (mostra o que mudaria) e depois `pnpm usuarios:migrar-emails -- --aplicar`.
+5. **Subir o `web`**: `cd web && pnpm dev`, entrar em http://localhost:3000 com o e-mail do admin (será pedida a senha nova) e, em *Equipes e usuários*, criar a equipe (centro de trabalho `SERV_ESP`, o das OS do simulador), um supervisor, dois técnicos e um analista.
 6. **Roteiro de conferência**: o técnico faz a APR aprovada → executa (pausa, foto, assinaturas) → encerra; no Supabase, conferir as linhas em `evento_campo`, `apr`, `execucao` e os arquivos nos buckets; o supervisor dá ciência; o analista exporta a planilha; repetir com uma APR bloqueada e ver o alerta (e o e-mail, se `SMTP_URL` estiver configurado).
 7. **Docker**: com o `.env` preenchido, `docker compose up --build` (api em 3333, web em 3000) e repetir o roteiro. Com um Supabase local (`supabase start`), use `host.docker.internal` nas URLs do `.env`.
 
 ## Dados de demonstração
 
-`pnpm demo:popular` (com a `api` já iniciada uma vez e o `.env` apontando para o banco) cria dados **fictícios** para testar os fluxos: equipes, usuários (`sup2`, `tec3`, `tec4`, `tec5`, e os que faltarem), locais (alguns críticos, de clientes como Vale e Suzano) e 30 OS em todos os estados: liberadas (algumas atrasadas, uma reprogramada), em execução (uma em pausa), pendentes (APR bloqueada com fotos, bloqueada por condição pessoal, suspensa, interrompida por risco com OS de apoio), encerradas com e sem ciência (com PDF), uma execução esquecida há mais de 12 h, uma OS cancelada e OS manuais. Tudo passa pelas regras da `api` (`processarEventos`), com a hora de cada evento no passado. Não duplica: se já houver OS `5100xxx`, não faz nada. O código está em [`src/db/seed/demo.ts`](src/db/seed/demo.ts) e é coberto por `test/demo.test.ts`.
+`pnpm demo:popular` (com a `api` já iniciada uma vez e o `.env` apontando para o banco) cria dados **fictícios** para testar os fluxos: equipes, usuários (Saulo Supervisor, Tomás Técnico, Tânia Técnica, Tadeu Técnico, e os que faltarem, com e-mail `nome.sobrenome@empresa.com.br`), locais (alguns críticos, de clientes como Vale e Suzano) e 30 OS em todos os estados: liberadas (algumas atrasadas, uma reprogramada), em execução (uma em pausa), pendentes (APR bloqueada com fotos, bloqueada por condição pessoal, suspensa, interrompida por risco com OS de apoio), encerradas com e sem ciência (com PDF), uma execução esquecida há mais de 12 h, uma OS de apoio cancelada pela analista e uma corretiva urgente lida do SAP. Todas as OS, menos as de apoio, têm origem `sap`, como se tivessem vindo da leitura do SAP. Tudo passa pelas regras da `api` (`processarEventos`), com a hora de cada evento no passado. Não duplica: se já houver OS `5100xxx`, não faz nada. O código está em [`src/db/seed/demo.ts`](src/db/seed/demo.ts) e é coberto por `test/demo.test.ts`.
 
 ## Estrutura
 
@@ -64,22 +64,26 @@ O que não dá para provar com as versões em memória: Auth, Storage e Postgres
 | Fatia | Rotas | Módulo |
 |---|---|---|
 | Plataforma | `GET /saude`, `PUT /arquivos/{id}`, `GET /arquivos/{id}/url` | `saude`, `arquivos` |
-| Usuário e Equipe | `POST /auth/login`, `/auth/refresh`, `/auth/trocar-senha`, `GET /me`, `PUT /me/assinatura`, `GET /me/historico` (execuções que o usuário encerrou nos últimos 60 dias), `GET /me/execucoes-abertas`, `/usuarios` (criar, editar, listar, `redefinir-senha`), `/equipes` | `auth`, `me`, `usuarios`, `equipes` |
-| Integração SAP | `POST /sap/leituras`, `POST/GET /importacoes`, `POST /os`, `/locais`, simulador `/sap-simulado/*` | `sap`, `sap-simulado` |
-| Modelo de APR | `/modelos-apr`, `/modelos-apr/{codigo}/versoes/...`, `/atividades` | `modelos-apr` |
+| Usuário e Equipe | `POST /auth/login`, `/auth/refresh`, `/auth/trocar-senha`, `GET /me`, `PUT /me/assinatura`, `GET /me/historico` (execuções que o usuário encerrou nos últimos 60 dias), `GET /me/execucoes-abertas`, `/usuarios` (criar, editar, listar, remover quem não tem histórico, `redefinir-senha`), `/equipes` | `auth`, `me`, `usuarios`, `equipes` |
+| Integração SAP | `POST /sap/leituras`, `POST/GET /importacoes`, `GET /importacoes/resumo` (entrada de OS no dashboard de OS), `GET /sap/sincronizacao`, `POST /os` (só OS de apoio, com `os_origem_id` obrigatório), `GET /locais`, `PATCH /locais/{id}`, simulador `/sap-simulado/*` | `sap`, `sap-simulado` |
+| Modelo de APR | `GET /modelos-apr` (`?arquivados=true` lista os excluídos), `GET/DELETE /modelos-apr/{codigo}` (`?substituto=`), `GET /modelos-apr/{codigo}/uso`, `POST /modelos-apr/{codigo}/restaurar`, `/modelos-apr/{codigo}/versoes/...`, `/atividades` (`?modelo=`) | `modelos-apr` |
 | Eventos, APR e Execução | `POST /eventos`, `POST /sync/pull` | `eventos` |
-| Impedimento | `POST /os/{id}/reprogramar`, `POST /os/{id}/cancelar`, `GET/PATCH /alertas` | `impedimento` |
-| Painel | `GET /os`, `GET /os/{id}`, `GET /os/{id}/aprs`, `POST /os/{id}/ciencia`, `/indicadores`, `/indicadores/tempo`, `/historico`, `POST /exportacoes/sap` | `painel` |
+| Impedimento | `POST /os/{id}/reprogramar`, `POST /os/{id}/cancelar` (só OS de apoio), `GET/PATCH /alertas` | `impedimento` |
+| Painel | `GET /os`, `GET /os/{id}`, `GET /os/{id}/aprs`, `POST /os/{id}/ciencia`, `/indicadores`, `/indicadores/tempo`, `/historico`, `POST /exportacoes/sap`, `GET /indicadores/geral`, `/indicadores/os`, `/indicadores/equipes` e `/aprs/resumo` (os dashboards de Indicadores e exportação, com `?periodo=7d|30d|90d|12m|AAAA-MM` e `?equipe_id=`; o supervisor só vê a própria equipe) | `painel` |
 | PDF | `GET /os/{id}/pdf` | `pdf` |
+| Busca global | `GET /busca/exata?q=` (o único usuário, equipe ou OS com um campo igual ao texto inteiro, ou `null`); as listas vêm de `GET /usuarios`, `/equipes` e `/os` com `busca` | `busca` |
 
 Tarefas em segundo plano (`pdf_os`, `email_alerta`, `leitura_sap`) rodam num laço do próprio processo ([`src/servicos/tarefas.ts`](src/servicos/tarefas.ts)), com nova tentativa em 1, 5 e 15 minutos e `falhou` depois de 5.
 
 ## Onde a implementação difere da especificação
 
-- `POST /modelos-apr/{codigo}/versoes` recebe `riscos[]` e itens com `risco_ordem` no lugar de `grupo` (o schema tem a entidade risco); todos os campos são opcionais e, se omitidos, copiam a versão anterior. Há também `GET`, `PUT` e `DELETE` de versão para o editor.
-- `os` ganhou `cancelada_em`, `cancelada_por` e `justificativa_cancelamento` (migração `0002`), para guardar a justificativa do cancelamento da OS manual.
+- `POST /modelos-apr/{codigo}/versoes` recebe `riscos[]` e itens com `risco_ordem` no lugar de `grupo` (o schema tem a entidade risco); todos os campos são opcionais e, se omitidos, copiam a versão anterior. Num código novo, `copiar_de` parte do conteúdo de outro modelo e `versao` diz o número da primeira versão. Há também `GET`, `PUT` e `DELETE` de versão para o editor.
+- Os modelos e a tabela de atividades são escritos pela Segurança do Trabalho **e pelo admin** (a especificação dava só à Segurança; a Reunião 1 previa o admin).
+- `DELETE /modelos-apr/{codigo}` exclui o modelo inteiro: apaga o que nunca foi publicado e **arquiva** (`modelo_apr.arquivado_em`, migração `0006`) o que já foi, porque APRs, PDFs e a APR offline pendente apontam para as versões. O arquivado sai das listas, de `versoes/publicada`, da cópia offline e da tabela de atividades (as dele vão para `?substituto=` ou ficam sem modelo), mas a APR respondida nele ainda é aceita. `POST /modelos-apr/{codigo}/restaurar` desfaz.
+- `os` ganhou `cancelada_em`, `cancelada_por` e `justificativa_cancelamento` (migração `0002`), para guardar a justificativa do cancelamento da OS de apoio.
 - `POST /eventos` devolve `rejeitados` e `pendentes` além dos campos da especificação.
-- `GET /usuarios` e `GET /equipes` servem a todos os perfis (a lista de participantes da APR precisa dos colegas); só o admin vê e-mail e usuários desativados.
+- `GET /usuarios` e `GET /equipes` servem a todos os perfis (a lista de participantes da APR precisa dos colegas); só o admin vê e-mail e usuários desativados. O e-mail serve de busca para todos, mas só o admin o recebe na resposta.
+- Busca global (não está na especificação): `busca` procura, sem diferenciar maiúsculas nem acentos, no nome, matrícula, cargo, e-mail e CREA do usuário; no nome e centro de trabalho da equipe; e no número da ordem, título, código do local, número da nota e cliente da OS. Cada lista traz só o que tem o texto em algum desses campos. Regras em [`src/dominio/busca.ts`](src/dominio/busca.ts).
 
 ## Não coberto
 

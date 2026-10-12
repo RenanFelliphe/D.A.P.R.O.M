@@ -17,7 +17,7 @@
 
 | Situação | Questões |
 |---|---|
-| Respondidas ou sem objeto | 1, 2, 11, 15, 23, 30, 31, 32, 34, 37 (protótipo), 42 |
+| Respondidas ou sem objeto | 1, 2, 11, 15, 19, 23, 30, 31, 32, 34, 37 (protótipo), 42 |
 | Adotadas com a recomendação, a confirmar | todas as demais (seção 1), mais 45 e 51 (seção 6) |
 
 ## 1. Adotadas com a recomendação, a confirmar
@@ -28,14 +28,14 @@
 | 4 | Pull por cursor ou snapshot completo no MVP? | 🔴 | Time | passa a carregar o histórico de APRs da OS pendente |
 | 5 | Como uma OS cancelada no SAP sai do sistema? | 🔴 | Iago | com a API simulada, o status pode vir da API |
 | 6 | Como desfazer uma execução iniciada por engano? | 🔴 | Time + Iago | continua; existe pausar, mas não cancelar |
-| 24 | Técnico sem e-mail e o Supabase Auth | 🔴 | Time | o Supabase Auth foi confirmado, então a questão vale |
+| 24 | Técnico sem e-mail e o Supabase Auth | ✅ | Time | **resolvida em 11/10:** todos têm e-mail institucional e ele é o login |
 | 29 | A OS só executa depois de liberada no SAP | 🔴 | Iago | com a API, o status vem de lá |
 | 43 | Contrato da API real do SAP | 🔴 | Iago | **reformulada**: a API existe; falta o contrato |
 | 7 | Execução iniciada e nunca encerrada | 🟡 | Time | agora há cronômetro e atividades de vários dias |
 | 8 | Validade da APR | 🟡 | Iago/Mario | **reformulada**: por sessão de execução |
 | 9 | Resposta "NA" em item eliminatório | 🟡 | Mario | igual |
 | 10 | Quem pode ser participante da APR | 🟡 | Iago/Mario | **reduzida**: o líder é quem preenche; restam os de fora da equipe |
-| 12 | OS manual e de apoio: como entram no SAP | 🟡 | Iago | igual |
+| 12 | OS de apoio: como entra no SAP | 🟡 | Iago | igual |
 | 13 | Exportar também as OS pendentes | 🟡 | Iago | "bloqueada" virou "pendente" |
 | 14 | Reimportação desfaz a reprogramação | 🟡 | Time | reprogramar agora é opcional |
 | 16 | Limite e compressão de fotos | 🟡 | Time | igual |
@@ -59,7 +59,6 @@
 | **54** | API simulada do SAP: contrato e base fictícia | 🟡 | Time | nova |
 | 17 | Relógio do aparelho errado | 🟢 | Time | agora afeta também o cronômetro |
 | 18 | Esqueci a senha / senha offline | 🟢 | Time | o reset passa a ser do Supabase Auth |
-| 19 | Local manual que depois chega do SAP | 🟢 | Time | igual |
 | 20 | Quais alertas vão por e-mail | 🟢 | Iago | o envio passa a ser do back-end Node |
 | 21 | Analista pode reprogramar | 🟢 | Iago | menos urgente: reprogramar é opcional |
 | 26 | Volume: ~390 ou ~900 OS por mês | 🟢 | Iago | igual |
@@ -83,7 +82,7 @@
 
 **Contexto:** a leitura só cria e atualiza. Uma ordem cancelada no SAP continuaria liberada no app.
 **Opções:** (a) o status do SAP vem na API (ou na planilha) e vira `cancelada`; (b) ação "Cancelar OS" na web, com justificativa; (c) ordem ausente é considerada cancelada.
-**Recomendação:** (a), já que a API simulada pode devolver o status; (b) como plano B. (c) é perigoso: uma leitura parcial cancelaria ordens válidas.
+**Recomendação:** (a) para a OS lida do SAP, já que a API simulada pode devolver o status; (b) só para a OS de apoio, que não existe no SAP e por isso não tem status lá. (c) é perigoso: uma leitura parcial cancelaria ordens válidas.
 
 ### 6. Como desfazer uma execução iniciada por engano?
 
@@ -94,7 +93,8 @@
 ### 24. Técnico sem e-mail e o Supabase Auth
 
 **Contexto:** o Supabase Auth exige e-mail e a decisão de usá-lo está tomada. `POST /usuarios` não tem senha.
-**Recomendação:** login por matrícula, com e-mail interno gerado e senha inicial definida pelo administrador, trocada no 1º acesso.
+**Decisão (11/10):** o sistema é só de funcionários, e todos têm e-mail institucional (primeiro nome e um sobrenome). O e-mail é o login e o destino dos alertas, e a conta no Supabase Auth usa o mesmo e-mail. A matrícula continua no cadastro como identificação definitiva (PDF e SAP). A senha inicial é definida pelo administrador e trocada no 1º acesso.
+**A validar com a empresa:** o domínio do e-mail e se há homônimos (dois `joao.silva`), caso em que o e-mail cadastrado é o que a empresa já usa, não um gerado por regra.
 
 ### 29. A OS só executa depois de liberada no SAP
 
@@ -128,11 +128,11 @@
 **Contexto:** já respondido: quem preenche a APR é o líder (22:22), e os participantes vêm da **equipe da OS** (DesignDoc). Falta: o técnico logado precisa ser participante? Alguém de fora da equipe (apoio, terceiro) pode participar?
 **Recomendação:** o técnico logado é sempre participante; participantes de fora da equipe ficam para depois.
 
-### 12. OS manual e OS de apoio: como entram no SAP?
+### 12. OS de apoio: como entra no SAP?
 
-**Contexto:** uma OS manual não tem `numero_ordem`; o Iago não teria onde dar baixa.
-**Opções:** (a) aba separada na exportação, e o Iago cria a ordem depois; (b) a ordem é aberta no SAP antes; (c) ficam fora.
-**Recomendação:** (a). Perguntar ao Iago qual é o procedimento hoje para corretivas urgentes.
+**Contexto:** uma OS de apoio não tem `numero_ordem`; o Iago não teria onde dar baixa.
+**Opções:** (a) aba separada na exportação, e o Iago cria a ordem depois; (b) a ordem é aberta no SAP antes; (c) fica fora.
+**Recomendação:** (a). Perguntar ao Iago qual é o procedimento hoje para abrir no SAP uma ordem de apoio.
 
 ### 13. Exportar também as OS pendentes?
 
@@ -257,7 +257,6 @@
 |---|---|
 | 17 | Guardar `ocorrido_em` e `recebido_em`; o painel sinaliza quando `ocorrido_em` for posterior ao recebimento. Vale também para o cronômetro |
 | 18 | Aceitar no MVP: o app invalida a senha antiga no próximo sync com sinal. O reset é sempre online, pelo Supabase Auth |
-| 19 | Aceitar a duplicidade no MVP; depois, ação "mesclar locais" |
 | 20 | E-mail só para bloqueio; perguntar ao Iago se `apoio_encerrado` também merece e-mail. O envio é do back-end Node |
 | 21 | O analista pode reprogramar e criar OS de apoio para qualquer equipe |
 | 26 | Confirmar com o Iago se o volume é ~390 ou ~900 OS por mês |
@@ -272,6 +271,7 @@
 | 2 | A interrupção afeta as demais OS da APR? | **Sem objeto:** idem | 28:09–28:26 |
 | 11 | Quem assina o encerramento numa dupla? | **Todos os executantes**, ao fim da atividade; o supervisor dá ciência (ver 49) | 59:25–1:00:08 |
 | 15 | PDF por OS ou por APR? | **Um PDF por OS**, em 2 páginas: a APR e a OS | 53:48 |
+| 19 | Local que depois chega do SAP com outro código | **Sem objeto:** os locais vêm só do SAP, pelo código da ordem; o sistema não cadastra local | — |
 | 23 | `os.modelo_apr_codigo` obrigatório × `equipe.modelo_apr_codigo` opcional | **O modelo vem do tipo de atividade** (ver 52), não da equipe | 1:12:15 |
 | 30 | Status "Pendente" e "Imprimida" | **"Pendente"** é a OS com APR negativa; "impressa" é do SAP e não se usa | 9:06–15:30 |
 | 31 | Designar a OS a um usuário, com aceite | **A OS é designada à equipe** | 40:55–41:17 |
@@ -292,7 +292,6 @@
 Registrado na [especificação](especificacao.md) como correção ou suposição adotada:
 
 - **Equipe sem supervisor:** o alerta vai para cada analista ativo.
-- **Cadastro de locais:** `POST /locais`, usado na criação de OS manual.
 - **Fim da OS de apoio:** encerrar a OS de apoio gera o alerta `apoio_encerrado`.
 
 Decidido em 10/10/2026 (já refletido na especificação):
@@ -304,6 +303,10 @@ Decidido em 10/10/2026 (já refletido na especificação):
 - **Fonte das OS:** API do SAP simulada, com dados fictícios, e planilha como alternativa.
 - **Stack:** `web` em Next.js (React e TypeScript), `mobile` em React Native, `api` em Node, banco, autenticação e armazenamento no Supabase; PDF e e-mail na `api` (premissa a confirmar). O monorepo usa as pastas `api`, `web` e `mobile`.
 - **Online primeiro:** o sistema é online; o modo offline é um recurso adicional de contingência para o campo sem sinal. Web e app atendem todos os perfis, e o perfil, não a plataforma, define o que cada pessoa faz. Corrige o entendimento anterior de app offline-first e web só de gestão.
+
+Decidido em 11/10/2026 (já refletido na especificação):
+
+- **Sem OS manual:** a criação manual de OS foi retirada por decisão posterior do time; toda OS vem do SAP (API simulada ou planilha), e só a OS de apoio nasce no sistema, sempre ligada a uma OS de origem. O cadastro de locais saiu junto: os locais vêm só do SAP.
 
 ## 8. Insumos prometidos na Reunião 2
 

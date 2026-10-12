@@ -24,9 +24,9 @@ Volume: ~390 OS encerradas no mês passado, variando de ~200 a 409 por mês (Reu
 
 ## Escopo
 
-Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por planilha, e criação manual de OS; aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP.
+Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por planilha; aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP.
 
-Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Catálogo de serviço, escaneamento de OS e APR antigas, monitoramento do intervalo entre preventivas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP. Mesclar locais duplicados. Substituir o BI ou o site Lovable — são de outra equipe.
+Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Catálogo de serviço, escaneamento de OS e APR antigas, monitoramento do intervalo entre preventivas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP. Substituir o BI ou o site Lovable — são de outra equipe.
 
 Não muda: SAP (continua gerando, liberando e encerrando as ordens); site Lovable de controle; o conteúdo das APRs continua sendo da segurança do trabalho.
 
@@ -42,7 +42,7 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 4. **Uma APR vale para uma única OS e ampara uma única Execução; nenhuma Execução começa sem a APR aprovada, do dia, da própria OS; uma APR bloqueada é imutável.** A relação é 1:1, como o Iago e o Mario confirmaram (a mesma APR para várias OS foi descartada porque os riscos de cada atividade são diferentes). Toda nova tentativa, mesmo no mesmo local e na mesma hora, exige uma APR nova, e as respostas nunca são pré-preenchidas nem copiadas de outra APR. O registro das APRs bloqueadas fica para auditoria e para o indicador de atraso justificado.
 5. **A APR é respondida por inteiro e só então validada; cada item do modelo define `resposta_bloqueante`, `tipo` e `evidencia`.** O técnico responde todos os itens, em qualquer ordem, e volta a corrigir enquanto não concluir; ao concluir, o resultado é `bloqueada` se qualquer item `eliminatorio` tiver a resposta bloqueante, e todos os itens reprovados são registrados, cada um com observação e, quando o item pede foto, ao menos 1 foto. O servidor recalcula o resultado a partir das respostas e da versão do modelo; o valor enviado pelo aparelho é só conferido.
 6. **Um modelo de APR publicado é imutável; editar cria versão nova, e toda APR aponta para a versão exata que respondeu.** O modelo de uma OS sai da tabela `atividade` (chave da atividade no SAP → código do modelo), que a Segurança do Trabalho mantém; quando a OS não tem atividade mapeada, o técnico escolhe o modelo ao iniciar a APR, e a APR guarda a versão escolhida. APRs antigas e PDFs continuam reproduzíveis depois de uma revisão, e uma APR preenchida offline numa versão anterior é aceita com a versão que usou.
-7. **O SAP é fonte de leitura e destino de planilha: a OS entra por um adaptador de leitura (API, simulada no protótipo) ou por planilha, a leitura insere ou atualiza por `numero_ordem` tocando só colunas de planejamento, e a saída é PDF mais planilha para baixa manual.** Reler nunca reabre uma OS encerrada nem apaga execução de campo. Trocar a API simulada pela real muda só o endereço e as credenciais, porque o contrato é o mesmo.
+7. **O SAP é fonte de leitura e destino de planilha: a OS entra por um adaptador de leitura (API, simulada no protótipo) ou por planilha, a leitura insere ou atualiza por `numero_ordem` tocando só colunas de planejamento, e a saída é PDF mais planilha para baixa manual.** Nenhuma OS nasce à mão: a única criada no sistema é a OS de apoio, aberta a partir de um impedimento (Decisão-chave 8). Reler nunca reabre uma OS encerrada nem apaga execução de campo. Trocar a API simulada pela real muda só o endereço e as credenciais, porque o contrato é o mesmo.
 8. **Uma tentativa que não conclui não trava a OS: ela fica `pendente` e qualquer pessoa da equipe a retoma com uma APR nova, sem esperar o supervisor.** O supervisor é avisado e acompanha, e pode reprogramar ou abrir uma OS de apoio, mas não autoriza a retomada. Quem executa é quem encerra, com todas as assinaturas dos participantes; nenhum usuário encerra a OS de outro e a OS pendente nunca é duplicada.
 
 ## Trabalho
@@ -50,8 +50,8 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 | Fatia | Entrega | Status |
 |---|---|---|
 | [Plataforma](#plataforma) | monorepo, imagens, migrações, acesso ao Supabase, arquivos e tarefas | definida |
-| [Usuário e Equipe](#usuário-e-equipe) | perfis, equipes, login por matrícula (com login offline de contingência), assinatura do perfil | aberta — 4 suposições adotadas; 2 RFC fora da demo |
-| [Integração SAP](#integração-sap) | OS entram pela API simulada ou por planilha; OS manual e de apoio | aberta — 6 suposições adotadas |
+| [Usuário e Equipe](#usuário-e-equipe) | perfis, equipes, login pelo e-mail institucional (com login offline de contingência), assinatura do perfil | aberta — 4 suposições adotadas; 2 RFC fora da demo |
+| [Integração SAP](#integração-sap) | OS entram pela API simulada ou por planilha; OS de apoio | aberta — 5 suposições adotadas |
 | [Modelo de APR](#modelo-de-apr) | modelos versionados, atividade → modelo e os 8 modelos de `base/apr-examples/` | aberta — 4 suposições adotadas |
 | [Eventos e modo offline](#eventos-e-modo-offline) | envio idempotente dos eventos de campo (online e pela fila offline) e cópia local da equipe para o campo sem sinal | definida |
 | [APR](#apr) | checklist respondido por inteiro, evidência e validação | definida |
@@ -115,11 +115,11 @@ Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVI
 
 ### Usuário e Equipe
 
-**Entrega** cadastro de usuários e equipes na web, com perfis, e login por matrícula no app e na web. O login normal é online; no app, uma sessão já aberta no aparelho também entra sem sinal, como contingência do modo offline. **Status: aberta.**
+**Entrega** cadastro de usuários e equipes na web, com perfis, e login pelo e-mail institucional no app e na web. O login normal é online; no app, uma sessão já aberta no aparelho também entra sem sinal, como contingência do modo offline. **Status: aberta.**
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Admin cria usuário | usuário com matrícula única, perfil, equipe e senha inicial; no Supabase Auth ele nasce com o e-mail interno `<matrícula>@daprom.local` | `201` |
+| Admin cria usuário | usuário com e-mail institucional único (o login), matrícula única, perfil, equipe e senha inicial; no Supabase Auth a conta nasce com esse mesmo e-mail | `201` |
 | Matrícula repetida | nada é gravado | `409` "Matrícula já cadastrada" |
 | Primeiro login com senha inicial | entra, mas só consegue trocar a senha | tela "Defina sua senha" |
 | Login com sinal (web ou app) | confere a senha na `api` e abre a sessão; no app, guarda também um hash salgado da senha e os dados da equipe para o modo offline | `200` |
@@ -133,14 +133,16 @@ Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVI
 | Refazer a assinatura do perfil | vale para as próximas assinaturas; as já feitas guardam a imagem que usaram | `200` |
 | Dupla em campo | todos assinam no app ou no navegador de quem está logado, sem login próprio | lista de participantes vinda da equipe da OS |
 
-`POST /auth/login` `{matricula, senha}` → `200` `{access_token, refresh_token, expira_em, usuario, senha_provisoria}`
+`POST /auth/login` `{email, senha}` → `200` `{access_token, refresh_token, expira_em, usuario, senha_provisoria}`
 `POST /auth/refresh` `{refresh_token}` → `200` `{access_token, expira_em}`
 `POST /auth/trocar-senha` `{senha_atual, senha_nova}` → `200`
 `GET /me` → `200` `{usuario, equipe}`
 `PUT /me/assinatura` `{arquivo_id}` → `200`
-`POST /usuarios` `{nome, matricula, email?, perfil, equipe_id?, senha_inicial}` → `201` `{id}`
-`PATCH /usuarios/{id}` `{nome?, email?, perfil?, equipe_id?, ativo?}` → `200`
+`POST /usuarios` `{nome, matricula, email, perfil, equipe_id?, cargo?, registro_profissional?, senha_inicial}` → `201` `{id}`
+`PATCH /usuarios/{id}` `{nome?, email?, perfil?, equipe_id?, cargo?, registro_profissional?, ativo?}` → `200` (trocar o e-mail troca também o login da conta no Supabase Auth; a matrícula não muda)
 `POST /usuarios/{id}/redefinir-senha` → `200` `{senha_inicial}`
+
+`DELETE /usuarios/{id}` → `200` (admin; remove o cadastro e a conta de acesso; `409` `usuario_com_historico` se a pessoa já tem APR, execução, assinatura, evento, alerta ou equipe sob sua supervisão, caso em que se desativa; `422` ao tentar remover a si mesmo)
 `GET /usuarios` `?equipe_id&perfil&ativo` → `200` `{usuarios[]}`
 `POST /equipes` `{nome, centro_trabalho, supervisor_id?}` → `201` `{id}`
 `PATCH /equipes/{id}` `{nome?, supervisor_id?}` → `200`
@@ -156,8 +158,8 @@ Tabelas `equipe`, `usuario`.
 | `equipe.supervisor_id` | uuid | sim | `usuario.id` | destinatário dos alertas; sem supervisor, os alertas vão aos analistas ativos (ver [Impedimento](#impedimento)) |
 | `usuario.id` | uuid | não | | = id do Supabase Auth |
 | `usuario.nome` | text | não | | |
-| `usuario.matricula` | text | não | | unique; é o login |
-| `usuario.email` | text | sim | | contato para alertas; obrigatório para supervisor |
+| `usuario.matricula` | text | não | | unique; identificação definitiva da pessoa na empresa (PDF e SAP); não é o login |
+| `usuario.email` | text | não | | unique, sempre em minúsculas; e-mail institucional (`nome.sobrenome@empresa.com.br`): é o login, igual ao e-mail da conta no Supabase Auth, e o destino dos alertas |
 | `usuario.cargo` | text | sim | | aparece sob a assinatura na OS impressa (`Técnico em Elétrica`, `Engenheiro Mecânico`) |
 | `usuario.registro_profissional` | text | sim | | registro profissional impresso na OS (`CREA: ES-050003/D`) |
 | `usuario.perfil` | text | não | | `tecnico` \| `supervisor` \| `analista` \| `seguranca` \| `admin` |
@@ -175,13 +177,13 @@ Perfis e permissões:
 | OS da equipe, detalhe e histórico | própria equipe | própria equipe | todas | todas (leitura) | todas |
 | Quadro por status | — | própria equipe | todas | todas (leitura) | todas |
 | Ler o SAP, importar planilha e exportar | — | — | sim | — | sim |
-| Criar OS manual | — | própria equipe | sim | — | sim |
+| Digitalizar OS em papel (câmera; em desenvolvimento) | — | — | — | — | sim |
 | Criar OS de apoio | — | qualquer equipe | qualquer equipe | — | sim |
 | Reprogramar OS | — | própria equipe | sim | — | sim |
 | Dar ciência da execução | — | própria equipe | — | — | — |
-| Cancelar OS manual | — | — | sim | — | sim |
+| Cancelar OS de apoio | — | — | sim | — | sim |
 | Receber alertas | — | da equipe | quando a equipe não tem supervisor | — | — |
-| Editar modelos e tabela de atividades | — | — | — | sim | — |
+| Criar, editar, publicar e excluir modelos e editar a tabela de atividades | — | — | — | sim | sim |
 | Usuários e equipes | — | — | — | — | sim |
 | Indicadores | — | própria equipe | todas | todas | todas |
 
@@ -191,7 +193,7 @@ O perfil define o que a pessoa pode fazer; a plataforma não. Web e app aceitam 
 
 1. Janela de login offline — 7 dias desde o último login online.
 2. Funções de campo (gazista, instrumentista, eletricista) — ficam no texto da equipe e não viram perfil; perfil só controla acesso.
-3. Login por matrícula — o técnico não precisa de e-mail; o Supabase Auth recebe um e-mail interno e a senha inicial é definida pelo admin e trocada no primeiro acesso (questão 24).
+3. Login pelo e-mail institucional — todos os usuários são funcionários e têm e-mail corporativo; ele é o login e a conta no Supabase Auth usa o mesmo e-mail. A matrícula segue no cadastro como identificação definitiva (PDF, SAP). A senha inicial é definida pelo admin e trocada no primeiro acesso (questão 24).
 4. Esqueci a senha — só online, pelo admin; a troca de senha na web não derruba o login offline já feito (questões 18 e 24).
 
 - RFC: MFA ou SSO corporativo (pergunta aberta da Reunião 1) — bloqueia o uso real, não a demo. Não decidido.
@@ -199,7 +201,7 @@ O perfil define o que a pessoa pode fazer; a plataforma não. Web e app aceitam 
 
 ### Integração SAP
 
-**Entrega** OS no sistema a partir da API do SAP (simulada no protótipo) ou da planilha exportada, mais criação manual na web. **Status: aberta.**
+**Entrega** OS no sistema a partir da API do SAP (simulada no protótipo) ou da planilha exportada (o PDF da OS e a digitalização da folha em papel pela câmera, só do admin, estão em desenvolvimento), e a OS de apoio, a única que nasce no sistema, aberta por supervisor ou analista a partir de um impedimento. **Status: aberta.**
 
 O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio back-end e só está ativo com `SAP_SIMULADO=true`, devolve dados fictícios no mesmo formato, e o adaptador de leitura não sabe se fala com um ou com o outro.
 
@@ -213,7 +215,7 @@ O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio ba
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
 | Leitura agendada (a cada `SAP_LEITURA_INTERVALO_MIN`) ou "Ler agora" | consulta a API desde a última leitura bem-sucedida e processa cada ordem como as linhas abaixo | `202` `{importacao_id}` |
-| Ordem nova com status SAP liberada | cria a OS `liberada`, com a equipe resolvida pelo centro de trabalho e a atividade pelo código | conta em `criadas` |
+| Ordem nova com status SAP liberada | cria a OS `liberada`, com a equipe resolvida pelo centro de trabalho, a atividade pelo código e o local pelo código do local de instalação (o local é criado se ainda não existe; é só assim que um local entra no sistema) | conta em `criadas` |
 | Ordem nova com outro status no SAP | linha ignorada | `ignoradas`, motivo "Status SAP diferente de liberada" |
 | Reler a mesma ordem | atualiza só as colunas de planejamento; nunca duplica (Decisão-chave 7) | conta em `atualizadas` |
 | Ordem já `encerrada` ou `pendente` no app reaparece | planejamento atualizado; status e execução intocados | conta em `atualizadas` |
@@ -223,25 +225,30 @@ O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio ba
 | Centro de trabalho sem equipe cadastrada | linha ignorada | `ignoradas`, com o motivo |
 | Atividade da OS fora da tabela `atividade`, ou OS sem plano de manutenção | a OS entra normalmente, com `codigo_atividade` nulo; se havia um código, ele é cadastrado em `atividade` sem modelo, para a Segurança do Trabalho mapear; o técnico escolhe o modelo ao iniciar a APR | conta em `criadas`, com o aviso "Atividade sem modelo de APR" |
 | Linha sem número de ordem | linha ignorada | `ignoradas` |
-| API fora do ar ou resposta inválida | nada é gravado; a leitura seguinte retoma de onde parou | `importacao` com `erro`; faixa "Falha na leitura do SAP" no painel |
+| API fora do ar, resposta inválida ou erro ao gravar | nenhuma OS é criada, alterada ou removida; a leitura seguinte retoma de onde parou | `importacao` com `erro` no histórico; `alerta` `falha_importacao` no sino de quem pediu a sincronização (na leitura agendada, dos analistas ativos; sem analista, dos admins) |
 | Planilha enviada no lugar da API | mesmo processamento, com o mesmo mapeamento de colunas | `201` `{importacao_id, criadas, atualizadas, ignoradas}` |
-| Arquivo que não é o export esperado | nada é gravado | `422` "Colunas obrigatórias ausentes: …" |
-| Corretiva urgente fora do SAP | analista ou supervisor cria OS manual, escolhendo a atividade | `201` |
-| OS manual num local que nunca veio do SAP | cadastra o local antes, no mesmo formulário | `201` |
-| Local com código já existente | nada é gravado | `409` "Local já cadastrado" |
+| Arquivo que não é o export esperado | nenhuma OS muda; ficam o arquivo e a `importacao` com `erro` no histórico | `422` "Colunas obrigatórias ausentes: …"; `alerta` `falha_importacao` para quem enviou |
+| Qualquer outra falha da planilha (vazia, grande demais, não é .xlsx, erro ao gravar) | o mesmo: nenhuma OS muda, a tentativa fica no histórico com o erro | o erro na resposta e o `alerta` `falha_importacao` para quem enviou |
+| Nova falha do mesmo método com o alerta anterior ainda não lido | o alerta é reaproveitado: passa a apontar para a falha mais recente e sobe para o topo, em vez de empilhar um por tentativa | um alerta só no sino |
+| PDF de uma OS escolhido na Importação (em desenvolvimento) | nada é enviado nem gravado: o arquivo fica no navegador | prévia do PDF e o passo a passo que virá (leitura dos campos, conferência campo a campo, OS registrada) |
+| Digitalização pela câmera, só o admin (em desenvolvimento) | abre a câmera traseira e captura a folha; nada é enviado nem gravado. Sem câmera (permissão negada, sem HTTPS), a foto pode vir do aparelho | a foto e o mesmo passo a passo, com a leitura do texto da folha |
+| OS de apoio, aberta a partir de uma OS pendente | supervisor ou analista escolhe a equipe, a atividade, as datas e o local, que precisa ser um dos já cadastrados; a OS nasce `liberada`, ligada à original (`os_origem_id`), com `origem` `apoio` e sem número SAP | `201` |
+| Criar OS sem `os_origem_id`, ou com OS de origem, local ou equipe que não existem | nada é gravado: o sistema só cria OS de apoio | `422` |
 
 `POST /sap/leituras` → `202` `{importacao_id}`
 `POST /importacoes` `multipart: arquivo .xlsx` → `201` `{importacao_id, criadas, atualizadas, ignoradas: [{linha, motivo}]}`
 `GET /importacoes` → `200` `{importacoes[]}`
-`POST /os` `{numero_ordem?, tipo, codigo_atividade?, titulo, descricao, local_instalacao_id, equipe_id, data_inicio_prog, prioridade, solicitante?, os_origem_id?}` → `201` `{id}`
-`POST /locais` `{codigo, endereco?, plus_code?, cliente?}` → `201` `{id}`
+`GET /importacoes/resumo` `?periodo=7d|30d|90d|12m` (padrão `30d`) → `200` `{periodo, agrupamento: dia|semana|mes, de, ate, totais, anterior, por_origem: {api: {..., leituras, leituras_com_erro}, planilha: {..., arquivos}}, serie: [{inicio, fim, api, planilha, leituras, falhas}], motivos_ignoradas: [{motivo, total}]}` — a aba Diagnóstico de OS da seção Indicadores e exportação: OS registradas (criadas) por dia, semana (de segunda a domingo) ou mês e por origem, leituras da API com e sem falha e os motivos das linhas ignoradas (agrupados pelo texto antes de ":", com os que passam de cinco somados em "Outros motivos"), pelo dia de São Paulo em que a leitura ou a planilha aconteceu, comparadas ao período anterior de mesmo tamanho
+`GET /sap/sincronizacao` → `200` `{ultima_leitura_sem_erro_em, automatica, intervalo_min}` — estado da sincronização mostrado no cartão Sincronização da aba Importação
+`POST /os` `{tipo, codigo_atividade?, titulo, descricao?, local_instalacao_id, equipe_id, data_inicio_prog, data_fim_prog?, prioridade?, equipamento?, os_origem_id}` → `201` `{id}` — só a OS de apoio: `os_origem_id` é obrigatório, e a OS nasce sem número da ordem
+`GET /locais` `?codigo` → `200` `{locais[]}` — para escolher o local da OS de apoio e filtrar por trecho do código
 
 Tabelas `os`, `local_instalacao`, `importacao`.
 
 | Coluna | Tipo | Nulo | Referência | Nota |
 |---|---|---|---|---|
 | `os.id` | uuid | não | | |
-| `os.numero_ordem` | text | sim | | ordem SAP (`4023470`); unique quando presente; manual sem SAP fica nulo |
+| `os.numero_ordem` | text | sim | | ordem SAP (`4023470`); unique quando presente; só a OS de apoio, que ainda não existe no SAP, fica sem número (o banco exige o número em toda OS que não é de apoio) |
 | `os.numero_nota` | text | sim | | nota SAP (`10006463`) |
 | `os.tipo` | text | não | | `corretiva` (YBA1) \| `preventiva` (YBA2) |
 | `os.tipo_atividade` | text | sim | | texto do SAP, ex.: `Z01-Manutenção Corretiva`; só exibição |
@@ -260,17 +267,17 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.data_ordem` | date | sim | | "Data da Ordem" (emissão), do cabeçalho da OS impressa |
 | `os.criado_por_sap` | text | sim | | quem criou a ordem no SAP (`RFAVARO`, `IP1020251202`); aparece no PDF |
 | `os.status_sap` | text | sim | | "Status do sistema" do SAP, uma lista de códigos (`LIB IMPR CAPC NOAP SCDM`); a api procura o `LIB` |
-| `os.solicitante` | text | sim | | geralmente vazio; aparece no PDF quando existe |
-| `os.os_origem_id` | uuid | sim | `os.id` | preenchido em OS de apoio |
-| `os.origem` | text | não | | `sap` \| `planilha` \| `manual` |
+| `os.solicitante` | text | sim | | vem do SAP; geralmente vazio; aparece no PDF quando existe |
+| `os.os_origem_id` | uuid | sim | `os.id` | a OS que a OS de apoio destrava; preenchido em toda OS de apoio e só nela (o banco confere: `origem` = `apoio` se e somente se há `os_origem_id`) |
+| `os.origem` | text | não | | `sap` \| `planilha` \| `apoio`; `apoio` é a OS aberta por supervisor ou analista a partir de um impedimento, a única sem origem no SAP |
 | `os.pdf_path` | text | sim | | PDF da OS, no bucket `pdfs`; um por OS |
 | `os.pdf_em` | timestamptz | sim | | |
 | `os.ciencia_por` | uuid | sim | `usuario.id` | supervisor que deu ciência |
 | `os.ciencia_em` | timestamptz | sim | | |
 | `os.exportada_sap_em` | timestamptz | sim | | preenchida pela exportação do [Painel](#painel) |
-| `os.cancelada_em` | timestamptz | sim | | quando a OS foi cancelada (SAP ou web) |
+| `os.cancelada_em` | timestamptz | sim | | quando a OS foi cancelada (no SAP, ou na web, no caso da OS de apoio) |
 | `os.cancelada_por` | uuid | sim | `usuario.id` | quem cancelou; nulo quando foi o SAP |
-| `os.justificativa_cancelamento` | text | sim | | obrigatória quando `cancelada_por` está preenchido (cancelamento da OS manual, ver [Impedimento](#impedimento)) |
+| `os.justificativa_cancelamento` | text | sim | | obrigatória quando `cancelada_por` está preenchido (cancelamento da OS de apoio, ver [Impedimento](#impedimento)) |
 | `os.atualizada_em` | timestamptz | não | | cursor do snapshot do modo offline |
 | `local_instalacao.id` | uuid | não | | |
 | `local_instalacao.codigo` | text | não | | unique; ex.: `VILA VELHA/REDE VILA VELHA` |
@@ -291,14 +298,13 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 
 1. Mapeamento de colunas da planilha — usar os campos do PDF da OS 4023470 (ordem, nota, tipo, centro de trabalho, local de instalação, equipamento, datas programadas, prioridade, endereço) até chegar a planilha de OS de 2025 que o Iago vai enviar; ajustar o mapeamento quando ela chegar (questões 43 e 54).
 2. Só OS liberadas descem para o aparelho (questão 29); status SAP diferente de liberada fica de fora com o motivo registrado.
-3. OS cancelada no SAP vira `cancelada` pela própria leitura; a OS manual, que não tem origem no SAP, é cancelada na web com justificativa (questão 5).
+3. OS cancelada no SAP vira `cancelada` pela própria leitura; a OS de apoio, que não tem origem no SAP, é cancelada na web com justificativa (questão 5).
 4. Reprogramação no sistema vence a data do SAP (questão 14).
-5. Locais fora do SAP — a leitura continua criando locais automaticamente pelo código; o cadastro manual existe só para a OS manual, e se o mesmo local chegar depois pelo SAP com outro código vira um local diferente (questão 19).
-6. OS do módulo MM (a APR 09, de almoxarifado) só entram se vierem na leitura; a APR 09 sem OS não bloqueia nada (questão 33).
+5. OS do módulo MM (a APR 09, de almoxarifado) só entram se vierem na leitura; a APR 09 sem OS não bloqueia nada (questão 33).
 
 ### Modelo de APR
 
-**Entrega** modelos de APR versionados, editáveis na web pelo perfil `seguranca`, a tabela que liga cada atividade a um modelo, e os 8 modelos de `base/apr-examples/` como carga inicial. **Status: aberta.**
+**Entrega** modelos de APR versionados, criados, editados e excluídos na web pela Segurança do Trabalho (`seguranca`), dona do conteúdo, e pelo administrador (`admin`), a tabela que liga cada atividade a um modelo, e os 8 modelos de `base/apr-examples/` como carga inicial. No painel, ficam na seção APR (abas Modelos e Atividades, como a seção Ordem de Serviço). O dashboard de APR, na seção Indicadores e exportação (`GET /aprs/resumo` `?periodo=7d|30d|90d|12m`, de analista, Segurança e admin) mostra, pela data de conclusão, as APRs respondidas e bloqueadas com a comparação com o período anterior, os alertas registrados, as APRs de OS sem atividade ligada a um modelo, os itens que mais bloqueiam, os alertas mais registrados e as APRs por modelo e por equipe. **Status: aberta.**
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
@@ -311,12 +317,21 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | APR offline respondida na versão anterior chega | aceita, gravada com a versão que usou | |
 | Segurança liga um código de atividade a um modelo | as OS dessa atividade passam a usar o modelo; a leitura seguinte preenche `codigo_atividade` das OS que ainda estavam sem atividade mapeada | `200` |
 | Segurança troca o modelo de um código | vale para as APRs novas; as OS já abertas usam o modelo novo ao atualizar a lista (no modo offline, na próxima sincronização) | `200` |
+| Cria um modelo novo | rascunho da versão escolhida (a revisão do documento; padrão 1), em branco ou copiado da versão em uso de outro modelo; só vale para as APRs depois de publicado | `201` |
+| Exclui um modelo que nunca foi publicado | o rascunho é apagado e o código fica livre | `200` |
+| Exclui um modelo já publicado | arquivado, não apagado: sai das listas, das APRs novas e da cópia offline, e o rascunho é descartado; as versões ficam, porque APRs, PDFs e a APR offline pendente apontam para elas (a que chegar ainda é aceita). As atividades dele vão para o substituto escolhido ou ficam sem modelo | `200` |
+| Restaura um modelo excluído | volta às listas e às APRs novas; as atividades não voltam sozinhas | `200` |
+| Liga atividade a um modelo excluído, cria versão dele ou o exclui de novo | recusado | `422` / `409` |
 
 `POST /modelos-apr/{codigo}/versoes` `{titulo, pae?, itens: [{secao, grupo, ordem, texto, resposta_bloqueante, tipo, evidencia, permite_na}]}` → `201` `{id, versao}`
 `POST /modelos-apr/{codigo}/versoes/{versao}/publicar` → `200` `{id, versao, publicado_em}`
-`GET /modelos-apr` → `200` `{modelos[]}`
+`GET /modelos-apr` `?arquivados` → `200` `{modelos[]}`
+`GET /modelos-apr/{codigo}` → `200` `{codigo, titulo, arquivado_em, versoes[]}`
+`GET /modelos-apr/{codigo}/uso` → `200` `{atividades[], os_abertas: {total, recentes[]}, aprs: {total, bloqueadas, ultima_em}}` — analista, Segurança e admin
+`DELETE /modelos-apr/{codigo}` `?substituto` → `200` `{codigo, resultado: excluido | arquivado, atividades, substituto}`
+`POST /modelos-apr/{codigo}/restaurar` → `200` `{codigo, versoes}`
 `PUT /atividades/{codigo}` `{descricao, modelo_apr_codigo}` → `200`
-`GET /atividades` `?sem_modelo` → `200` `{atividades[]}`
+`GET /atividades` `?sem_modelo&modelo` → `200` `{atividades[]}`
 
 Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
 
@@ -329,6 +344,7 @@ Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
 | `modelo_apr.titulo` | text | não | | ex.: `ESPAÇO CONFINADO E/OU TRABALHO EM ALTURA` |
 | `modelo_apr.pae` | jsonb | sim | | plano de atendimento a emergências, mostrado no app e na página 1 do PDF: `{titulo, subtitulo, fluxo, linhas: [{rotulo, celulas: [{coluna, texto}]}]}`, a grade de contatos da planilha (a posição de cada célula é a `coluna`, relativa ao rótulo) |
 | `modelo_apr.publicado_em` | timestamptz | sim | | nulo = rascunho; publicado não aceita escrita |
+| `modelo_apr.arquivado_em` | timestamptz | sim | | modelo excluído depois de publicado, em todas as versões do código; é a única coluna que a versão publicada aceita mudar, e rascunho não é arquivado |
 | `risco_modelo_apr.id` | uuid | não | | |
 | `risco_modelo_apr.modelo_apr_id` | uuid | não | `modelo_apr.id` | |
 | `risco_modelo_apr.classificacao` | text | não | | "Classificação" da planilha das medidas preventivas (`Veicular`, `Ambiente de trabalho`) |
@@ -352,7 +368,7 @@ Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
 1. Critério de bloqueio — quem define é a Segurança do Trabalho, **por item**, no editor de modelos: quais perguntas existem, qual resposta é a correta e quais são eliminatórias (nem toda pergunta bloqueia no "Não"). A carga inicial não traz esse critério (as planilhas não o dizem) e usa só um ponto de partida, que a Segurança ajusta criando uma versão nova: todo item de verificação é `eliminatorio` e bloqueia no Não, exceto "O serviço requer uso de iluminação auxiliar?" (`alerta`, registra no Sim) e "Existe algum impedimento para executar a atividade?" (`eliminatorio`, bloqueia no Sim); toda medida preventiva é `alerta` sem resposta que avise. Os riscos da planilha são marcados pela equipe com "( )", e só as medidas dos riscos marcados são respondidas: nas duas APR 03 preenchidas dos exemplos, as medidas dos riscos sem marca ficam em branco. Por isso o risco é uma entidade do modelo (`risco_modelo_apr`) e a marcação fica em `apr_risco` (questão 59). O ponto de partida é provisório até a Segurança do Trabalho validar, via Iago.
 2. Evidência por item — `texto` só para "Todos os participantes da atividade estão em boas condições psicológicas?" (e equivalentes), porque condição psicológica não se comprova com foto e a NR 01 dá ao trabalhador o direito de recusa; todos os demais são `foto`. A Segurança do Trabalho altera isso no editor (questão 50).
 3. Resposta "NA" — passa, exige observação, e só é oferecida nos itens com `permite_na` (questão 9): todos os itens das APR 04 e 05 (que têm a coluna) e o teste de explosividade da APR 06 (questão 61).
-4. Tabela de atividades — editável pela Segurança do Trabalho; o código real do SAP ainda não foi confirmado e o plano de manutenção está em revisão, então os códigos vão mudar (questões 3, 52 e 58). Toda a carga entra como `provisorio`; a chave é o código do plano quando existe e o texto quando não. Um modelo por OS: o que a APR 06 repete das listas das APR 01, 02 e 03 fica com a primeira.
+4. Tabela de atividades — editável pela Segurança do Trabalho e pelo admin; o código real do SAP ainda não foi confirmado e o plano de manutenção está em revisão, então os códigos vão mudar (questões 3, 52 e 58). Toda a carga entra como `provisorio`; a chave é o código do plano quando existe e o texto quando não. Um modelo por OS: o que a APR 06 repete das listas das APR 01, 02 e 03 fica com a primeira.
 
 ### Eventos e modo offline
 
@@ -440,11 +456,11 @@ sequenceDiagram
   S-->>A: snapshot da equipe
 ```
 
-O `status` da OS é derivado, nesta ordem: `cancelada` se o SAP a cancelou; `encerrada` se há Execução encerrada; `em_execucao` se há Execução em andamento (inclui em pausa); `pendente` se há APR bloqueada, ou Execução interrompida ou suspensa, e nenhuma Execução em andamento; `liberada` nos demais casos.
+O `status` da OS é derivado, nesta ordem: `cancelada` se o SAP a cancelou (ou, na OS de apoio, se ela foi cancelada na web); `encerrada` se há Execução encerrada; `em_execucao` se há Execução em andamento (inclui em pausa); `pendente` se há APR bloqueada, ou Execução interrompida ou suspensa, e nenhuma Execução em andamento; `liberada` nos demais casos.
 
 ```mermaid
 stateDiagram-v2
-  [*] --> liberada: leitura do SAP / OS manual
+  [*] --> liberada: leitura do SAP ou planilha / OS de apoio criada
   liberada --> pendente: APR bloqueada
   liberada --> em_execucao: execução iniciada (APR aprovada)
   pendente --> em_execucao: execução iniciada (APR nova aprovada)
@@ -453,8 +469,8 @@ stateDiagram-v2
   em_execucao --> pendente: interrompida ou suspensa
   em_execucao --> liberada: cancelada por engano, sem histórico
   em_execucao --> pendente: cancelada por engano, com histórico
-  liberada --> cancelada: cancelada no SAP
-  pendente --> cancelada: cancelada no SAP ou na web (OS manual)
+  liberada --> cancelada: cancelada no SAP ou na web (OS de apoio)
+  pendente --> cancelada: cancelada no SAP ou na web (OS de apoio)
   encerrada --> [*]
   cancelada --> [*]
 ```
@@ -643,11 +659,13 @@ Alternativas consideradas: gerar o PDF no aparelho — ganha se o técnico preci
 | Precisa de outra equipe antes (caixa de válvula cheia d'água → civil drena) | supervisor ou analista cria OS de apoio para qualquer equipe, ligada à original; a original continua `pendente` | `201` |
 | OS de apoio encerrada | a original continua `pendente`; `alerta` `apoio_encerrado` para o supervisor da original | alerta no painel |
 | OS pendente passa da data programada | conta como atrasada **justificada** | ver [Painel](#painel) |
-| Supervisor marca alerta como lido | `lido_em` preenchido | some da lista de pendentes |
-| Cancelar OS manual | analista, com justificativa; a OS vira `cancelada` | `200` |
+| Supervisor, analista ou admin abre o alerta no painel | o painel marca como lido sozinho, sem botão (`lido_em` preenchido) | some dos não lidos e baixa o contador do sino |
+| Cancelar OS de apoio | analista ou admin, com justificativa, só com a OS `liberada` ou `pendente`; a OS vira `cancelada` | `200` |
+| Cancelar OS de apoio em outro status | recusado | `409` `status_invalido_para_cancelar` |
+| Cancelar OS que não é de apoio | recusado: a OS do SAP é cancelada pelo SAP, na leitura | `422` `os_nao_apoio` "Só OS de apoio pode ser cancelada pelo sistema" |
 
 `POST /os/{id}/reprogramar` `{data_inicio_prog, equipe_id?, justificativa}` → `200` `{id, status}`
-`POST /os/{id}/cancelar` `{justificativa}` → `200` — só OS manual
+`POST /os/{id}/cancelar` `{justificativa}` → `200` — só OS de apoio
 `GET /alertas` `?lido&equipe_id` → `200` `{alertas[]}`
 `PATCH /alertas/{id}` `{lido: true}` → `200`
 OS de apoio usa `POST /os` com `os_origem_id` ([Integração SAP](#integração-sap)).
@@ -657,9 +675,10 @@ Tabela `alerta`.
 | Coluna | Tipo | Nulo | Referência | Nota |
 |---|---|---|---|---|
 | `alerta.id` | uuid | não | | |
-| `alerta.tipo` | text | não | | `bloqueio` \| `conflito_planejamento` \| `execucao_duplicada` \| `apoio_encerrado` |
-| `alerta.os_id` | uuid | não | `os.id` | |
-| `alerta.destinatario_id` | uuid | não | `usuario.id` | supervisor da equipe; sem supervisor, um alerta por analista ativo |
+| `alerta.tipo` | text | não | | `bloqueio` \| `conflito_planejamento` \| `execucao_duplicada` \| `apoio_encerrado` \| `falha_importacao` |
+| `alerta.os_id` | uuid | sim | `os.id` | obrigatório em todo tipo, menos `falha_importacao` |
+| `alerta.importacao_id` | uuid | sim | `importacao.id` | só em `falha_importacao` (o banco exige um ou outro, conforme o tipo) |
+| `alerta.destinatario_id` | uuid | não | `usuario.id` | supervisor da equipe; sem supervisor, um alerta por analista ativo. Na `falha_importacao`, quem iniciou a importação (na leitura agendada, cada analista ativo; sem analista, cada admin ativo) |
 | `alerta.detalhe` | text | não | | |
 | `alerta.email_enviado_em` | timestamptz | sim | | |
 | `alerta.lido_em` | timestamptz | sim | | |
@@ -686,9 +705,9 @@ Tabela `reprogramacao`: `id`, `os_id` → `os.id`, `usuario_id` → `usuario.id`
 | Indicador mensal de preventivas | encerradas, atrasadas justificadas (`pendente`, ou com reprogramação, após a data) e atrasadas sem justificativa (`liberada` após a data, sem reprogramação); o atraso conta a partir de `data_fim_prog` quando existe, senão de `data_inicio_prog` | |
 | Indicador de tempo | por equipe, técnico e OS: tempo líquido médio, pausa média e proporção de pausa, só de Execuções `encerrada` | |
 | Execução aberta há mais de 12 h | destacada no quadro | "Execução aberta há N h" |
-| Exportar para o SAP | planilha com 3 abas: `Encerradas` (OS `encerrada` ainda não exportadas), `Sem ordem SAP` (manuais e de apoio, que o Iago cria no SAP depois) e `Impedimentos` (OS `pendente`, com o motivo); marca `exportada_sap_em` nas encerradas | download `.xlsx` |
+| Exportar para o SAP | planilha com 3 abas: `Encerradas` (OS `encerrada` ainda não exportadas), `Sem ordem SAP` (OS de apoio, que o Iago cria no SAP depois) e `Impedimentos` (OS `pendente`, com o motivo); marca `exportada_sap_em` nas encerradas | download `.xlsx` |
 | Exportar de novo sem OS novas | planilha vazia | "Nenhuma OS nova para exportar" |
-| Falha na leitura do SAP | faixa no topo do quadro e na tela de importação | "Falha na leitura do SAP" |
+| Falha de importação (sincronização ou planilha) | nenhuma OS muda; nada fica preso na tela | alerta "Falha na importação" no sino, com o método e o motivo |
 
 Colunas da aba `Encerradas`: `numero_ordem`, `data_inicio`, `hora_inicio`, `data_fim`, `hora_fim`, `tempo_liquido_min`, `pausa_min`, `numero_pessoas`, `executantes` (matrículas), `descricao_atividade`, `link_pdf`, `ciencia_supervisor`.
 
@@ -697,6 +716,8 @@ Colunas da aba `Encerradas`: `numero_ordem`, `data_inicio`, `hora_inicio`, `data
 `POST /os/{id}/ciencia` → `200` `{ciencia_em}`
 `GET /indicadores?mes=2026-09&equipe_id?` → `200` `{encerradas, atrasadas_justificadas, atrasadas_sem_justificativa, por_equipe[]}`
 `GET /indicadores/tempo?mes=2026-09&equipe_id?&usuario_id?` → `200` `{tempo_liquido_medio_min, pausa_media_min, proporcao_pausa, por_equipe[], por_usuario[]}`
+
+No painel, os indicadores ficam na seção Indicadores e exportação, em quatro dashboards com o mesmo filtro: `?periodo=` (os últimos 7 dias, 30 dias, 13 semanas ou 12 meses, ou um mês fechado `AAAA-MM`, que é o indicador mensal; o período anterior de mesmo tamanho serve de comparação) e `?equipe_id=` (o supervisor só vê a própria equipe; pedir outra é `403`). Geral (`GET /indicadores/geral`): a carteira de OS de agora, o resumo do período e as pendências (baixa no SAP, ciência, execução aberta há mais de 12 h, atividades sem modelo). Equipes e usuários (`GET /indicadores/equipes`): por equipe e por técnico (preventivas, execuções e tempo, APRs e bloqueios, interrupções) e, só para o admin, o estado do cadastro. OS (`GET /indicadores/os`): carteira, programadas e encerradas por tipo e por faixa, preventivas, tempo, interrupções por risco, reprogramações e locais; para analista e admin, a entrada de OS (`GET /importacoes/resumo`) e a planilha de baixa no SAP. APR (`GET /aprs/resumo`).
 `GET /historico?local_instalacao_id&equipamento?` → `200` `{execucoes[]}`
 `POST /exportacoes/sap` → `200` `.xlsx`
 `PATCH /locais/{id}` `{critico}` → `200`
@@ -713,7 +734,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 |---|---|---|
 | 3 | um modelo de APR por OS, vindo da atividade | Mario |
 | 4 | snapshot no `pull`; `cursor` fica opcional | time |
-| 5 | status do SAP vira `cancelada`; OS manual se cancela na web | Iago |
+| 5 | status do SAP vira `cancelada`; a OS de apoio se cancela na web | Iago |
 | 6 | `execucao_cancelada`, só sem foto nem pausa e em até 10 minutos | time |
 | 7 | painel destaca execução aberta há mais de 12 h; nada se encerra sozinho | time |
 | 8 | a APR vale para uma execução, no dia em que foi concluída | Iago e Mario |
@@ -725,10 +746,9 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 16 | foto comprimida a ~1600 px e qualidade 70% (~300 KB); de 1 a 10 fotos por execução; apagada do aparelho depois do envio confirmado | time |
 | 17 | guardam-se `ocorrido_em` e `recebido_em`; o painel sinaliza a diferença | time |
 | 18 | senha trocada na web vale no aparelho após o próximo login online; redefinição só online | time |
-| 19 | local duplicado aceito no MVP | time |
 | 20 | e-mail só para `bloqueio` | Iago |
 | 21 e 22 | supervisor e analista reprogramam e criam OS de apoio; apoio para qualquer equipe | Iago |
-| 24 | login por matrícula, e-mail interno e senha inicial trocada no primeiro acesso | time |
+| 24 | login pelo e-mail institucional (substitui a matrícula, decisão de 11/10) e senha inicial trocada no primeiro acesso | time |
 | 25 | PDF gerado fora da sincronização, por tarefa | time |
 | 26 | considerar ~390 OS por mês, com folga para ~900 | Iago |
 | 27 | `os.solicitante` opcional, só no PDF | Iago |
