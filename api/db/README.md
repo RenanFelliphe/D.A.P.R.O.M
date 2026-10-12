@@ -6,7 +6,7 @@ PostgreSQL (Supabase na hospedagem, Postgres comum no desenvolvimento). O schema
 
 | Arquivo do schema | Tabelas |
 |---|---|
-| `plataforma.ts` | `tarefa` |
+| `plataforma.ts` | `tarefa`, `auditoria` |
 | `usuarios.ts` | `equipe`, `usuario` |
 | `modelos-apr.ts` | `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade` |
 | `sap.ts` | `local_instalacao`, `os`, `importacao` |
@@ -41,6 +41,9 @@ Geradas pelo `drizzle-kit`, aplicadas em ordem, uma única vez cada, e registrad
 | `0001_gatilhos.sql` | o que o schema não descreve: `os.atualizada_em` automático e a imutabilidade de modelo publicado e de seus itens; SQL escrito à mão |
 | `0003_email_institucional.sql` | e-mail institucional obrigatório e único em `usuario` (é o login), em minúsculas; os usuários que já existiam recebem um e-mail provisório (`<matrícula>@empresa.com.br`) até `pnpm usuarios:migrar-emails` trocar pelo real; gerado do schema, com os `UPDATE` dos existentes escritos à mão |
 | `0004_os_origem_apoio.sql` | `os.origem` passa a `sap \| planilha \| apoio` (a OS de apoio, antes gravada como `manual`, ganha origem própria): converte a `manual` ligada a uma OS de origem em `apoio`, apaga a `manual` sem vínculo que nunca foi usada (sem APR, execução, evento, alerta, reprogramação nem OS de apoio filha) e **para com uma mensagem** se sobrar alguma `manual` já usada, para ser tratada à mão; troca o `CHECK` `os_origem_check` e o `os_numero_ordem_obrigatorio` (número da ordem obrigatório, salvo na OS de apoio) e cria o `CHECK` `os_apoio_ligada` (`origem = 'apoio'` se e somente se há `os_origem_id`); gerada do schema, com os passos de dados escritos à mão |
+
+| `0011_auditoria.sql` | a tabela `auditoria` (trilha de quem fez o quê nas telas de gestão), sem chave estrangeira, com índices por data, por entidade e por autor; gerada do schema |
+| `0012_auditoria_so_cresce.sql` | gatilho que recusa `UPDATE` e `DELETE` em `auditoria` (a trilha só cresce); SQL escrito à mão |
 
 O Painel não tem tabela própria: lê as acima.
 

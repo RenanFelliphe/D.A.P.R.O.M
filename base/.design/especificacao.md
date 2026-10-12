@@ -143,7 +143,15 @@ Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVI
 `POST /usuarios/{id}/redefinir-senha` → `200` `{senha_inicial}`
 
 `DELETE /usuarios/{id}` → `200` (admin; remove o cadastro e a conta de acesso; `409` `usuario_com_historico` se a pessoa já tem APR, execução, assinatura, evento, alerta ou equipe sob sua supervisão, caso em que se desativa; `422` ao tentar remover a si mesmo)
-`GET /usuarios` `?equipe_id&perfil&ativo&supervisor` → `200` `{usuarios[]}` (`supervisor=true`: quem supervisiona alguma equipe)
+`GET /usuarios` `?equipe_id&perfil&ativo&supervisor&minha_supervisao` → `200` `{usuarios[]}` (`supervisor=true`: quem supervisiona alguma equipe; `minha_supervisao=true`, para o supervisor: os cadastros das equipes dele em qualquer situação de liberação, sem ele mesmo, com `liberacao` filtrando dentro disso e a paginação feita na `api`)
+
+`DELETE /equipes/{id}` → `200` (admin; `409` `equipe_com_historico` se há usuário ou OS ligados à equipe)
+
+`DELETE /atividades/{codigo}` → `200` (admin; `409` `atividade_com_os` se alguma OS usa a atividade)
+
+`POST /auth/sair` → `200` (derruba as sessões da conta: o `refresh_token` deixa de renovar; vale em qualquer situação da conta)
+
+`GET /auditoria` `?entidade&entidade_id&ator_id&busca&de&ate` → `200` `{registros[], pagina, tamanho, total}` (só admin; do mais novo ao mais antigo). Cada registro: `{id, em, ator_id, ator_nome, acao, entidade, entidade_id, alvo, resumo, detalhes}`. A trilha registra, depois que a ação deu certo: cadastro, edição, ativação/desativação, liberação, recusa, redefinição de senha e exclusão de usuário; criação, edição e exclusão de equipe e de atividade; criação de versão, publicação, descarte de rascunho, exclusão e restauração de modelo de APR; leitura imediata do SAP, importação de planilha, OS de apoio (abrir, reprogramar, cancelar), ciência, marcação de local crítico e a exportação para o SAP. Só cresce (um gatilho do banco recusa alterar ou apagar) e não guarda chave estrangeira, para continuar legível depois que a conta ou o cadastro forem removidos. Nunca guarda senha. Salvar o rascunho de um modelo não entra (só criar a versão e publicar); eventos de campo continuam em `evento_campo`.
 `POST /equipes` `{nome, centro_trabalho, supervisor_id?}` → `201` `{id}`
 `PATCH /equipes/{id}` `{nome?, supervisor_id?}` → `200`
 `GET /equipes` → `200` `{equipes[]}`
@@ -697,7 +705,7 @@ Alternativas consideradas: gerar o PDF no aparelho — ganha se o técnico preci
 
 `POST /os/{id}/reprogramar` `{data_inicio_prog, equipe_id?, justificativa}` → `200` `{id, status}`
 `POST /os/{id}/cancelar` `{justificativa}` → `200` — só OS de apoio
-`GET /alertas` `?lido&equipe_id` → `200` `{alertas[]}`
+`GET /alertas` `?lido&equipe_id&tipo` → `200` `{alertas[]}`
 `PATCH /alertas/{id}` `{lido: true}` → `200`
 OS de apoio usa `POST /os` com `os_origem_id` ([Integração SAP](#integração-sap)).
 

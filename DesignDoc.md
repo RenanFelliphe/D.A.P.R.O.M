@@ -46,13 +46,17 @@ Site (https://esgasplanomanutencao.lovable.app/controle)
 
 ---
 
-## Outras funcionalidades 
+## Outras funcionalidades
+
+### Prioridades
 - Ter um catálogo de serviço, com os materiais que cada serviço utiliza 
 - Escaneamento das OS e APR antigas para o sistema
 - Monitoramento de tempo de intervalo de OS preventivas (intervalo entre um ciclo e outro; não é o cronômetro de execução)
 - Assinatura digital de documentos (rubrica ou por extenso, cadastrada no perfil)
 - OS de apoio 
-- Chatbot de consulta, por exemplo "o que eu executei em maio" (sugestão do mentor Iago; fora do MVP)
+
+### Extras
+- Chatbot de consulta, por exemplo "o que eu executei em maio"
 
 ---
 

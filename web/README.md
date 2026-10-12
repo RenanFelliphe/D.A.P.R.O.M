@@ -47,6 +47,8 @@ Variáveis de ambiente (só do servidor do `web`): `API_URL` (padrão `http://lo
 | `/web/apr/modelos/[codigo]` | Um modelo: versões, editor do rascunho ou versão em leitura, "Onde é usado" (atividades, OS abertas, APRs) e "Excluir modelo" | admin edita; o supervisor lê (o uso, só o admin) |
 | `/web/apr/atividades` | APR, aba Atividades: a tabela atividade → modelo, que liga cada OS ao modelo, com filtro por modelo e "só sem modelo" | admin edita; o supervisor lê |
 | `/web/usuarios` | Equipes e usuários; no topo o painel "Pendentes de liberação" (quem cadastrou, Liberar, Recusar com motivo obrigatório), filtro "Acesso" e selo com a contagem no item do menu; recusados mostram o motivo e só podem ser excluídos | admin (o supervisor vai para `/web/minha-equipe`) |
+| `/web/auditoria` | Auditoria: quem fez o quê e quando nas telas de gestão (cadastros, modelos de APR, atividades, importações, OS de apoio, baixa no SAP), com filtros por texto, tipo e período e os detalhes do que mudou; só lê, a trilha não se altera | admin |
+| `/web/perfil` | Perfil de quem usa o painel: dados, assinatura e troca de senha | admin, supervisor |
 | `/web/minha-equipe` | Minha equipe: técnicos das equipes que ele supervisiona com o selo de acesso (Pendente, Liberado, Recusado + motivo), "Novo técnico" (nasce pendente; mostra a senha provisória uma vez), editar nome, cargo e registro e "Cancelar cadastro" dos pendentes que ele criou | supervisor (o admin vai para `/web/usuarios`) |
 | `/app/aguardando` | "Seu acesso está aguardando liberação": quem cadastrou, atalho para o Campo de treino, "Verificar liberação" e conferência automática a cada 30 s | técnico pendente |
 
