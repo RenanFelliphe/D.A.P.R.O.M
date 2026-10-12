@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Deps } from "../deps";
 import { OS_STATUS, OS_TIPOS } from "../db/schema";
 import { resumoDasAprs } from "../dominio/apr-resumo";
+import { registrarAuditoria, rotuloDaOs } from "../dominio/auditoria";
 import { dashboardDeEquipes, dashboardDeOs, dashboardGeral } from "../dominio/dashboards";
 import { exportarParaSap, MENSAGEM_SEM_NOVAS, nomeDoArquivo, TIPO_XLSX } from "../dominio/painel-exportacao";
 import { equipeDoIndicador, historicoDoLocal, indicadoresDeTempo, indicadoresMensais } from "../dominio/painel-indicadores";
@@ -51,7 +52,12 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
   });
 
   r.post("/os/:id/ciencia", autenticar(), exigirPerfil("supervisor"), async (c) => {
-    return responder(c, await darCiencia(deps.db, c.get("usuario"), lerId(c), deps.agora()));
+    const eu = c.get("usuario");
+    const id = lerId(c);
+    const resultado = await darCiencia(deps.db, eu, id, deps.agora());
+    const rotulo = await rotuloDaOs(deps.db, id);
+    await registrarAuditoria(deps.db, eu, { entidade: "os", verbo: "ciencia", entidadeId: id, alvo: rotulo, resumo: `Deu ciência da ${rotulo}` });
+    return responder(c, resultado);
   });
 
   r.get("/indicadores", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
@@ -117,6 +123,13 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
       "Content-Disposition": `attachment; filename="${nomeDoArquivo(agora)}"`,
     };
     if (novas === 0) cabecalhos["X-Mensagem"] = MENSAGEM_SEM_NOVAS;
+    await registrarAuditoria(deps.db, c.get("usuario"), {
+      entidade: "exportacao",
+      verbo: "sap",
+      alvo: nomeDoArquivo(agora),
+      resumo: novas === 0 ? "Gerou a planilha de baixa do SAP (nenhuma OS nova)" : `Exportou a planilha de baixa do SAP com ${novas} OS encerradas`,
+      detalhes: { os_exportadas: novas },
+    });
     return c.body(new Uint8Array(planilha), 200, cabecalhos);
   });
 

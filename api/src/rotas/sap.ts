@@ -6,6 +6,7 @@ import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
 import { atividade, equipe, importacao, localInstalacao, os, OS_TIPOS, usuario } from "../db/schema";
 import { alertarFalhaDeImportacao, detalheDaFalha } from "../dominio/alertas";
+import { registrarAuditoria } from "../dominio/auditoria";
 import { processarOrdens } from "../dominio/importacao-ordens";
 import { lerPlanilha } from "../dominio/importacao-planilha";
 import { resumoDasImportacoes } from "../dominio/importacao-resumo";
@@ -77,6 +78,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
       await enfileirarTarefa(tx, "leitura_sap", criada!.id);
       return criada!.id;
     });
+    await registrarAuditoria(deps.db, eu, { entidade: "importacao", verbo: "leitura_sap", entidadeId: importacaoId, resumo: "Pediu a leitura imediata das OS no SAP" });
     return responder(c, { importacaoId }, 202);
   });
 
@@ -120,6 +122,14 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
         return processado;
       });
 
+      await registrarAuditoria(deps.db, eu, {
+        entidade: "importacao",
+        verbo: "planilha",
+        entidadeId: importacaoId,
+        alvo: arquivo.name,
+        resumo: `Importou a planilha ${arquivo.name}: ${resultado.criadas} criadas, ${resultado.atualizadas} atualizadas, ${resultado.ignoradas.length} ignoradas`,
+        detalhes: { criadas: resultado.criadas, atualizadas: resultado.atualizadas, ignoradas: resultado.ignoradas.length },
+      });
       return responder(
         c,
         { importacaoId, criadas: resultado.criadas, atualizadas: resultado.atualizadas, ignoradas: resultado.ignoradas, avisos: resultado.avisos },
@@ -234,6 +244,14 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
         origem: "apoio",
       })
       .returning({ id: os.id });
+    await registrarAuditoria(deps.db, eu, {
+      entidade: "os",
+      verbo: "criar_apoio",
+      entidadeId: criada!.id,
+      alvo: dados.titulo,
+      resumo: `Abriu a OS de apoio \"${dados.titulo}\"`,
+      detalhes: { os_origem_id: dados.os_origem_id, equipe_id: dados.equipe_id, data_inicio_prog: dados.data_inicio_prog },
+    });
     return responder(c, { id: criada!.id }, 201);
   });
 
@@ -241,8 +259,15 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
   r.patch("/locais/:id", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const { critico } = await lerCorpo(c, z.object({ critico: z.boolean() }));
-    const atualizados = await deps.db.update(localInstalacao).set({ critico }).where(eq(localInstalacao.id, id)).returning({ id: localInstalacao.id });
+    const atualizados = await deps.db.update(localInstalacao).set({ critico }).where(eq(localInstalacao.id, id)).returning({ id: localInstalacao.id, codigo: localInstalacao.codigo });
     if (atualizados.length === 0) throw naoEncontrado("Local não encontrado");
+    await registrarAuditoria(deps.db, c.get("usuario"), {
+      entidade: "os",
+      verbo: critico ? "marcar_local_critico" : "desmarcar_local_critico",
+      entidadeId: id,
+      alvo: atualizados[0]!.codigo,
+      resumo: `${critico ? "Marcou" : "Desmarcou"} o local ${atualizados[0]!.codigo} como crítico`,
+    });
     return responder(c, {});
   });
 

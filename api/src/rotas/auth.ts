@@ -51,6 +51,13 @@ export function rotasAuth(deps: Deps, { autenticar }: Autenticacao) {
     return responder(c, { accessToken: sessao.accessToken, refreshToken: sessao.refreshToken, expiraEm: sessao.expiraEm });
   });
 
+  /** O botão Sair: derruba as sessões da conta (o `refresh_token` não renova mais). Qualquer conta pode sair, em qualquer situação. */
+  r.post("/auth/sair", autenticar({ permitirDesativado: true, permitirSenhaProvisoria: true, permitirPendente: true }), async (c) => {
+    const token = (c.req.header("Authorization") ?? "").slice(7).trim();
+    await deps.auth.encerrarSessoes(token, c.get("usuario").id);
+    return responder(c, {});
+  });
+
   r.post("/auth/trocar-senha", autenticar({ permitirSenhaProvisoria: true, permitirPendente: true }), async (c) => {
     const eu = c.get("usuario");
     const { senha_atual, senha_nova } = await lerCorpo(c, z.object({ senha_atual: z.string().min(1), senha_nova: senhaNova }));

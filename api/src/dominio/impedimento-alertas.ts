@@ -1,6 +1,6 @@
 import { and, desc, eq, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { alerta, importacao, os } from "../db/schema";
+import { alerta, importacao, os, type AlertaTipo } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { naoEncontrado } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
@@ -28,11 +28,12 @@ const colunas = {
  * Alertas visíveis ao usuário, do mais recente ao mais antigo; `equipeId` é a equipe atual da OS. O filtro de equipe só
  * alcança os alertas de OS (a falha de importação não tem equipe).
  */
-export async function listarAlertas(db: Db, eu: UsuarioAutenticado, filtros: Paginacao & { lido?: boolean; equipe_id?: string }) {
+export async function listarAlertas(db: Db, eu: UsuarioAutenticado, filtros: Paginacao & { lido?: boolean; equipe_id?: string; tipo?: AlertaTipo }) {
   const onde = and(
     veTodosOsAlertas(eu) ? undefined : eq(alerta.destinatarioId, eu.id),
     filtros.lido === undefined ? undefined : filtros.lido ? isNotNull(alerta.lidoEm) : isNull(alerta.lidoEm),
     filtros.equipe_id ? eq(os.equipeId, filtros.equipe_id) : undefined,
+    filtros.tipo ? eq(alerta.tipo, filtros.tipo) : undefined,
   ) as SQL | undefined;
 
   const { limit, offset } = limiteEDeslocamento(filtros);

@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, or, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { equipe, execucao, execucaoPausa, LIBERACOES, localInstalacao, os, PERFIS, usuario } from "../db/schema";
+import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeUsuarios, usuariosVisiveis } from "../dominio/busca";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
 import { equipeParaApi, gerarSenhaInicial, nomesDosCriadores, usuarioParaApi } from "../dominio/usuarios";
@@ -84,6 +85,14 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       await deps.auth.excluirConta(conta.id);
       throw erro;
     }
+    await registrarAuditoria(deps.db, eu, {
+      entidade: "usuario",
+      verbo: "criar",
+      entidadeId: conta.id,
+      alvo: dados.nome,
+      resumo: admin ? `Cadastrou o usuário ${dados.nome} (${dados.perfil})` : `Cadastrou o técnico ${dados.nome}, que aguarda a liberação`,
+      detalhes: { matricula: dados.matricula, perfil: admin ? dados.perfil : "tecnico", equipe_id: dados.equipe_id ?? null },
+    });
     return responder(c, { id: conta.id }, 201);
   });
 
@@ -150,6 +159,22 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     // Desativar bloqueia a `api` na hora; o Supabase só é revogado depois que a fila offline pendente subir
     // (ver `POST /eventos`). Reativar desfaz uma revogação anterior.
     if (dados.ativo === true && !atual.ativo) await deps.auth.restaurar(id);
+
+    const mudancas = diferencas(
+      { nome: atual.nome, email: atual.email, perfil: atual.perfil, equipe_id: atual.equipeId, cargo: atual.cargo, registro_profissional: atual.registroProfissional, ativo: atual.ativo },
+      { nome: dados.nome, email: dados.email, perfil: dados.perfil, equipe_id: dados.equipe_id, cargo: dados.cargo, registro_profissional: dados.registro_profissional, ativo: dados.ativo },
+    );
+    if (Object.keys(mudancas).length > 0) {
+      const soAtivo = Object.keys(mudancas).length === 1 && "ativo" in mudancas;
+      await registrarAuditoria(deps.db, eu, {
+        entidade: "usuario",
+        verbo: soAtivo ? (dados.ativo ? "reativar" : "desativar") : "editar",
+        entidadeId: id,
+        alvo: dados.nome ?? atual.nome,
+        resumo: soAtivo ? `${dados.ativo ? "Reativou" : "Desativou"} o usuário ${atual.nome}` : `Editou o usuário ${atual.nome} (${Object.keys(mudancas).join(", ")})`,
+        detalhes: mudancas,
+      });
+    }
     return responder(c, {});
   });
 
@@ -162,7 +187,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     const id = lerId(c);
     const eu = c.get("usuario");
     if (id === eu.id) throw invalido("auto_alteracao", "Você não pode remover o próprio usuário");
-    const [alvo] = await deps.db.select({ id: usuario.id, liberacao: usuario.liberacao, criadoPorId: usuario.criadoPorId }).from(usuario).where(eq(usuario.id, id));
+    const [alvo] = await deps.db.select({ id: usuario.id, nome: usuario.nome, liberacao: usuario.liberacao, criadoPorId: usuario.criadoPorId }).from(usuario).where(eq(usuario.id, id));
     if (!alvo) throw naoEncontrado("Usuário não encontrado");
     // Supervisor só cancela o cadastro que ele fez e que ainda aguarda a liberação; o admin remove qualquer um (inclusive o recusado, o que libera e-mail e matrícula).
     if (eu.perfil !== "admin" && !pendenteDoSupervisor(eu, alvo)) throw proibido("Você só cancela o cadastro do técnico que criou e que ainda aguarda a liberação");
@@ -176,13 +201,14 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       throw erro;
     }
     await deps.auth.excluirConta(id);
+    await registrarAuditoria(deps.db, eu, { entidade: "usuario", verbo: "excluir", entidadeId: id, alvo: alvo.nome, resumo: `Removeu o usuário ${alvo.nome}` });
     return responder(c, {});
   });
 
   /** Só quem está `pendente` é liberado ou recusado: o `update` já filtra, e é 409 se o usuário existe em outro estado. */
   async function decidirPendente(id: string, valores: Partial<typeof usuario.$inferInsert>) {
-    const [u] = await deps.db.update(usuario).set(valores).where(and(eq(usuario.id, id), eq(usuario.liberacao, "pendente"))).returning({ id: usuario.id });
-    if (u) return;
+    const [u] = await deps.db.update(usuario).set(valores).where(and(eq(usuario.id, id), eq(usuario.liberacao, "pendente"))).returning({ id: usuario.id, nome: usuario.nome });
+    if (u) return u.nome;
     const [existe] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.id, id));
     if (!existe) throw naoEncontrado("Usuário não encontrado");
     throw conflito("nao_pendente", "Este usuário não está aguardando liberação");
@@ -190,25 +216,29 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
 
   r.post("/usuarios/:id/liberar", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
-    await decidirPendente(id, { liberacao: "liberado", liberadoPorId: c.get("usuario").id, liberadoEm: deps.agora() });
+    const eu = c.get("usuario");
+    const nome = await decidirPendente(id, { liberacao: "liberado", liberadoPorId: eu.id, liberadoEm: deps.agora() });
+    await registrarAuditoria(deps.db, eu, { entidade: "usuario", verbo: "liberar", entidadeId: id, alvo: nome, resumo: `Liberou o acesso de ${nome}` });
     return responder(c, {});
   });
 
   r.post("/usuarios/:id/recusar", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const { motivo } = await lerCorpo(c, z.object({ motivo: textoObrigatorio }));
-    await decidirPendente(id, { liberacao: "recusado", ativo: false, recusaMotivo: motivo });
+    const nome = await decidirPendente(id, { liberacao: "recusado", ativo: false, recusaMotivo: motivo });
     await deps.auth.revogar(id);
+    await registrarAuditoria(deps.db, c.get("usuario"), { entidade: "usuario", verbo: "recusar", entidadeId: id, alvo: nome, resumo: `Recusou o acesso de ${nome}`, detalhes: { motivo } });
     return responder(c, {});
   });
 
   r.post("/usuarios/:id/redefinir-senha", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
-    const [u] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.id, id));
+    const [u] = await deps.db.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(eq(usuario.id, id));
     if (!u) throw naoEncontrado("Usuário não encontrado");
     const senha = gerarSenhaInicial();
     await deps.auth.definirSenha(id, senha);
     await deps.db.update(usuario).set({ senhaProvisoria: true }).where(eq(usuario.id, id));
+    await registrarAuditoria(deps.db, c.get("usuario"), { entidade: "usuario", verbo: "redefinir_senha", entidadeId: id, alvo: u.nome, resumo: `Redefiniu a senha de ${u.nome}` });
     return responder(c, { senhaInicial: senha });
   });
 
@@ -221,22 +251,29 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     const eu = c.get("usuario");
     const filtros = lerConsulta(
       c,
-      esquemaPaginacao.extend({ equipe_id: uuid.optional(), perfil: z.enum(PERFIS).optional(), ativo: booleanoDaConsulta, supervisor: booleanoDaConsulta, liberacao: z.enum(LIBERACOES).optional(), busca: z.string().trim().min(1).optional() }),
+      esquemaPaginacao.extend({ equipe_id: uuid.optional(), perfil: z.enum(PERFIS).optional(), ativo: booleanoDaConsulta, supervisor: booleanoDaConsulta, liberacao: z.enum(LIBERACOES).optional(), minha_supervisao: booleanoDaConsulta, busca: z.string().trim().min(1).optional() }),
     );
     const admin = eu.perfil === "admin";
 
     // Quem não é admin só vê pendentes e recusados das equipes que supervisiona, e só quando pede (a lista comum é a de colegas liberados).
-    const naoLiberados = !admin && filtros.liberacao !== undefined && filtros.liberacao !== "liberado";
+    // `minha_supervisao=true` (tela "Minha equipe"): todos os cadastros das equipes que o supervisor supervisiona, em qualquer situação de liberação (menos o próprio dele, e os liberados só se ativos); `liberacao` filtra dentro disso.
+    const minhaSupervisao = !admin && filtros.minha_supervisao === true;
+    const naoLiberados = !admin && !minhaSupervisao && filtros.liberacao !== undefined && filtros.liberacao !== "liberado";
+    const daSupervisao = and(
+      eu.equipesSupervisionadas.length ? inArray(usuario.equipeId, eu.equipesSupervisionadas) : sql`false`,
+      ne(usuario.id, eu.id),
+      or(and(eq(usuario.liberacao, "liberado"), eq(usuario.ativo, true)), ne(usuario.liberacao, "liberado")),
+    );
     const doSupervisor = and(
       eq(usuario.liberacao, filtros.liberacao ?? "pendente"),
       eu.equipesSupervisionadas.length ? inArray(usuario.equipeId, eu.equipesSupervisionadas) : sql`false`,
     );
 
     const condicoes: (SQL | undefined)[] = [
-      naoLiberados ? doSupervisor : usuariosVisiveis(eu),
-      admin && filtros.liberacao ? eq(usuario.liberacao, filtros.liberacao) : undefined,
+      minhaSupervisao ? daSupervisao : naoLiberados ? doSupervisor : usuariosVisiveis(eu),
+      (admin || minhaSupervisao) && filtros.liberacao ? eq(usuario.liberacao, filtros.liberacao) : undefined,
       // Quem não vê todas as equipes só filtra entre as do próprio escopo; outra equipe é ignorada (não amplia o escopo).
-      filtros.equipe_id && (naoLiberados || (equipesDoEscopo(eu)?.includes(filtros.equipe_id) ?? true)) ? eq(usuario.equipeId, filtros.equipe_id) : undefined,
+      filtros.equipe_id && (naoLiberados || minhaSupervisao || (equipesDoEscopo(eu)?.includes(filtros.equipe_id) ?? true)) ? eq(usuario.equipeId, filtros.equipe_id) : undefined,
       filtros.perfil ? eq(usuario.perfil, filtros.perfil) : undefined,
       // `supervisor=true`: quem supervisiona alguma equipe; `false`: quem não supervisiona nenhuma.
       filtros.supervisor === undefined ? undefined : filtros.supervisor ? sql`exists (select 1 from ${equipe} where ${equipe.supervisorId} = ${usuario.id})` : sql`not exists (select 1 from ${equipe} where ${equipe.supervisorId} = ${usuario.id})`,

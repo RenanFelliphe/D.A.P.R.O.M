@@ -3,11 +3,12 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { equipe, usuario } from "../db/schema";
+import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeEquipes, equipesVisiveis } from "../dominio/busca";
 import { listarOs } from "../dominio/painel-os";
 import { equipeParaApi } from "../dominio/usuarios";
 import { podeVerEquipe, type Autenticacao, type Ambiente } from "../http/autenticacao";
-import { conflito, invalido, naoEncontrado } from "../http/erros";
+import { codigoPostgres, conflito, invalido, naoEncontrado } from "../http/erros";
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
@@ -34,6 +35,14 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
       .insert(equipe)
       .values({ nome: dados.nome, centroTrabalho: dados.centro_trabalho, supervisorId: dados.supervisor_id ?? null })
       .returning({ id: equipe.id });
+    await registrarAuditoria(deps.db, c.get("usuario"), {
+      entidade: "equipe",
+      verbo: "criar",
+      entidadeId: criada!.id,
+      alvo: dados.nome,
+      resumo: `Criou a equipe ${dados.nome} (centro de trabalho ${dados.centro_trabalho})`,
+      detalhes: { centro_trabalho: dados.centro_trabalho, supervisor_id: dados.supervisor_id ?? null },
+    });
     return responder(c, { id: criada!.id }, 201);
   });
 
@@ -41,7 +50,7 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
   r.patch("/equipes/:id", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ nome: textoObrigatorio.optional(), supervisor_id: uuid.nullable().optional() }));
-    const [atual] = await deps.db.select({ id: equipe.id }).from(equipe).where(eq(equipe.id, id));
+    const [atual] = await deps.db.select({ id: equipe.id, nome: equipe.nome, supervisorId: equipe.supervisorId }).from(equipe).where(eq(equipe.id, id));
     if (!atual) throw naoEncontrado("Equipe não encontrada");
     await exigirSupervisor(deps, dados.supervisor_id);
 
@@ -52,6 +61,44 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
         ...(dados.supervisor_id !== undefined && { supervisorId: dados.supervisor_id }),
       })
       .where(eq(equipe.id, id));
+    const mudancas = diferencas({ nome: atual.nome, supervisor_id: atual.supervisorId }, { nome: dados.nome, supervisor_id: dados.supervisor_id });
+    if (Object.keys(mudancas).length > 0) {
+      await registrarAuditoria(deps.db, c.get("usuario"), {
+        entidade: "equipe",
+        verbo: "editar",
+        entidadeId: id,
+        alvo: dados.nome ?? atual.nome,
+        resumo: `Editou a equipe ${atual.nome} (${Object.keys(mudancas).map((k) => (k === "supervisor_id" ? "supervisor" : k)).join(", ")})`,
+        detalhes: mudancas,
+      });
+    }
+    return responder(c, {});
+  });
+
+  /**
+   * Remove a equipe. Só vale para uma equipe que nunca teve gente nem OS: com usuário cadastrado nela ou OS (inclusive
+   * encerrada, por causa do histórico), o banco recusa (`409`); mude os usuários de equipe e, para o resto, deixe a equipe como está.
+   */
+  r.delete("/equipes/:id", autenticar(), exigirPerfil("admin"), async (c) => {
+    const id = lerId(c);
+    const [atual] = await deps.db.select({ nome: equipe.nome, centroTrabalho: equipe.centroTrabalho }).from(equipe).where(eq(equipe.id, id));
+    if (!atual) throw naoEncontrado("Equipe não encontrada");
+    try {
+      await deps.db.delete(equipe).where(eq(equipe.id, id));
+    } catch (erro) {
+      if (codigoPostgres(erro) === "23503") {
+        throw conflito("equipe_com_historico", "Esta equipe tem usuários ou OS ligados a ela e não pode ser excluída. Mude os usuários de equipe antes.");
+      }
+      throw erro;
+    }
+    await registrarAuditoria(deps.db, c.get("usuario"), {
+      entidade: "equipe",
+      verbo: "excluir",
+      entidadeId: id,
+      alvo: atual.nome,
+      resumo: `Excluiu a equipe ${atual.nome}`,
+      detalhes: { centro_trabalho: atual.centroTrabalho },
+    });
     return responder(c, {});
   });
 

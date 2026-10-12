@@ -30,12 +30,12 @@ const escaparLike = (texto: string) => texto.replace(/[\\%_]/g, "\\$&");
 type Comparacao = (coluna: AnyColumn, termo: string) => SQL;
 
 /** A coluna contém o termo. */
-const contem: Comparacao = (coluna, termo) => sql`${semAcento(coluna)} like ${`%${escaparLike(normalizar(termo))}%`}`;
+export const contem: Comparacao = (coluna, termo) => sql`${semAcento(coluna)} like ${`%${escaparLike(normalizar(termo))}%`}`;
 
 /** A coluna é o termo inteiro (fora espaços nas pontas). */
 const igual: Comparacao = (coluna, termo) => sql`${semAcento(sql`btrim(${coluna})`)} = ${normalizar(termo.trim())}`;
 
-const algum = (colunas: AnyColumn[], termo: string, comparar: Comparacao) => or(...colunas.map((coluna) => comparar(coluna, termo)))!;
+export const algum = (colunas: AnyColumn[], termo: string, comparar: Comparacao) => or(...colunas.map((coluna) => comparar(coluna, termo)))!;
 
 const CAMPOS_DO_USUARIO = [usuario.nome, usuario.matricula, usuario.cargo, usuario.email, usuario.registroProfissional];
 const CAMPOS_DA_EQUIPE = [equipe.nome, equipe.centroTrabalho];

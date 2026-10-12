@@ -28,6 +28,8 @@ export interface ProvedorAuth {
   revogar(id: string): Promise<void>;
   /** Desfaz `revogar` (usuário reativado). */
   restaurar(id: string): Promise<void>;
+  /** Encerra todas as sessões da conta (o botão Sair): o `refresh_token` guardado em qualquer aparelho deixa de valer. */
+  encerrarSessoes(accessToken: string, id: string): Promise<void>;
 }
 
 
@@ -117,6 +119,15 @@ export class AuthSupabase implements ProvedorAuth {
   async restaurar(id: string) {
     await this.chamar(`/admin/users/${id}`, { method: "PUT", body: { ban_duration: "none" } });
   }
+
+  /** O logout do GoTrue é do próprio usuário: vai com o token dele (a chave de serviço só entra em `apikey`). */
+  async encerrarSessoes(accessToken: string) {
+    const resposta = await fetch(`${this.url}/auth/v1/logout?scope=global`, {
+      method: "POST",
+      headers: { apikey: this.chave, Authorization: `Bearer ${accessToken}` },
+    });
+    if (!resposta.ok && resposta.status !== 401) throw new ErroApi(502, "auth_indisponivel", "Não foi possível encerrar a sessão");
+  }
 }
 
 /**
@@ -189,5 +200,9 @@ export class AuthEmMemoria implements ProvedorAuth {
 
   async restaurar(id: string) {
     for (const conta of this.contas.values()) if (conta.id === id) conta.revogada = false;
+  }
+
+  async encerrarSessoes(_accessToken: string, id: string) {
+    for (const [renovacao, dono] of this.renovacoes) if (dono === id) this.renovacoes.delete(renovacao);
   }
 }

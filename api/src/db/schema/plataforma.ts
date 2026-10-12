@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { check, index, integer, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 
 export const TAREFA_TIPOS = ["pdf_os", "email_alerta", "leitura_sap"] as const;
@@ -27,5 +27,42 @@ export const tarefa = pgTable(
     // O executor lê as tarefas pendentes na ordem em que vencem.
     index("tarefa_pendentes_idx").on(t.proximaEm).where(sql`${t.estado} = 'pendente'`),
     index("tarefa_referencia_idx").on(t.tipo, t.referenciaId),
+  ],
+).enableRLS();
+
+/** O que a trilha de auditoria registra: cada entidade que o admin (ou o supervisor) cria, altera ou remove. */
+export const AUDITORIA_ENTIDADES = ["usuario", "equipe", "modelo_apr", "atividade", "os", "importacao", "exportacao"] as const;
+export type AuditoriaEntidade = (typeof AUDITORIA_ENTIDADES)[number];
+
+/**
+ * Trilha de auditoria: quem fez o quê e quando nas telas de gestão. Só cresce (um gatilho recusa alterar ou apagar uma
+ * linha). Não tem chave estrangeira: o registro guarda o nome de quem agiu e o rótulo do alvo na hora, para continuar
+ * legível mesmo se a conta ou o cadastro forem removidos depois. Os eventos de campo ficam em `evento_campo`.
+ */
+export const auditoria = pgTable(
+  "auditoria",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    em: instante().notNull().defaultNow(),
+    /** `usuario.id` de quem agiu, sem chave estrangeira (a conta pode ser removida depois). */
+    atorId: uuid().notNull(),
+    atorNome: text().notNull(),
+    /** `entidade.verbo`, ex.: `usuario.criar`, `modelo_apr.publicar`. */
+    acao: text().notNull(),
+    entidade: text({ enum: AUDITORIA_ENTIDADES }).notNull(),
+    /** Id (ou código) da entidade afetada; nulo quando a ação não tem um alvo só (ex.: a leitura do SAP). */
+    entidadeId: text(),
+    /** Como o alvo se chamava na hora (nome do usuário, código do modelo, número da OS…). */
+    alvo: text(),
+    /** A frase que a tela mostra, ex.: "Desativou o usuário Maria Souza". */
+    resumo: text().notNull(),
+    /** O que mudou (`{campo: {de, para}}`) ou dados extras da ação. */
+    detalhes: jsonb(),
+  },
+  (t) => [
+    check("auditoria_entidade_check", emLista(t.entidade, AUDITORIA_ENTIDADES)),
+    index("auditoria_em_idx").on(t.em.desc()),
+    index("auditoria_entidade_idx").on(t.entidade, t.entidadeId),
+    index("auditoria_ator_idx").on(t.atorId),
   ],
 ).enableRLS();

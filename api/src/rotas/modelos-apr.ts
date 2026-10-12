@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, max, or, 
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
+import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { apr, atividade, equipe, itemModeloApr, modeloApr, os, riscoModeloApr, type Perfil } from "../db/schema";
 import {
   conteudoDe,
@@ -25,7 +26,7 @@ import {
   type ConteudoDoModelo,
 } from "../dominio/modelo-apr-esquema";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
-import { conflito, invalido, naoEncontrado } from "../http/erros";
+import { codigoPostgres, conflito, invalido, naoEncontrado } from "../http/erros";
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { booleanoDaConsulta, lerConsulta, lerCorpo, textoObrigatorio } from "../http/validacao";
@@ -204,6 +205,14 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         return { codigo, resultado: arquivado ? "arquivado" : "excluido", atividades: movidas.length, substituto: substituto ?? null };
       }),
     );
+    await registrarAuditoria(deps.db, c.get("usuario"), {
+      entidade: "modelo_apr",
+      verbo: "excluir",
+      entidadeId: codigo,
+      alvo: codigo,
+      resumo: feito.resultado === "arquivado" ? `Excluiu o modelo de APR ${codigo} (versões arquivadas)` : `Excluiu o modelo de APR ${codigo}`,
+      detalhes: { resultado: feito.resultado, atividades_movidas: feito.atividades, substituto: feito.substituto },
+    });
     return responder(c, feito);
   });
 
@@ -220,6 +229,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
       if (!existe) throw naoEncontrado("Modelo não encontrado");
       throw conflito("modelo_nao_arquivado", `O modelo ${codigo} não está excluído`);
     }
+    await registrarAuditoria(deps.db, c.get("usuario"), { entidade: "modelo_apr", verbo: "restaurar", entidadeId: codigo, alvo: codigo, resumo: `Restaurou o modelo de APR ${codigo}` });
     return responder(c, { codigo, versoes: restauradas.length });
   });
 
@@ -297,6 +307,14 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         return linha!;
       }),
     );
+    await registrarAuditoria(deps.db, c.get("usuario"), {
+      entidade: "modelo_apr",
+      verbo: "criar_versao",
+      entidadeId: codigo,
+      alvo: `${codigo} v${criado.versao}`,
+      resumo: `Criou o rascunho da versão ${criado.versao} do modelo de APR ${codigo}`,
+      detalhes: { versao: criado.versao, copiar_de: dados.copiar_de ?? null },
+    });
     return responder(c, criado, 201);
   });
 
@@ -347,6 +365,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         await tx.delete(modeloApr).where(eq(modeloApr.id, linha.id));
       }),
     );
+    await registrarAuditoria(deps.db, c.get("usuario"), { entidade: "modelo_apr", verbo: "descartar_rascunho", entidadeId: codigo, alvo: `${codigo} v${versao}`, resumo: `Descartou o rascunho da versão ${versao} do modelo de APR ${codigo}` });
     return responder(c, {});
   });
 
@@ -375,6 +394,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         return feito;
       }),
     );
+    await registrarAuditoria(deps.db, c.get("usuario"), { entidade: "modelo_apr", verbo: "publicar", entidadeId: codigo, alvo: `${codigo} v${publicado.versao}`, resumo: `Publicou a versão ${publicado.versao} do modelo de APR ${codigo}` });
     return responder(c, publicado);
   });
 
@@ -417,6 +437,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
       throw invalido("modelo_sem_versao_publicada", `O modelo ${dados.modelo_apr_codigo} não existe, não tem versão publicada ou foi excluído`);
     }
 
+    const [anterior] = await deps.db.select().from(atividade).where(eq(atividade.codigo, codigo));
     const [salva] = await deps.db
       .insert(atividade)
       .values({ codigo, descricao: dados.descricao, modeloAprCodigo: dados.modelo_apr_codigo, provisorio: dados.provisorio ?? false })
@@ -429,7 +450,47 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         },
       })
       .returning();
+    const mudancas = diferencas(
+      { descricao: anterior?.descricao, modelo_apr_codigo: anterior?.modeloAprCodigo ?? null, provisorio: anterior?.provisorio },
+      { descricao: dados.descricao, modelo_apr_codigo: dados.modelo_apr_codigo, provisorio: dados.provisorio },
+    );
+    if (!anterior || Object.keys(mudancas).length > 0) {
+      await registrarAuditoria(deps.db, c.get("usuario"), {
+        entidade: "atividade",
+        verbo: anterior ? "editar" : "criar",
+        entidadeId: codigo,
+        alvo: codigo,
+        resumo: anterior
+          ? `Editou a atividade ${codigo} (${Object.keys(mudancas).join(", ")})`
+          : `Cadastrou a atividade ${codigo}${dados.modelo_apr_codigo ? ` com o modelo ${dados.modelo_apr_codigo}` : " sem modelo"}`,
+        detalhes: mudancas,
+      });
+    }
     return responder(c, salva);
+  });
+
+  /** Remove a atividade. Só se nenhuma OS a usa (a OS guarda o código da atividade); senão `409`, e a saída é ligar a atividade a outro modelo ou deixá-la sem modelo. */
+  r.delete("/atividades/:codigo{.+}", autenticar(), soQuemEdita, async (c) => {
+    const codigo = c.req.param("codigo").trim();
+    const [atual] = await deps.db.select({ descricao: atividade.descricao, modeloAprCodigo: atividade.modeloAprCodigo }).from(atividade).where(eq(atividade.codigo, codigo));
+    if (!atual) throw naoEncontrado("Atividade não encontrada");
+    try {
+      await deps.db.delete(atividade).where(eq(atividade.codigo, codigo));
+    } catch (erro) {
+      if (codigoPostgres(erro) === "23503") {
+        throw conflito("atividade_com_os", "Há OS com esta atividade e ela não pode ser excluída. Deixe-a sem modelo ou ligue-a a outro.");
+      }
+      throw erro;
+    }
+    await registrarAuditoria(deps.db, c.get("usuario"), {
+      entidade: "atividade",
+      verbo: "excluir",
+      entidadeId: codigo,
+      alvo: codigo,
+      resumo: `Excluiu a atividade ${codigo}`,
+      detalhes: { descricao: atual.descricao, modelo_apr_codigo: atual.modeloAprCodigo },
+    });
+    return responder(c, {});
   });
 
   return r;

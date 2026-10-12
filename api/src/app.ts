@@ -3,6 +3,7 @@ import type { Deps } from "./deps";
 import { criarAutenticacao } from "./http/autenticacao";
 import { tratarErro } from "./http/erros";
 import { rotasArquivos } from "./rotas/arquivos";
+import { rotasAuditoria } from "./rotas/auditoria";
 import { rotasAuth } from "./rotas/auth";
 import { rotasBusca } from "./rotas/busca";
 import { rotasEquipes } from "./rotas/equipes";
@@ -42,6 +43,7 @@ export function criarApp(deps: Deps) {
   app.route("/", rotasImpedimento(deps, auth));
   app.route("/", rotasPainel(deps, auth));
   app.route("/", rotasPdf(deps, auth));
+  app.route("/", rotasAuditoria(deps, auth));
   if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps));
 
   return app;

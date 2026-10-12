@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
+import { ALERTA_TIPOS } from "../db/schema";
+import { registrarAuditoria, rotuloDaOs } from "../dominio/auditoria";
 import { listarAlertas, marcarComoLido } from "../dominio/impedimento-alertas";
 import { cancelarOsDeApoio, reprogramarOs } from "../dominio/impedimento-os";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
@@ -31,10 +33,20 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ data_inicio_prog: dataValida, equipe_id: uuid.optional(), justificativa }));
     const motivo = justificativaObrigatoria(dados.justificativa);
-    const resultado = await reprogramarOs(deps.db, c.get("usuario"), id, {
+    const eu = c.get("usuario");
+    const resultado = await reprogramarOs(deps.db, eu, id, {
       dataInicioProg: dados.data_inicio_prog,
       equipeId: dados.equipe_id,
       justificativa: motivo,
+    });
+    const rotulo = await rotuloDaOs(deps.db, id);
+    await registrarAuditoria(deps.db, eu, {
+      entidade: "os",
+      verbo: "reprogramar",
+      entidadeId: id,
+      alvo: rotulo,
+      resumo: `Reprogramou a ${rotulo} para ${dados.data_inicio_prog}`,
+      detalhes: { data_inicio_prog: dados.data_inicio_prog, equipe_id: dados.equipe_id ?? null, justificativa: motivo },
     });
     return responder(c, resultado);
   });
@@ -43,11 +55,15 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ justificativa }));
     const motivo = justificativaObrigatoria(dados.justificativa);
-    return responder(c, await cancelarOsDeApoio(deps.db, c.get("usuario"), id, motivo, deps.agora()));
+    const eu = c.get("usuario");
+    const resultado = await cancelarOsDeApoio(deps.db, eu, id, motivo, deps.agora());
+    const rotulo = await rotuloDaOs(deps.db, id);
+    await registrarAuditoria(deps.db, eu, { entidade: "os", verbo: "cancelar", entidadeId: id, alvo: rotulo, resumo: `Cancelou a ${rotulo}`, detalhes: { justificativa: motivo } });
+    return responder(c, resultado);
   });
 
   r.get("/alertas", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
-    const filtros = lerConsulta(c, esquemaPaginacao.extend({ lido: booleanoDaConsulta, equipe_id: uuid.optional() }));
+    const filtros = lerConsulta(c, esquemaPaginacao.extend({ lido: booleanoDaConsulta, equipe_id: uuid.optional(), tipo: z.enum(ALERTA_TIPOS).optional() }));
     const { linhas, total } = await listarAlertas(deps.db, c.get("usuario"), filtros);
     return responder(c, { alertas: linhas, ...meta(filtros, total) });
   });
