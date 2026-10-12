@@ -13,7 +13,9 @@ Análise preliminar de risco
 - Notificação para o supervisor da equipe avisando que a atividade não pode ser executada (sem supervisor, vai aos admins). Só existem os perfis técnico e admin: o supervisor é o técnico que a equipe aponta
 - As OS cuja APR foi bloqueada continuam como pendentes
 - O checklist é preenchido por inteiro; só depois o sistema valida a APR. Não se bloqueia no primeiro "não"
-- Todos os itens eliminatórios reprovados são listados, e cada um exige evidência: foto quando houver obstáculo físico; justificativa em texto quando não houver (ex.: condição psicológica, direito de recusa)
+- O técnico não sabe quais perguntas são eliminatórias: todas têm a mesma aparência e o modelo que ele recebe não traz essa informação (nem o tipo do item, nem a resposta que bloqueia, nem a evidência exigida). Se soubesse, bastaria responder "certo" nesses itens para poder fazer o serviço. Só o admin, que edita o modelo, vê e define o que é eliminatório
+- A validação é feita pelo servidor, depois que tudo foi respondido. Só então o técnico fica sabendo o resultado e, se reprovou, quais itens reprovaram. Com a APR reprovada as respostas ficam travadas: falta só a evidência e o registro do impedimento
+- Todos os itens reprovados são listados, e cada um exige evidência: foto quando houver obstáculo físico; justificativa em texto quando não houver (ex.: condição psicológica, direito de recusa). A evidência é pedida apenas depois da validação, e não durante o checklist
 - Toda APR é nova e vale para uma única OS. Não se reaproveitam nem se pré-preenchem respostas de outra APR
 - O modelo de APR é definido pelo tipo de atividade da OS, por uma tabela editável pelo admin. São 8 modelos, homologados pela Segurança do Trabalho, que define o critério de bloqueio mas não usa o sistema; o admin o cadastra no editor
 - A OS com APR bloqueada guarda o histórico de todas as APRs. Qualquer pessoa da equipe pode fazer uma APR nova e retomar a OS, sem esperar reprogramação do supervisor; o supervisor é avisado e acompanha
@@ -56,6 +58,8 @@ Site (https://esgasplanomanutencao.lovable.app/controle)
 - OS de apoio 
 
 ### Extras
+- API de funcionários para registro rápido, validação e segurança
+- Gameficação para os Técnicos/Funcionários
 - Chatbot de consulta, por exemplo "o que eu executei em maio"
 
 ---
