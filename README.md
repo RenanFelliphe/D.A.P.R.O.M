@@ -14,12 +14,12 @@ O objetivo é apoiar a operação para que cada OS tenha sua própria APR, a exe
 
 ## Fluxo operacional especificado
 
-1. **Receber a OS:** as ordens são originadas no SAP e chegam à plataforma por uma API de leitura ou, como alternativa, por importação de planilha. A plataforma não cria OS por iniciativa do usuário: a única que nasce nela é a OS de apoio, aberta pelo supervisor ou pelo analista a partir de um impedimento e ligada à OS original. A equipe indicada na ordem é usada para apresentar os participantes; os dados de atribuição não são recriados manualmente.
-2. **Analisar os riscos:** antes de executar, a equipe realiza uma APR nova, exclusiva para aquela OS e para aquela tentativa. As respostas não são copiadas nem pré-preenchidas a partir de outra APR. O modelo é selecionado a partir do tipo/código da atividade e mantido em uma tabela editável pela Segurança do Trabalho.
+1. **Receber a OS:** as ordens são originadas no SAP e chegam à plataforma por uma API de leitura ou, como alternativa, por importação de planilha. A plataforma não cria OS por iniciativa do usuário: a única que nasce nela é a OS de apoio, aberta pelo supervisor da equipe ou pelo admin a partir de um impedimento e ligada à OS original. A equipe indicada na ordem é usada para apresentar os participantes; os dados de atribuição não são recriados manualmente.
+2. **Analisar os riscos:** antes de executar, a equipe realiza uma APR nova, exclusiva para aquela OS e para aquela tentativa. As respostas não são copiadas nem pré-preenchidas a partir de outra APR. O modelo é selecionado a partir do tipo/código da atividade e mantido em uma tabela editável, cadastrada pelo admin com o que a Segurança do Trabalho define.
 3. **Validar a APR:** o checklist é respondido por inteiro antes da validação. Respostas reprovadas em itens eliminatórios impedem a execução; todos os itens reprovados devem ser documentados, com foto quando se tratar de um obstáculo físico ou justificativa em texto quando a evidência visual não for adequada, como no direito de recusa.
 4. **Manter a OS pendente quando houver impedimento:** a APR bloqueada é preservada no histórico, a OS continua pendente e o supervisor é avisado. A equipe pode retomar a OS com uma APR totalmente nova, sem duplicar a ordem nem depender de reprogramação prévia.
 5. **Registrar a execução:** uma APR aprovada libera o início. A execução registra horários, quantidade de pessoas, descrição do serviço, pausas e evidências. Pausar uma atividade por intervalo é diferente de interrompê-la por risco; cada nova retomada da OS exige uma nova APR.
-6. **Encerrar e documentar:** quem executa encerra a atividade após as confirmações e assinaturas dos participantes. O registro previsto é um PDF de duas páginas: APR e OS no formato de referência do SAP. O supervisor dá ciência pelo painel.
+6. **Encerrar e documentar:** quem executa encerra a atividade após as confirmações e assinaturas dos participantes. O registro previsto é um PDF de duas páginas: APR e OS no formato de referência do SAP. O supervisor da equipe dá ciência pelo painel.
 
 ## O que a demonstração apresenta
 
@@ -83,10 +83,10 @@ Sem Supabase nem Docker, a `api` tem um modo local (banco, autenticação e arqu
 
 ```bash
 cd api && pnpm install && pnpm dev:local    # http://localhost:3333
-cd web && pnpm install && pnpm dev          # http://localhost:3000, abre na tela de entrada (e-mail institucional: `tiago.tecnico@empresa.com.br`, `sandra.supervisora@empresa.com.br`, `ana.analista@empresa.com.br`, `sergio.seguranca@empresa.com.br` ou `admin@empresa.com.br`)
+cd web && pnpm install && pnpm dev          # http://localhost:3000, abre na tela de entrada (e-mail institucional: `tiago.tecnico@empresa.com.br` para um técnico, `sandra.supervisora@empresa.com.br` para um técnico que supervisiona uma equipe ou `ana.administradora@empresa.com.br` para o admin)
 ```
 
-A área do técnico fica em `/app/*` e o painel de gestão em `/web/*`; o perfil define o que cada pessoa vê. Detalhes em [web/README.md](./web/README.md) e [api/README.md](./api/README.md).
+A área do técnico fica em `/app/*` e o painel de gestão em `/web/*`; o perfil define o que cada pessoa vê. Só há dois perfis, `tecnico` e `admin`: o supervisor não é perfil, é o técnico que a equipe aponta, e faz tudo o que o técnico faz mais a gestão da(s) equipe(s) que supervisiona; o admin cuida só da plataforma (importação de OS, modelos de APR, usuários e equipes) e não executa OS. A Segurança do Trabalho não usa o sistema: define o critério de bloqueio da APR, e o admin o cadastra no editor. Detalhes em [web/README.md](./web/README.md) e [api/README.md](./api/README.md).
 
 ### Com Docker (`api` + `web`)
 
@@ -120,7 +120,7 @@ A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta
     └── reunioes/               # Transcrições e resumo das correções
 ```
 
-As oito planilhas de referência de APR correspondem aos modelos de operação, instrumentação, operação/manutenção, construção de rede de distribuição de gás natural, conversão de clientes, trabalho em altura e espaço confinado, inspeção de rede e movimentação de almoxarifado. Os modelos oficiais e seu conteúdo devem ser mantidos e homologados pela área de Segurança do Trabalho.
+As oito planilhas de referência de APR correspondem aos modelos de operação, instrumentação, operação/manutenção, construção de rede de distribuição de gás natural, conversão de clientes, trabalho em altura e espaço confinado, inspeção de rede e movimentação de almoxarifado. Os modelos oficiais e seu conteúdo devem ser definidos e homologados pela área de Segurança do Trabalho e cadastrados no sistema pelo admin.
 
 ## Documentação de referência
 
@@ -132,6 +132,6 @@ As oito planilhas de referência de APR correspondem aos modelos de operação, 
 
 ## Limites e próximos passos
 
-Para avançar do protótipo para um piloto, ainda será necessário implementar e validar as três aplicações, contratos e API simulada do SAP, autenticação e permissões, envio idempotente dos eventos de campo (base do modo offline e da fila local), persistência de evidências, geração real do PDF, notificações, exportação de encerramentos e testes do fluxo de ponta a ponta. A integração real e as decisões de segurança corporativa devem ser confirmadas com as áreas responsáveis; dados reais não devem ser conectados ao protótipo atual.
+Para avançar do protótipo para um piloto, ainda será necessário implementar e validar as três aplicações, contratos e API simulada do SAP, autenticação e permissões, envio idempotente dos eventos de campo (base do modo offline e da fila local), persistência de evidências, geração real do PDF, notificações, exportação de encerramentos e testes do fluxo de ponta a ponta. A integração real e as decisões de segurança corporativa devem ser confirmadas com as áreas responsáveis; dados reais não devem ser conectados ao protótipo atual. Planejado para a próxima entrega, ainda não pronto: cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin, e tela de treinamento com dados fictícios no primeiro login dos técnicos (a importação de OS pelo supervisor foi adiada).
 
 Funcionalidades sugeridas para depois do MVP — como catálogo de serviços, digitalização de documentos antigos, acompanhamento do intervalo entre ciclos preventivos, chatbot e gamificação — não fazem parte da demonstração nem do escopo prioritário atual.

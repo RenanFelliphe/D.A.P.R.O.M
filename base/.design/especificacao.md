@@ -24,9 +24,9 @@ Volume: ~390 OS encerradas no mês passado, variando de ~200 a 409 por mês (Reu
 
 ## Escopo
 
-Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por planilha; aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP.
+Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por planilha; aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor da equipe; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP. Só há dois perfis, `tecnico` e `admin`; o supervisor é o técnico que a equipe aponta, não um perfil, e a Segurança do Trabalho não usa o sistema.
 
-Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Catálogo de serviço, escaneamento de OS e APR antigas, monitoramento do intervalo entre preventivas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP. Substituir o BI ou o site Lovable — são de outra equipe.
+Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Catálogo de serviço, escaneamento de OS e APR antigas, monitoramento do intervalo entre preventivas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP. Substituir o BI ou o site Lovable — são de outra equipe. Cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin (pronto na API), e tela de treinamento no primeiro login (ver [Cadastro pelo supervisor, liberação e treinamento](#cadastro-pelo-supervisor-liberação-e-treinamento)). Importação de OS pelo supervisor foi adiada: fica só com o admin ([pontos-a-validar.md](pontos-a-validar.md), questão 63).
 
 Não muda: SAP (continua gerando, liberando e encerrando as ordens); site Lovable de controle; o conteúdo das APRs continua sendo da segurança do trabalho.
 
@@ -41,7 +41,7 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 3. **Todo registro de campo nasce com ID gerado no cliente, e reenviar não tem efeito; o `status` da OS é derivado no servidor, nenhum cliente o grava direto.** Isso torna o envio seguro contra rede instável, reenvio e duplo toque, online ou pela fila offline. As transições ficam no diagrama de [Eventos e modo offline](#eventos-e-modo-offline).
 4. **Uma APR vale para uma única OS e ampara uma única Execução; nenhuma Execução começa sem a APR aprovada, do dia, da própria OS; uma APR bloqueada é imutável.** A relação é 1:1, como o Iago e o Mario confirmaram (a mesma APR para várias OS foi descartada porque os riscos de cada atividade são diferentes). Toda nova tentativa, mesmo no mesmo local e na mesma hora, exige uma APR nova, e as respostas nunca são pré-preenchidas nem copiadas de outra APR. O registro das APRs bloqueadas fica para auditoria e para o indicador de atraso justificado.
 5. **A APR é respondida por inteiro e só então validada; cada item do modelo define `resposta_bloqueante`, `tipo` e `evidencia`.** O técnico responde todos os itens, em qualquer ordem, e volta a corrigir enquanto não concluir; ao concluir, o resultado é `bloqueada` se qualquer item `eliminatorio` tiver a resposta bloqueante, e todos os itens reprovados são registrados, cada um com observação e, quando o item pede foto, ao menos 1 foto. O servidor recalcula o resultado a partir das respostas e da versão do modelo; o valor enviado pelo aparelho é só conferido.
-6. **Um modelo de APR publicado é imutável; editar cria versão nova, e toda APR aponta para a versão exata que respondeu.** O modelo de uma OS sai da tabela `atividade` (chave da atividade no SAP → código do modelo), que a Segurança do Trabalho mantém; quando a OS não tem atividade mapeada, o técnico escolhe o modelo ao iniciar a APR, e a APR guarda a versão escolhida. APRs antigas e PDFs continuam reproduzíveis depois de uma revisão, e uma APR preenchida offline numa versão anterior é aceita com a versão que usou.
+6. **Um modelo de APR publicado é imutável; editar cria versão nova, e toda APR aponta para a versão exata que respondeu.** O modelo de uma OS sai da tabela `atividade` (chave da atividade no SAP → código do modelo), que o admin mantém, com o que a Segurança do Trabalho define; quando a OS não tem atividade mapeada, o técnico escolhe o modelo ao iniciar a APR, e a APR guarda a versão escolhida. APRs antigas e PDFs continuam reproduzíveis depois de uma revisão, e uma APR preenchida offline numa versão anterior é aceita com a versão que usou.
 7. **O SAP é fonte de leitura e destino de planilha: a OS entra por um adaptador de leitura (API, simulada no protótipo) ou por planilha, a leitura insere ou atualiza por `numero_ordem` tocando só colunas de planejamento, e a saída é PDF mais planilha para baixa manual.** Nenhuma OS nasce à mão: a única criada no sistema é a OS de apoio, aberta a partir de um impedimento (Decisão-chave 8). Reler nunca reabre uma OS encerrada nem apaga execução de campo. Trocar a API simulada pela real muda só o endereço e as credenciais, porque o contrato é o mesmo.
 8. **Uma tentativa que não conclui não trava a OS: ela fica `pendente` e qualquer pessoa da equipe a retoma com uma APR nova, sem esperar o supervisor.** O supervisor é avisado e acompanha, e pode reprogramar ou abrir uma OS de apoio, mas não autoriza a retomada. Quem executa é quem encerra, com todas as assinaturas dos participantes; nenhum usuário encerra a OS de outro e a OS pendente nunca é duplicada.
 
@@ -143,7 +143,7 @@ Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVI
 `POST /usuarios/{id}/redefinir-senha` → `200` `{senha_inicial}`
 
 `DELETE /usuarios/{id}` → `200` (admin; remove o cadastro e a conta de acesso; `409` `usuario_com_historico` se a pessoa já tem APR, execução, assinatura, evento, alerta ou equipe sob sua supervisão, caso em que se desativa; `422` ao tentar remover a si mesmo)
-`GET /usuarios` `?equipe_id&perfil&ativo` → `200` `{usuarios[]}`
+`GET /usuarios` `?equipe_id&perfil&ativo&supervisor` → `200` `{usuarios[]}` (`supervisor=true`: quem supervisiona alguma equipe)
 `POST /equipes` `{nome, centro_trabalho, supervisor_id?}` → `201` `{id}`
 `PATCH /equipes/{id}` `{nome?, supervisor_id?}` → `200`
 `GET /equipes` → `200` `{equipes[]}`
@@ -155,41 +155,72 @@ Tabelas `equipe`, `usuario`.
 | `equipe.id` | uuid | não | | |
 | `equipe.nome` | text | não | | ex.: Serviços Especiais, Instrumentação, Atendimento Residencial |
 | `equipe.centro_trabalho` | text | não | | código SAP (`SERV_ESP`); unique; usado pela leitura do SAP |
-| `equipe.supervisor_id` | uuid | sim | `usuario.id` | destinatário dos alertas; sem supervisor, os alertas vão aos analistas ativos (ver [Impedimento](#impedimento)) |
+| `equipe.supervisor_id` | uuid | sim | `usuario.id` | supervisor da equipe: um técnico ativo (ver [Supervisão](#supervisão)); destinatário dos alertas; sem supervisor, os alertas vão aos admins ativos (ver [Impedimento](#impedimento)) |
 | `usuario.id` | uuid | não | | = id do Supabase Auth |
 | `usuario.nome` | text | não | | |
 | `usuario.matricula` | text | não | | unique; identificação definitiva da pessoa na empresa (PDF e SAP); não é o login |
 | `usuario.email` | text | não | | unique, sempre em minúsculas; e-mail institucional (`nome.sobrenome@empresa.com.br`): é o login, igual ao e-mail da conta no Supabase Auth, e o destino dos alertas |
 | `usuario.cargo` | text | sim | | aparece sob a assinatura na OS impressa (`Técnico em Elétrica`, `Engenheiro Mecânico`) |
 | `usuario.registro_profissional` | text | sim | | registro profissional impresso na OS (`CREA: ES-050003/D`) |
-| `usuario.perfil` | text | não | | `tecnico` \| `supervisor` \| `analista` \| `seguranca` \| `admin` |
+| `usuario.perfil` | text | não | | `tecnico` \| `admin`; o supervisor não é perfil (ver [Supervisão](#supervisão)) |
 | `usuario.equipe_id` | uuid | sim | `equipe.id` | |
 | `usuario.ativo` | boolean | não | | padrão true |
 | `usuario.senha_provisoria` | boolean | não | | padrão true na criação e na redefinição |
 | `usuario.assinatura_path` | text | sim | | imagem da rubrica ou assinatura por extenso, no bucket `assinaturas` |
 | `usuario.assinatura_em` | timestamptz | sim | | |
 
-Perfis e permissões:
+Perfis e permissões. Só existem dois perfis, `tecnico` e `admin`. O supervisor não é um perfil: é o `tecnico` que alguma equipe aponta em `equipe.supervisor_id` (ver [Supervisão](#supervisão)), e a coluna "técnico que supervisiona" mostra o que ele ganha em cima do que o técnico já faz. A Segurança do Trabalho não é perfil e não usa o sistema: ela define o critério de bloqueio da APR e quem o cadastra no editor é o admin.
 
-| Ação | `tecnico` | `supervisor` | `analista` | `seguranca` | `admin` |
-|---|---|---|---|---|---|
-| Aplicar APR e executar OS (app ou web) | sim | não | não | não | não |
-| OS da equipe, detalhe e histórico | própria equipe | própria equipe | todas | todas (leitura) | todas |
-| Quadro por status | — | própria equipe | todas | todas (leitura) | todas |
-| Ler o SAP, importar planilha e exportar | — | — | sim | — | sim |
-| Digitalizar OS em papel (câmera; em desenvolvimento) | — | — | — | — | sim |
-| Criar OS de apoio | — | qualquer equipe | qualquer equipe | — | sim |
-| Reprogramar OS | — | própria equipe | sim | — | sim |
-| Dar ciência da execução | — | própria equipe | — | — | — |
-| Cancelar OS de apoio | — | — | sim | — | sim |
-| Receber alertas | — | da equipe | quando a equipe não tem supervisor | — | — |
-| Criar, editar, publicar e excluir modelos e editar a tabela de atividades | — | — | — | sim | sim |
-| Usuários e equipes | — | — | — | — | sim |
-| Indicadores | — | própria equipe | todas | todas | todas |
+| Ação | `tecnico` | `tecnico` que supervisiona | `admin` |
+|---|---|---|---|
+| Aplicar APR e executar OS (app ou web, inclusive no modo offline) | sim | sim | não |
+| OS da equipe, detalhe e histórico | própria equipe | própria equipe e as que supervisiona | todas |
+| Quadro por status | — | própria equipe e as que supervisiona | todas |
+| Ler o SAP, importar planilha e exportar | — | — | sim |
+| Digitalizar OS em papel (câmera; em desenvolvimento) | — | — | sim |
+| Criar OS de apoio | — | sim, para qualquer equipe, a partir de OS das equipes que supervisiona | sim |
+| Reprogramar OS | — | equipes que supervisiona | sim |
+| Dar ciência da execução | — | equipes que supervisiona | — |
+| Cancelar OS de apoio | — | — | sim |
+| Receber alertas | — | das equipes que supervisiona | de OS de equipe sem supervisor e `falha_importacao` |
+| Criar, editar, publicar e excluir modelos, definir o critério de bloqueio e editar a tabela de atividades | — | — | sim |
+| Usuários e equipes | — | — | sim |
+| Indicadores | — | equipes que supervisiona | todas |
 
-O perfil define o que a pessoa pode fazer; a plataforma não. Web e app aceitam qualquer perfil: o técnico pode usar a web e o gestor pode usar o app. As telas de campo (OS da equipe, APR, execução, perfil) existem nos dois; quais telas de gestão o app oferece fica em aberto (questão 55). Quem pode aplicar APR e executar além do `tecnico` também (questão 56): por enquanto, só ele.
+O perfil define o que a pessoa pode fazer; a plataforma não. Web e app aceitam qualquer perfil: o técnico pode usar a web e o supervisor e o admin podem usar o app. As telas de campo (OS da equipe, APR, execução, perfil) existem nos dois; quais telas de gestão o app oferece fica em aberto (questão 55). O admin é só gerenciamento da plataforma: não aplica APR nem executa OS. Quem aplica APR e executa é sempre um técnico, e todo supervisor também é técnico (questão 56).
 
-`supervisor` é o perfil de gestão — não confundir com o `responsavel` que lidera a APR em campo, e que o modelo em papel chama de "Supervisor da Atividade".
+O supervisor da equipe não se confunde com o `responsavel` que lidera a APR em campo, e que o modelo em papel chama de "Supervisor da Atividade".
+
+### Supervisão
+
+Supervisor é quem a equipe aponta em `equipe.supervisor_id`, e é sempre um técnico: faz tudo o que o técnico faz (aplica APR, executa OS, usa o modo offline) e mais a gestão da(s) equipe(s) que supervisiona. O admin muda a supervisão editando a equipe, escolhendo qualquer técnico ativo. Não existe o perfil `supervisor`.
+
+- **O que a pessoa ganha:** as ações da coluna "técnico que supervisiona" da tabela acima, nas equipes que supervisiona: ver as OS e o quadro (além da própria equipe, se tiver uma), receber os alertas, reprogramar, abrir OS de apoio, dar ciência e ver os indicadores. Em outras equipes, não.
+- **Ciência:** só de quem supervisiona a equipe da OS, e nunca de quem participou da execução (executou, preencheu a APR ou assinou como participante): `409` `ciencia_propria`. Outro supervisor ou a ausência de ciência resolve; a ciência não segura o PDF nem a exportação.
+- **Telas:** o técnico que supervisiona entra no painel de gestão pelo menu do app ("Painel de supervisão") e volta ao app por "Minhas OS (campo)". O técnico sem equipe supervisionada só vê o menu de campo; o admin entra direto no painel de gestão da plataforma (usuários, equipes, importação, modelos, indicadores). `GET /me` devolve `equipes_supervisionadas`.
+- **Sem supervisor:** os alertas da equipe vão aos admins ativos (ver [Impedimento](#impedimento)), que também reprogramam e abrem OS de apoio nesse caso.
+
+### Cadastro pelo supervisor, liberação e treinamento
+
+Decidido em 12/10/2026. **Pronto na API** (cadastro, estados de liberação, trava e treinamento); as telas da web acompanham.
+
+1. **Cadastro pelo supervisor:** o supervisor cadastra só técnicos e só em equipes que supervisiona (`POST /usuarios`; perfil `admin`, equipe alheia ou sem equipe supervisionada é recusado com `403`, e a equipe é obrigatória). A senha provisória segue o fluxo do admin (a pessoa a troca no primeiro acesso). Matrícula e e-mail institucional têm as mesmas validações. O admin continua cadastrando qualquer perfil e equipe, e a conta dele nasce já liberada.
+2. **Estados de liberação** (`usuario.liberacao`): `liberado` (acesso geral; é o de quem o admin cria e de todos os que já existiam), `pendente` (criado por supervisor, aguarda o admin) e `recusado` (o admin recusou, com motivo; a conta fica inativa e a sessão é revogada). O cadastro guarda `criado_por_id`, `criado_em`, `liberado_por_id`, `liberado_em` e `recusa_motivo`. A API devolve `liberacao`, `criado_por_id`, `criado_por_nome`, `criado_em`, `liberado_em` e `recusa_motivo` nos usuários e em `GET /me`; `criado_em` é nulo nas contas anteriores à migração `0010`.
+3. **Trava do pendente:** o pendente pode entrar, trocar a senha provisória e fazer o Campo de treino (a API só guarda o estado: `GET /me`, `PUT /me/treinamento`, `POST /auth/trocar-senha`, `POST /auth/refresh`); todas as outras rotas respondem `403` com o código `aguardando_liberacao` ("Seu acesso aguarda a liberação de um administrador"). Ele não aparece como colega, membro de equipe nem na busca, e não entra no snapshot offline nem nos indicadores. O recusado não entra: no login é `403 acesso_recusado` (a mensagem traz o motivo); nas demais rotas, `401 acesso_revogado`.
+4. **O que o admin faz:** `GET /usuarios?liberacao=pendente|recusado|liberado` devolve também o `total` (é como descobre os pendentes: não há alerta nem e-mail novos); `POST /usuarios/:id/liberar` e `POST /usuarios/:id/recusar` (corpo `{ "motivo" }`, obrigatório) valem só para `pendente` (senão `409`). Ele exclui o recusado pelo `DELETE` comum, o que libera e-mail e matrícula para um novo cadastro. Ativar ou desativar pelo `PATCH` só vale para quem já está liberado.
+5. **O que o supervisor vê e faz:** em `GET /usuarios` e `GET /usuarios/:id` ele enxerga, além dos colegas liberados, os pendentes e recusados das equipes que supervisiona (a lista de pendentes e recusados só vem com o filtro `liberacao`), inclusive o motivo da recusa. Só nos pendentes que **ele** cadastrou, edita `nome`, `cargo` e `registro_profissional` (`PATCH`) e cancela o cadastro (`DELETE`, que apaga também a conta de acesso). Não mexe em e-mail, matrícula, equipe, perfil nem ativo, não mexe em quem já foi liberado nem no pendente de outro supervisor, e não redefine senha.
+6. **Supervisor que deixa de supervisionar a equipe:** nada acontece automaticamente; os pendentes dele ficam para o admin tratar (o ex-supervisor perde o acesso a eles).
+7. **Treinamento:** no primeiro login, só para técnicos, uma tela de treinamento com dados fictícios, que a pessoa pode pular ou fazer depois; fica acessível no menu. Quem aguarda liberação pode fazer o treino enquanto espera (a web roda o treino sozinha; a API só guarda o estado).
+8. **Importação de OS pelo supervisor:** adiada; segue só do admin (questão 63 de [pontos-a-validar.md](pontos-a-validar.md)).
+
+**Campo de treino (EM CONSTRUÇÃO).** Detalhamento do item 7, em desenvolvimento nesta entrega:
+
+- **Boas-vindas:** no primeiro acesso do técnico (supervisor incluso, que é técnico), a tela "Bem-vindo ao Campo de Treino! Aqui tudo é de mentira…" oferece duas modalidades. **Direcionado**: tutorial com balões; o usuário avança com "Próximo" ou fazendo a tarefa indicada. **Livre**: a interface inteira liberada para testar, com os dados fictícios.
+- **Saídas:** **Pular** grava o estado `pulado` e a tela não volta. **Fazer depois** some nesta sessão e volta no próximo login; o estado segue `nao_iniciado`.
+- **Sempre acessível:** um link no menu do técnico abre o Campo de treino a qualquer hora, com "Recomeçar treino" para refazer.
+- **Dados fictícios:** ficam na memória do servidor, por usuário, e a API real nunca é chamada em modo treino. Um selo "TREINO" fica visível o tempo todo.
+- **Estado guardado:** `usuario.treinamento_estado` (`nao_iniciado`, `concluido` ou `pulado`) e `usuario.treinamento_em` (quando concluiu ou pulou; nulo se não iniciado). Quem já existia ao entrar a funcionalidade fica `pulado`; novos usuários nascem `nao_iniciado`. `GET /me` devolve `usuario.treinamento: {estado, em}`; `PUT /me/treinamento` com `{estado}` grava (`nao_iniciado` serve para refazer) e é idempotente. Só o estado vive na API real; o treino em si roda na web.
+- **Quem:** só técnicos. Admin e a gestão do supervisor ficam sem treinamento por ora (o admin sempre aparece `nao_iniciado`, sem efeito).
 
 1. Janela de login offline — 7 dias desde o último login online.
 2. Funções de campo (gazista, instrumentista, eletricista) — ficam no texto da equipe e não viram perfil; perfil só controla acesso.
@@ -201,7 +232,7 @@ O perfil define o que a pessoa pode fazer; a plataforma não. Web e app aceitam 
 
 ### Integração SAP
 
-**Entrega** OS no sistema a partir da API do SAP (simulada no protótipo) ou da planilha exportada (o PDF da OS e a digitalização da folha em papel pela câmera, só do admin, estão em desenvolvimento), e a OS de apoio, a única que nasce no sistema, aberta por supervisor ou analista a partir de um impedimento. **Status: aberta.**
+**Entrega** OS no sistema a partir da API do SAP (simulada no protótipo) ou da planilha exportada (o PDF da OS e a digitalização da folha em papel pela câmera, só do admin, estão em desenvolvimento), e a OS de apoio, a única que nasce no sistema, aberta pelo supervisor da equipe ou pelo admin a partir de um impedimento. **Status: aberta.** A importação (API, planilha e digitalização) é só do admin; a do supervisor foi adiada (questão 63).
 
 O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio back-end e só está ativo com `SAP_SIMULADO=true`, devolve dados fictícios no mesmo formato, e o adaptador de leitura não sabe se fala com um ou com o outro.
 
@@ -223,16 +254,16 @@ O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio ba
 | Ordem cancelada no SAP com execução em andamento | a execução segue; `alerta` `conflito_planejamento` | alerta no painel |
 | Ordem com reprogramação registrada no sistema e data diferente | linha ignorada, para não desfazer a reprogramação | `ignoradas`, motivo "Reprogramada no sistema" |
 | Centro de trabalho sem equipe cadastrada | linha ignorada | `ignoradas`, com o motivo |
-| Atividade da OS fora da tabela `atividade`, ou OS sem plano de manutenção | a OS entra normalmente, com `codigo_atividade` nulo; se havia um código, ele é cadastrado em `atividade` sem modelo, para a Segurança do Trabalho mapear; o técnico escolhe o modelo ao iniciar a APR | conta em `criadas`, com o aviso "Atividade sem modelo de APR" |
+| Atividade da OS fora da tabela `atividade`, ou OS sem plano de manutenção | a OS entra normalmente, com `codigo_atividade` nulo; se havia um código, ele é cadastrado em `atividade` sem modelo, para o admin mapear com a Segurança do Trabalho; o técnico escolhe o modelo ao iniciar a APR | conta em `criadas`, com o aviso "Atividade sem modelo de APR" |
 | Linha sem número de ordem | linha ignorada | `ignoradas` |
-| API fora do ar, resposta inválida ou erro ao gravar | nenhuma OS é criada, alterada ou removida; a leitura seguinte retoma de onde parou | `importacao` com `erro` no histórico; `alerta` `falha_importacao` no sino de quem pediu a sincronização (na leitura agendada, dos analistas ativos; sem analista, dos admins) |
+| API fora do ar, resposta inválida ou erro ao gravar | nenhuma OS é criada, alterada ou removida; a leitura seguinte retoma de onde parou | `importacao` com `erro` no histórico; `alerta` `falha_importacao` no sino de quem pediu a sincronização (na leitura agendada, dos admins ativos) |
 | Planilha enviada no lugar da API | mesmo processamento, com o mesmo mapeamento de colunas | `201` `{importacao_id, criadas, atualizadas, ignoradas}` |
 | Arquivo que não é o export esperado | nenhuma OS muda; ficam o arquivo e a `importacao` com `erro` no histórico | `422` "Colunas obrigatórias ausentes: …"; `alerta` `falha_importacao` para quem enviou |
 | Qualquer outra falha da planilha (vazia, grande demais, não é .xlsx, erro ao gravar) | o mesmo: nenhuma OS muda, a tentativa fica no histórico com o erro | o erro na resposta e o `alerta` `falha_importacao` para quem enviou |
 | Nova falha do mesmo método com o alerta anterior ainda não lido | o alerta é reaproveitado: passa a apontar para a falha mais recente e sobe para o topo, em vez de empilhar um por tentativa | um alerta só no sino |
 | PDF de uma OS escolhido na Importação (em desenvolvimento) | nada é enviado nem gravado: o arquivo fica no navegador | prévia do PDF e o passo a passo que virá (leitura dos campos, conferência campo a campo, OS registrada) |
 | Digitalização pela câmera, só o admin (em desenvolvimento) | abre a câmera traseira e captura a folha; nada é enviado nem gravado. Sem câmera (permissão negada, sem HTTPS), a foto pode vir do aparelho | a foto e o mesmo passo a passo, com a leitura do texto da folha |
-| OS de apoio, aberta a partir de uma OS pendente | supervisor ou analista escolhe a equipe, a atividade, as datas e o local, que precisa ser um dos já cadastrados; a OS nasce `liberada`, ligada à original (`os_origem_id`), com `origem` `apoio` e sem número SAP | `201` |
+| OS de apoio, aberta a partir de uma OS pendente | o supervisor da equipe da OS ou o admin escolhe a equipe, a atividade, as datas e o local, que precisa ser um dos já cadastrados; a OS nasce `liberada`, ligada à original (`os_origem_id`), com `origem` `apoio` e sem número SAP | `201` |
 | Criar OS sem `os_origem_id`, ou com OS de origem, local ou equipe que não existem | nada é gravado: o sistema só cria OS de apoio | `422` |
 
 `POST /sap/leituras` → `202` `{importacao_id}`
@@ -269,7 +300,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.status_sap` | text | sim | | "Status do sistema" do SAP, uma lista de códigos (`LIB IMPR CAPC NOAP SCDM`); a api procura o `LIB` |
 | `os.solicitante` | text | sim | | vem do SAP; geralmente vazio; aparece no PDF quando existe |
 | `os.os_origem_id` | uuid | sim | `os.id` | a OS que a OS de apoio destrava; preenchido em toda OS de apoio e só nela (o banco confere: `origem` = `apoio` se e somente se há `os_origem_id`) |
-| `os.origem` | text | não | | `sap` \| `planilha` \| `apoio`; `apoio` é a OS aberta por supervisor ou analista a partir de um impedimento, a única sem origem no SAP |
+| `os.origem` | text | não | | `sap` \| `planilha` \| `apoio`; `apoio` é a OS aberta pelo supervisor ou pelo admin a partir de um impedimento, a única sem origem no SAP |
 | `os.pdf_path` | text | sim | | PDF da OS, no bucket `pdfs`; um por OS |
 | `os.pdf_em` | timestamptz | sim | | |
 | `os.ciencia_por` | uuid | sim | `usuario.id` | supervisor que deu ciência |
@@ -304,19 +335,19 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 
 ### Modelo de APR
 
-**Entrega** modelos de APR versionados, criados, editados e excluídos na web pela Segurança do Trabalho (`seguranca`), dona do conteúdo, e pelo administrador (`admin`), a tabela que liga cada atividade a um modelo, e os 8 modelos de `base/apr-examples/` como carga inicial. No painel, ficam na seção APR (abas Modelos e Atividades, como a seção Ordem de Serviço). O dashboard de APR, na seção Indicadores e exportação (`GET /aprs/resumo` `?periodo=7d|30d|90d|12m`, de analista, Segurança e admin) mostra, pela data de conclusão, as APRs respondidas e bloqueadas com a comparação com o período anterior, os alertas registrados, as APRs de OS sem atividade ligada a um modelo, os itens que mais bloqueiam, os alertas mais registrados e as APRs por modelo e por equipe. **Status: aberta.**
+**Entrega** modelos de APR versionados, criados, editados e excluídos na web pelo administrador (`admin`), que cadastra o que a Segurança do Trabalho define (ela é dona do conteúdo e do critério de bloqueio, mas não usa o sistema), a tabela que liga cada atividade a um modelo, e os 8 modelos de `base/apr-examples/` como carga inicial. No painel, ficam na seção APR (abas Modelos e Atividades, como a seção Ordem de Serviço). O dashboard de APR, na seção Indicadores e exportação (`GET /aprs/resumo` `?periodo=7d|30d|90d|12m`, só do admin) mostra, pela data de conclusão, as APRs respondidas e bloqueadas com a comparação com o período anterior, os alertas registrados, as APRs de OS sem atividade ligada a um modelo, os itens que mais bloqueiam, os alertas mais registrados e as APRs por modelo e por equipe. **Status: aberta.**
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
 | Carga inicial | APR 01–07 e 09 entram publicadas, na versão e na data que o próprio documento traz (`VERSÃO 04 DATA: 24/07/2026`), com itens de verificação, riscos, medidas preventivas e o bloco de contatos de emergência (PAE) | |
 | Carga inicial da tabela de atividades | cada código de plano de manutenção listado no campo "Plano de manutenção e operação (SAP)" (APR 01, 02, 03, 06 e 07; uma faixa como `8.7.2/ 8.7.3` vira uma linha por código), e cada atividade da tabela dinâmica "APR → atividades" presente nos 8 arquivos, vira uma linha em `atividade`; a que aparece em mais de um modelo fica no primeiro, na ordem das APR | todas entram marcadas como provisórias; sem código do SAP, o texto é a chave |
-| Segurança edita um modelo publicado | cria rascunho da versão seguinte; a publicada não muda (Decisão-chave 6) | `201` |
+| Admin edita um modelo publicado | cria rascunho da versão seguinte; a publicada não muda (Decisão-chave 6) | `201` |
 | Publicar rascunho | vira a versão usada pelas APRs novas; a anterior fica só para leitura | `200` |
 | Publicar sem nenhum item eliminatório | recusado | `422` "Modelo precisa de ao menos um item eliminatório" |
 | Publicar com item de verificação sem resposta bloqueante | recusado | `422` "Todo item de verificação precisa de resposta bloqueante" |
 | APR offline respondida na versão anterior chega | aceita, gravada com a versão que usou | |
-| Segurança liga um código de atividade a um modelo | as OS dessa atividade passam a usar o modelo; a leitura seguinte preenche `codigo_atividade` das OS que ainda estavam sem atividade mapeada | `200` |
-| Segurança troca o modelo de um código | vale para as APRs novas; as OS já abertas usam o modelo novo ao atualizar a lista (no modo offline, na próxima sincronização) | `200` |
+| Admin liga um código de atividade a um modelo | as OS dessa atividade passam a usar o modelo; a leitura seguinte preenche `codigo_atividade` das OS que ainda estavam sem atividade mapeada | `200` |
+| Admin troca o modelo de um código | vale para as APRs novas; as OS já abertas usam o modelo novo ao atualizar a lista (no modo offline, na próxima sincronização) | `200` |
 | Cria um modelo novo | rascunho da versão escolhida (a revisão do documento; padrão 1), em branco ou copiado da versão em uso de outro modelo; só vale para as APRs depois de publicado | `201` |
 | Exclui um modelo que nunca foi publicado | o rascunho é apagado e o código fica livre | `200` |
 | Exclui um modelo já publicado | arquivado, não apagado: sai das listas, das APRs novas e da cópia offline, e o rascunho é descartado; as versões ficam, porque APRs, PDFs e a APR offline pendente apontam para elas (a que chegar ainda é aceita). As atividades dele vão para o substituto escolhido ou ficam sem modelo | `200` |
@@ -327,7 +358,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 `POST /modelos-apr/{codigo}/versoes/{versao}/publicar` → `200` `{id, versao, publicado_em}`
 `GET /modelos-apr` `?arquivados` → `200` `{modelos[]}`
 `GET /modelos-apr/{codigo}` → `200` `{codigo, titulo, arquivado_em, versoes[]}`
-`GET /modelos-apr/{codigo}/uso` → `200` `{atividades[], os_abertas: {total, recentes[]}, aprs: {total, bloqueadas, ultima_em}}` — analista, Segurança e admin
+`GET /modelos-apr/{codigo}/uso` → `200` `{atividades[], os_abertas: {total, recentes[]}, aprs: {total, bloqueadas, ultima_em}}` — só admin
 `DELETE /modelos-apr/{codigo}` `?substituto` → `200` `{codigo, resultado: excluido | arquivado, atividades, substituto}`
 `POST /modelos-apr/{codigo}/restaurar` → `200` `{codigo, versoes}`
 `PUT /atividades/{codigo}` `{descricao, modelo_apr_codigo}` → `200`
@@ -365,10 +396,10 @@ Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
 | `atividade.modelo_apr_codigo` | text | sim | | modelo usado pelas OS dessa atividade |
 | `atividade.provisorio` | boolean | não | | código inventado na carga inicial, à espera do código real do SAP |
 
-1. Critério de bloqueio — quem define é a Segurança do Trabalho, **por item**, no editor de modelos: quais perguntas existem, qual resposta é a correta e quais são eliminatórias (nem toda pergunta bloqueia no "Não"). A carga inicial não traz esse critério (as planilhas não o dizem) e usa só um ponto de partida, que a Segurança ajusta criando uma versão nova: todo item de verificação é `eliminatorio` e bloqueia no Não, exceto "O serviço requer uso de iluminação auxiliar?" (`alerta`, registra no Sim) e "Existe algum impedimento para executar a atividade?" (`eliminatorio`, bloqueia no Sim); toda medida preventiva é `alerta` sem resposta que avise. Os riscos da planilha são marcados pela equipe com "( )", e só as medidas dos riscos marcados são respondidas: nas duas APR 03 preenchidas dos exemplos, as medidas dos riscos sem marca ficam em branco. Por isso o risco é uma entidade do modelo (`risco_modelo_apr`) e a marcação fica em `apr_risco` (questão 59). O ponto de partida é provisório até a Segurança do Trabalho validar, via Iago.
-2. Evidência por item — `texto` só para "Todos os participantes da atividade estão em boas condições psicológicas?" (e equivalentes), porque condição psicológica não se comprova com foto e a NR 01 dá ao trabalhador o direito de recusa; todos os demais são `foto`. A Segurança do Trabalho altera isso no editor (questão 50).
+1. Critério de bloqueio — quem define é a Segurança do Trabalho, **por item**, e o admin cadastra no editor de modelos o que ela definiu: quais perguntas existem, qual resposta é a correta e quais são eliminatórias (nem toda pergunta bloqueia no "Não"). A carga inicial não traz esse critério (as planilhas não o dizem) e usa só um ponto de partida, que o admin ajusta, conforme a Segurança, criando uma versão nova: todo item de verificação é `eliminatorio` e bloqueia no Não, exceto "O serviço requer uso de iluminação auxiliar?" (`alerta`, registra no Sim) e "Existe algum impedimento para executar a atividade?" (`eliminatorio`, bloqueia no Sim); toda medida preventiva é `alerta` sem resposta que avise. Os riscos da planilha são marcados pela equipe com "( )", e só as medidas dos riscos marcados são respondidas: nas duas APR 03 preenchidas dos exemplos, as medidas dos riscos sem marca ficam em branco. Por isso o risco é uma entidade do modelo (`risco_modelo_apr`) e a marcação fica em `apr_risco` (questão 59). O ponto de partida é provisório até a Segurança do Trabalho validar, via Iago.
+2. Evidência por item — `texto` só para "Todos os participantes da atividade estão em boas condições psicológicas?" (e equivalentes), porque condição psicológica não se comprova com foto e a NR 01 dá ao trabalhador o direito de recusa; todos os demais são `foto`. O admin altera isso no editor, conforme a Segurança do Trabalho (questão 50).
 3. Resposta "NA" — passa, exige observação, e só é oferecida nos itens com `permite_na` (questão 9): todos os itens das APR 04 e 05 (que têm a coluna) e o teste de explosividade da APR 06 (questão 61).
-4. Tabela de atividades — editável pela Segurança do Trabalho e pelo admin; o código real do SAP ainda não foi confirmado e o plano de manutenção está em revisão, então os códigos vão mudar (questões 3, 52 e 58). Toda a carga entra como `provisorio`; a chave é o código do plano quando existe e o texto quando não. Um modelo por OS: o que a APR 06 repete das listas das APR 01, 02 e 03 fica com a primeira.
+4. Tabela de atividades — editável pelo admin, com o que a Segurança do Trabalho define; o código real do SAP ainda não foi confirmado e o plano de manutenção está em revisão, então os códigos vão mudar (questões 3, 52 e 58). Toda a carga entra como `provisorio`; a chave é o código do plano quando existe e o texto quando não. Um modelo por OS: o que a APR 06 repete das listas das APR 01, 02 e 03 fica com a primeira.
 
 ### Eventos e modo offline
 
@@ -522,7 +553,7 @@ Tabelas `apr`, `apr_participante`, `apr_risco`, `apr_resposta`. Todos os IDs nas
 | `apr.concluida_em` | timestamptz | não | | também define o dia de validade |
 | `apr_participante.apr_id` | uuid | não | `apr.id` | |
 | `apr_participante.usuario_id` | uuid | não | `usuario.id` | |
-| `apr_participante.funcao` | text | não | | `responsavel` \| `executor`; exatamente um `responsavel` (o que o papel chama de "Supervisor da Atividade"). Não confundir com o perfil `supervisor` |
+| `apr_participante.funcao` | text | não | | `responsavel` \| `executor`; exatamente um `responsavel` (o que o papel chama de "Supervisor da Atividade"). Não confundir com o supervisor da equipe |
 | `apr_participante.assinatura_path` | text | não | | cópia da assinatura do perfil no momento da confirmação |
 | `apr_participante.assinada_em` | timestamptz | não | | |
 | `apr_risco.apr_id` | uuid | não | `apr.id` | PK composta com `risco_id` |
@@ -652,15 +683,15 @@ Alternativas consideradas: gerar o PDF no aparelho — ganha se o técnico preci
 | APR bloqueada ou interrupção chega ao servidor | OS `pendente`; `alerta` `bloqueio` para o supervisor da equipe, no painel e por e-mail (tarefa `email_alerta`) | e-mail com nº da OS, local, técnico, itens reprovados, observações e links das fotos |
 | Suspensão chega ao servidor | OS `pendente`; sem alerta e sem e-mail | — |
 | Supervisor sem e-mail | só o alerta no painel | |
-| Equipe sem supervisor cadastrado | um `alerta` para cada analista ativo | alerta no painel dos analistas |
+| Equipe sem supervisor cadastrado | um `alerta` para cada admin ativo | alerta no painel dos admins |
 | Nova tentativa na OS pendente | qualquer pessoa da equipe inicia uma APR nova, a qualquer hora; não depende de reprogramação nem de autorização (Decisão-chave 8) | OS na lista, "Pendente" |
-| Supervisor ou analista reprograma | nova data ou nova equipe, com justificativa; o status não muda; fica em `reprogramacao` | `200` |
+| Supervisor da equipe ou admin reprograma | nova data ou nova equipe, com justificativa; o status não muda; fica em `reprogramacao` | `200` |
 | Reprogramar sem justificativa | recusado | `422` "Justificativa obrigatória" |
-| Precisa de outra equipe antes (caixa de válvula cheia d'água → civil drena) | supervisor ou analista cria OS de apoio para qualquer equipe, ligada à original; a original continua `pendente` | `201` |
+| Precisa de outra equipe antes (caixa de válvula cheia d'água → civil drena) | supervisor da equipe ou admin cria OS de apoio para qualquer equipe, ligada à original; a original continua `pendente` | `201` |
 | OS de apoio encerrada | a original continua `pendente`; `alerta` `apoio_encerrado` para o supervisor da original | alerta no painel |
 | OS pendente passa da data programada | conta como atrasada **justificada** | ver [Painel](#painel) |
-| Supervisor, analista ou admin abre o alerta no painel | o painel marca como lido sozinho, sem botão (`lido_em` preenchido) | some dos não lidos e baixa o contador do sino |
-| Cancelar OS de apoio | analista ou admin, com justificativa, só com a OS `liberada` ou `pendente`; a OS vira `cancelada` | `200` |
+| Supervisor ou admin abre o alerta no painel | o painel marca como lido sozinho, sem botão (`lido_em` preenchido) | some dos não lidos e baixa o contador do sino |
+| Cancelar OS de apoio | só o admin, com justificativa, só com a OS `liberada` ou `pendente`; a OS vira `cancelada` | `200` |
 | Cancelar OS de apoio em outro status | recusado | `409` `status_invalido_para_cancelar` |
 | Cancelar OS que não é de apoio | recusado: a OS do SAP é cancelada pelo SAP, na leitura | `422` `os_nao_apoio` "Só OS de apoio pode ser cancelada pelo sistema" |
 
@@ -678,7 +709,7 @@ Tabela `alerta`.
 | `alerta.tipo` | text | não | | `bloqueio` \| `conflito_planejamento` \| `execucao_duplicada` \| `apoio_encerrado` \| `falha_importacao` |
 | `alerta.os_id` | uuid | sim | `os.id` | obrigatório em todo tipo, menos `falha_importacao` |
 | `alerta.importacao_id` | uuid | sim | `importacao.id` | só em `falha_importacao` (o banco exige um ou outro, conforme o tipo) |
-| `alerta.destinatario_id` | uuid | não | `usuario.id` | supervisor da equipe; sem supervisor, um alerta por analista ativo. Na `falha_importacao`, quem iniciou a importação (na leitura agendada, cada analista ativo; sem analista, cada admin ativo) |
+| `alerta.destinatario_id` | uuid | não | `usuario.id` | supervisor da equipe; sem supervisor, um alerta por admin ativo. Na `falha_importacao`, quem iniciou a importação (na leitura agendada, cada admin ativo) |
 | `alerta.detalhe` | text | não | | |
 | `alerta.email_enviado_em` | timestamptz | sim | | |
 | `alerta.lido_em` | timestamptz | sim | | |
@@ -686,7 +717,7 @@ Tabela `alerta`.
 
 Tabela `reprogramacao`: `id`, `os_id` → `os.id`, `usuario_id` → `usuario.id`, `data_anterior`, `data_nova`, `equipe_anterior_id`, `equipe_nova_id`, `justificativa` (text, not null), `criada_em`. É o histórico das justificativas que o indicador e a auditoria leem.
 
-1. Destinatários — só o supervisor da equipe da OS; se a equipe não tiver supervisor, os analistas ativos. A cópia para a segurança do trabalho (SESMT) fica de fora até alguém pedir.
+1. Destinatários — só o supervisor da equipe da OS; se a equipe não tiver supervisor, os admins ativos. A Segurança do Trabalho não usa o sistema e não recebe alerta; a cópia para o SESMT fica de fora até alguém pedir.
 2. E-mail — só para `bloqueio`; `apoio_encerrado`, `conflito_planejamento` e `execucao_duplicada` ficam no painel (questão 20).
 3. Solicitante — a justificativa da interrupção vai ao supervisor; o campo `os.solicitante`, quando preenchido, só aparece no PDF (questão 27).
 
@@ -696,12 +727,12 @@ Tabela `reprogramacao`: `id`, `os_id` → `os.id`, `usuario_id` → `usuario.id`
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Abrir o painel | quadro com colunas `liberada`, `pendente`, `em_execucao`, `encerrada`; filtros por equipe, tipo, criticidade e período | |
-| Supervisor | vê só a própria equipe; analista, segurança e admin veem todas | |
+| Abrir o painel | quadro com colunas `liberada`, `pendente`, `em_execucao`, `encerrada`; filtros por equipe, tipo, criticidade e período; ordenado por prioridade (padrão) ou por data limite (`?ordem=data_limite`) | |
+| Supervisor | vê só a própria equipe e as que supervisiona; o admin vê todas | |
 | Buscar por nº da ordem | detalhe: dados SAP, **todas as APRs** (bloqueadas e aprovada, com participantes, itens reprovados e evidências), execuções e pausas, tempos, fotos, PDF, alertas, reprogramações e linha do tempo | |
-| Dar ciência | o supervisor da equipe aprova a OS encerrada com "Ciente"; grava `ciencia_por` e `ciencia_em`; não segura o PDF nem a exportação | "Ciente em dd/mm hh:mm" |
+| Dar ciência | o supervisor da equipe aprova a OS encerrada com "Ciente", desde que não tenha participado da execução; grava `ciencia_por` e `ciencia_em`; não segura o PDF nem a exportação | "Ciente em dd/mm hh:mm" |
 | Histórico de um local ou equipamento | execuções encerradas, da mais recente para a mais antiga ("última calibração do manômetro X") | |
-| Marcar local como crítico | `local_instalacao.critico` = true; OS desse local sobem no quadro e aparecem no filtro "Crítica" | `200` |
+| Marcar local como crítico | `local_instalacao.critico` = true; OS desse local aparecem no filtro "Crítica", com o selo "Crítico", e desempatam a ordem do quadro | `200` |
 | Indicador mensal de preventivas | encerradas, atrasadas justificadas (`pendente`, ou com reprogramação, após a data) e atrasadas sem justificativa (`liberada` após a data, sem reprogramação); o atraso conta a partir de `data_fim_prog` quando existe, senão de `data_inicio_prog` | |
 | Indicador de tempo | por equipe, técnico e OS: tempo líquido médio, pausa média e proporção de pausa, só de Execuções `encerrada` | |
 | Execução aberta há mais de 12 h | destacada no quadro | "Execução aberta há N h" |
@@ -717,7 +748,7 @@ Colunas da aba `Encerradas`: `numero_ordem`, `data_inicio`, `hora_inicio`, `data
 `GET /indicadores?mes=2026-09&equipe_id?` → `200` `{encerradas, atrasadas_justificadas, atrasadas_sem_justificativa, por_equipe[]}`
 `GET /indicadores/tempo?mes=2026-09&equipe_id?&usuario_id?` → `200` `{tempo_liquido_medio_min, pausa_media_min, proporcao_pausa, por_equipe[], por_usuario[]}`
 
-No painel, os indicadores ficam na seção Indicadores e exportação, em quatro dashboards com o mesmo filtro: `?periodo=` (os últimos 7 dias, 30 dias, 13 semanas ou 12 meses, ou um mês fechado `AAAA-MM`, que é o indicador mensal; o período anterior de mesmo tamanho serve de comparação) e `?equipe_id=` (o supervisor só vê a própria equipe; pedir outra é `403`). Geral (`GET /indicadores/geral`): a carteira de OS de agora, o resumo do período e as pendências (baixa no SAP, ciência, execução aberta há mais de 12 h, atividades sem modelo). Equipes e usuários (`GET /indicadores/equipes`): por equipe e por técnico (preventivas, execuções e tempo, APRs e bloqueios, interrupções) e, só para o admin, o estado do cadastro. OS (`GET /indicadores/os`): carteira, programadas e encerradas por tipo e por faixa, preventivas, tempo, interrupções por risco, reprogramações e locais; para analista e admin, a entrada de OS (`GET /importacoes/resumo`) e a planilha de baixa no SAP. APR (`GET /aprs/resumo`).
+No painel, os indicadores ficam na seção Indicadores e exportação, em quatro dashboards com o mesmo filtro: `?periodo=` (os últimos 7 dias, 30 dias, 13 semanas ou 12 meses, ou um mês fechado `AAAA-MM`, que é o indicador mensal; o período anterior de mesmo tamanho serve de comparação) e `?equipe_id=` (o supervisor só vê as equipes do próprio escopo, a dele e as que supervisiona; pedir outra é `403`). Geral (`GET /indicadores/geral`): a carteira de OS de agora, o resumo do período e as pendências (baixa no SAP, ciência, execução aberta há mais de 12 h, atividades sem modelo). Equipes e usuários (`GET /indicadores/equipes`): por equipe e por técnico (preventivas, execuções e tempo, APRs e bloqueios, interrupções) e, só para o admin, o estado do cadastro. OS (`GET /indicadores/os`): carteira, programadas e encerradas por tipo e por faixa, preventivas, tempo, interrupções por risco, reprogramações e locais; só para o admin, a entrada de OS (`GET /importacoes/resumo`) e a planilha de baixa no SAP. APR (`GET /aprs/resumo`).
 `GET /historico?local_instalacao_id&equipamento?` → `200` `{execucoes[]}`
 `POST /exportacoes/sap` → `200` `.xlsx`
 `PATCH /locais/{id}` `{critico}` → `200`
@@ -747,7 +778,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 17 | guardam-se `ocorrido_em` e `recebido_em`; o painel sinaliza a diferença | time |
 | 18 | senha trocada na web vale no aparelho após o próximo login online; redefinição só online | time |
 | 20 | e-mail só para `bloqueio` | Iago |
-| 21 e 22 | supervisor e analista reprogramam e criam OS de apoio; apoio para qualquer equipe | Iago |
+| 21 e 22 | supervisor da equipe e admin reprogramam e criam OS de apoio; apoio para qualquer equipe | Iago |
 | 24 | login pelo e-mail institucional (substitui a matrícula, decisão de 11/10) e senha inicial trocada no primeiro acesso | time |
 | 25 | PDF gerado fora da sincronização, por tarefa | time |
 | 26 | considerar ~390 OS por mês, com folga para ~900 | Iago |
@@ -768,7 +799,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 47 | o PDF lista todos os participantes | Iago |
 | 48 | sem vínculo automático entre OS pendente e a OS nova do mês | Iago |
 | 49 | ciência por botão na web, depois do encerramento | Iago |
-| 50 | `evidencia` no item do modelo, definida pela Segurança do Trabalho | Mario |
+| 50 | `evidencia` no item do modelo, definida pela Segurança do Trabalho e cadastrada pelo admin | Mario |
 | 52 e 58 | tabela `atividade` editável; OS sem atividade mapeada entra mesmo assim e o técnico escolhe o modelo | Iago |
 | 53 | motivo da pausa opcional, em lista curta | time e Iago |
 | 57 | `execucao.dados_inspecao` guarda o formulário de inspeção das preventivas como JSON; a estrutura por atividade vem depois | Iago |
@@ -777,7 +808,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 61 | o item de espaço confinado da APR 06 passa a aceitar "NA" | Mario |
 | 62 | um início e um fim por execução; horário individual por executante fica fora do MVP | Iago |
 | 55 | o app oferece as telas de campo e o `web` oferece as de campo e as de gestão; quais telas de gestão entram no app fica para depois da demo | time |
-| 56 | só o perfil `tecnico` aplica APR e executa OS; gestor que também executa usa um usuário `tecnico` | Iago |
+| 56 | só o `tecnico` aplica APR e executa OS, inclusive o que supervisiona (supervisor não é perfil); o admin não executa | Iago |
 
 ## Protótipo
 

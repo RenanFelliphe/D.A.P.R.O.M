@@ -2,7 +2,7 @@
 
 > Questões que a [especificação](especificacao.md) ainda não responde. Cada uma traz uma recomendação para não travar o desenvolvimento: se ninguém discordar, ela vale.
 >
-> **Atualizado em 10/10/2026**, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
+> **Atualizado em 12/10/2026** (perfis: só `tecnico` e `admin`; questões 63 e 64), a partir do que foi atualizado em 10/10/2026, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
 >
 > **Todas as questões abertas seguem com a recomendação adotada** na [especificação](especificacao.md) (seção "Suposições adotadas"), para a implementação não esperar. Elas continuam listadas aqui para a confirmação com o Iago, o Mario e o time; se a resposta for outra, o ajuste é restrito ao que a especificação cita. As questões 22–46 estavam só no [contexto da sessão](../contexto/contexto-sessao-2026-10-10.md) e entram aqui; as 47–54 são novas.
 
@@ -57,10 +57,12 @@
 | **52** | Tabela real de tipo de atividade → modelo de APR | 🟡 | Iago | nova |
 | **53** | Pausa exige motivo? | 🟡 | Time + Iago | nova |
 | **54** | API simulada do SAP: contrato e base fictícia | 🟡 | Time | nova |
+| **63** | Importação de OS pelo supervisor (adiada) | 🟡 | Time | nova |
+| **64** | Cadastro pelo supervisor, liberação pelo admin e treinamento (decidida em 12/10/2026) | 🟡 | Time + Iago | decidida |
 | 17 | Relógio do aparelho errado | 🟢 | Time | agora afeta também o cronômetro |
 | 18 | Esqueci a senha / senha offline | 🟢 | Time | o reset passa a ser do Supabase Auth |
 | 20 | Quais alertas vão por e-mail | 🟢 | Iago | o envio passa a ser do back-end Node |
-| 21 | Analista pode reprogramar | 🟢 | Iago | menos urgente: reprogramar é opcional |
+| 21 | Supervisor e admin podem reprogramar | 🟢 | Iago | menos urgente: reprogramar é opcional; o analista deixou de existir (12/10) |
 | 26 | Volume: ~390 ou ~900 OS por mês | 🟢 | Iago | igual |
 | 38 | Assinatura desenhada vale para auditoria | 🟢 | Iago | o Iago perguntou por "rubrica ou assinatura digital" |
 | 41 | Aparelhos do piloto | 🟢 | Time | igual |
@@ -150,8 +152,8 @@
 
 ### 22. OS de apoio para outra equipe
 
-**Contexto:** o supervisor cria a OS de apoio "para outra equipe", mas o perfil dele só age na própria. O Iago elogiou o vínculo (43:17) porque a equipe que calibra não é a que resolve o problema.
-**Recomendação:** permitir OS de apoio para qualquer equipe.
+**Contexto:** o supervisor cria a OS de apoio "para outra equipe", mas a gestão dele vale só para a equipe que supervisiona. O Iago elogiou o vínculo (43:17) porque a equipe que calibra não é a que resolve o problema.
+**Recomendação:** permitir OS de apoio para qualquer equipe, aberta pelo supervisor da equipe da OS pendente ou pelo admin (o analista deixou de existir).
 
 ### 25. PDF gerado fora da sincronização
 
@@ -214,12 +216,12 @@
 ### 55. Quais telas de gestão o app oferece? (nova)
 
 **Contexto:** web e app atendem todos os perfis. As telas de campo (OS da equipe, APR, execução, perfil) existem nos dois, e as de gestão (quadro, alertas, importação, indicadores, modelos, usuários) existem hoje só na web.
-**Recomendação:** o app oferece as telas de campo e a lista de alertas de quem é supervisor ou analista; o resto fica na web até alguém pedir. Decidir depois da demo.
+**Recomendação:** o app oferece as telas de campo e a lista de alertas de quem é supervisor (técnico que supervisiona) ou admin; o resto fica na web até alguém pedir. Decidir depois da demo.
 
 ### 56. Quem mais pode aplicar APR e executar OS? (nova)
 
-**Contexto:** o gestor pode usar o app e o funcionário pode usar a web, mas a especificação só deixa o perfil `tecnico` aplicar APR e executar. Se um supervisor também executa em campo, hoje precisaria de um segundo usuário.
-**Recomendação:** manter só o `tecnico`; se o Iago confirmar que gestores também executam, permitir a APR e a execução a outros perfis, sem mudar o schema (o perfil já é controlado por permissão).
+**Contexto:** só existem os perfis `tecnico` e `admin`, e o supervisor não é perfil: é o técnico que a equipe aponta em `equipe.supervisor_id` (decisão de 12/10/2026). Todo supervisor é também técnico e aplica APR e executa OS, inclusive no modo offline. O admin é só gerenciamento da plataforma e não executa.
+**Recomendação:** manter assim; confirmar com o Iago se algum gestor puro (sem executar) precisaria de um terceiro perfil. Se sim, seria um perfil novo, sem mudar o schema.
 
 ### 57. Formulário de inspeção das OS preventivas (nova)
 
@@ -251,6 +253,25 @@
 **Contexto:** a página 2 da OS tem três blocos "Executante", cada um com Data, Hora (Início) e Hora (Fim) próprios. Nos exemplos todos coincidem com a execução.
 **Recomendação:** um início e um fim por execução; horário individual fica fora do MVP. Impacto 🟢.
 
+### 63. Importação de OS pelo supervisor (adiada)
+
+**Contexto:** cogitou-se deixar o supervisor importar OS (arquivo, API ou digitalização) para a própria equipe. Em 12/10/2026 foi adiada.
+**Recomendação:** manter a importação só do admin; reavaliar depois do piloto, se o admin virar gargalo. Impacto 🟡.
+
+### 64. Cadastro pelo supervisor, liberação pelo admin e treinamento (decidida em 12/10/2026)
+
+**Contexto:** (1) o supervisor cadastra técnicos só na própria equipe; o usuário nasce pendente, só tem acesso geral depois que o admin libera (ou recusa, com motivo), e o cadastro registra quem criou e quem liberou; (2) tela de treinamento com dados fictícios no primeiro login, só para técnicos, que pode ser pulada ou feita depois e fica no menu; a API bloqueia dados reais até a liberação.
+**Decidido em 12/10/2026 (pronto na API; a web acompanha):**
+- **Como o admin fica sabendo dos pendentes:** lista filtrada com contagem (`GET /usuarios?liberacao=pendente`, campo `total`). Sem alerta novo e sem e-mail.
+- **Recusado:** o admin recusa com motivo obrigatório (a conta fica inativa e a sessão é revogada); o recusado não entra (`403 acesso_recusado` no login, com o motivo). O admin pode excluí-lo, e então e-mail e matrícula podem ser cadastrados de novo. O supervisor da equipe vê o motivo.
+- **O que o supervisor-cadastrante vê e edita enquanto o usuário está pendente:** vê os pendentes e recusados das equipes dele; só nos pendentes que ele criou edita nome, cargo e registro profissional e pode cancelar o cadastro. Não altera e-mail, matrícula, equipe, perfil nem ativo.
+- **Senha inicial:** gerada e entregue como no cadastro pelo admin (a pessoa troca no primeiro acesso); o supervisor não redefine senha.
+- **Pendente e o treinamento:** o pendente pode entrar, trocar a senha e fazer o Campo de treino com dados fictícios enquanto aguarda; a API recusa tudo o mais (`403 aguardando_liberacao`).
+- **Supervisor que deixa de supervisionar a equipe:** nada automático; só o admin trata os pendentes dele.
+- **Usuários existentes e os criados pelo admin:** ficam/nascem `liberado`.
+**Ainda em aberto:** nada desta questão; a importação de OS pelo supervisor segue adiada (questão 63).
+**Detalhes:** [Cadastro pelo supervisor, liberação e treinamento](especificacao.md#cadastro-pelo-supervisor-liberação-e-treinamento). Impacto 🟡.
+
 ## 4. Adotadas de baixo impacto (🟢)
 
 | # | Recomendação |
@@ -258,7 +279,7 @@
 | 17 | Guardar `ocorrido_em` e `recebido_em`; o painel sinaliza quando `ocorrido_em` for posterior ao recebimento. Vale também para o cronômetro |
 | 18 | Aceitar no MVP: o app invalida a senha antiga no próximo sync com sinal. O reset é sempre online, pelo Supabase Auth |
 | 20 | E-mail só para bloqueio; perguntar ao Iago se `apoio_encerrado` também merece e-mail. O envio é do back-end Node |
-| 21 | O analista pode reprogramar e criar OS de apoio para qualquer equipe |
+| 21 | O supervisor da equipe e o admin podem reprogramar e criar OS de apoio para qualquer equipe |
 | 26 | Confirmar com o Iago se o volume é ~390 ou ~900 OS por mês |
 | 38 | Confirmar com o Iago se a rubrica desenhada vale para auditoria; ele sugeriu "rubrica ou assinatura digital" (26:13) |
 | 41 | Definir antes do piloto quem fornece os aparelhos e a versão mínima do Android |
@@ -291,7 +312,7 @@
 
 Registrado na [especificação](especificacao.md) como correção ou suposição adotada:
 
-- **Equipe sem supervisor:** o alerta vai para cada analista ativo.
+- **Equipe sem supervisor:** o alerta vai para cada admin ativo (era o analista, que deixou de existir em 12/10/2026).
 - **Fim da OS de apoio:** encerrar a OS de apoio gera o alerta `apoio_encerrado`.
 
 Decidido em 10/10/2026 (já refletido na especificação):
@@ -307,6 +328,14 @@ Decidido em 10/10/2026 (já refletido na especificação):
 Decidido em 11/10/2026 (já refletido na especificação):
 
 - **Sem OS manual:** a criação manual de OS foi retirada por decisão posterior do time; toda OS vem do SAP (API simulada ou planilha), e só a OS de apoio nasce no sistema, sempre ligada a uma OS de origem. O cadastro de locais saiu junto: os locais vêm só do SAP.
+
+Decidido em 12/10/2026 (já refletido na especificação):
+
+- **Dois perfis:** só `tecnico` e `admin`. O analista deixou de existir: importação de OS (arquivo, API e digitalização), leitura e exportação SAP, cancelamento de OS de apoio, modelos de APR, critério de bloqueio, usuários e equipes são do admin.
+- **Segurança do Trabalho não é perfil e não usa o sistema:** ela só define o critério de bloqueio da APR; o admin o cadastra no editor.
+- **Supervisor não é perfil:** é o técnico que `equipe.supervisor_id` aponta. Faz tudo o que o técnico faz e mais a gestão da(s) equipe(s) que supervisiona (quadro, alertas, indicadores, ciência, reprogramar, OS de apoio). O admin não executa OS.
+- **Alertas:** OS de equipe sem supervisor e falha de importação vão aos admins ativos; a Segurança "em leitura" some.
+- **Cadastro pelo supervisor com liberação pelo admin:** pronto na API (questão 64). O Campo de treino (tela de treinamento no primeiro login, só técnicos) está em construção.
 
 ## 8. Insumos prometidos na Reunião 2
 

@@ -10,12 +10,12 @@ Informações de cada processo
 - Prioridade
 
 Análise preliminar de risco
-- Notificação para um supervisor avisando que a atividade não pode ser executada
+- Notificação para o supervisor da equipe avisando que a atividade não pode ser executada (sem supervisor, vai aos admins). Só existem os perfis técnico e admin: o supervisor é o técnico que a equipe aponta
 - As OS cuja APR foi bloqueada continuam como pendentes
 - O checklist é preenchido por inteiro; só depois o sistema valida a APR. Não se bloqueia no primeiro "não"
 - Todos os itens eliminatórios reprovados são listados, e cada um exige evidência: foto quando houver obstáculo físico; justificativa em texto quando não houver (ex.: condição psicológica, direito de recusa)
 - Toda APR é nova e vale para uma única OS. Não se reaproveitam nem se pré-preenchem respostas de outra APR
-- O modelo de APR é definido pelo tipo de atividade da OS, por uma tabela editável. São 8 modelos, homologados pela Segurança do Trabalho
+- O modelo de APR é definido pelo tipo de atividade da OS, por uma tabela editável pelo admin. São 8 modelos, homologados pela Segurança do Trabalho, que define o critério de bloqueio mas não usa o sistema; o admin o cadastra no editor
 - A OS com APR bloqueada guarda o histórico de todas as APRs. Qualquer pessoa da equipe pode fazer uma APR nova e retomar a OS, sem esperar reprogramação do supervisor; o supervisor é avisado e acompanha
 - Quem executa a OS é quem a encerra, e só com APR aprovada. Nenhum usuário encerra a OS de outra pessoa, e a OS pendente não é duplicada
 
@@ -67,7 +67,7 @@ Site (https://esgasplanomanutencao.lovable.app/controle)
 --
 
 ## Correções
-- As OS não serão escritas/definidas através do sistema e sim, através do SAP. Nosso sistema deve, ler as OS do SAP (Por importação manual ou por requisição HTTP de uma API) e renderizá-las na nossa plataforma para que o funcionário possa aplicar uma APR em cima dela. A única OS que nasce no sistema é a OS de apoio, aberta pelo supervisor ou pelo analista a partir de um impedimento e ligada à OS original.
+- As OS não serão escritas/definidas através do sistema e sim, através do SAP. Nosso sistema deve, ler as OS do SAP (Por importação manual ou por requisição HTTP de uma API) e renderizá-las na nossa plataforma para que o funcionário possa aplicar uma APR em cima dela. A única OS que nasce no sistema é a OS de apoio, aberta pelo supervisor da equipe ou pelo admin a partir de um impedimento e ligada à OS original.
 
 - A API do SAP existe, mas o protótipo não usa dados reais. Criaremos uma API que simula a real, com dados fictícios e o mesmo contrato; trocar para a real deve mudar só o endereço e as credenciais. A importação por planilha continua como alternativa.
 
