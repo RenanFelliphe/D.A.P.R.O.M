@@ -7,7 +7,7 @@ import { sair } from "@/lib/acoes-sessao";
 import { rotas } from "@/lib/rotas";
 import type { UsuarioDaBarra } from "./Barras";
 
-/** Usuário da barra superior: abre um menu com Perfil, Configurações e Sair. */
+/** Usuário da barra superior: abre um menu com Perfil e Sair. */
 export function MenuUsuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
@@ -54,10 +54,6 @@ export function MenuUsuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
           <Link href={rotas.web.perfil} className="usuario-item" onClick={fechar}>
             <Icon name="user" size={16} />
             Perfil
-          </Link>
-          <Link href={rotas.web.configuracoes} className="usuario-item" onClick={fechar}>
-            <Icon name="grid" size={16} />
-            Configurações
           </Link>
           <form action={sair}>
             <button type="submit" className="usuario-item perigo">

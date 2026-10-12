@@ -65,9 +65,14 @@ export async function trocarSenha(_anterior: EstadoDoFormulario, form: FormData)
   redirect(inicioDoUsuario({ ...eu.usuario, equipes_supervisionadas: eu.equipes_supervisionadas }));
 }
 
-/** Encerra a sessão neste navegador. */
+/** Encerra a sessão: a `api` derruba as sessões da conta (o `refresh_token` deixa de valer) e os cookies deste navegador são apagados. */
 export async function sair() {
   const jar = await cookies();
+  const token = jar.get(COOKIE_ACESSO)?.value;
+  if (token) {
+    // Se a `api` estiver fora do ar o usuário sai do mesmo jeito; só a revogação no servidor fica para o vencimento do token.
+    await fetch(`${apiUrl()}/auth/sair`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => {});
+  }
   jar.delete(COOKIE_ACESSO);
   jar.delete(COOKIE_RENOVACAO);
   // O campo de treino vale só na sessão: ao sair o modo treino acaba e as boas-vindas voltam no próximo login.

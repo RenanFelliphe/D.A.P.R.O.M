@@ -53,6 +53,8 @@ export const rotas = {
     modelo: (codigo: string, versao?: number) => `/web/apr/modelos/${encodeURIComponent(codigo)}${versao ? `?versao=${versao}` : ""}`,
     novoModelo: "/web/apr/modelos/novo",
     usuarios: "/web/usuarios",
+    /** Trilha de auditoria das ações de gestão (só o admin). */
+    auditoria: "/web/auditoria",
     /** Visão do supervisor: técnicos das equipes dele, com a situação da liberação, e o cadastro de novos técnicos. */
     minhaEquipe: "/web/minha-equipe",
     perfil: "/web/perfil",
@@ -60,7 +62,6 @@ export const rotas = {
     perfilDe: (id: string) => `/web/perfil/${id}`,
     /** Perfil da equipe. */
     equipe: (id: string) => `/web/equipes/${id}`,
-    configuracoes: "/web/configuracoes",
     /** Resultados da busca global (`?q=`). */
     busca: "/web/busca",
   },

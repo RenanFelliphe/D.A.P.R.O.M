@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { BotaoExcluir } from "@/components/web/BotaoExcluir";
 import type { Atividade } from "@/data/modelos";
 import { chamar } from "@/lib/cliente-api";
 import { rotas } from "@/lib/rotas";
@@ -55,6 +56,12 @@ export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividad
     } finally {
       setOcupado(false);
     }
+  }
+
+  async function excluir() {
+    await chamar("DELETE", caminhoDaAtividade(atividade.codigo));
+    exibirAviso(`Atividade ${atividade.codigo} excluída.`);
+    router.refresh();
   }
 
   if (!editando) {
@@ -114,7 +121,8 @@ export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividad
         </select>
       </td>
       <td className="acoes-linha">
-        <span className="row g6" style={{ justifyContent: "flex-end" }}>
+        <span className="row g6" style={{ justifyContent: "flex-end", alignItems: "flex-start" }}>
+          <BotaoExcluir rotulo="Excluir" pergunta={`Excluir a atividade ${atividade.codigo}?`} aoExcluir={excluir} desabilitado={ocupado} />
           <Button variant="p" sm style={{ height: 32 }} onClick={salvar} disabled={ocupado || !descricao.trim()}>
             {ocupado ? "Salvando…" : "Salvar"}
           </Button>

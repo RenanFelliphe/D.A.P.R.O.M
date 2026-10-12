@@ -19,13 +19,15 @@ import { Shell } from "./Shell";
  * (`secao.ts` em `components/web/os`, `apr` e `indicadores`).
  */
 const itensDoSupervisor: string[] = [rotas.web.quadro, rotas.web.indicadores, rotas.web.minhaEquipe];
-const itensDoAdmin: string[] = [rotas.web.quadro, rotas.web.modelos, rotas.web.indicadores, rotas.web.usuarios];
+const itensDoAdmin: string[] = [rotas.web.quadro, rotas.web.modelos, rotas.web.indicadores, rotas.web.usuarios, rotas.web.auditoria];
 
 const todos: ItemMenu[] = [
   { href: rotas.web.quadro, icone: "grid", rotulo: "Ordem de Serviço", prefixos: ["/web/os", "/doc"] },
   { href: rotas.web.modelos, icone: "clip", rotulo: "APR", prefixos: ["/web/apr"] },
   { href: rotas.web.indicadores, icone: "bars", rotulo: "Indicadores e exportação", prefixos: ["/web/indicadores"] },
   { href: rotas.web.usuarios, icone: "users", rotulo: "Equipes e usuários" },
+  // Só o admin: quem fez o quê nas telas de gestão.
+  { href: rotas.web.auditoria, icone: "shield", rotulo: "Auditoria" },
   // Supervisor: as telas de usuários em modo restrito (técnicos das equipes dele e cadastro de novos técnicos).
   { href: rotas.web.minhaEquipe, icone: "users", rotulo: "Minha equipe" },
 ];

@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { BotaoExcluir } from "@/components/web/BotaoExcluir";
 import { chamar } from "@/lib/cliente-api";
 import { useToast } from "@/state/toast";
 
@@ -52,6 +53,14 @@ export function FormularioEquipe({ equipe, supervisores, aoConcluir }: Formulari
     }
   }
 
+  async function excluir() {
+    if (!equipe) return;
+    await chamar("DELETE", `/equipes/${equipe.id}`);
+    exibirAviso(`Equipe ${equipe.nome} excluída.`);
+    router.refresh();
+    aoConcluir();
+  }
+
   // o supervisor atual pode ter sido desativado: mantém a opção visível para o admin trocá-lo conscientemente
   const opcoes = equipe?.supervisor_id && !supervisores.some((s) => s.id === equipe.supervisor_id) ? [{ id: equipe.supervisor_id, nome: "Supervisor atual (inativo)" }, ...supervisores] : supervisores;
 
@@ -88,13 +97,16 @@ export function FormularioEquipe({ equipe, supervisores, aoConcluir }: Formulari
           {erro}
         </Notice>
       )}
-      <div className="row g8" style={{ justifyContent: "flex-end" }}>
-        <Button variant="line" sm onClick={aoConcluir} disabled={ocupado}>
-          Cancelar
-        </Button>
-        <Button variant="p" sm type="submit" disabled={ocupado}>
-          {ocupado ? "Salvando…" : equipe ? "Salvar" : "Criar equipe"}
-        </Button>
+      <div className="row between g8" style={{ alignItems: "flex-start" }}>
+        {equipe ? <BotaoExcluir rotulo="Excluir equipe" pergunta="Excluir esta equipe? Só é possível se nenhum usuário nem OS estiver ligado a ela." aoExcluir={excluir} desabilitado={ocupado} /> : <span />}
+        <span className="row g8">
+          <Button variant="line" sm onClick={aoConcluir} disabled={ocupado}>
+            Cancelar
+          </Button>
+          <Button variant="p" sm type="submit" disabled={ocupado}>
+            {ocupado ? "Salvando…" : equipe ? "Salvar" : "Criar equipe"}
+          </Button>
+        </span>
       </div>
     </form>
   );

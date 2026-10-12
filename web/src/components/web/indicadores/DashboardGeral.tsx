@@ -42,7 +42,7 @@ interface DashboardGeralProps {
   rotuloAnterior: string;
   /** Alertas não lidos de quem está vendo (os mesmos do sino). */
   alertasNaoLidos: number;
-  /** Analista e admin fazem a baixa no SAP: só eles veem a pendência. */
+  /** O admin faz a baixa no SAP: só ele vê a pendência. */
   verExportacao: boolean;
   /** O filtro atual (`periodo=…&equipe_id=…`), para os links aos outros dashboards. */
   consulta: string;
