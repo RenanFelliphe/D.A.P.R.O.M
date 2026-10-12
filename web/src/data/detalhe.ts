@@ -74,20 +74,24 @@ export interface FotoDeEvidencia {
   longitude: number | null;
 }
 
+/**
+ * `tipo`, `evidencia`, `resposta_bloqueante` e `alerta_marcado` dizem o que é eliminatório e o que é alerta: a `api` só
+ * os entrega ao admin, e para os demais perfis eles não vêm.
+ */
 export interface RespostaApr {
   item_id: string;
   secao: string;
   ordem: number;
   texto: string;
-  tipo: "eliminatorio" | "alerta" | "informativo" | string;
-  evidencia: string | null;
-  resposta_bloqueante: string | null;
+  tipo?: "eliminatorio" | "alerta" | "informativo" | string;
+  evidencia?: string | null;
+  resposta_bloqueante?: string | null;
   risco_id: string | null;
   resposta: "sim" | "nao" | "na";
   observacao: string | null;
   respondida_em: string;
   reprovado: boolean;
-  alerta_marcado: boolean;
+  alerta_marcado?: boolean;
 }
 
 export interface AprDaOs {
@@ -106,8 +110,8 @@ export interface AprDaOs {
     texto: string;
     resposta: string;
     observacao: string | null;
-    tipo: string;
-    evidencia: string | null;
+    tipo?: string;
+    evidencia?: string | null;
     fotos: FotoDeEvidencia[];
   }[];
 }

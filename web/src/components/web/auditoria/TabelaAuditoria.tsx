@@ -19,11 +19,11 @@ function enderecoDoAlvo(r: RegistroDeAuditoria): string | null {
   if (!r.entidade_id || r.acao.endsWith(".excluir")) return null;
   switch (r.entidade) {
     case "usuario":
-      return rotas.web.perfilDe(r.entidade_id);
+      return rotas.app.perfilDe(r.entidade_id);
     case "equipe":
-      return rotas.web.equipe(r.entidade_id);
+      return rotas.app.equipe(r.entidade_id);
     case "os":
-      return r.acao.includes("local_critico") ? null : rotas.web.os(r.entidade_id);
+      return r.acao.includes("local_critico") ? null : rotas.app.os(r.entidade_id);
     case "modelo_apr":
       return rotas.web.modelo(r.entidade_id);
     default:
@@ -98,7 +98,7 @@ export function TabelaAuditoria({ registros, filtros, pagina, tamanho, total }: 
                   <tr key={r.id}>
                     <td>{dataHora(r.em)}</td>
                     <td>
-                      <Link href={rotas.web.perfilDe(r.ator_id)}>{r.ator_nome}</Link>
+                      <Link href={rotas.app.perfilDe(r.ator_id)}>{r.ator_nome}</Link>
                     </td>
                     <td>
                       <Badge tone="neu">{rotuloDaEntidade[r.entidade]}</Badge>

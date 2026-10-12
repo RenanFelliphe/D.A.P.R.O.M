@@ -42,7 +42,7 @@ export function LinhasIgnoradas({ ignoradas, podeCadastrarEquipe }: { ignoradas:
       <div className="row between wrap">
         <h2>Linhas ignoradas · {ignoradas.length}</h2>
         {podeCadastrarEquipe && centrosSemEquipe.length > 0 && (
-          <Link href={rotas.web.usuarios} style={link}>
+          <Link href={rotas.app.usuarios} style={link}>
             Cadastrar equipe para {centrosSemEquipe.join(", ")}
           </Link>
         )}

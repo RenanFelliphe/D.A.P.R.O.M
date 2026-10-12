@@ -43,12 +43,14 @@ function Contadores({ resumo, rotuloAnterior }: { resumo: ResumoDasAprs; rotuloA
         sub={totais.aprs === 0 ? "nenhuma APR no período" : `${porcentagem(totais.bloqueadas, totais.aprs)}% das respondidas${taxaAnterior}`}
         subStyle={totais.bloqueadas > 0 ? { color: "var(--blq)", fontWeight: 500 } : undefined}
       />
-      <Kpi
-        label="Alertas registrados"
-        marker={<Icon name="alert" size={13} style={{ color: totais.alertas > 0 ? "var(--al)" : "var(--ink3)" }} />}
-        value={totais.alertas}
-        sub="respostas que avisam sem bloquear"
-      />
+      {totais.alertas !== null && (
+        <Kpi
+          label="Alertas registrados"
+          marker={<Icon name="alert" size={13} style={{ color: totais.alertas > 0 ? "var(--al)" : "var(--ink3)" }} />}
+          value={totais.alertas}
+          sub="respostas que avisam sem bloquear"
+        />
+      )}
       <Kpi
         label="Modelo escolhido pelo técnico"
         marker={<Icon name="list" size={13} style={{ color: totais.sem_modelo_ligado > 0 ? "var(--al)" : "var(--ink3)" }} />}
@@ -166,14 +168,16 @@ function RankingDeResultado({ titulo, descricao, linhas, ocultas, vazio }: { tit
 }
 
 /**
- * Dashboard de APR (Indicadores e exportação), no período e na equipe do filtro comum: contadores, as APRs por intervalo
+ * Dashboard de APR (Dashboard), no período e na equipe do filtro comum: contadores, as APRs por intervalo
  * de tempo, os itens que mais bloqueiam e os alertas mais registrados, e as APRs por modelo e por equipe.
  */
 export function DashboardApr({ resumo, rotuloAnterior }: { resumo: ResumoDasAprs; rotuloAnterior: string }) {
   const unidade = nomeDaUnidade[resumo.agrupamento];
   const { totais } = resumo;
   const pontos: PontoDoGrafico[] = resumo.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { bloqueadas: p.bloqueadas, aprovadas: p.aprovadas } }));
-  const maiorAlerta = Math.max(1, ...resumo.alertas_registrados.map((i) => i.total));
+  // Os rankings dizem quais itens são eliminatórios e quais são de alerta; a `api` só os entrega ao admin.
+  const { itens_que_bloqueiam: queBloqueiam, alertas_registrados: alertasRegistrados } = resumo;
+  const maiorAlerta = Math.max(1, ...(alertasRegistrados ?? []).map((i) => i.total));
   const equipes = resumo.por_equipe.slice(0, EQUIPES_VISIVEIS);
   const outrasEquipes = resumo.por_equipe.length - equipes.length;
 
@@ -197,38 +201,40 @@ export function DashboardApr({ resumo, rotuloAnterior }: { resumo: ResumoDasAprs
         </Panel>
       </Secao>
 
-      <Secao id="apr-itens-t" titulo="Por que bloqueia" descricao="Itens que receberam a resposta que o modelo marca: no eliminatório ela bloqueia a APR, no alerta só fica registrada.">
-        <div className="two eq">
-          <RankingDeItens
-            titulo={
-              <span className="row g8">
-                <Icon name="octagon" size={16} style={{ color: "var(--blq)" }} />
-                Itens que mais bloqueiam
-              </span>
-            }
-            descricao={totais.bloqueadas === 0 ? "Itens eliminatórios reprovados" : `Em quantas das ${totais.bloqueadas} APRs bloqueadas cada item reprovou`}
-            itens={resumo.itens_que_bloqueiam}
-            cor={BLOQUEADA}
-            base={totais.bloqueadas}
-            detalhe={(i) => `· ${porcentagem(i.total, totais.bloqueadas)}% das bloqueadas`}
-            vazio="Nenhuma APR bloqueada no período."
-          />
-          <RankingDeItens
-            titulo={
-              <span className="row g8">
-                <Icon name="alert" size={16} style={{ color: "var(--al)" }} />
-                Alertas mais registrados
-              </span>
-            }
-            descricao="Itens de alerta com a resposta que avisa"
-            itens={resumo.alertas_registrados}
-            cor={ALERTA}
-            base={maiorAlerta}
-            detalhe={(i) => (i.total === 1 ? "vez" : "vezes")}
-            vazio="Nenhum alerta registrado no período."
-          />
-        </div>
-      </Secao>
+      {queBloqueiam && alertasRegistrados && (
+        <Secao id="apr-itens-t" titulo="Por que bloqueia" descricao="Itens que receberam a resposta que o modelo marca: no eliminatório ela bloqueia a APR, no alerta só fica registrada.">
+          <div className="two eq">
+            <RankingDeItens
+              titulo={
+                <span className="row g8">
+                  <Icon name="octagon" size={16} style={{ color: "var(--blq)" }} />
+                  Itens que mais bloqueiam
+                </span>
+              }
+              descricao={totais.bloqueadas === 0 ? "Itens eliminatórios reprovados" : `Em quantas das ${totais.bloqueadas} APRs bloqueadas cada item reprovou`}
+              itens={queBloqueiam}
+              cor={BLOQUEADA}
+              base={totais.bloqueadas}
+              detalhe={(i) => `· ${porcentagem(i.total, totais.bloqueadas)}% das bloqueadas`}
+              vazio="Nenhuma APR bloqueada no período."
+            />
+            <RankingDeItens
+              titulo={
+                <span className="row g8">
+                  <Icon name="alert" size={16} style={{ color: "var(--al)" }} />
+                  Alertas mais registrados
+                </span>
+              }
+              descricao="Itens de alerta com a resposta que avisa"
+              itens={alertasRegistrados}
+              cor={ALERTA}
+              base={maiorAlerta}
+              detalhe={(i) => (i.total === 1 ? "vez" : "vezes")}
+              vazio="Nenhum alerta registrado no período."
+            />
+          </div>
+        </Secao>
+      )}
 
       <Secao id="apr-onde-t" titulo="Onde bloqueia" descricao="As APRs do período por modelo e pela equipe da OS.">
         <div className="two eq">
@@ -253,7 +259,7 @@ export function DashboardApr({ resumo, rotuloAnterior }: { resumo: ResumoDasAprs
           <RankingDeResultado
             titulo="Por equipe"
             descricao="Pela equipe da OS em que a APR foi feita"
-            linhas={equipes.map((e) => ({ chave: e.id, rotulo: <Link href={rotas.web.equipe(e.id)}>{e.nome}</Link>, aprs: e.aprs, bloqueadas: e.bloqueadas }))}
+            linhas={equipes.map((e) => ({ chave: e.id, rotulo: <Link href={rotas.app.equipe(e.id)}>{e.nome}</Link>, aprs: e.aprs, bloqueadas: e.bloqueadas }))}
             ocultas={outrasEquipes > 0 ? `e mais ${plural(outrasEquipes, "equipe", "equipes")} com menos APRs` : undefined}
             vazio="Nenhuma APR no período."
           />

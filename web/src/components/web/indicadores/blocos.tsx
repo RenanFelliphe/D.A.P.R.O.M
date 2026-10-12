@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** Peças comuns dos dashboards de Indicadores e exportação. */
+/** Peças comuns dos dashboards de Dashboard. */
 
 export const porcentagem = (parte: number, todo: number) => (todo > 0 ? Math.round((parte / todo) * 100) : 0);
 export const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;

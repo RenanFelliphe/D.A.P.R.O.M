@@ -21,7 +21,7 @@ export function AbasDaOs({ osId, atual, contagens }: { osId: string; atual: AbaD
   return (
     <nav className="abas" aria-label="Seções da OS">
       {abasDaOs.map((aba) => (
-        <Link key={aba} href={aba === "resumo" ? rotas.web.os(osId) : `${rotas.web.os(osId)}?aba=${aba}`} aria-current={aba === atual ? "page" : undefined}>
+        <Link key={aba} href={aba === "resumo" ? rotas.app.os(osId) : `${rotas.app.os(osId)}?aba=${aba}`} aria-current={aba === atual ? "page" : undefined}>
           {rotulos[aba]}
           {contagens[aba] ? <span className="small">({contagens[aba]})</span> : null}
         </Link>

@@ -53,17 +53,20 @@ export interface ItemReprovado {
   total: number;
 }
 
-/** `GET /aprs/resumo`: o dashboard de APR no período (o filtro comum dos dashboards). */
+/**
+ * `GET /aprs/resumo`: o dashboard de APR no período (o filtro comum dos dashboards). `alertas`, `itens_que_bloqueiam` e
+ * `alertas_registrados` dizem quais itens são eliminatórios e quais são de alerta: vêm `null` para quem não é admin.
+ */
 export interface ResumoDasAprs {
   periodo: string;
   agrupamento: Agrupamento;
   de: string;
   ate: string;
-  totais: { aprs: number; aprovadas: number; bloqueadas: number; alertas: number; sem_modelo_ligado: number };
+  totais: { aprs: number; aprovadas: number; bloqueadas: number; alertas: number | null; sem_modelo_ligado: number };
   anterior: { aprs: number; bloqueadas: number };
   serie: { inicio: string; fim: string; aprovadas: number; bloqueadas: number }[];
-  itens_que_bloqueiam: ItemReprovado[];
-  alertas_registrados: ItemReprovado[];
+  itens_que_bloqueiam: ItemReprovado[] | null;
+  alertas_registrados: ItemReprovado[] | null;
   por_modelo: { codigo: string; titulo: string; aprs: number; bloqueadas: number }[];
   por_equipe: { id: string; nome: string; aprs: number; bloqueadas: number }[];
 }

@@ -1,4 +1,4 @@
-/** Formatos de `GET /indicadores/geral`, `/indicadores/os` e `/indicadores/equipes` (o de APR fica em `data/modelos.ts`). */
+/** Formatos de `GET /indicadores/geral`, `/os`, `/equipes` e `/meus` (o de APR fica em `data/modelos.ts`). */
 
 import type { Agrupamento } from "@/components/web/importacao/tipos";
 import type { Perfil } from "@/lib/tipos";
@@ -43,8 +43,8 @@ export interface DashboardGeral extends PeriodoResolvido {
   aprs: { total: number; bloqueadas: number; anterior: number; bloqueadas_anterior: number };
   tempo: { execucoes: number; tempo_liquido_medio_min: number | null };
   interrupcoes: number;
-  /** O que pede ação agora. */
-  pendencias: { a_exportar: number; sem_ciencia: number; execucoes_esquecidas: number; atividades_sem_modelo: number };
+  /** O que pede ação agora. Fora `execucoes_esquecidas`, é de gestão: `null` para quem não acompanha a equipe (técnico). */
+  pendencias: { a_exportar: number | null; sem_ciencia: number | null; execucoes_esquecidas: number; atividades_sem_modelo: number | null };
 }
 
 export interface DashboardOs extends PeriodoResolvido {
@@ -56,7 +56,8 @@ export interface DashboardOs extends PeriodoResolvido {
   tempo: { execucoes: number; tempo_liquido_medio_min: number | null; pausa_media_min: number | null; proporcao_pausa: number | null };
   interrupcoes: {
     total: number;
-    recentes: { os_id: string; numero_ordem: string | null; titulo: string; motivo: string | null; fim: string; executor: string }[];
+    /** `executor` é `null` para quem não acompanha a equipe (técnico). */
+    recentes: { os_id: string; numero_ordem: string | null; titulo: string; motivo: string | null; fim: string; executor: string | null }[];
   };
   reprogramacoes: number;
   locais: { id: string; codigo: string; critico: boolean; encerradas: number }[];
@@ -91,8 +92,9 @@ export interface TecnicoDoDashboard extends MedidasDeTrabalho {
 }
 
 export interface DashboardEquipes extends PeriodoResolvido {
-  totais: { equipes: number; tecnicos_ativos: number; tecnicos_com_execucao: number; execucoes: number; tempo_liquido_medio_min: number | null };
+  totais: { equipes: number; tecnicos_ativos: number; /** `null` para quem não acompanha a equipe (técnico). */ tecnicos_com_execucao: number | null; execucoes: number; tempo_liquido_medio_min: number | null };
   equipes: EquipeDoDashboard[];
+  /** Vazia para quem não acompanha a equipe (técnico): nada por pessoa. */
   tecnicos: TecnicoDoDashboard[];
   /** Só para o admin. */
   cadastro: {
@@ -103,4 +105,14 @@ export interface DashboardEquipes extends PeriodoResolvido {
     inativos: number;
     equipes_sem_supervisor: number;
   } | null;
+}
+
+/** "Meus resultados" (`GET /indicadores/meus`): só o que a própria pessoa fez. */
+export interface DashboardMeus extends PeriodoResolvido {
+  encerradas: Encerradas;
+  serie: { inicio: string; fim: string; corretivas: number; preventivas: number }[];
+  tempo: { execucoes: number; tempo_liquido_medio_min: number | null; pausa_media_min: number | null; proporcao_pausa: number | null };
+  aprs: { total: number; bloqueadas: number; anterior: number; bloqueadas_anterior: number };
+  interrupcoes: { total: number; recentes: { os_id: string; numero_ordem: string | null; titulo: string; motivo: string | null; fim: string; executor: string | null }[] };
+  locais: { id: string; codigo: string; critico: boolean; encerradas: number }[];
 }

@@ -113,7 +113,7 @@ export function ExportacaoSap({ total, os }: ExportacaoSapProps) {
               os.map((o) => (
                 <tr key={o.id}>
                   <td className="mono">
-                    <Link href={rotas.web.os(o.id)}>{o.numero_ordem ?? "sem nº"}</Link>
+                    <Link href={rotas.app.os(o.id)}>{o.numero_ordem ?? "sem nº"}</Link>
                   </td>
                   <td>{o.titulo}</td>
                   <td>{o.equipe_nome}</td>

@@ -1,13 +1,21 @@
 import type { AbaDaSecao } from "@/components/web/AbasSecao";
 import { rotas } from "@/lib/rotas";
+import { ehAdmin, ehSupervisor, type Usuario } from "@/lib/tipos";
+
+type QuemEstaVendo = Pick<Usuario, "perfil" | "equipes_supervisionadas">;
 
 /**
- * Os quatro dashboards da seção Indicadores e exportação. Todo perfil de gestão vê os quatro (o supervisor, só com a
- * própria equipe); dentro deles, a entrada de OS e a baixa no SAP e o cadastro, são do admin.
+ * As abas da seção Dashboard, as mesmas telas para todos os perfis. Cada uma mostra o escopo de quem olha: o admin vê todas
+ * as equipes; supervisor e técnico, a própria (o técnico sem nada por pessoa). A entrada de OS, a baixa no SAP e o cadastro
+ * são do admin. "Meus resultados", o dashboard da própria pessoa, é de quem executa OS (técnico e supervisor); o admin não tem.
  */
-export const abasDeIndicadores: AbaDaSecao[] = [
-  { href: rotas.web.indicadores, rotulo: "Geral", icone: "bars" },
-  { href: rotas.web.indicadoresEquipes, rotulo: "Equipes e usuários", icone: "users" },
-  { href: rotas.web.indicadoresOs, rotulo: "OS", icone: "grid" },
-  { href: rotas.web.indicadoresApr, rotulo: "APR", icone: "clip" },
-];
+export function abasDoDashboard(u: QuemEstaVendo): AbaDaSecao[] {
+  const acompanha = ehAdmin(u) || ehSupervisor(u);
+  return [
+    { href: rotas.app.dashboard, rotulo: "Geral", icone: "bars" },
+    { href: rotas.app.dashboardEquipes, rotulo: acompanha ? "Equipes e usuários" : "Minha equipe", icone: "users" },
+    { href: rotas.app.dashboardOs, rotulo: "OS", icone: "grid" },
+    { href: rotas.app.dashboardApr, rotulo: "APR", icone: "clip" },
+    ...(ehAdmin(u) ? [] : [{ href: rotas.app.dashboardMeus, rotulo: "Meus resultados", icone: "user" } satisfies AbaDaSecao]),
+  ];
+}

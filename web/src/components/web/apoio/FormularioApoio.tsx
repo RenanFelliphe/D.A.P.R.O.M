@@ -96,7 +96,7 @@ export function FormularioApoio(p: FormularioApoioProps) {
         </Notice>
         <div className="row g8 wrap">
           {p.podeAbrirOs(criada.equipeId) && (
-            <Link href={rotas.web.os(criada.id)} style={{ fontSize: 14, fontWeight: 600 }}>
+            <Link href={rotas.app.os(criada.id)} style={{ fontSize: 14, fontWeight: 600 }}>
               Abrir a OS nova
             </Link>
           )}

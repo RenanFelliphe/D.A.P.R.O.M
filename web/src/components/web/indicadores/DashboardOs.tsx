@@ -13,9 +13,9 @@ import { EntradaDeOs } from "./EntradaDeOs";
 import { ExportacaoSap } from "./ExportacaoSap";
 import { GraficoColunas, type SerieDoGrafico } from "./GraficoColunas";
 
-const nomeDaUnidade = { dia: "dia", semana: "semana", mes: "mês" } as const;
+export const nomeDaUnidade = { dia: "dia", semana: "semana", mes: "mês" } as const;
 
-const SERIES_POR_TIPO: SerieDoGrafico[] = [
+export const SERIES_POR_TIPO: SerieDoGrafico[] = [
   { chave: "corretivas", nome: "Corretivas", cor: COR_CORRETIVA },
   { chave: "preventivas", nome: "Preventivas", cor: COR_PREVENTIVA },
 ];
@@ -61,7 +61,7 @@ function PreventivasDoPeriodo({ preventivas }: { preventivas: Dados["preventivas
 }
 
 /** Tempo médio das execuções encerradas no período (iniciadas nele): líquido, pausa e a parte do tempo em pausa. */
-function TempoDoPeriodo({ tempo }: { tempo: Dados["tempo"] }) {
+export function TempoDoPeriodo({ tempo, rodape }: { tempo: Dados["tempo"]; rodape?: string }) {
   const dados = [
     { rotulo: "Tempo líquido médio", valor: duracao(tempo.tempo_liquido_medio_min) },
     { rotulo: "Pausa média", valor: duracao(tempo.pausa_media_min) },
@@ -85,12 +85,12 @@ function TempoDoPeriodo({ tempo }: { tempo: Dados["tempo"] }) {
           </div>
         ))}
       </dl>
-      <span className="small">Por equipe e por técnico no dashboard de equipes e usuários.</span>
+      {rodape && <span className="small">{rodape}</span>}
     </Panel>
   );
 }
 
-function Interrupcoes({ interrupcoes }: { interrupcoes: Dados["interrupcoes"] }) {
+export function Interrupcoes({ interrupcoes }: { interrupcoes: Dados["interrupcoes"] }) {
   return (
     <Panel>
       <CabecalhoDoBloco
@@ -108,11 +108,12 @@ function Interrupcoes({ interrupcoes }: { interrupcoes: Dados["interrupcoes"] })
         <ul className="uso-lista">
           {interrupcoes.recentes.map((i) => (
             <li key={`${i.os_id}-${i.fim}`}>
-              <Link href={rotas.web.os(i.os_id)} className="mono">
+              <Link href={rotas.app.os(i.os_id)} className="mono">
                 {i.numero_ordem ? `OS ${i.numero_ordem}` : "OS de apoio"}
               </Link>
               <span>{i.motivo ?? "Sem motivo informado"}</span>
-              <span className="small">{`${i.executor} · ${dataHora(i.fim)}`}</span>
+              {/* Sem o nome quando a `api` não o entrega (técnico) ou quando é o da própria pessoa. */}
+              <span className="small">{i.executor ? `${i.executor} · ${dataHora(i.fim)}` : dataHora(i.fim)}</span>
             </li>
           ))}
         </ul>
@@ -121,11 +122,11 @@ function Interrupcoes({ interrupcoes }: { interrupcoes: Dados["interrupcoes"] })
   );
 }
 
-function Locais({ locais }: { locais: Dados["locais"] }) {
+export function Locais({ locais, descricao = "Onde as equipes mais trabalharam no período" }: { locais: Dados["locais"]; descricao?: string }) {
   const maior = Math.max(1, ...locais.map((l) => l.encerradas));
   return (
     <Panel>
-      <CabecalhoDoBloco titulo="Locais com mais OS encerradas" descricao="Onde as equipes mais trabalharam no período" />
+      <CabecalhoDoBloco titulo="Locais com mais OS encerradas" descricao={descricao} />
       {locais.length === 0 ? (
         <p className="muted">Nenhuma OS encerrada no período.</p>
       ) : (
@@ -159,13 +160,15 @@ interface DashboardOsProps {
   entrada: ResumoDasImportacoes | null;
   /** Baixa no SAP (as encerradas ainda não exportadas): só o admin. */
   exportacao: { total: number; os: OsDoQuadro[] } | null;
+  /** Admin e supervisor: a nota do tempo aponta para o detalhe por técnico, que o técnico comum não tem. */
+  porTecnico: boolean;
 }
 
 /**
  * Dashboard de OS: a carteira de agora, as programadas e encerradas no período (por tipo e por faixa), as preventivas,
  * o tempo, as interrupções por risco e os locais; para o admin, a entrada de OS e a baixa no SAP.
  */
-export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao }: DashboardOsProps) {
+export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao, porTecnico }: DashboardOsProps) {
   const { carteira: c, programadas: prog, encerradas: e } = dados;
   const unidade = nomeDaUnidade[dados.agrupamento];
   const pontos = dados.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { corretivas: p.corretivas, preventivas: p.preventivas } }));
@@ -218,7 +221,7 @@ export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao }: Dash
         </Panel>
         <div className="two eq">
           <PreventivasDoPeriodo preventivas={dados.preventivas} />
-          <TempoDoPeriodo tempo={dados.tempo} />
+          <TempoDoPeriodo tempo={dados.tempo} rodape={porTecnico ? "Por equipe e por técnico no dashboard de equipes e usuários." : "Da equipe toda, sem separar por pessoa."} />
         </div>
         <div className="two eq">
           <Interrupcoes interrupcoes={dados.interrupcoes} />

@@ -47,7 +47,7 @@ export function DadosSap({ os }: { os: OsDetalhe }) {
   ];
   return (
     <Panel>
-      <h2>Dados do SAP</h2>
+      <h2>Dados</h2>
       <dl className="dl">
         {dados
           .filter((d) => d.valor)

@@ -8,15 +8,18 @@ import type { OsDetalhe } from "@/data/detalhe";
 import { rotas } from "@/lib/rotas";
 import { rotuloDoStatus } from "@/lib/tipos";
 
-/** Trilha, identificação da OS (número, status, tipo, criticidade, atraso) e, se houver, as ações de gestão (`acoes`). */
-export function DetalheCabecalho({ os, acoes }: { os: OsDetalhe; acoes?: ReactNode }) {
+/**
+ * Trilha, identificação da OS (número, status, tipo, criticidade, atraso) e, se houver, as ações de gestão (`acoes`).
+ * `secao` é o nome da lista de onde a pessoa veio: "Ordem de Serviço" na gestão, "OS da equipe" no técnico.
+ */
+export function DetalheCabecalho({ os, secao = "Ordem de Serviço", acoes }: { os: OsDetalhe; secao?: string; acoes?: ReactNode }) {
   const numero = os.numero_ordem ?? "sem número";
   const a = aparenciaDoStatus[os.status];
   return (
     <>
       <div className="crumb">
-        <Link href={rotas.web.quadro} style={{ fontWeight: 500 }}>
-          Ordem de Serviço
+        <Link href={rotas.app.lista} style={{ fontWeight: 500 }}>
+          {secao}
         </Link>{" "}
         / <span className="mono">OS {numero}</span>
       </div>

@@ -40,10 +40,12 @@ function ListaDeAtencao({ itens }: { itens: ItemDeAtencao[] }) {
 interface DashboardGeralProps {
   dados: Dados;
   rotuloAnterior: string;
-  /** Alertas não lidos de quem está vendo (os mesmos do sino). */
-  alertasNaoLidos: number;
+  /** Alertas não lidos de quem está vendo (os mesmos do sino); `null` para o técnico, que não os recebe. */
+  alertasNaoLidos: number | null;
   /** O admin faz a baixa no SAP: só ele vê a pendência. */
   verExportacao: boolean;
+  /** Admin e supervisor: as pendências de gestão (ciência, alertas, atividades sem modelo). O técnico vê só as da equipe. */
+  acompanha: boolean;
   /** O filtro atual (`periodo=…&equipe_id=…`), para os links aos outros dashboards. */
   consulta: string;
 }
@@ -52,28 +54,34 @@ interface DashboardGeralProps {
  * Dashboard geral: a carteira de agora, o resumo do período, o que precisa de atenção e os resultados do período, com
  * atalhos para os dashboards de cada área.
  */
-export function DashboardGeral({ dados, rotuloAnterior, alertasNaoLidos, verExportacao, consulta }: DashboardGeralProps) {
+export function DashboardGeral({ dados, rotuloAnterior, alertasNaoLidos, verExportacao, acompanha, consulta }: DashboardGeralProps) {
   const { carteira: c, encerradas: e, preventivas: p, aprs: a, tempo: t, pendencias: pend } = dados;
   const comFiltro = (href: string) => (consulta ? `${href}?${consulta}` : href);
   const abertas = c.liberadas + c.pendentes + c.em_execucao;
   const preventivas = p.encerradas + p.atrasadas_justificadas + p.atrasadas_sem_justificativa;
 
   const atencao: ItemDeAtencao[] = [
-    { icone: "octagon", total: c.pendentes, texto: ["OS pendente, à espera de uma APR nova", "OS pendentes, à espera de uma APR nova"], href: `${rotas.web.quadro}?status=pendente`, acao: "Ver no quadro" },
+    { icone: "octagon", total: c.pendentes, texto: ["OS pendente, à espera de uma APR nova", "OS pendentes, à espera de uma APR nova"], href: `${rotas.app.lista}?status=pendente`, acao: "Ver no quadro" },
     {
       icone: "alert",
       total: p.atrasadas_sem_justificativa,
       texto: ["preventiva atrasada sem justificativa no período", "preventivas atrasadas sem justificativa no período"],
-      href: comFiltro(rotas.web.indicadoresOs),
+      href: comFiltro(rotas.app.dashboardOs),
       acao: "Ver no dashboard de OS",
     },
-    { icone: "clock", total: pend.execucoes_esquecidas, texto: ["execução aberta há mais de 12 h", "execuções abertas há mais de 12 h"], href: `${rotas.web.quadro}?status=em_execucao`, acao: "Ver no quadro" },
-    { icone: "user", total: pend.sem_ciencia, texto: ["OS encerrada sem a ciência do supervisor", "OS encerradas sem a ciência do supervisor"], href: `${rotas.web.quadro}?status=encerrada`, acao: "Ver no quadro" },
-    ...(verExportacao
-      ? [{ icone: "download", total: pend.a_exportar, texto: ["OS encerrada à espera da baixa no SAP", "OS encerradas à espera da baixa no SAP"], href: `${comFiltro(rotas.web.indicadoresOs)}#exportacao`, acao: "Exportar" } satisfies ItemDeAtencao]
+    { icone: "clock", total: pend.execucoes_esquecidas, texto: ["execução aberta há mais de 12 h", "execuções abertas há mais de 12 h"], href: `${rotas.app.lista}?status=em_execucao`, acao: "Ver no quadro" },
+    ...(acompanha
+      ? [{ icone: "user", total: pend.sem_ciencia ?? 0, texto: ["OS encerrada sem a ciência do supervisor", "OS encerradas sem a ciência do supervisor"], href: `${rotas.app.lista}?status=encerrada`, acao: "Ver no quadro" } satisfies ItemDeAtencao]
       : []),
-    { icone: "bell", total: alertasNaoLidos, texto: ["alerta não lido", "alertas não lidos"], href: rotas.web.alertas, acao: "Abrir alertas" },
-    { icone: "list", total: pend.atividades_sem_modelo, texto: ["atividade sem modelo de APR", "atividades sem modelo de APR"], href: `${rotas.web.atividades}?sem_modelo=true`, acao: "Ligar a um modelo" },
+    ...(verExportacao
+      ? [{ icone: "download", total: pend.a_exportar ?? 0, texto: ["OS encerrada à espera da baixa no SAP", "OS encerradas à espera da baixa no SAP"], href: `${comFiltro(rotas.app.dashboardOs)}#exportacao`, acao: "Exportar" } satisfies ItemDeAtencao]
+      : []),
+    ...(acompanha
+      ? [
+          { icone: "bell", total: alertasNaoLidos ?? 0, texto: ["alerta não lido", "alertas não lidos"], href: rotas.web.alertas, acao: "Abrir alertas" } satisfies ItemDeAtencao,
+          { icone: "list", total: pend.atividades_sem_modelo ?? 0, texto: ["atividade sem modelo de APR", "atividades sem modelo de APR"], href: `${rotas.web.atividades}?sem_modelo=true`, acao: "Ligar a um modelo" } satisfies ItemDeAtencao,
+        ]
+      : []),
   ];
 
   return (
@@ -175,9 +183,11 @@ export function DashboardGeral({ dados, rotuloAnterior, alertasNaoLidos, verExpo
           </ul>
           <div className="atalhos">
             <span className="small">Ver em detalhe:</span>
-            <Link href={comFiltro(rotas.web.indicadoresEquipes)}>Equipes e usuários</Link>
-            <Link href={comFiltro(rotas.web.indicadoresOs)}>OS</Link>
-            <Link href={comFiltro(rotas.web.indicadoresApr)}>APR</Link>
+            <Link href={comFiltro(rotas.app.dashboardEquipes)}>{acompanha ? "Equipes e usuários" : "Minha equipe"}</Link>
+            <Link href={comFiltro(rotas.app.dashboardOs)}>OS</Link>
+            <Link href={comFiltro(rotas.app.dashboardApr)}>APR</Link>
+            {/* O admin não executa OS: não tem resultados próprios. */}
+            {!verExportacao && <Link href={comFiltro(rotas.app.dashboardMeus)}>Meus resultados</Link>}
           </div>
         </Panel>
       </div>

@@ -44,7 +44,7 @@ export function PainelPendentes({ pendentes, total, equipes, nomes }: PainelPend
                     {u.email && <div className="small">{u.email}</div>}
                   </td>
                   <td className="mono">{u.matricula}</td>
-                  <td>{u.equipe_id && nomeDaEquipe.has(u.equipe_id) ? <Link href={rotas.web.equipe(u.equipe_id)}>{nomeDaEquipe.get(u.equipe_id)}</Link> : "—"}</td>
+                  <td>{u.equipe_id && nomeDaEquipe.has(u.equipe_id) ? <Link href={rotas.app.equipe(u.equipe_id)}>{nomeDaEquipe.get(u.equipe_id)}</Link> : "—"}</td>
                   <td>
                     {criador ?? "—"}
                     {u.criado_em && <div className="small">{dataHora(u.criado_em)}</div>}
@@ -61,7 +61,7 @@ export function PainelPendentes({ pendentes, total, equipes, nomes }: PainelPend
       {total > pendentes.length && (
         <p className="small">
           {`Mostrando ${pendentes.length} de ${total}. `}
-          <Link href={`${rotas.web.usuarios}?liberacao=pendente`}>Ver todos os pendentes</Link>
+          <Link href={`${rotas.app.usuarios}?liberacao=pendente`}>Ver todos os pendentes</Link>
         </p>
       )}
     </Panel>

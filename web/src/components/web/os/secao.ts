@@ -9,7 +9,7 @@ import { ehAdmin, type Usuario } from "@/lib/tipos";
 export const veImportacao = (u: Pick<Usuario, "perfil">) => ehAdmin(u);
 
 const abas: AbaDaSecao[] = [
-  { href: rotas.web.quadro, rotulo: "Quadro", icone: "grid" },
+  { href: rotas.app.lista, rotulo: "Quadro", icone: "grid" },
   { href: rotas.web.importacao, rotulo: "Importação", icone: "upload" },
 ];
 

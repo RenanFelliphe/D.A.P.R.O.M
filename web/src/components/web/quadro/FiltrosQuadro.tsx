@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Field } from "@/components/ui/Field";
-import { rotas } from "@/lib/rotas";
 import type { Equipe } from "@/lib/tipos";
 
 interface FiltrosQuadroProps {
-  /** Supervisor só enxerga a própria equipe: não há o que escolher (`null`). */
+  /** Endereço do quadro (da gestão ou do campo): para onde o formulário envia e para onde o "Limpar" volta. */
+  acao: string;
+  /** Só o admin escolhe a equipe; os demais enxergam a própria e não há o que escolher (`null`). */
   equipes: Equipe[] | null;
   meses: { valor: string; rotulo: string }[];
   valores: { equipe_id?: string; tipo?: string; critica?: boolean; periodo?: string; busca?: string };
@@ -13,9 +14,9 @@ interface FiltrosQuadroProps {
 }
 
 /** Filtros do quadro: formulário GET, então ficam na URL (equipe, tipo, criticidade, período e a busca da barra superior). */
-export function FiltrosQuadro({ equipes, meses, valores, filtrado }: FiltrosQuadroProps) {
+export function FiltrosQuadro({ acao, equipes, meses, valores, filtrado }: FiltrosQuadroProps) {
   return (
-    <form className="filters" action={rotas.web.quadro} method="get">
+    <form className="filters" action={acao} method="get">
       {equipes && (
         <Field label="Equipe" htmlFor="f-eq">
           <select className="select" id="f-eq" name="equipe_id" defaultValue={valores.equipe_id ?? ""}>
@@ -65,7 +66,7 @@ export function FiltrosQuadro({ equipes, meses, valores, filtrado }: FiltrosQuad
         Filtrar
       </button>
       {filtrado && (
-        <Link className="btn btn-line btn-sm" href={rotas.web.quadro}>
+        <Link className="btn btn-line btn-sm" href={acao}>
           Limpar
         </Link>
       )}

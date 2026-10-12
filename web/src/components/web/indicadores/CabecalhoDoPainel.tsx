@@ -10,7 +10,7 @@ interface CabecalhoDoPainelProps {
   /** Intervalo que a `api` resolveu para o período. */
   de: string;
   ate: string;
-  /** Supervisor só vê a própria equipe: sem seletor (`null`), com o nome dela no resumo. */
+  /** Só o admin escolhe a equipe; os demais veem a própria: sem seletor (`null`), com o nome dela no resumo. */
   equipes: Equipe[] | null;
   nomeDaEquipe?: string;
 }

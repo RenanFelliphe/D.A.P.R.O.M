@@ -55,7 +55,7 @@ export function HistoricoDoLocal({ osId, local, equipamento, escopo, historico, 
                     {e.os.id === osId ? (
                       <span title="Esta OS">{e.os.numero_ordem ?? "—"} (esta)</span>
                     ) : (
-                      <Link href={rotas.web.os(e.os.id)}>{e.os.numero_ordem ?? "sem nº"}</Link>
+                      <Link href={rotas.app.os(e.os.id)}>{e.os.numero_ordem ?? "sem nº"}</Link>
                     )}
                   </td>
                   <td>

@@ -1,9 +1,9 @@
 import { rotuloDoMes } from "@/data/quadro";
-import { ehSupervisor, type Usuario } from "@/lib/tipos";
+import { ehAdmin, type Usuario } from "@/lib/tipos";
 
 /**
- * Filtro comum dos quatro dashboards de Indicadores e exportação, na URL: `?periodo=` (7d, 30d, 90d, 12m ou um mês
- * `AAAA-MM`; 30 dias quando não vem) e `?equipe_id=` (o supervisor não escolhe: a `api` já o limita à equipe dele).
+ * Filtro comum dos quatro dashboards de Dashboard, na URL: `?periodo=` (7d, 30d, 90d, 12m ou um mês
+ * `AAAA-MM`; 30 dias quando não vem) e `?equipe_id=` (só o admin escolhe: a `api` já limita os demais à equipe deles).
  */
 export const CHAVES_DO_FILTRO = ["periodo", "equipe_id"] as const;
 
@@ -31,7 +31,7 @@ export function lerFiltroDoPainel(sp: Record<string, string | string[] | undefin
   const equipeId = um(sp.equipe_id);
   return {
     periodo: periodo && (movel(periodo) || MES.test(periodo)) ? periodo : "30d",
-    equipeId: !ehSupervisor(usuario) && equipeId && UUID.test(equipeId) ? equipeId : undefined,
+    equipeId: ehAdmin(usuario) && equipeId && UUID.test(equipeId) ? equipeId : undefined,
   };
 }
 

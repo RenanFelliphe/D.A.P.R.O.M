@@ -16,7 +16,7 @@ interface ListaEquipesProps {
 }
 
 /** Equipes cadastradas, com centro de trabalho, técnicos e supervisor; criar e editar pelo administrador. */
-export function ListaEquipes({ equipes, supervisores, somenteLeitura = false, caminhoUsuarios = rotas.web.usuarios }: ListaEquipesProps) {
+export function ListaEquipes({ equipes, supervisores, somenteLeitura = false, caminhoUsuarios = rotas.app.usuarios }: ListaEquipesProps) {
   const nomeDoSupervisor = new Map(supervisores.map((s) => [s.id, s.nome]));
   return (
     <Panel>
@@ -31,7 +31,7 @@ export function ListaEquipes({ equipes, supervisores, somenteLeitura = false, ca
           {equipes.map((e) => (
             <li key={e.id} className="stack" style={{ lineHeight: 1.35, paddingBottom: 8, borderBottom: "1px solid var(--line2)" }}>
               <div className="row between">
-                <Link href={rotas.web.equipe(e.id)} style={{ fontSize: 14, fontWeight: 600 }}>
+                <Link href={rotas.app.equipe(e.id)} style={{ fontSize: 14, fontWeight: 600 }}>
                   {e.nome}
                 </Link>
                 <span className="mono small">{e.centro_trabalho}</span>
@@ -41,7 +41,7 @@ export function ListaEquipes({ equipes, supervisores, somenteLeitura = false, ca
                   <Link href={`${caminhoUsuarios}?equipe_id=${e.id}`}>{`${e.tecnicos} ${e.tecnicos === 1 ? "técnico" : "técnicos"}`}</Link>
                   {" · "}
                   {e.supervisor_id && nomeDoSupervisor.has(e.supervisor_id) ? (
-                    <Link href={rotas.web.perfilDe(e.supervisor_id)}>{nomeDoSupervisor.get(e.supervisor_id)}</Link>
+                    <Link href={rotas.app.perfilDe(e.supervisor_id)}>{nomeDoSupervisor.get(e.supervisor_id)}</Link>
                   ) : e.supervisor_id ? (
                     "Supervisor inativo"
                   ) : (

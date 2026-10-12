@@ -47,7 +47,7 @@ function AbasComConsulta({ rotulo, abas, manterConsulta }: Required<AbasSecaoPro
 }
 
 /**
- * Abas de uma seção do painel (Ordem de Serviço, APR, Indicadores e exportação); a da tela atual fica marcada, inclusive
+ * Abas de uma seção do painel (Ordem de Serviço, APR, Dashboard); a da tela atual fica marcada, inclusive
  * nas subpáginas dela (o layout não sabe o endereço, por isso é cliente).
  */
 export function AbasSecao({ rotulo, abas, manterConsulta }: AbasSecaoProps) {

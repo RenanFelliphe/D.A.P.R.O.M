@@ -29,6 +29,8 @@ function AprCartao({ apr, numero, total }: { apr: AprDaOs; numero: number; total
   const bloqueada = apr.resultado === "bloqueada";
   const reprovados = apr.respostas.filter((r) => r.reprovado).length;
   const alertas = apr.respostas.filter((r) => r.alerta_marcado).length;
+  // Sem o tipo (só o admin o recebe) a tabela não traz a coluna Tipo nem separa os alertas.
+  const comTipo = apr.respostas.some((r) => r.tipo !== undefined);
   const conformes = apr.respostas.length - reprovados - alertas;
   return (
     <div
@@ -139,7 +141,7 @@ function AprCartao({ apr, numero, total }: { apr: AprDaOs; numero: number; total
                 <tr>
                   <th style={{ width: 44 }}>#</th>
                   <th>Item</th>
-                  <th style={{ width: 130 }}>Tipo</th>
+                  {comTipo && <th style={{ width: 130 }}>Tipo</th>}
                   <th style={{ width: 110 }}>Resposta</th>
                 </tr>
               </thead>
@@ -153,7 +155,7 @@ function AprCartao({ apr, numero, total }: { apr: AprDaOs; numero: number; total
                       {r.texto}
                       {r.observacao && <div className="small">Obs.: {r.observacao}</div>}
                     </td>
-                    <td>{rotuloDoTipo[r.tipo] ?? r.tipo}</td>
+                    {comTipo && <td>{r.tipo ? (rotuloDoTipo[r.tipo] ?? r.tipo) : ""}</td>}
                     <td style={{ color: tomDaResposta(r), fontWeight: 600 }}>
                       {rotuloDaResposta[r.resposta]}
                       {r.reprovado ? " · reprovado" : r.alerta_marcado ? " · alerta" : ""}

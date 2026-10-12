@@ -76,10 +76,10 @@ function SituacaoPorEquipe({ equipes }: { equipes: Dados["equipes"] }) {
   );
 }
 
-function TabelaDeEquipes({ equipes }: { equipes: Dados["equipes"] }) {
+function TabelaDeEquipes({ equipes, acompanha }: { equipes: Dados["equipes"]; acompanha: boolean }) {
   return (
     <Panel>
-      <CabecalhoDoBloco titulo="Equipes" descricao="O trabalho de cada equipe no período, nas OS dela" />
+      <CabecalhoDoBloco titulo={acompanha ? "Equipes" : "Minha equipe"} descricao="O trabalho da equipe no período, nas OS dela" />
       {equipes.length === 0 ? (
         <p className="muted">Nenhuma equipe cadastrada.</p>
       ) : (
@@ -105,7 +105,7 @@ function TabelaDeEquipes({ equipes }: { equipes: Dados["equipes"] }) {
                 return (
                   <tr key={e.id}>
                     <th scope="row" style={{ fontWeight: 600 }}>
-                      <Link href={rotas.web.equipe(e.id)}>{e.nome}</Link>
+                      <Link href={rotas.app.equipe(e.id)}>{e.nome}</Link>
                     </th>
                     <td>{e.supervisor_nome ?? <span className="muted">sem supervisor</span>}</td>
                     <td className="r">{e.tecnicos}</td>
@@ -156,7 +156,7 @@ function TabelaDeTecnicos({ tecnicos }: { tecnicos: Dados["tecnicos"] }) {
               {tecnicos.map((t) => (
                 <tr key={t.id} className={t.ativo ? undefined : "off"}>
                   <th scope="row" style={{ fontWeight: 600 }}>
-                    <Link href={rotas.web.perfilDe(t.id)}>{t.nome}</Link>{" "}
+                    <Link href={rotas.app.perfilDe(t.id)}>{t.nome}</Link>{" "}
                     {!t.ativo && (
                       <Badge tone="neu" style={{ padding: "0 7px", fontSize: 11 }}>
                         Desativado
@@ -193,7 +193,7 @@ function Cadastro({ cadastro }: { cadastro: NonNullable<Dados["cadastro"]> }) {
     <Panel>
       <div className="row between wrap" style={{ alignItems: "baseline" }}>
         <CabecalhoDoBloco titulo="Cadastro" descricao={`Usuários ativos por perfil${cadastro.inativos > 0 ? ` · ${plural(cadastro.inativos, "desativado", "desativados")}` : ""}`} />
-        <Link href={rotas.web.usuarios} className="small" style={{ fontWeight: 600 }}>
+        <Link href={rotas.app.usuarios} className="small" style={{ fontWeight: 600 }}>
           Abrir Equipes e usuários
         </Link>
       </div>
@@ -221,9 +221,10 @@ function Cadastro({ cadastro }: { cadastro: NonNullable<Dados["cadastro"]> }) {
 
 /**
  * Dashboard de equipes e usuários: totais, a situação das preventivas por equipe, uma linha por equipe e por técnico e,
- * para o admin, o estado do cadastro.
+ * para o admin, o estado do cadastro. O técnico que não supervisiona vê só a equipe como um todo ("Minha equipe"): nada por
+ * pessoa, que seria o desempenho de um colega.
  */
-export function DashboardEquipes({ dados }: { dados: Dados }) {
+export function DashboardEquipes({ dados, acompanha }: { dados: Dados; acompanha: boolean }) {
   const { totais } = dados;
   const semSupervisor = dados.equipes.filter((e) => !e.supervisor_nome).length;
   return (
@@ -241,7 +242,7 @@ export function DashboardEquipes({ dados }: { dados: Dados }) {
             label="Técnicos ativos"
             marker={<Icon name="user" size={13} style={{ color: "var(--ink3)" }} />}
             value={totais.tecnicos_ativos}
-            sub={`${totais.tecnicos_com_execucao} com execução encerrada no período`}
+            sub={totais.tecnicos_com_execucao === null ? "na equipe" : `${totais.tecnicos_com_execucao} com execução encerrada no período`}
           />
           <Kpi label="Execuções encerradas" marker={<Icon name="check" size={13} style={{ color: "var(--ink3)" }} />} value={totais.execucoes} sub="iniciadas no período" />
           <Kpi
@@ -253,8 +254,8 @@ export function DashboardEquipes({ dados }: { dados: Dados }) {
         </div>
       </Secao>
       <SituacaoPorEquipe equipes={dados.equipes} />
-      <TabelaDeEquipes equipes={dados.equipes} />
-      <TabelaDeTecnicos tecnicos={dados.tecnicos} />
+      <TabelaDeEquipes equipes={dados.equipes} acompanha={acompanha} />
+      {acompanha && <TabelaDeTecnicos tecnicos={dados.tecnicos} />}
       {dados.cadastro && <Cadastro cadastro={dados.cadastro} />}
     </>
   );

@@ -6,7 +6,7 @@ import { rotas } from "@/lib/rotas";
 export function AcessoRestrito() {
   return (
     <Notice tone="al" icon="lock" style={{ fontSize: 14.5 }}>
-      Esta aba é do administrador. Você pode acompanhar as OS no <Link href={rotas.web.quadro}>quadro</Link>.
+      Esta aba é do administrador. Você pode acompanhar as OS no <Link href={rotas.app.lista}>quadro</Link>.
     </Notice>
   );
 }

@@ -4,13 +4,16 @@ import { Icon } from "@/components/ui/Icon";
 import { PilulaPrioridade } from "@/components/web/PilulaPrioridade";
 import type { OsDoQuadro } from "@/data/quadro";
 import { dataDoDia, diaMes } from "@/lib/formatar";
+import { OS_BLOQUEIO, OS_GUIADA } from "@/treino/ids";
 import { rotas } from "@/lib/rotas";
 
-/** Cartão de OS do quadro; leva ao detalhe da OS. */
-export function CartaoOs({ os }: { os: OsDoQuadro }) {
+/** Cartão de OS do quadro; leva ao detalhe da OS. A ciência e o PDF das encerradas só interessam à gestão. */
+export function CartaoOs({ os, gestao }: { os: OsDoQuadro; gestao: boolean }) {
   const programada = dataDoDia(os.data_fim_prog ?? os.data_inicio_prog).slice(0, 5);
+  // O tutorial do campo de treino aponta para as duas OS do roteiro.
+  const treino = os.id === OS_GUIADA ? "os-guiada" : os.id === OS_BLOQUEIO ? "os-bloqueio" : undefined;
   return (
-    <Link className="bcard" href={rotas.web.os(os.id)}>
+    <Link className="bcard" href={rotas.app.os(os.id)} data-treino={treino}>
       <div className="top">
         <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
           {os.numero_ordem ?? "Sem nº"}
@@ -44,7 +47,7 @@ export function CartaoOs({ os }: { os: OsDoQuadro }) {
           Aguardando nova APR
         </Badge>
       )}
-      {os.status === "encerrada" && (
+      {gestao && os.status === "encerrada" && (
         <div className="m" style={{ color: "var(--enc)", fontWeight: 500 }}>
           <Icon name={os.ciencia_em ? "check" : "file"} size={13} />
           {os.ciencia_em ? `Ciente em ${diaMes(os.ciencia_em)}` : "Ciência pendente"}

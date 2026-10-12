@@ -59,7 +59,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
           </h2>
         </div>
         {os && (
-          <Link href={rotas.web.os(osId)} style={{ fontSize: 14, fontWeight: 600 }}>
+          <Link href={rotas.app.os(osId)} style={{ fontSize: 14, fontWeight: 600 }}>
             Abrir OS
           </Link>
         )}

@@ -20,10 +20,12 @@ interface ColunaQuadroProps {
   os: OsDoQuadro[];
   /** Endereço do quadro só com este status (o "Ver todas"). */
   hrefTodas?: string;
+  /** Admin e supervisor: os cartões mostram a ciência e o PDF das encerradas. */
+  gestao: boolean;
 }
 
 /** Coluna do kanban: cabeçalho com o total real, cartões e "Ver todas"; a pessoa pode fechá-la (ver `ColunaRecolhivel`). */
-export function ColunaQuadro({ status, total, os, hrefTodas }: ColunaQuadroProps) {
+export function ColunaQuadro({ status, total, os, hrefTodas, gestao }: ColunaQuadroProps) {
   const a = aparenciaDoStatus[status];
   const restantes = total - os.length;
   return (
@@ -34,7 +36,7 @@ export function ColunaQuadro({ status, total, os, hrefTodas }: ColunaQuadroProps
         </span>
       )}
       {os.map((o) => (
-        <CartaoOs key={o.id} os={o} />
+        <CartaoOs key={o.id} os={o} gestao={gestao} />
       ))}
       {restantes > 0 && hrefTodas && (
         <Link className="more" href={hrefTodas} style={{ color: "var(--brand)" }}>

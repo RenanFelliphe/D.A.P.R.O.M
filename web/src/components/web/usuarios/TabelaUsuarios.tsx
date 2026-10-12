@@ -36,7 +36,7 @@ interface TabelaUsuariosProps {
  * Painel com a tabela de usuários. Admin: filtros por equipe, perfil, situação e acesso, com as ações em cada linha. Supervisor: só
  * os técnicos das equipes dele, com o selo da situação do acesso (Pendente, Liberado ou Recusado + motivo).
  */
-export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, total, modo = "admin", caminho = rotas.web.usuarios, meuId }: TabelaUsuariosProps) {
+export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, total, modo = "admin", caminho = rotas.app.usuarios, meuId }: TabelaUsuariosProps) {
   const supervisor = modo === "supervisor";
   const nomeDaEquipe = new Map(equipes.map((e) => [e.id, e.nome]));
   const colunas = supervisor ? 5 : 6;
@@ -133,7 +133,7 @@ export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, to
                 return (
                   <tr key={u.id} className={u.ativo ? undefined : "off"}>
                     <td>
-                      <Link href={rotas.web.perfilDe(u.id)} style={{ fontWeight: 600 }}>
+                      <Link href={rotas.app.perfilDe(u.id)} style={{ fontWeight: 600 }}>
                         {u.nome}
                       </Link>
                       {u.email && <div className="small">{u.email}</div>}
@@ -142,7 +142,7 @@ export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, to
                     {!supervisor && <td>{rotuloDoPerfil[u.perfil as Perfil] ?? u.perfil}</td>}
                     <td>
                       {u.equipe_id ? (
-                        nomeDaEquipe.has(u.equipe_id) ? <Link href={rotas.web.equipe(u.equipe_id)}>{nomeDaEquipe.get(u.equipe_id)}</Link> : "—"
+                        nomeDaEquipe.has(u.equipe_id) ? <Link href={rotas.app.equipe(u.equipe_id)}>{nomeDaEquipe.get(u.equipe_id)}</Link> : "—"
                       ) : (
                         "Todas / sem equipe"
                       )}

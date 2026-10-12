@@ -58,7 +58,7 @@ export function UsoDoModelo({ uso }: { uso: Uso }) {
           <ul className="uso-lista">
             {abertas.recentes.map((o) => (
               <li key={o.id}>
-                <Link href={rotas.web.os(o.id)} className="mono">
+                <Link href={rotas.app.os(o.id)} className="mono">
                   {o.numero_ordem ? `OS ${o.numero_ordem}` : "OS de apoio"}
                 </Link>
                 <span>
