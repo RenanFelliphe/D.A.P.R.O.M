@@ -1,10 +1,10 @@
-import { maximoDoEixo, situacoes, totalDaEquipe, type IndicadoresDoMes } from "@/data/indicadores";
+import { maximoDoEixo, situacoes, totalDaEquipe, type SituacaoDaEquipe } from "@/data/indicadores";
 
 /** Percentual com até 2 casas, sem zeros à direita (ex.: 76.67%, 30%). */
 const percentual = (valor: number, maximo: number) => `${Number(((valor / maximo) * 100).toFixed(2))}%`;
 
 /** Gráfico de barras empilhadas: uma barra por equipe, um segmento por situação. */
-export function BarrasSituacao({ equipes }: { equipes: IndicadoresDoMes["por_equipe"] }) {
+export function BarrasSituacao({ equipes }: { equipes: SituacaoDaEquipe[] }) {
   const maximo = maximoDoEixo(equipes.map(totalDaEquipe));
   const marcas = [0, maximo / 3, (maximo * 2) / 3, maximo];
   return (

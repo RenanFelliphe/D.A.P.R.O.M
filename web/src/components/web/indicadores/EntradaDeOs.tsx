@@ -1,0 +1,188 @@
+import { Icon, type IconName } from "@/components/ui/Icon";
+import { Kpi, Panel } from "@/components/web/Panel";
+import { origensDeEntrada, type ResumoDasImportacoes } from "@/components/web/importacao/tipos";
+import { comparacao, plural, porcentagem, Secao } from "@/components/web/indicadores/blocos";
+import { GraficoColunas, type PontoDoGrafico } from "./GraficoColunas";
+
+/**
+ * Cores de estado, sempre com ícone e rótulo ao lado. A falha é o ponto (vermelho); a leitura sem falha é contexto (cinza):
+ * verde e vermelho lado a lado ficam indistinguíveis na deuteranopia (ΔE 4 no script de paleta), o cinza fica em 13.
+ */
+const SEM_FALHA = "#8A949F";
+const COM_FALHA = "#D03B3B";
+const IGNORADA = "#C98500";
+
+const nomeDaUnidade = { dia: "dia", semana: "semana", mes: "mês" } as const;
+
+/** Quantas OS cada método de entrada registrou no período, com a fatia de cada um e o volume por trás. */
+function ContadoresDeMetodo({ resumo }: { resumo: ResumoDasImportacoes }) {
+  const { api, planilha } = resumo.por_origem;
+  const total = resumo.totais.criadas;
+  const metodos: { tom: string; icone: IconName; nome: string; cor: string; criadas: number; detalhe: string }[] = [
+    {
+      tom: "t-api",
+      icone: "refresh",
+      ...origensDeEntrada.api,
+      criadas: api.criadas,
+      detalhe: `${plural(api.leituras, "leitura", "leituras")}${api.leituras_com_erro > 0 ? ` (${api.leituras_com_erro} com falha)` : ""} · ${plural(api.atualizadas, "OS atualizada", "OS atualizadas")}`,
+    },
+    {
+      tom: "t-arq",
+      icone: "upload",
+      ...origensDeEntrada.planilha,
+      criadas: planilha.criadas,
+      detalhe: `${plural(planilha.arquivos, "arquivo", "arquivos")}${planilha.arquivos_com_erro > 0 ? ` (${planilha.arquivos_com_erro} com falha)` : ""} · ${plural(planilha.atualizadas, "OS atualizada", "OS atualizadas")}`,
+    },
+    { tom: "t-cam", icone: "camera", ...origensDeEntrada.digitalizacao, criadas: 0, detalhe: "Nenhuma digitalização no período" },
+  ];
+  return (
+    <div className="metodos">
+      {metodos.map((m) => (
+        <div key={m.tom} className={`metodo ${m.tom}`}>
+          <div className="row g8">
+            <span className="entrada-ic" aria-hidden="true">
+              <Icon name={m.icone} size={18} />
+            </span>
+            <strong style={{ fontSize: 14 }}>{m.nome}</strong>
+          </div>
+          <div className="row g6 wrap" style={{ alignItems: "baseline" }}>
+            <span className="metodo-v">{m.criadas}</span>
+            <span className="small">
+              {m.criadas === 1 ? "OS registrada" : "OS registradas"} · {porcentagem(m.criadas, total)}% do total
+            </span>
+          </div>
+          <div className="trilho" aria-hidden="true">
+            <i style={{ width: `${porcentagem(m.criadas, total)}%`, background: m.cor }}></i>
+          </div>
+          <span className="small">{m.detalhe}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Registradas (com a comparação), atualizadas, ignoradas e a taxa de sincronizações sem falha. */
+function ContadoresDeOs({ resumo, rotuloAnterior }: { resumo: ResumoDasImportacoes; rotuloAnterior: string }) {
+  const { totais } = resumo;
+  const { leituras, leituras_com_erro: comErro } = resumo.por_origem.api;
+  const lidas = totais.criadas + totais.atualizadas + totais.ignoradas;
+  return (
+    <div className="kpis k4">
+      <Kpi
+        label="OS registradas"
+        marker={<Icon name="plus" size={13} style={{ color: "var(--ink3)" }} />}
+        value={totais.criadas}
+        sub={comparacao(totais.criadas, resumo.anterior.criadas, rotuloAnterior)}
+      />
+      <Kpi label="OS atualizadas" marker={<Icon name="refresh" size={13} style={{ color: "var(--ink3)" }} />} value={totais.atualizadas} sub="já existiam: só datas, equipe e prioridade" />
+      <Kpi
+        label="Linhas ignoradas"
+        marker={<Icon name="alert" size={13} style={{ color: totais.ignoradas > 0 ? "var(--al)" : "var(--ink3)" }} />}
+        value={totais.ignoradas}
+        sub={lidas === 0 ? "nada foi lido no período" : `${porcentagem(totais.ignoradas, lidas)}% do que foi lido ficou de fora`}
+        subStyle={totais.ignoradas > 0 ? { color: "var(--al)", fontWeight: 500 } : undefined}
+      />
+      <Kpi
+        label="Sincronizações sem falha"
+        marker={<Icon name={comErro > 0 ? "octagon" : "check"} size={13} style={{ color: comErro > 0 ? "var(--blq)" : "var(--enc)" }} />}
+        value={leituras === 0 ? "—" : `${porcentagem(leituras - comErro, leituras)}%`}
+        sub={leituras === 0 ? "nenhuma leitura da API no período" : `${comErro} de ${plural(leituras, "leitura", "leituras")} com falha`}
+        subStyle={comErro > 0 ? { color: "var(--blq)", fontWeight: 500 } : undefined}
+      />
+    </div>
+  );
+}
+
+/** Ranking dos motivos das linhas ignoradas no período, com a fatia de cada um. */
+function MotivosIgnoradas({ motivos }: { motivos: ResumoDasImportacoes["motivos_ignoradas"] }) {
+  const total = motivos.reduce((t, m) => t + m.total, 0);
+  return (
+    <Panel>
+      <div className="stack" style={{ gap: 2 }}>
+        <h2>Motivos das linhas ignoradas</h2>
+        <span className="muted">{total === 0 ? "Por que linhas ou ordens ficaram de fora" : `${plural(total, "linha ignorada", "linhas ignoradas")} no período`}</span>
+      </div>
+      {motivos.length === 0 ? (
+        <p className="muted">Nenhuma linha ignorada no período.</p>
+      ) : (
+        <ul className="lista-barras">
+          {motivos.map((m) => (
+            <li key={m.motivo}>
+              <div className="row between g8" style={{ alignItems: "baseline" }}>
+                <span>{m.motivo}</span>
+                <span style={{ whiteSpace: "nowrap" }}>
+                  <strong>{m.total}</strong> <span className="small">· {porcentagem(m.total, total)}%</span>
+                </span>
+              </div>
+              <div className="trilho" aria-hidden="true">
+                <i style={{ width: `${porcentagem(m.total, total)}%`, background: IGNORADA }}></i>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * Entrada de OS, no dashboard de OS: contadores por método de origem, o que as sincronizações e importações fizeram, as
+ * OS registradas por faixa, a saúde da sincronização e os motivos das linhas ignoradas. O período é o do filtro comum; a
+ * equipe não se aplica (uma leitura ou planilha traz OS de todas as equipes).
+ */
+export function EntradaDeOs({ resumo, rotuloAnterior }: { resumo: ResumoDasImportacoes; rotuloAnterior: string }) {
+  const unidade = nomeDaUnidade[resumo.agrupamento];
+  const { leituras, leituras_com_erro: comErro } = resumo.por_origem.api;
+
+  const registradas: PontoDoGrafico[] = resumo.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { api: p.api, planilha: p.planilha } }));
+  const sincronizacoes: PontoDoGrafico[] = resumo.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { ok: p.leituras - p.falhas, falhas: p.falhas } }));
+
+  return (
+    <>
+      <Secao id="metodos-t" titulo="Entrada de OS" descricao="OS registradas no período por cada forma de entrada, de todas as equipes.">
+        <ContadoresDeMetodo resumo={resumo} />
+        <ContadoresDeOs resumo={resumo} rotuloAnterior={rotuloAnterior} />
+      </Secao>
+
+      <Secao id="entrada-graficos-t" titulo={`Entrada por ${unidade}`} descricao="OS registradas e saúde da sincronização com a API do SAP, no fuso de São Paulo.">
+        <Panel>
+          <div className="stack" style={{ gap: 2 }}>
+            <h2>OS registradas por {unidade}</h2>
+            <span className="muted">OS novas que entraram no sistema, pela data da sincronização ou da importação</span>
+          </div>
+          <GraficoColunas
+            pontos={registradas}
+            series={[
+              { chave: "api", ...origensDeEntrada.api },
+              { chave: "planilha", ...origensDeEntrada.planilha },
+            ]}
+            agrupamento={resumo.agrupamento}
+            medida="OS registradas"
+            vazio="Nenhuma OS registrada neste período."
+          />
+        </Panel>
+        <div className="two eq">
+          <Panel>
+            <div className="stack" style={{ gap: 2 }}>
+              <h2>Saúde da sincronização</h2>
+              <span className="muted">
+                {leituras === 0 ? "Leituras da API" : `${plural(leituras, "leitura", "leituras")} da API, ${porcentagem(leituras - comErro, leituras)}% sem falha`}
+              </span>
+            </div>
+            <GraficoColunas
+              pontos={sincronizacoes}
+              series={[
+                { chave: "ok", nome: "Sem falha", cor: SEM_FALHA, icone: "check" },
+                { chave: "falhas", nome: "Com falha", cor: COM_FALHA, icone: "alert" },
+              ]}
+              agrupamento={resumo.agrupamento}
+              medida="leituras"
+              vazio="Nenhuma leitura da API neste período."
+            />
+          </Panel>
+          <MotivosIgnoradas motivos={resumo.motivos_ignoradas} />
+        </div>
+      </Secao>
+    </>
+  );
+}
