@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { eq } from "drizzle-orm";
 import { after, before, describe, it } from "node:test";
-import { localInstalacao, os, usuario } from "../src/db/schema";
+import { equipe, localInstalacao, os, usuario } from "../src/db/schema";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
@@ -11,7 +11,7 @@ import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 describe("Busca global", () => {
   let amb: Ambiente;
   let admin: UsuarioDeTeste;
-  let analista: UsuarioDeTeste;
+  let supSerrana: UsuarioDeTeste;
   let tecLitoral: UsuarioDeTeste;
   let litoral: string;
   let serrana: string;
@@ -49,7 +49,8 @@ describe("Busca global", () => {
     litoral = (await amb.criarEquipe({ nome: "Equipe Litoral", centroTrabalho: "SERV_LIT" })).id;
     serrana = (await amb.criarEquipe({ nome: "Equipe Serrana", centroTrabalho: "SERV_SER" })).id;
     admin = await amb.criarUsuario({ perfil: "admin", nome: "Administradora" });
-    analista = await amb.criarUsuario({ perfil: "analista", nome: "Analista Central" });
+    supSerrana = await amb.criarUsuario({ perfil: "tecnico", equipeId: serrana, nome: "Supervisor Serrano" });
+    await amb.db.update(equipe).set({ supervisorId: supSerrana.id }).where(eq(equipe.id, serrana));
     tecLitoral = await amb.criarUsuario({ perfil: "tecnico", equipeId: litoral, nome: "Técnico do Litoral" });
     douglasCarvalho = await amb.criarUsuario({ perfil: "tecnico", equipeId: litoral, nome: "Douglas Carvalho", email: "douglas.carvalho@apple.com.br" });
     douglasPereira = await amb.criarUsuario({ perfil: "tecnico", equipeId: serrana, nome: "Douglas Pereira", email: "douglas.pereira@apple.com.br" });
@@ -121,7 +122,7 @@ describe("Busca global", () => {
       assert.equal(await exata(admin, "douglas.carval"), null);
       assert.equal(await exata(admin, "douglas"), null);
       assert.equal(await exata(admin, "não existe"), null);
-      const outra = await amb.criarUsuario({ perfil: "analista", nome: "Douglas Carvalho" });
+      const outra = await amb.criarUsuario({ perfil: "admin", nome: "Douglas Carvalho" });
       try {
         assert.equal(await exata(admin, "douglas carvalho"), null, "dois homônimos");
       } finally {
@@ -131,8 +132,9 @@ describe("Busca global", () => {
 
     it("só conta o que a pessoa enxerga", async () => {
       assert.equal(await exata(tecLitoral, "4100002"), null);
-      assert.deepEqual(await exata(analista, "4100002"), { tipo: "os", id: osSerrana });
-      assert.equal(await exata(analista, inativo.email), null);
+      assert.deepEqual(await exata(supSerrana, "4100002"), { tipo: "os", id: osSerrana });
+      assert.equal(await exata(supSerrana, "4100001"), null);
+      assert.equal(await exata(supSerrana, inativo.email), null);
       assert.deepEqual(await exata(admin, inativo.email), { tipo: "usuario", id: inativo.id });
     });
 

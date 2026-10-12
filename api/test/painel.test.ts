@@ -10,6 +10,7 @@ import {
   aprParticipante,
   aprResposta,
   aprRisco,
+  equipe,
   eventoCampo,
   evidencia,
   execucao,
@@ -181,7 +182,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
   let modelo: Modelo;
   let equipeA: string, equipeB: string;
   let supA: UsuarioDeTeste, supB: UsuarioDeTeste, tecA: UsuarioDeTeste, tecB: UsuarioDeTeste, tecSemEquipe: UsuarioDeTeste;
-  let analista: UsuarioDeTeste, seguranca: UsuarioDeTeste, admin: UsuarioDeTeste;
+  let admin: UsuarioDeTeste;
   let osLiberada: typeof os.$inferSelect, osPendente: typeof os.$inferSelect;
   let osAberta14h: typeof os.$inferSelect, osAberta11h: typeof os.$inferSelect;
   let osEncerrada: typeof os.$inferSelect;
@@ -193,13 +194,11 @@ describe("Painel: quadro, detalhe e ciência", () => {
     modelo = await criarModelo(amb);
     equipeA = (await amb.criarEquipe({ nome: "Serviços Especiais" })).id;
     equipeB = (await amb.criarEquipe({ nome: "Instrumentação" })).id;
-    supA = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeA, nome: "Sara Supervisora" });
-    supB = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeB });
+    supA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, nome: "Sara Supervisora", supervisor: true });
+    supB = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeB, supervisor: true });
     tecA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, nome: "Tiago Técnico", matricula: "TA1" });
     tecB = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeB });
     tecSemEquipe = await amb.criarUsuario({ perfil: "tecnico" });
-    analista = await amb.criarUsuario({ perfil: "analista" });
-    seguranca = await amb.criarUsuario({ perfil: "seguranca" });
     admin = await amb.criarUsuario({ perfil: "admin" });
 
     localCritico = await criarLocal(amb, "PR VILA VELHA", true);
@@ -276,7 +275,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
       }
       assert.deepEqual(numerosDe(await amb.esperar(200, "GET", "/os", { como: supB })), ["4008"]);
       assert.deepEqual(numerosDe(await amb.esperar(200, "GET", "/os", { como: tecB })), ["4008"]);
-      for (const u of [analista, seguranca, admin]) assert.equal((await amb.esperar(200, "GET", "/os", { como: u })).total, 8);
+      for (const u of [admin]) assert.equal((await amb.esperar(200, "GET", "/os", { como: u })).total, 8);
       assert.equal((await amb.esperar(200, "GET", "/os", { como: tecSemEquipe })).total, 0);
     });
 
@@ -286,13 +285,18 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.deepEqual(c.os, []);
     });
 
-    it("ordena as OS de local crítico primeiro e, depois, por data_inicio_prog", async () => {
+    it("ordena por prioridade (padrão): maior peso primeiro e, nas empatadas, a data limite mais próxima", async () => {
       const c = await amb.esperar(200, "GET", "/os", { como: supA });
-      assert.deepEqual(numerosDe(c), ["4002", "4004", "4007", "4003", "4005", "4006", "4001"]);
+      assert.deepEqual(numerosDe(c), ["4001", "4007", "4003", "4005", "4006", "4004", "4002"]);
+    });
+
+    it("ordena por data limite (data_fim_prog, ou o início se não houver), desempatando por prioridade", async () => {
+      const c = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { ordem: "data_limite" } });
+      assert.deepEqual(numerosDe(c), ["4007", "4003", "4005", "4006", "4004", "4001", "4002"]);
     });
 
     it("cada item traz os campos do quadro, o atraso e a execução aberta há mais de 12 h", async () => {
-      const c = await amb.esperar(200, "GET", "/os", { como: analista });
+      const c = await amb.esperar(200, "GET", "/os", { como: admin });
       const por = (n: string) => c.os.find((o: any) => o.numero_ordem === n);
 
       assert.deepEqual(Object.keys(por("4001")).sort(), [
@@ -327,11 +331,11 @@ describe("Painel: quadro, detalhe e ciência", () => {
       const antes = amb.relogio.agora;
       try {
         amb.relogio.agora = h("2026-10-16T01:00:00Z");
-        const leitor = await amb.criarUsuario({ perfil: "analista" });
+        const leitor = await amb.criarUsuario({ perfil: "admin" });
         const noMesmoDia = await amb.esperar(200, "GET", "/os", { como: leitor, consulta: { numero_ordem: "4090" } });
         assert.equal(noMesmoDia.os[0].atrasada, false);
         amb.relogio.agora = h("2026-10-16T03:30:00Z");
-        const leitorDepois = await amb.criarUsuario({ perfil: "analista" });
+        const leitorDepois = await amb.criarUsuario({ perfil: "admin" });
         const noDiaSeguinte = await amb.esperar(200, "GET", "/os", { como: leitorDepois, consulta: { numero_ordem: "4090" } });
         assert.equal(noDiaSeguinte.os[0].atrasada, true);
       } finally {
@@ -341,7 +345,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
     });
 
     it("filtra por equipe, tipo, criticidade, período, status, número da ordem e busca", async () => {
-      const consulta = async (q: Record<string, string>, como = analista) => numerosDe(await amb.esperar(200, "GET", "/os", { como, consulta: q })).sort();
+      const consulta = async (q: Record<string, string>, como = admin) => numerosDe(await amb.esperar(200, "GET", "/os", { como, consulta: q })).sort();
 
       assert.deepEqual(await consulta({ equipe_id: equipeB }), ["4008"]);
       assert.deepEqual(await consulta({ tipo: "corretiva" }), ["4002", "4003"]);
@@ -369,7 +373,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.equal(soPendentes.total, 1);
       assert.deepEqual(soPendentes.contagem_por_status, todas.contagem_por_status);
 
-      const soCorretivas = await amb.esperar(200, "GET", "/os", { como: analista, consulta: { tipo: "corretiva", status: "liberada" } });
+      const soCorretivas = await amb.esperar(200, "GET", "/os", { como: admin, consulta: { tipo: "corretiva", status: "liberada" } });
       assert.deepEqual(soCorretivas.contagem_por_status, { liberada: 1, pendente: 1, em_execucao: 0, encerrada: 0, cancelada: 0 });
 
       const equipeBcontagem = await amb.esperar(200, "GET", "/os", { como: supB });
@@ -380,11 +384,11 @@ describe("Painel: quadro, detalhe e ciência", () => {
       const exportada = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4095", status: "encerrada", inicio: "2026-10-05", comPdf: true });
       try {
         await amb.db.update(os).set({ exportadaSapEm: h("2026-10-10T10:00:00Z") }).where(eq(os.id, exportada.id));
-        const consulta = async (q: Record<string, string>) => numerosDe(await amb.esperar(200, "GET", "/os", { como: analista, consulta: q })).sort();
+        const consulta = async (q: Record<string, string>) => numerosDe(await amb.esperar(200, "GET", "/os", { como: admin, consulta: q })).sort();
         assert.deepEqual(await consulta({ status: "encerrada", exportada: "false" }), ["4007"]);
         assert.deepEqual(await consulta({ status: "encerrada", exportada: "true" }), ["4095"]);
         assert.deepEqual(await consulta({ status: "encerrada" }), ["4007", "4095"]);
-        assert.equal((await amb.req("GET", "/os", { como: analista, consulta: { exportada: "talvez" } })).status, 422);
+        assert.equal((await amb.req("GET", "/os", { como: admin, consulta: { exportada: "talvez" } })).status, 422);
       } finally {
         await amb.db.delete(os).where(eq(os.id, exportada.id));
       }
@@ -397,12 +401,12 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.equal(p1.total, 7);
       assert.equal(p1.pagina, 1);
       assert.equal(p1.tamanho, 3);
-      assert.deepEqual(numerosDe(p3), ["4001"]);
+      assert.deepEqual(numerosDe(p3), ["4002"]);
     });
 
     it("recusa filtros inválidos com 422", async () => {
-      for (const q of [{ periodo: "2026-13" }, { periodo: "outubro" }, { status: "feita" }, { tipo: "x" }, { equipe_id: "nao-e-uuid" }, { critica: "talvez" }]) {
-        assert.equal((await amb.req("GET", "/os", { como: analista, consulta: q })).status, 422, JSON.stringify(q));
+      for (const q of [{ periodo: "2026-13" }, { periodo: "outubro" }, { status: "feita" }, { tipo: "x" }, { equipe_id: "nao-e-uuid" }, { critica: "talvez" }, { ordem: "alfabetica" }]) {
+        assert.equal((await amb.req("GET", "/os", { como: admin, consulta: q })).status, 422, JSON.stringify(q));
       }
     });
   });
@@ -490,7 +494,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
     });
 
     it("a linha do tempo une APRs, execução, pausas, alertas e reprogramações em ordem cronológica", async () => {
-      const c = await amb.esperar(200, "GET", `/os/${osPendente.id}`, { como: analista });
+      const c = await amb.esperar(200, "GET", `/os/${osPendente.id}`, { como: admin });
       const tempos = c.linha_do_tempo.map((i: any) => i.em);
       assert.deepEqual(tempos, [...tempos].sort());
       assert.deepEqual(
@@ -535,14 +539,14 @@ describe("Painel: quadro, detalhe e ciência", () => {
     });
 
     it("OS sem APR, execução, alerta nem reprogramação devolve listas vazias", async () => {
-      const c = await amb.esperar(200, "GET", `/os/${osLiberada.id}`, { como: analista });
+      const c = await amb.esperar(200, "GET", `/os/${osLiberada.id}`, { como: admin });
       assert.deepEqual([c.aprs, c.execucoes, c.alertas, c.reprogramacoes, c.linha_do_tempo], [[], [], [], [], []]);
       assert.equal(c.os.eventos_com_relogio_suspeito, 0);
     });
 
     it("quem não vê a equipe da OS recebe 404; os perfis com visão geral abrem", async () => {
       for (const u of [supB, tecB, tecSemEquipe]) assert.equal((await amb.req("GET", `/os/${osPendente.id}`, { como: u })).status, 404);
-      for (const u of [tecA, supA, analista, seguranca, admin]) assert.equal((await amb.req("GET", `/os/${osPendente.id}`, { como: u })).status, 200);
+      for (const u of [tecA, supA, admin]) assert.equal((await amb.req("GET", `/os/${osPendente.id}`, { como: u })).status, 200);
       assert.equal((await amb.req("GET", `/os/${randomUUID()}`, { como: admin })).status, 404);
       assert.equal((await amb.req("GET", "/os/nao-e-uuid", { como: admin })).status, 404);
       assert.equal((await amb.req("GET", `/os/${osPendente.id}`)).status, 401);
@@ -560,7 +564,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
 
     it("respeita o escopo de equipe", async () => {
       assert.equal((await amb.req("GET", `/os/${osPendente.id}/aprs`, { como: supB })).status, 404);
-      assert.equal((await amb.req("GET", `/os/${osPendente.id}/aprs`, { como: seguranca })).status, 200);
+      assert.equal((await amb.req("GET", `/os/${osPendente.id}/aprs`, { como: admin })).status, 200);
       assert.equal((await amb.req("GET", `/os/${randomUUID()}/aprs`, { como: admin })).status, 404);
       assert.deepEqual((await amb.esperar(200, "GET", `/os/${osLiberada.id}/aprs`, { como: supA })).aprs, []);
     });
@@ -568,7 +572,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
 
   describe("POST /os/{id}/ciencia", () => {
     it("só o supervisor da equipe da OS pode: os outros perfis recebem 403", async () => {
-      for (const u of [analista, admin, seguranca, tecA]) {
+      for (const u of [admin, tecA]) {
         assert.equal((await amb.req("POST", `/os/${osEncerrada.id}/ciencia`, { como: u })).status, 403, u.perfil);
       }
       assert.equal((await amb.req("POST", `/os/${osEncerrada.id}/ciencia`)).status, 401);
@@ -629,7 +633,7 @@ describe("Painel: indicadores e histórico", () => {
   let modelo: Modelo;
   let equipeA: string, equipeB: string;
   let supA: UsuarioDeTeste, tecA: UsuarioDeTeste, tecA2: UsuarioDeTeste, tecB: UsuarioDeTeste, supB: UsuarioDeTeste;
-  let analista: UsuarioDeTeste, seguranca: UsuarioDeTeste, admin: UsuarioDeTeste;
+  let admin: UsuarioDeTeste;
   let l1: typeof localInstalacao.$inferSelect, l2: typeof localInstalacao.$inferSelect;
   const exec: Record<string, string> = {};
 
@@ -638,13 +642,11 @@ describe("Painel: indicadores e histórico", () => {
     modelo = await criarModelo(amb);
     equipeA = (await amb.criarEquipe({ nome: "Alfa" })).id;
     equipeB = (await amb.criarEquipe({ nome: "Beta" })).id;
-    supA = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeA });
-    supB = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeB });
+    supA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, supervisor: true });
+    supB = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeB, supervisor: true });
     tecA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, nome: "Ana" });
     tecA2 = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, nome: "Caio" });
     tecB = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeB, nome: "Bia" });
-    analista = await amb.criarUsuario({ perfil: "analista" });
-    seguranca = await amb.criarUsuario({ perfil: "seguranca" });
     admin = await amb.criarUsuario({ perfil: "admin" });
     l1 = await criarLocal(amb, "PR ALFA");
     l2 = await criarLocal(amb, "ERS BETA");
@@ -684,7 +686,7 @@ describe("Painel: indicadores e histórico", () => {
 
   describe("GET /indicadores", () => {
     it("conta só preventivas do mês: encerradas, atrasadas justificadas e atrasadas sem justificativa", async () => {
-      const c = await amb.esperar(200, "GET", "/indicadores", { como: analista, consulta: { mes: "2026-09" } });
+      const c = await amb.esperar(200, "GET", "/indicadores", { como: admin, consulta: { mes: "2026-09" } });
       assert.equal(c.encerradas, 3);
       assert.equal(c.atrasadas_justificadas, 2);
       assert.equal(c.atrasadas_sem_justificativa, 2);
@@ -695,8 +697,8 @@ describe("Painel: indicadores e histórico", () => {
     });
 
     it("segurança e admin veem todas as equipes; equipe_id restringe o resultado", async () => {
-      for (const u of [seguranca, admin]) assert.equal((await amb.esperar(200, "GET", "/indicadores", { como: u, consulta: { mes: "2026-09" } })).encerradas, 3);
-      const soB = await amb.esperar(200, "GET", "/indicadores", { como: analista, consulta: { mes: "2026-09", equipe_id: equipeB } });
+      for (const u of [admin]) assert.equal((await amb.esperar(200, "GET", "/indicadores", { como: u, consulta: { mes: "2026-09" } })).encerradas, 3);
+      const soB = await amb.esperar(200, "GET", "/indicadores", { como: admin, consulta: { mes: "2026-09", equipe_id: equipeB } });
       assert.equal(soB.encerradas, 1);
       assert.equal(soB.atrasadas_sem_justificativa, 1);
       assert.equal(soB.por_equipe.length, 1);
@@ -718,22 +720,22 @@ describe("Painel: indicadores e histórico", () => {
     });
 
     it("exige mes no formato AAAA-MM", async () => {
-      for (const mes of [undefined, "2026-9", "2026-13", "setembro"]) assert.equal((await amb.req("GET", "/indicadores", { como: analista, consulta: { mes } })).status, 422, String(mes));
+      for (const mes of [undefined, "2026-9", "2026-13", "setembro"]) assert.equal((await amb.req("GET", "/indicadores", { como: admin, consulta: { mes } })).status, 422, String(mes));
     });
 
     it("mês sem OS devolve zeros e nenhuma equipe", async () => {
-      const c = await amb.esperar(200, "GET", "/indicadores", { como: analista, consulta: { mes: "2026-01" } });
+      const c = await amb.esperar(200, "GET", "/indicadores", { como: admin, consulta: { mes: "2026-01" } });
       assert.deepEqual(c, { encerradas: 0, atrasadas_justificadas: 0, atrasadas_sem_justificativa: 0, por_equipe: [] });
     });
 
     it("o dia de hoje não conta como atraso: a OS com referência em 15/10 só atrasa a partir de 16/10", async () => {
-      const antes = await amb.esperar(200, "GET", "/indicadores", { como: analista, consulta: { mes: "2026-10" } });
+      const antes = await amb.esperar(200, "GET", "/indicadores", { como: admin, consulta: { mes: "2026-10" } });
       const o = await criarOs(amb, { localId: l1.id, equipeId: equipeA, numero: "A13", status: "liberada", inicio: "2026-10-15" });
       try {
-        const hoje = await amb.esperar(200, "GET", "/indicadores", { como: analista, consulta: { mes: "2026-10" } });
+        const hoje = await amb.esperar(200, "GET", "/indicadores", { como: admin, consulta: { mes: "2026-10" } });
         assert.equal(hoje.atrasadas_sem_justificativa, antes.atrasadas_sem_justificativa);
         amb.relogio.agora = h("2026-10-16T12:00:00Z");
-        const leitor = await amb.criarUsuario({ perfil: "analista" });
+        const leitor = await amb.criarUsuario({ perfil: "admin" });
         const depois = await amb.esperar(200, "GET", "/indicadores", { como: leitor, consulta: { mes: "2026-10" } });
         assert.equal(depois.atrasadas_sem_justificativa, antes.atrasadas_sem_justificativa + 1);
       } finally {
@@ -745,7 +747,7 @@ describe("Painel: indicadores e histórico", () => {
 
   describe("GET /indicadores/tempo", () => {
     it("calcula tempo líquido médio, pausa média e proporção, por equipe e por usuário", async () => {
-      const c = await amb.esperar(200, "GET", "/indicadores/tempo", { como: analista, consulta: { mes: "2026-09" } });
+      const c = await amb.esperar(200, "GET", "/indicadores/tempo", { como: admin, consulta: { mes: "2026-09" } });
       // Execuções do mês: Ana 240 min com 60 de pausa; Caio 120; Bia 60 com 15; Ana 120 (30/09 23:30 em SP).
       assert.equal(c.tempo_liquido_medio_min, 116.3, "(180 + 120 + 120 + 45) / 4");
       assert.equal(c.pausa_media_min, 18.8, "(60 + 0 + 0 + 15) / 4");
@@ -765,19 +767,19 @@ describe("Painel: indicadores e histórico", () => {
 
     it("só conta Execuções encerradas iniciadas no mês, no fuso de São Paulo", async () => {
       // 31/08 23:30 em SP (agosto) e a interrompida de setembro ficam de fora; 30/09 23:30 em SP entra.
-      const c = await amb.esperar(200, "GET", "/indicadores/tempo", { como: analista, consulta: { mes: "2026-09" } });
+      const c = await amb.esperar(200, "GET", "/indicadores/tempo", { como: admin, consulta: { mes: "2026-09" } });
       assert.equal(c.por_equipe.reduce((n: number, e: any) => n + e.execucoes, 0), 4);
-      const agosto = await amb.esperar(200, "GET", "/indicadores/tempo", { como: analista, consulta: { mes: "2026-08" } });
+      const agosto = await amb.esperar(200, "GET", "/indicadores/tempo", { como: admin, consulta: { mes: "2026-08" } });
       assert.equal(agosto.por_equipe.reduce((n: number, e: any) => n + e.execucoes, 0), 1);
-      const outubro = await amb.esperar(200, "GET", "/indicadores/tempo", { como: analista, consulta: { mes: "2026-10" } });
+      const outubro = await amb.esperar(200, "GET", "/indicadores/tempo", { como: admin, consulta: { mes: "2026-10" } });
       assert.deepEqual(outubro.por_equipe, []);
     });
 
     it("filtra por equipe e por usuário", async () => {
-      const porUsuario = await amb.esperar(200, "GET", "/indicadores/tempo", { como: analista, consulta: { mes: "2026-09", usuario_id: tecA.id } });
+      const porUsuario = await amb.esperar(200, "GET", "/indicadores/tempo", { como: admin, consulta: { mes: "2026-09", usuario_id: tecA.id } });
       assert.equal(porUsuario.tempo_liquido_medio_min, 150);
       assert.equal(porUsuario.por_usuario.length, 1);
-      const porEquipe = await amb.esperar(200, "GET", "/indicadores/tempo", { como: seguranca, consulta: { mes: "2026-09", equipe_id: equipeB } });
+      const porEquipe = await amb.esperar(200, "GET", "/indicadores/tempo", { como: admin, consulta: { mes: "2026-09", equipe_id: equipeB } });
       assert.equal(porEquipe.tempo_liquido_medio_min, 45);
       assert.equal(porEquipe.proporcao_pausa, 0.25);
     });
@@ -794,13 +796,13 @@ describe("Painel: indicadores e histórico", () => {
       assert.equal(c.tempo_liquido_medio_min, 140);
       assert.equal((await amb.req("GET", "/indicadores/tempo", { como: supA, consulta: { mes: "2026-09", equipe_id: equipeB } })).status, 403);
       assert.equal((await amb.req("GET", "/indicadores/tempo", { como: tecA, consulta: { mes: "2026-09" } })).status, 403);
-      assert.equal((await amb.req("GET", "/indicadores/tempo", { como: analista, consulta: {} })).status, 422);
+      assert.equal((await amb.req("GET", "/indicadores/tempo", { como: admin, consulta: {} })).status, 422);
     });
   });
 
   describe("GET /historico", () => {
     it("lista as execuções encerradas do local, da mais recente para a mais antiga", async () => {
-      const c = await amb.esperar(200, "GET", "/historico", { como: analista, consulta: { local_instalacao_id: l1.id } });
+      const c = await amb.esperar(200, "GET", "/historico", { como: admin, consulta: { local_instalacao_id: l1.id } });
       // l1: e4 (30/09 23:30 SP), e2, e1, mais a de 31/08 (reescrita) e sem a interrompida.
       assert.equal(c.total, 4);
       assert.deepEqual(c.execucoes.slice(0, 3).map((e: any) => e.id), [exec.e4, exec.e2, exec.e1]);
@@ -816,15 +818,15 @@ describe("Painel: indicadores e histórico", () => {
     });
 
     it("filtra por equipamento, sem diferenciar maiúsculas", async () => {
-      const c = await amb.esperar(200, "GET", "/historico", { como: analista, consulta: { local_instalacao_id: l1.id, equipamento: "manômetro x" } });
+      const c = await amb.esperar(200, "GET", "/historico", { como: admin, consulta: { local_instalacao_id: l1.id, equipamento: "manômetro x" } });
       assert.deepEqual(c.execucoes.map((e: any) => e.id).slice(0, 2), [exec.e4, exec.e1]);
       assert.ok(c.execucoes.every((e: any) => e.os.equipamento === "Manômetro X"));
-      const nenhum = await amb.esperar(200, "GET", "/historico", { como: analista, consulta: { local_instalacao_id: l1.id, equipamento: "Outro" } });
+      const nenhum = await amb.esperar(200, "GET", "/historico", { como: admin, consulta: { local_instalacao_id: l1.id, equipamento: "Outro" } });
       assert.deepEqual(nenhum.execucoes, []);
     });
 
     it("pagina o resultado", async () => {
-      const c = await amb.esperar(200, "GET", "/historico", { como: analista, consulta: { local_instalacao_id: l1.id, tamanho: 1, pagina: 2 } });
+      const c = await amb.esperar(200, "GET", "/historico", { como: admin, consulta: { local_instalacao_id: l1.id, tamanho: 1, pagina: 2 } });
       assert.equal(c.total, 4);
       assert.deepEqual(c.execucoes.map((e: any) => e.id), [exec.e2]);
     });
@@ -838,12 +840,12 @@ describe("Painel: indicadores e histórico", () => {
       assert.deepEqual(daB.execucoes.map((e: any) => e.id), [exec.e3]);
       assert.equal(daB.execucoes[0].tempo_liquido_min, 45);
       assert.equal((await amb.esperar(200, "GET", "/historico", { como: supA, consulta: { local_instalacao_id: l2.id } })).total, 0);
-      for (const u of [seguranca, admin]) assert.equal((await amb.esperar(200, "GET", "/historico", { como: u, consulta: { local_instalacao_id: l2.id } })).total, 1);
+      for (const u of [admin]) assert.equal((await amb.esperar(200, "GET", "/historico", { como: u, consulta: { local_instalacao_id: l2.id } })).total, 1);
     });
 
     it("local_instalacao_id é obrigatório e precisa ser um UUID (422); sem token é 401", async () => {
-      assert.equal((await amb.req("GET", "/historico", { como: analista })).status, 422);
-      assert.equal((await amb.req("GET", "/historico", { como: analista, consulta: { local_instalacao_id: "x" } })).status, 422);
+      assert.equal((await amb.req("GET", "/historico", { como: admin })).status, 422);
+      assert.equal((await amb.req("GET", "/historico", { como: admin, consulta: { local_instalacao_id: "x" } })).status, 422);
       assert.equal((await amb.req("GET", "/historico", { consulta: { local_instalacao_id: l1.id } })).status, 401);
     });
   });
@@ -857,7 +859,7 @@ describe("Painel: exportação para o SAP", () => {
   let amb: Ambiente;
   let modelo: Modelo;
   let equipeA: string, equipeB: string;
-  let supA: UsuarioDeTeste, tecA: UsuarioDeTeste, tecB: UsuarioDeTeste, analista: UsuarioDeTeste, seguranca: UsuarioDeTeste, admin: UsuarioDeTeste;
+  let supA: UsuarioDeTeste, tecA: UsuarioDeTeste, tecB: UsuarioDeTeste, admin: UsuarioDeTeste;
   let o: Record<string, typeof os.$inferSelect> = {};
   const jaExportada = h("2026-10-01T10:00:00Z");
 
@@ -866,11 +868,9 @@ describe("Painel: exportação para o SAP", () => {
     modelo = await criarModelo(amb);
     equipeA = (await amb.criarEquipe({ nome: "Serviços Especiais" })).id;
     equipeB = (await amb.criarEquipe({ nome: "Instrumentação" })).id;
-    supA = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeA, nome: "Sara Supervisora" });
+    supA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, nome: "Sara Supervisora", supervisor: true });
     tecA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, matricula: "M-A" });
     tecB = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, matricula: "M-B" });
-    analista = await amb.criarUsuario({ perfil: "analista" });
-    seguranca = await amb.criarUsuario({ perfil: "seguranca" });
     admin = await amb.criarUsuario({ perfil: "admin" });
     const local = await criarLocal(amb, "ERS SERRA");
     const base = { localId: local.id, equipeId: equipeA };
@@ -898,15 +898,15 @@ describe("Painel: exportação para o SAP", () => {
   });
   after(() => amb.fechar());
 
-  it("só analista e admin exportam; os outros perfis recebem 403 e sem token é 401", async () => {
-    for (const u of [tecA, supA, seguranca]) assert.equal((await amb.req("POST", "/exportacoes/sap", { como: u })).status, 403, u.perfil);
+  it("só o admin exporta; os outros perfis recebem 403 e sem token é 401", async () => {
+    for (const u of [tecA, supA]) assert.equal((await amb.req("POST", "/exportacoes/sap", { como: u })).status, 403, u.perfil);
     assert.equal((await amb.req("POST", "/exportacoes/sap")).status, 401);
     const [ainda] = await amb.db.select().from(os).where(eq(os.id, o.e1!.id));
     assert.equal(ainda!.exportadaSapEm, null, "uma exportação recusada não marca nada");
   });
 
   it("gera o .xlsx com as 3 abas, as colunas e as linhas esperadas", async () => {
-    const r = await amb.req("POST", "/exportacoes/sap", { como: analista });
+    const r = await amb.req("POST", "/exportacoes/sap", { como: admin });
     assert.equal(r.status, 200);
     assert.equal(r.cabecalhos.get("content-type"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     assert.match(r.cabecalhos.get("content-disposition") ?? "", /^attachment; filename="exportacao-sap-20261015-1200\.xlsx"$/);
@@ -1002,9 +1002,76 @@ describe("Painel: exportação para o SAP", () => {
     const local = (await amb.db.select().from(localInstalacao))[0]!;
     const nova = await criarOs(amb, { localId: local.id, equipeId: equipeA, numero: "5010", status: "encerrada" });
     await criarExecucao(amb, { osId: nova.id, modelo, executorId: tecA.id, inicio: h("2026-10-15T11:00:00Z"), fim: h("2026-10-15T12:00:00Z") });
-    const r = await amb.req("POST", "/exportacoes/sap", { como: analista });
+    const r = await amb.req("POST", "/exportacoes/sap", { como: admin });
     assert.equal(r.cabecalhos.get("x-mensagem"), null);
     const enc = linhasDaAba(await lerPlanilha(r.corpo), "Encerradas");
     assert.deepEqual(enc.linhas.map((l) => [l.numero_ordem, l.ciencia_supervisor]), [["5010", null]]);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Supervisão por equipe: o supervisor é quem a equipe aponta (`equipe.supervisor_id`), de qualquer perfil
+// ---------------------------------------------------------------------------------------------------------------
+
+describe("Painel: técnico que supervisa outra equipe", () => {
+  let amb: Ambiente;
+  let semSupervisao: UsuarioDeTeste, tecnicoSupervisor: UsuarioDeTeste, tecDaEquipeSupervisionada: UsuarioDeTeste;
+  let osDaOutra: typeof os.$inferSelect, osProprias: typeof os.$inferSelect, osSupervisionada: typeof os.$inferSelect, osQueEleExecutou: typeof os.$inferSelect;
+
+  before(async () => {
+    amb = await criarAmbiente({ relogio: AGORA });
+    const modelo = await criarModelo(amb);
+    const propria = (await amb.criarEquipe({ nome: "Própria" })).id;
+    const supervisionada = (await amb.criarEquipe({ nome: "Supervisionada" })).id;
+    const outra = (await amb.criarEquipe({ nome: "Outra" })).id;
+    tecnicoSupervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId: propria, nome: "Téo Técnico-Supervisor" });
+    semSupervisao = await amb.criarUsuario({ perfil: "tecnico", equipeId: propria });
+    tecDaEquipeSupervisionada = await amb.criarUsuario({ perfil: "tecnico", equipeId: supervisionada });
+    await amb.db.update(equipe).set({ supervisorId: tecnicoSupervisor.id }).where(eq(equipe.id, supervisionada));
+
+    const local = await criarLocal(amb, "ERS SERRA");
+    const encerrada = (equipeId: string, numero: string) => criarOs(amb, { equipeId, localId: local.id, numero, status: "encerrada", comPdf: true });
+    osDaOutra = await encerrada(outra, "7001");
+    osProprias = await encerrada(propria, "7002");
+    osSupervisionada = await encerrada(supervisionada, "7003");
+    osQueEleExecutou = await encerrada(supervisionada, "7004");
+    await criarExecucao(amb, { osId: osSupervisionada.id, modelo, executorId: tecDaEquipeSupervisionada.id, inicio: h("2026-10-05T12:00:00Z"), fim: h("2026-10-05T14:00:00Z") });
+    await criarExecucao(amb, { osId: osQueEleExecutou.id, modelo, executorId: tecnicoSupervisor.id, inicio: h("2026-10-06T12:00:00Z"), fim: h("2026-10-06T14:00:00Z") });
+  });
+
+  after(async () => amb.fechar());
+
+  it("vê as OS da própria equipe e da que supervisiona, não as de outras; quem não supervisiona vê só a própria", async () => {
+    const dele = await amb.esperar(200, "GET", "/os", { como: tecnicoSupervisor });
+    assert.deepEqual(numerosDe(dele).sort(), ["7002", "7003", "7004"]);
+    const dosOutros = await amb.esperar(200, "GET", "/os", { como: semSupervisao });
+    assert.deepEqual(numerosDe(dosOutros), ["7002"]);
+    assert.equal((await amb.req("GET", `/os/${osDaOutra.id}`, { como: tecnicoSupervisor })).status, 404);
+  });
+
+  it("dá a ciência nas OS da equipe que supervisiona, mas não nas da própria equipe nem de outra", async () => {
+    assert.equal((await amb.req("POST", `/os/${osProprias.id}/ciencia`, { como: tecnicoSupervisor })).status, 403);
+    assert.equal((await amb.req("POST", `/os/${osDaOutra.id}/ciencia`, { como: tecnicoSupervisor })).status, 404);
+    assert.equal((await amb.req("POST", `/os/${osSupervisionada.id}/ciencia`, { como: semSupervisao })).status, 403);
+
+    await amb.esperar(200, "POST", `/os/${osSupervisionada.id}/ciencia`, { como: tecnicoSupervisor });
+    const [o] = await amb.db.select().from(os).where(eq(os.id, osSupervisionada.id));
+    assert.equal(o!.cienciaPor, tecnicoSupervisor.id);
+  });
+
+  it("não dá a ciência numa OS em que participou da execução", async () => {
+    const r = await amb.req("POST", `/os/${osQueEleExecutou.id}/ciencia`, { como: tecnicoSupervisor });
+    assert.equal(r.status, 409);
+    assert.equal(r.corpo.erro.codigo, "ciencia_propria");
+    const [o] = await amb.db.select().from(os).where(eq(os.id, osQueEleExecutou.id));
+    assert.equal(o!.cienciaEm, null);
+  });
+
+  it("acessa a caixa de alertas e os indicadores só das equipes do próprio escopo", async () => {
+    assert.equal((await amb.req("GET", "/alertas", { como: tecnicoSupervisor })).status, 200);
+    assert.equal((await amb.req("GET", "/alertas", { como: semSupervisao })).status, 403);
+    assert.equal((await amb.req("GET", "/indicadores", { como: tecnicoSupervisor, consulta: { mes: "2026-10" } })).status, 200);
+    const outra = (await amb.db.select().from(os).where(eq(os.id, osDaOutra.id)))[0]!.equipeId;
+    assert.equal((await amb.req("GET", "/indicadores", { como: tecnicoSupervisor, consulta: { mes: "2026-10", equipe_id: outra } })).status, 403);
   });
 });

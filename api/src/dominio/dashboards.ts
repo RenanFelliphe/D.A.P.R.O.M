@@ -2,7 +2,7 @@ import { and, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { apr, atividade, equipe, execucao, localInstalacao, os, PERFIS, reprogramacao, usuario, type Perfil } from "../db/schema";
 import { veTodasAsEquipes, type UsuarioAutenticado } from "../http/autenticacao";
-import { condicaoEscopo, diaNoFuso, todas } from "./painel-comum";
+import { condicaoEscopo, diaNoFuso, noEscopo, todas } from "./painel-comum";
 import { situacaoDasPreventivas, temposDeExecucao } from "./painel-indicadores";
 import { diaDoInstante, diaEntre, faixaDoDia, instanteEntre, resolverPeriodo, type Periodo } from "./periodo";
 
@@ -218,9 +218,9 @@ export async function dashboardDeEquipes(db: Db, eu: UsuarioAutenticado, f: Filt
   const hoje = diaNoFuso(agora);
   const p = resolverPeriodo(f.periodo, hoje);
   const filtroOs = daEquipe(eu, f.equipeId);
-  // Equipes que a pessoa vê: todas, ou só a do supervisor (sem equipe, nenhuma).
+  // Equipes que a pessoa vê: todas, ou só as do escopo dela (sem nenhuma, nenhuma).
   const equipeVisivel = todas(
-    veTodasAsEquipes(eu) ? undefined : eu.equipeId ? eq(equipe.id, eu.equipeId) : sql`false`,
+    noEscopo(eu, equipe.id),
     f.equipeId ? eq(equipe.id, f.equipeId) : undefined,
   );
   const aprNoPeriodo = todas(instanteEntre(apr.concluidaEm, p.inicio, p.fim), filtroOs);
@@ -238,7 +238,7 @@ export async function dashboardDeEquipes(db: Db, eu: UsuarioAutenticado, f: Filt
       .select({ id: usuario.id, nome: usuario.nome, equipeId: usuario.equipeId })
       .from(usuario)
       .innerJoin(equipe, eq(equipe.id, usuario.equipeId))
-      .where(todas(eq(usuario.ativo, true), eq(usuario.perfil, "tecnico"), equipeVisivel)),
+      .where(todas(eq(usuario.ativo, true), eq(usuario.liberacao, "liberado"), eq(usuario.perfil, "tecnico"), equipeVisivel)),
     situacaoDasPreventivas(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }, hoje),
     temposDeExecucao(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }),
     db.select({ equipeId: os.equipeId, aprs: contagem, bloqueadas }).from(apr).innerJoin(os, eq(os.id, apr.osId)).where(aprNoPeriodo).groupBy(os.equipeId),
@@ -337,7 +337,7 @@ async function estadoDoCadastro(db: Db, equipeId: string | undefined) {
       .select({
         tecnicosSemAssinatura: contarSe(sql`${usuario.ativo} and ${usuario.perfil} = 'tecnico' and ${usuario.assinaturaPath} is null`),
         senhaProvisoria: contarSe(sql`${usuario.ativo} and ${usuario.senhaProvisoria}`),
-        semEquipe: contarSe(sql`${usuario.ativo} and ${usuario.perfil} in ('tecnico', 'supervisor') and ${usuario.equipeId} is null`),
+        semEquipe: contarSe(sql`${usuario.ativo} and ${usuario.perfil} = 'tecnico' and ${usuario.equipeId} is null`),
         inativos: contarSe(sql`not ${usuario.ativo}`),
       })
       .from(usuario)

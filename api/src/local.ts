@@ -103,10 +103,8 @@ async function main() {
   }
 
   await criar("adm", "Administrador", "admin", null, { email: `admin@${DOMINIO_DEMO}` });
-  await criar("ana", "Ana Analista", "analista", null);
-  await criar("seg", "Sérgio Segurança", "seguranca", null);
-  const sup1 = await criar("sup1", "Sandra Supervisora", "supervisor", "SERV_ESP");
-  const sup2 = await criar("sup2", "Saulo Supervisor", "supervisor", "INSTRUM");
+  const sup1 = await criar("sup1", "Sandra Supervisora", "tecnico", "SERV_ESP");
+  const sup2 = await criar("sup2", "Saulo Supervisor", "tecnico", "INSTRUM");
   await criar("tec1", "Tiago Técnico", "tecnico", "SERV_ESP", { cargo: "Técnico em Gás" });
   await criar("tec2", "Taís Técnica", "tecnico", "SERV_ESP", { cargo: "Técnica em Gás" });
   await criar("tec3", "Tomás Técnico", "tecnico", "INSTRUM", { cargo: "Técnico em Instrumentação" });

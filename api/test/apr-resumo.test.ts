@@ -11,7 +11,7 @@ const h = (iso: string) => new Date(iso);
 
 describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
   let amb: Ambiente;
-  let seguranca: UsuarioDeTeste;
+  let admin: UsuarioDeTeste;
   let tecnico: UsuarioDeTeste;
   const usuarios: Record<string, UsuarioDeTeste> = {};
   let equipeA: string;
@@ -22,9 +22,9 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
     equipeA = (await amb.criarEquipe({ nome: "Equipe Norte" })).id;
     equipeB = (await amb.criarEquipe({ nome: "Equipe Sul" })).id;
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA });
-    seguranca = await amb.criarUsuario({ perfil: "seguranca" });
-    for (const perfil of ["analista", "admin"] as const) usuarios[perfil] = await amb.criarUsuario({ perfil });
-    usuarios.supervisor = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeA });
+    admin = await amb.criarUsuario({ perfil: "admin" });
+    usuarios.admin = await amb.criarUsuario({ perfil: "admin" });
+    usuarios.supervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, supervisor: true });
 
     const modelo = async (codigo: string, titulo: string, itens: (typeof itemModeloApr.$inferInsert)[]) => {
       const [m] = await amb.db.insert(modeloApr).values({ codigo, versao: 1, titulo }).returning();
@@ -68,7 +68,7 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
   });
   after(() => amb.fechar());
 
-  const resumo = (consulta: Record<string, string> = {}, como = seguranca) => amb.esperar(200, "GET", "/aprs/resumo", { como, consulta });
+  const resumo = (consulta: Record<string, string> = {}, como = admin) => amb.esperar(200, "GET", "/aprs/resumo", { como, consulta });
 
   it("30 dias por padrão: totais, comparação com o período anterior e a série por dia", async () => {
     const r = await resumo();
@@ -142,7 +142,7 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
   });
 
   it("toda a gestão vê; o supervisor só a própria equipe (outra é 403); técnico 403; período inválido 422", async () => {
-    for (const perfil of ["analista", "admin"]) await resumo({}, usuarios[perfil]);
+    await resumo({}, usuarios.admin);
     const doSupervisor = await resumo({}, usuarios.supervisor);
     assert.equal(doSupervisor.totais.aprs, 4);
     assert.deepEqual(doSupervisor.por_equipe.map((e: any) => e.nome), ["Equipe Norte"]);
@@ -150,7 +150,7 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
     assert.equal((await amb.req("GET", "/aprs/resumo", { como: tecnico })).status, 403);
     assert.equal((await amb.req("GET", "/aprs/resumo")).status, 401);
     for (const periodo of ["1a", "2026-13", "2026-1"]) {
-      assert.equal((await amb.req("GET", "/aprs/resumo", { como: seguranca, consulta: { periodo } })).status, 422, periodo);
+      assert.equal((await amb.req("GET", "/aprs/resumo", { como: admin, consulta: { periodo } })).status, 422, periodo);
     }
   });
 });

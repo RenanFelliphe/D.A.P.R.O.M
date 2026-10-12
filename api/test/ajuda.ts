@@ -6,6 +6,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import assert from "node:assert/strict";
 import { criarApp } from "../src/app";
@@ -98,7 +99,7 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   }
 
   /** Cria o usuário no banco e na autenticação em memória, já com a senha trocada, e devolve o token de acesso. */
-  async function criarUsuario(dados: { perfil: Perfil; equipeId?: string | null; nome?: string; matricula?: string; email?: string; senhaProvisoria?: boolean; ativo?: boolean; comAssinatura?: boolean }): Promise<UsuarioDeTeste> {
+  async function criarUsuario(dados: { perfil: Perfil; equipeId?: string | null; nome?: string; matricula?: string; email?: string; senhaProvisoria?: boolean; ativo?: boolean; comAssinatura?: boolean; /** Torna a pessoa supervisora da própria equipe (`equipe.supervisor_id`); supervisor não é perfil. */ supervisor?: boolean }): Promise<UsuarioDeTeste> {
     contador++;
     const matricula = dados.matricula ?? `M${contador}${randomUUID().slice(0, 4)}`;
     const email = dados.email ?? `${matricula.toLowerCase()}@empresa.com.br`;
@@ -117,6 +118,7 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
       assinaturaPath: assinatura,
       assinaturaEm: assinatura ? relogio.agora : null,
     });
+    if (dados.supervisor && dados.equipeId) await db.update(equipe).set({ supervisorId: conta.id }).where(eq(equipe.id, dados.equipeId));
     const sessao = (await auth.entrar(email, SENHA_PADRAO))!;
     return { id: conta.id, matricula, email, senha: SENHA_PADRAO, token: sessao.accessToken, perfil: dados.perfil, equipeId: dados.equipeId ?? null };
   }

@@ -35,6 +35,7 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
         exportada: booleanoDaConsulta,
         numero_ordem: z.string().trim().min(1).optional(),
         busca: z.string().trim().min(1).optional(),
+        ordem: z.enum(["prioridade", "data_limite"]).optional(),
       }),
     );
     const { itens, total, contagemPorStatus } = await listarOs(deps.db, c.get("usuario"), filtros, deps.agora());
@@ -53,12 +54,12 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
     return responder(c, await darCiencia(deps.db, c.get("usuario"), lerId(c), deps.agora()));
   });
 
-  r.get("/indicadores", autenticar(), exigirPerfil("supervisor", "analista", "seguranca", "admin"), async (c) => {
+  r.get("/indicadores", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
     const f = lerConsulta(c, z.object({ mes, equipe_id: uuid.optional() }));
     return responder(c, await indicadoresMensais(deps.db, c.get("usuario"), f, deps.agora()));
   });
 
-  r.get("/indicadores/tempo", autenticar(), exigirPerfil("supervisor", "analista", "seguranca", "admin"), async (c) => {
+  r.get("/indicadores/tempo", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
     const f = lerConsulta(c, z.object({ mes, equipe_id: uuid.optional(), usuario_id: uuid.optional() }));
     return responder(c, await indicadoresDeTempo(deps.db, c.get("usuario"), f));
   });
@@ -67,7 +68,7 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
   // Todos com o mesmo filtro: `?periodo=7d|30d|90d|12m|AAAA-MM` (30 dias se ausente) e `?equipe_id=`. O supervisor só
   // vê a própria equipe (pedir outra é `403`); os demais perfis de gestão veem todas.
 
-  const gestao = exigirPerfil("supervisor", "analista", "seguranca", "admin");
+  const gestao = exigirPerfil("supervisor", "admin");
   const lerFiltro = (c: Parameters<typeof lerConsulta>[0]) => {
     const f = lerConsulta(c, z.object({ periodo: esquemaPeriodo, equipe_id: uuid.optional() }));
     return { periodo: f.periodo, equipeId: equipeDoIndicador(c.get("usuario"), f.equipe_id) };
@@ -108,7 +109,7 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
    * um arquivo válido) com as abas só de cabeçalho — e `Impedimentos`, que não depende de exportação anterior —,
    * mais o cabeçalho `X-Mensagem` para a tela avisar.
    */
-  r.post("/exportacoes/sap", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+  r.post("/exportacoes/sap", autenticar(), exigirPerfil("admin"), async (c) => {
     const agora = deps.agora();
     const { planilha, novas } = await exportarParaSap(deps.db, deps.config.painelUrl, agora);
     const cabecalhos: Record<string, string> = {

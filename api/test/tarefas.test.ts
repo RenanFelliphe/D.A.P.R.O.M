@@ -19,7 +19,7 @@ describe("Executor de tarefas", () => {
   before(async () => {
     amb = await criarAmbiente({ relogio: AGORA });
     equipeId = (await amb.criarEquipe()).id;
-    supervisor = await amb.criarUsuario({ perfil: "supervisor", equipeId });
+    supervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId, supervisor: true });
   });
   after(() => amb.fechar());
 
@@ -194,13 +194,13 @@ describe("E-mail de alerta de bloqueio", () => {
   let amb: Ambiente;
   let equipeId: string;
   let supervisor: UsuarioDeTeste;
-  let analista: UsuarioDeTeste;
+  let admin: UsuarioDeTeste;
 
   before(async () => {
     amb = await criarAmbiente({ relogio: new Date("2026-10-10T15:00:00Z") });
     equipeId = (await amb.criarEquipe()).id;
-    supervisor = await amb.criarUsuario({ perfil: "supervisor", equipeId });
-    analista = await amb.criarUsuario({ perfil: "analista" });
+    supervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId, supervisor: true });
+    admin = await amb.criarUsuario({ perfil: "admin" });
   });
   after(() => amb.fechar());
 
@@ -270,13 +270,13 @@ describe("E-mail de alerta de bloqueio", () => {
     assert.ok(m.texto.includes(`https://storage.local/fotos/${foto}`));
   });
 
-  it("todo usuário tem e-mail institucional: o analista (destinatário quando a equipe não tem supervisor) também recebe", async () => {
+  it("todo usuário tem e-mail institucional: o admin (destinatário quando a equipe não tem supervisor) também recebe", async () => {
     const o = await criarOs(amb, { equipeId });
-    const a = await criarAlerta(amb, { osId: o.osId, destinatarioId: analista.id });
+    const a = await criarAlerta(amb, { osId: o.osId, destinatarioId: admin.id });
     const antes = amb.email.enviados.length;
     await manipularEmailAlerta(amb.deps, tarefaDe(a.id));
     assert.equal(amb.email.enviados.length, antes + 1);
-    assert.equal(amb.email.enviados.at(-1)!.para, analista.email);
+    assert.equal(amb.email.enviados.at(-1)!.para, admin.email);
     const [depois] = await amb.db.select().from(alerta).where(eq(alerta.id, a.id));
     assert.deepEqual(depois!.emailEnviadoEm, amb.relogio.agora);
   });

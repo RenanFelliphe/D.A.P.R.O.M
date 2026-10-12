@@ -1,6 +1,6 @@
-import { and, eq, sql, type SQL } from "drizzle-orm";
+import { and, inArray, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { os, type OsStatus } from "../db/schema";
-import { veTodasAsEquipes, type UsuarioAutenticado } from "../http/autenticacao";
+import { equipesDoEscopo, type UsuarioAutenticado } from "../http/autenticacao";
 
 /** Fuso de "dia" e de hora exibida; os instantes ficam em UTC no banco. */
 export const FUSO = "America/Sao_Paulo";
@@ -50,11 +50,15 @@ export function intervaloDoMes(mes: string): { inicio: string; fim: string } {
   return { inicio: `${mes}-01`, fim: `${proximo}-01` };
 }
 
-/** Condição de equipe da OS para quem só vê a própria equipe; sem equipe, não vê nada. */
-export function condicaoEscopo(eu: UsuarioAutenticado): SQL | undefined {
-  if (veTodasAsEquipes(eu)) return undefined;
-  return eu.equipeId === null ? sql`false` : eq(os.equipeId, eu.equipeId);
+/** Limita `coluna` às equipes do escopo da pessoa: sem limite para quem vê todas, nada para quem não tem equipe. */
+export function noEscopo(eu: UsuarioAutenticado, coluna: AnyColumn): SQL | undefined {
+  const equipes = equipesDoEscopo(eu);
+  if (equipes === null) return undefined;
+  return equipes.length === 0 ? sql`false` : inArray(coluna, equipes);
 }
+
+/** Condição de equipe da OS para quem só vê as suas equipes (a própria e as que supervisiona); sem nenhuma, não vê nada. */
+export const condicaoEscopo = (eu: UsuarioAutenticado) => noEscopo(eu, os.equipeId);
 
 /** `a and b and ...` ignorando o que for indefinido. */
 export const todas = (...condicoes: (SQL | undefined)[]) => and(...condicoes);

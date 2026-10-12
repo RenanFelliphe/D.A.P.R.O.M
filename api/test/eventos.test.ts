@@ -11,18 +11,18 @@ describe("Eventos de campo: APR, execução e sync", () => {
   let supervisor: UsuarioDeTeste;
   let tecnico: UsuarioDeTeste;
   let colega: UsuarioDeTeste;
-  let analista: UsuarioDeTeste;
+  let admin: UsuarioDeTeste;
   let modelo: { id: string; itens: (typeof itemModeloApr.$inferSelect)[]; riscos: (typeof riscoModeloApr.$inferSelect)[] };
   let localId: string;
   let contadorOs = 4000000;
 
   before(async () => {
     amb = await criarAmbiente({ comCarga: true });
-    supervisor = await amb.criarUsuario({ perfil: "supervisor" });
+    supervisor = await amb.criarUsuario({ perfil: "tecnico" });
     equipeId = (await amb.criarEquipe({ supervisorId: supervisor.id })).id;
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     colega = await amb.criarUsuario({ perfil: "tecnico", equipeId });
-    analista = await amb.criarUsuario({ perfil: "analista" });
+    admin = await amb.criarUsuario({ perfil: "admin" });
     const [m] = await amb.db.select().from(modeloApr).where(eq(modeloApr.codigo, "APR 01"));
     modelo = {
       id: m!.id,
@@ -334,7 +334,7 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const o = await novaOs();
     const p = await payloadApr(o.id);
     const antes = new Date(amb.relogio.agora.getTime() - 3600_000).toISOString();
-    await amb.sql("insert into reprogramacao (os_id, usuario_id, data_anterior, data_nova, equipe_anterior_id, equipe_nova_id, justificativa) values ($1,$2,'2026-10-11','2026-10-12',$3,$4,'troca')", [o.id, analista.id, equipeId, outraEquipe.id]);
+    await amb.sql("insert into reprogramacao (os_id, usuario_id, data_anterior, data_nova, equipe_anterior_id, equipe_nova_id, justificativa) values ($1,$2,'2026-10-11','2026-10-12',$3,$4,'troca')", [o.id, admin.id, equipeId, outraEquipe.id]);
     await amb.db.update(os).set({ equipeId: outraEquipe.id }).where(eq(os.id, o.id));
     const r = await enviar(tecnico, evento("apr_concluida", { ...p, concluida_em: antes }, o.id, antes));
     assert.equal(r.aprs[0].resultado, "aprovada");
@@ -350,7 +350,7 @@ describe("Eventos de campo: APR, execução e sync", () => {
   it("OS de apoio encerrada avisa o supervisor da original, que continua pendente", async () => {
     const original = await novaOs();
     await enviar(tecnico, evento("apr_concluida", await payloadApr(original.id, { bloquear: true }), original.id));
-    const outraEquipe = await amb.criarEquipe({ supervisorId: (await amb.criarUsuario({ perfil: "supervisor" })).id });
+    const outraEquipe = await amb.criarEquipe({ supervisorId: (await amb.criarUsuario({ perfil: "tecnico" })).id });
     const apoio = await novaOs({ osOrigemId: original.id, origem: "apoio", numeroOrdem: null });
     assert.ok(outraEquipe.id);
     const apr = await aprAprovada(apoio.id);
@@ -363,10 +363,24 @@ describe("Eventos de campo: APR, execução e sync", () => {
     assert.equal(await statusDa(original.id), "pendente");
   });
 
-  it("perfis: só o técnico envia eventos; sem token é 401; envio vazio é 422", async () => {
-    assert.equal((await amb.req("POST", "/eventos", { como: supervisor, json: { eventos: [evento("execucao_suspensa", {})] } })).status, 403);
+  it("perfis: só o técnico envia eventos; o admin só gerencia (403); sem token é 401; envio vazio é 422", async () => {
+    assert.equal((await amb.req("POST", "/eventos", { como: admin, json: { eventos: [evento("execucao_suspensa", {})] } })).status, 403);
     assert.equal((await amb.req("POST", "/eventos", { json: { eventos: [] } })).status, 401);
     assert.equal((await amb.req("POST", "/eventos", { como: tecnico, json: { eventos: [] } })).status, 422);
+  });
+
+  it("supervisor é um técnico: aplica APR, executa OS e baixa a cópia offline da equipe que supervisiona", async () => {
+    const equipeSup = await amb.criarEquipe();
+    const sup = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeSup.id, supervisor: true });
+    assert.equal(sup.perfil, "tecnico");
+    const o = await novaOs({ equipeId: equipeSup.id });
+    const p = await payloadApr(o.id, { participantes: [sup] });
+    const r = await enviar(sup, evento("apr_concluida", p, o.id));
+    assert.deepEqual(r.aprs, [{ id: p.id, resultado: "aprovada" }]);
+    const { ev } = iniciar(o.id, p.id);
+    const r2 = await enviar(sup, ev);
+    assert.deepEqual(r2.os, [{ id: o.id, status: "em_execucao" }]);
+    await amb.esperar(200, "POST", "/sync/pull", { como: sup });
   });
 
   it("usuário desativado ainda envia a fila pendente e depois tem a sessão revogada", async () => {
@@ -403,7 +417,7 @@ describe("Eventos de campo: APR, execução e sync", () => {
     assert.ok(snap.usuarios.some((u: any) => u.id === colega.id) && snap.usuarios.every((u: any) => !("email" in u)));
     assert.ok(snap.cursor);
 
-    assert.equal((await amb.req("POST", "/sync/pull", { como: analista })).status, 403);
+    assert.equal((await amb.req("POST", "/sync/pull", { como: admin })).status, 403);
     assert.equal((await amb.req("POST", "/sync/pull")).status, 401);
   });
 

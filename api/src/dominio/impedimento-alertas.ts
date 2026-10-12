@@ -5,8 +5,8 @@ import type { UsuarioAutenticado } from "../http/autenticacao";
 import { naoEncontrado } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 
-/** Seguranca e admin enxergam os alertas de todos os destinatários; supervisor e analista, só os seus. */
-const veTodosOsAlertas = (u: UsuarioAutenticado) => u.perfil === "admin" || u.perfil === "seguranca";
+/** O admin enxerga os alertas de todos os destinatários; o supervisor, só os seus. */
+const veTodosOsAlertas = (u: UsuarioAutenticado) => u.perfil === "admin";
 
 /** A OS (alertas de OS) ou a importação (falha de importação): o que não se aplica vem nulo. */
 const colunas = {

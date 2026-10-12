@@ -31,10 +31,10 @@ import { responder } from "../http/resposta";
 import { booleanoDaConsulta, lerConsulta, lerCorpo, textoObrigatorio } from "../http/validacao";
 
 /**
- * Quem cria, edita, publica e exclui modelos e mantém a tabela de atividades: a Segurança do Trabalho, que define o
- * conteúdo, e o administrador do sistema (Reunião 1). Os dois também enxergam os rascunhos.
+ * Quem cria, edita, publica e exclui modelos e mantém a tabela de atividades: só o administrador do sistema, que
+ * mantém o conteúdo definido pela Segurança do Trabalho (que não usa o sistema). Ele também enxerga os rascunhos.
  */
-const PERFIS_DE_MODELO = ["seguranca", "admin"] as const satisfies readonly Perfil[];
+const PERFIS_DE_MODELO = ["admin"] as const satisfies readonly Perfil[];
 const editaModelos = (perfil: Perfil) => (PERFIS_DE_MODELO as readonly Perfil[]).includes(perfil);
 
 /** Status em que a OS ainda vai pedir uma APR (ou está em campo com uma). */
@@ -67,8 +67,8 @@ const resumoDaVersao = {
 };
 
 /**
- * Modelos de APR versionados e a tabela de atividades. Todo perfil autenticado lê (rascunho só quem edita); só a
- * Segurança do Trabalho e o administrador escrevem. Um modelo publicado é imutável (Decisão-chave 6): editar é criar
+ * Modelos de APR versionados e a tabela de atividades. Todo perfil autenticado lê (rascunho só quem edita); só o
+ * administrador escreve (a Segurança do Trabalho não usa o sistema). Um modelo publicado é imutável (Decisão-chave 6): editar é criar
  * um rascunho da versão seguinte, ajustá-lo e publicá-lo; excluir um modelo publicado o arquiva.
  */
 export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
@@ -122,7 +122,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
    * Onde o modelo é usado: as atividades do SAP ligadas a ele (é por elas que uma OS chega ao modelo), as OS abertas
    * dessas atividades e as APRs já respondidas em qualquer versão. Só para quem enxerga as OS de todas as equipes.
    */
-  r.get("/modelos-apr/:codigo/uso", autenticar(), exigirPerfil("analista", "seguranca", "admin"), async (c) => {
+  r.get("/modelos-apr/:codigo/uso", autenticar(), exigirPerfil("admin"), async (c) => {
     const codigo = c.req.param("codigo");
     const [existe] = await deps.db.select({ id: modeloApr.id }).from(modeloApr).where(eq(modeloApr.codigo, codigo)).limit(1);
     if (!existe) throw naoEncontrado("Modelo não encontrado");

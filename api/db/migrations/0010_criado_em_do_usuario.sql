@@ -1,0 +1,1 @@
+ALTER TABLE "usuario" ADD COLUMN "criado_em" timestamp with time zone;

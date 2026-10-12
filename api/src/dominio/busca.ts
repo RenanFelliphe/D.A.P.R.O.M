@@ -2,7 +2,7 @@ import { and, eq, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { equipe, localInstalacao, os, usuario } from "../db/schema";
 import { veTodasAsEquipes, type UsuarioAutenticado } from "../http/autenticacao";
-import { condicaoEscopo } from "./painel-comum";
+import { condicaoEscopo, noEscopo } from "./painel-comum";
 
 /*
  * Busca global de usuários, equipes e OS. O texto é procurado nos campos de cada um, sem diferenciar maiúsculas nem
@@ -49,18 +49,18 @@ export const buscaDeEquipes = (termo: string, comparar = contem) => algum(CAMPOS
 /** OS com o texto em algum campo da busca; a consulta precisa do join com o local. */
 export const buscaDeOs = (termo: string, comparar = contem) => algum(CAMPOS_DA_OS, termo, comparar);
 
-/** Contas que a pessoa enxerga: o admin, todas (inclusive as inativas); os demais, só as ativas do próprio escopo. */
+/**
+ * Contas que a pessoa enxerga: o admin, todas (inclusive as inativas e as que aguardam liberação); os demais, só as
+ * ativas e liberadas do próprio escopo (pendentes e recusados só aparecem ao supervisor da equipe, em `GET /usuarios`).
+ */
 export function usuariosVisiveis(eu: UsuarioAutenticado): SQL | undefined {
   if (eu.perfil === "admin") return undefined;
-  if (veTodasAsEquipes(eu)) return eq(usuario.ativo, true);
-  return eu.equipeId === null ? sql`false` : and(eq(usuario.ativo, true), eq(usuario.equipeId, eu.equipeId));
+  if (veTodasAsEquipes(eu)) return and(eq(usuario.ativo, true), eq(usuario.liberacao, "liberado"));
+  return and(eq(usuario.ativo, true), eq(usuario.liberacao, "liberado"), noEscopo(eu, usuario.equipeId));
 }
 
-/** Equipes que a pessoa enxerga: todas para admin, analista e Segurança; a própria para técnico e supervisor. */
-export function equipesVisiveis(eu: UsuarioAutenticado): SQL | undefined {
-  if (veTodasAsEquipes(eu)) return undefined;
-  return eu.equipeId === null ? sql`false` : eq(equipe.id, eu.equipeId);
-}
+/** Equipes que a pessoa enxerga: todas para o admin; a própria e as que supervisiona para os demais. */
+export const equipesVisiveis = (eu: UsuarioAutenticado) => noEscopo(eu, equipe.id);
 
 export interface AchadoExato {
   tipo: "usuario" | "equipe" | "os";

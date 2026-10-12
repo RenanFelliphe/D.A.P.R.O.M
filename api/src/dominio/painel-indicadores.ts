@@ -1,7 +1,7 @@
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { equipe, execucao, execucaoPausa, os, reprogramacao, usuario } from "../db/schema";
-import { equipeDoEscopo, type UsuarioAutenticado } from "../http/autenticacao";
+import { equipesDoEscopo, type UsuarioAutenticado } from "../http/autenticacao";
 import { proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import {
@@ -16,13 +16,14 @@ import {
 } from "./painel-comum";
 
 /**
- * Supervisor só vê a própria equipe: pedir os indicadores de outra é `403` (nos demais perfis, `equipe_id` é só
- * um filtro). Devolve a equipe a que a consulta deve se limitar, ou `undefined` para todas.
+ * Supervisor só vê as equipes do próprio escopo (a dele e as que supervisiona): pedir os indicadores de outra é `403`
+ * (nos demais perfis, `equipe_id` é só um filtro). Devolve a equipe pedida, ou `undefined` para todas as do escopo, que
+ * as consultas já limitam por `condicaoEscopo`.
  */
 export function equipeDoIndicador(eu: UsuarioAutenticado, equipeId: string | undefined): string | undefined {
-  const escopo = equipeDoEscopo(eu);
-  if (escopo !== null && equipeId !== undefined && equipeId !== escopo) throw proibido("Você só vê os indicadores da sua equipe");
-  return equipeId ?? escopo ?? undefined;
+  const escopo = equipesDoEscopo(eu);
+  if (escopo !== null && equipeId !== undefined && !escopo.includes(equipeId)) throw proibido("Você só vê os indicadores das suas equipes");
+  return equipeId;
 }
 
 /** Indicador mensal de preventivas (`GET /indicadores?mes=`): a situação das preventivas programadas no mês. */

@@ -67,7 +67,7 @@ async function buscarOrdens(deps: Deps, alteradasDesde: Date | undefined): Promi
 
 /**
  * Falha: nenhuma OS foi criada, alterada ou removida; fica só o registro da leitura, com o erro (no histórico), e o alerta
- * `falha_importacao` no sino de quem pediu a leitura (na agendada, dos analistas).
+ * `falha_importacao` no sino de quem pediu a leitura (na agendada, dos administradores).
  */
 async function registrarFalha(deps: Deps, o: { importacaoId?: string; usuarioId: string | null; inicio: Date; erro: string }): Promise<string> {
   return deps.db.transaction(async (tx) => {

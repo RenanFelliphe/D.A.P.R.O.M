@@ -26,14 +26,14 @@ describe("Dashboards de Indicadores e exportação", () => {
     amb = await criarAmbiente({ relogio: AGORA });
     norte = (await amb.criarEquipe({ nome: "Equipe Norte" })).id;
     sul = (await amb.criarEquipe({ nome: "Equipe Sul" })).id;
-    u.supervisor = await amb.criarUsuario({ perfil: "supervisor", equipeId: norte, nome: "Sandra Supervisora" });
+    u.supervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId: norte, nome: "Sandra Supervisora", supervisor: true });
     await amb.db.update(equipe).set({ supervisorId: u.supervisor.id }).where(eq(equipe.id, norte));
     u.ana = await amb.criarUsuario({ perfil: "tecnico", equipeId: norte, nome: "Ana Norte" });
     u.bruno = await amb.criarUsuario({ perfil: "tecnico", equipeId: norte, nome: "Bruno Norte", comAssinatura: false });
     u.carla = await amb.criarUsuario({ perfil: "tecnico", equipeId: sul, nome: "Carla Sul" });
     u.davi = await amb.criarUsuario({ perfil: "tecnico", equipeId: sul, nome: "Davi Sul", senhaProvisoria: true });
     u.ex = await amb.criarUsuario({ perfil: "tecnico", equipeId: sul, nome: "Ex Técnico", ativo: false });
-    for (const perfil of ["analista", "seguranca", "admin"] as const) u[perfil] = await amb.criarUsuario({ perfil });
+    u.admin = await amb.criarUsuario({ perfil: "admin" });
 
     const [critico] = await amb.db.insert(localInstalacao).values({ codigo: "ESTAÇÃO/CRÍTICA", critico: true }).returning();
     const [comum] = await amb.db.insert(localInstalacao).values({ codigo: "REDE/COMUM" }).returning();
@@ -91,7 +91,7 @@ describe("Dashboards de Indicadores e exportação", () => {
     await novaOs("o3", { equipeId: norte, tipo: "preventiva", status: "liberada", inicio: "2026-10-01", local: comum!.id });
     const o4 = await novaOs("o4", { equipeId: sul, tipo: "preventiva", status: "pendente", inicio: "2026-10-02", local: critico!.id });
     await novaApr(o4, u.carla, "bloqueada", "2026-10-03T12:00:00Z");
-    await amb.db.insert(reprogramacao).values({ osId: o4, usuarioId: u.analista!.id, dataAnterior: "2026-10-02", dataNova: "2026-10-02", justificativa: "Aguardando apoio", criadaEm: h("2026-10-04T12:00:00Z") });
+    await amb.db.insert(reprogramacao).values({ osId: o4, usuarioId: u.admin!.id, dataAnterior: "2026-10-02", dataNova: "2026-10-02", justificativa: "Aguardando apoio", criadaEm: h("2026-10-04T12:00:00Z") });
     const o5 = await novaOs("o5", { equipeId: sul, tipo: "corretiva", status: "em_execucao", inicio: "2026-10-14", local: comum!.id });
     await novaExecucao(o5, u.carla, "2026-10-14T12:00:00Z", null, null);
     const o6 = await novaOs("o6", { equipeId: sul, tipo: "corretiva", status: "liberada", inicio: "2026-10-20", local: comum!.id });
@@ -119,7 +119,7 @@ describe("Dashboards de Indicadores e exportação", () => {
     });
 
     it("equipe_id e o supervisor limitam tudo à equipe", async () => {
-      const doSul = await pedir("/indicadores/geral", u.seguranca!, { equipe_id: sul });
+      const doSul = await pedir("/indicadores/geral", u.admin!, { equipe_id: sul });
       assert.deepEqual(doSul.carteira, { liberadas: 1, pendentes: 1, em_execucao: 1, atrasadas: 1, criticas: 1, apoio_abertas: 0 });
       assert.equal(doSul.encerradas.total, 0);
       const doSupervisor = await pedir("/indicadores/geral", u.supervisor!);
@@ -131,7 +131,7 @@ describe("Dashboards de Indicadores e exportação", () => {
 
   describe("GET /indicadores/os", () => {
     it("programadas, encerradas por faixa e tipo, preventivas, tempo, interrupções, reprogramações e locais", async () => {
-      const r = await pedir("/indicadores/os", u.analista!);
+      const r = await pedir("/indicadores/os", u.admin!);
       assert.deepEqual(r.programadas, { total: 5, corretivas: 2, preventivas: 3, canceladas: 1 });
       assert.deepEqual(r.encerradas, { total: 2, anterior: 1, corretivas: 1, preventivas: 1 });
       assert.equal(r.serie.length, 30);
@@ -157,13 +157,13 @@ describe("Dashboards de Indicadores e exportação", () => {
   describe("GET /indicadores/equipes", () => {
     it("por equipe e por técnico, com o cadastro para o admin", async () => {
       const r = await pedir("/indicadores/equipes", u.admin!);
-      assert.deepEqual(r.totais, { equipes: 2, tecnicos_ativos: 4, tecnicos_com_execucao: 2, execucoes: 2, tempo_liquido_medio_min: 90 });
+      assert.deepEqual(r.totais, { equipes: 2, tecnicos_ativos: 5, tecnicos_com_execucao: 2, execucoes: 2, tempo_liquido_medio_min: 90 });
       assert.deepEqual(r.equipes, [
         {
           id: norte,
           nome: "Equipe Norte",
           supervisor_nome: "Sandra Supervisora",
-          tecnicos: 2,
+          tecnicos: 3,
           preventivas: { encerradas: 1, atrasadas_justificadas: 0, atrasadas_sem_justificativa: 1 },
           execucoes: 2,
           tempo_liquido_medio_min: 90,
@@ -195,10 +195,11 @@ describe("Dashboards de Indicadores e exportação", () => {
           ["Bruno Norte", 1, 60, 1, 0, 0],
           ["Carla Sul", 0, null, 3, 1, 1],
           ["Davi Sul", 0, null, 0, 0, 0],
+          ["Sandra Supervisora", 0, null, 0, 0, 0],
         ],
       );
       assert.deepEqual(r.cadastro, {
-        ativos_por_perfil: { tecnico: 4, supervisor: 1, analista: 1, seguranca: 1, admin: 1 },
+        ativos_por_perfil: { tecnico: 5, admin: 1 },
         tecnicos_sem_assinatura: 1,
         senha_provisoria: 1,
         sem_equipe: 0,
@@ -207,11 +208,10 @@ describe("Dashboards de Indicadores e exportação", () => {
       });
     });
 
-    it("sem cadastro para quem não é admin; o supervisor só vê a própria equipe e seus técnicos", async () => {
-      assert.equal((await pedir("/indicadores/equipes", u.seguranca!)).cadastro, null);
+    it("sem cadastro para quem não é admin (o supervisor é um técnico que supervisiona a equipe); o supervisor só vê a própria equipe e seus técnicos", async () => {
       const r = await pedir("/indicadores/equipes", u.supervisor!);
       assert.deepEqual(r.equipes.map((e: any) => e.nome), ["Equipe Norte"]);
-      assert.deepEqual(r.tecnicos.map((t: any) => t.nome), ["Ana Norte", "Bruno Norte"]);
+      assert.deepEqual(r.tecnicos.map((t: any) => t.nome), ["Ana Norte", "Bruno Norte", "Sandra Supervisora"]);
       assert.equal(r.cadastro, null);
     });
 

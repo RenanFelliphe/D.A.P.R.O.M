@@ -16,7 +16,7 @@ describe("PDF da OS", () => {
   before(async () => {
     amb = await criarAmbiente({ relogio: new Date("2026-10-10T15:00:00Z") });
     equipeId = (await amb.criarEquipe()).id;
-    supervisor = await amb.criarUsuario({ perfil: "supervisor", equipeId, nome: "Marta Supervisora" });
+    supervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId, nome: "Marta Supervisora", supervisor: true });
   });
   after(() => amb.fechar());
 
@@ -129,8 +129,6 @@ describe("GET /os/{id}/pdf", () => {
   let tecnicoA: UsuarioDeTeste;
   let supervisorA: UsuarioDeTeste;
   let tecnicoB: UsuarioDeTeste;
-  let analista: UsuarioDeTeste;
-  let seguranca: UsuarioDeTeste;
   let admin: UsuarioDeTeste;
 
   before(async () => {
@@ -138,10 +136,8 @@ describe("GET /os/{id}/pdf", () => {
     equipeA = (await amb.criarEquipe()).id;
     equipeB = (await amb.criarEquipe()).id;
     tecnicoA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA });
-    supervisorA = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeA });
+    supervisorA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, supervisor: true });
     tecnicoB = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeB });
-    analista = await amb.criarUsuario({ perfil: "analista" });
-    seguranca = await amb.criarUsuario({ perfil: "seguranca" });
     admin = await amb.criarUsuario({ perfil: "admin" });
   });
   after(() => amb.fechar());
@@ -183,13 +179,13 @@ describe("GET /os/{id}/pdf", () => {
     assert.equal(r.corpo.erro.mensagem, "A OS ainda não foi encerrada");
   });
 
-  it("técnico e supervisor só veem a própria equipe (404 para a outra); analista, segurança e admin veem todas", async () => {
+  it("técnico e supervisor só veem a própria equipe (404 para a outra); o admin vê todas", async () => {
     const o = await criarOs(amb, { equipeId: equipeA, encerrada: true });
     const caminho = `/os/${o.osId}/pdf`;
     assert.equal((await amb.req("GET", caminho, { como: tecnicoB })).status, 404);
     assert.equal((await amb.req("GET", caminho, { como: tecnicoA })).status, 200);
     assert.equal((await amb.req("GET", caminho, { como: supervisorA })).status, 200);
-    for (const u of [analista, seguranca, admin]) assert.equal((await amb.req("GET", caminho, { como: u })).status, 200, u.perfil);
+    for (const u of [admin]) assert.equal((await amb.req("GET", caminho, { como: u })).status, 200, u.perfil);
   });
 
   it("OS inexistente ou id que não é UUID: 404", async () => {

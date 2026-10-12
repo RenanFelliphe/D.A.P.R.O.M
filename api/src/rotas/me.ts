@@ -2,9 +2,9 @@ import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
-import { equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
+import { ESTADOS_TREINAMENTO, equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
-import { equipeParaApi, usuarioParaApi } from "../dominio/usuarios";
+import { equipeParaApi, nomesDosCriadores, treinamentoParaApi, usuarioParaApi } from "../dominio/usuarios";
 import type { Autenticacao, Ambiente } from "../http/autenticacao";
 import { invalido } from "../http/erros";
 import { responder } from "../http/resposta";
@@ -14,11 +14,31 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
   /** Também com a senha inicial: é como a tela "Defina sua senha" sabe quem é o usuário. */
-  r.get("/me", autenticar({ permitirSenhaProvisoria: true }), async (c) => {
+  r.get("/me", autenticar({ permitirSenhaProvisoria: true, permitirPendente: true }), async (c) => {
     const eu = c.get("usuario");
     const [u] = await deps.db.select().from(usuario).where(eq(usuario.id, eu.id));
     const [e] = eu.equipeId ? await deps.db.select().from(equipe).where(eq(equipe.id, eu.equipeId)) : [];
-    return responder(c, { usuario: usuarioParaApi(u!), equipe: e ? equipeParaApi(e) : null });
+    // As equipes que a pessoa supervisa (qualquer perfil): é o que abre a gestão para quem é técnico.
+    const supervisionadas = eu.equipesSupervisionadas.length
+      ? await deps.db.select({ id: equipe.id, nome: equipe.nome }).from(equipe).where(inArray(equipe.id, eu.equipesSupervisionadas)).orderBy(equipe.nome)
+      : [];
+    const criadores = await nomesDosCriadores(deps.db, [u!]);
+    return responder(c, { usuario: usuarioParaApi(u!, { criadoPorNome: (u!.criadoPorId && criadores.get(u!.criadoPorId)) || null }), equipe: e ? equipeParaApi(e) : null, equipesSupervisionadas: supervisionadas });
+  });
+
+  /**
+   * Estado do Campo de treino (a web guarda aqui se a pessoa concluiu, pulou ou vai refazer). Idempotente; `nao_iniciado` serve para "refazer".
+   * Também com a senha inicial e com o acesso pendente de liberação, como `GET /me`.
+   */
+  r.put("/me/treinamento", autenticar({ permitirSenhaProvisoria: true, permitirPendente: true }), async (c) => {
+    const eu = c.get("usuario");
+    const { estado } = await lerCorpo(c, z.object({ estado: z.enum(ESTADOS_TREINAMENTO) }));
+    const [u] = await deps.db
+      .update(usuario)
+      .set({ treinamentoEstado: estado, treinamentoEm: estado === "nao_iniciado" ? null : deps.agora() })
+      .where(eq(usuario.id, eu.id))
+      .returning();
+    return responder(c, { treinamento: treinamentoParaApi(u!) });
   });
 
   /**

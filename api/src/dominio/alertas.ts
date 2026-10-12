@@ -4,7 +4,7 @@ import { alerta, equipe, importacao, usuario, type AlertaTipo } from "../db/sche
 import { enfileirarTarefa } from "../servicos/fila";
 
 /**
- * Quem recebe os alertas de uma equipe: o supervisor ativo dela; sem supervisor (ou desativado), todos os analistas
+ * Quem recebe os alertas de uma equipe: o supervisor ativo dela; sem supervisor (ou desativado), todos os administradores
  * ativos (Impedimento, item 1).
  */
 export async function destinatariosDaEquipe(db: Db, equipeId: string): Promise<{ id: string; email: string | null }[]> {
@@ -16,7 +16,7 @@ export async function destinatariosDaEquipe(db: Db, equipeId: string): Promise<{
       .where(and(eq(usuario.id, e.supervisorId), eq(usuario.ativo, true)));
     if (sup) return [sup];
   }
-  return db.select({ id: usuario.id, email: usuario.email }).from(usuario).where(and(eq(usuario.perfil, "analista"), eq(usuario.ativo, true)));
+  return db.select({ id: usuario.id, email: usuario.email }).from(usuario).where(and(eq(usuario.perfil, "admin"), eq(usuario.ativo, true)));
 }
 
 /**
@@ -38,18 +38,15 @@ export async function criarAlertas(db: Db, dados: { tipo: AlertaTipo; osId: stri
 
 /**
  * Quem fica sabendo de uma importação que falhou: quem a iniciou ("Sincronizar agora" ou a planilha), se ainda está
- * ativo; na leitura agendada, que não tem autor, os analistas ativos; sem analista, os administradores ativos.
+ * ativo; na leitura agendada, que não tem autor, os administradores ativos.
  */
 async function destinatariosDaFalha(db: Db, usuarioId: string | null): Promise<string[]> {
   if (usuarioId) {
     const [quem] = await db.select({ id: usuario.id }).from(usuario).where(and(eq(usuario.id, usuarioId), eq(usuario.ativo, true)));
     if (quem) return [quem.id];
   }
-  for (const perfil of ["analista", "admin"] as const) {
-    const ids = await db.select({ id: usuario.id }).from(usuario).where(and(eq(usuario.perfil, perfil), eq(usuario.ativo, true)));
-    if (ids.length > 0) return ids.map((u) => u.id);
-  }
-  return [];
+  const ids = await db.select({ id: usuario.id }).from(usuario).where(and(eq(usuario.perfil, "admin"), eq(usuario.ativo, true)));
+  return ids.map((u) => u.id);
 }
 
 /**

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { equipe, os, reprogramacao, type OsStatus } from "../db/schema";
-import { podeVerEquipe, type UsuarioAutenticado } from "../http/autenticacao";
+import { podeSupervisionarEquipe, type UsuarioAutenticado } from "../http/autenticacao";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
 
 /** Status em que a OS de apoio ainda pode ser cancelada pelo sistema. */
@@ -35,7 +35,7 @@ export async function reprogramarOs(
 ) {
   return db.transaction(async (tx) => {
     const [atual] = await tx.select().from(os).where(eq(os.id, osId)).for("update");
-    if (!atual || !podeVerEquipe(eu, atual.equipeId)) throw naoEncontrado("OS não encontrada");
+    if (!atual || !podeSupervisionarEquipe(eu, atual.equipeId)) throw naoEncontrado("OS não encontrada");
     if (STATUS_REPROGRAMAVEIS_NEGADOS.includes(atual.status)) {
       throw conflito("os_finalizada", `OS ${atual.status === "encerrada" ? "encerrada" : "cancelada"} não pode ser reprogramada`);
     }

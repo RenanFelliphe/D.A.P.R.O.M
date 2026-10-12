@@ -20,7 +20,7 @@ export const alerta = pgTable(
     osId: uuid().references(() => os.id),
     /** Só na falha de importação. */
     importacaoId: uuid().references(() => importacao.id),
-    /** Alerta de OS: supervisor da equipe; sem supervisor, um alerta por analista ativo. Falha de importação: ver `dominio/alertas.ts`. */
+    /** Alerta de OS: supervisor da equipe; sem supervisor, um alerta por administrador ativo. Falha de importação: ver `dominio/alertas.ts`. */
     destinatarioId: uuid()
       .notNull()
       .references(() => usuario.id),

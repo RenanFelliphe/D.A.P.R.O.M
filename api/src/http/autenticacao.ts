@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify } from "jose";
 import type { MiddlewareHandler } from "hono";
 import type { Deps } from "../deps";
-import { usuario, type Perfil } from "../db/schema";
+import { equipe, usuario, type Perfil } from "../db/schema";
 import { ErroApi, naoAutenticado, proibido } from "./erros";
 
 export interface UsuarioAutenticado {
@@ -12,22 +12,37 @@ export interface UsuarioAutenticado {
   email: string;
   perfil: Perfil;
   equipeId: string | null;
+  /** Equipes de que a pessoa é supervisora (`equipe.supervisor_id`); todo supervisor é técnico. */
+  equipesSupervisionadas: string[];
   ativo: boolean;
   senhaProvisoria: boolean;
   assinaturaPath: string | null;
 }
 
+/** Papel exigido por uma rota: um perfil, ou `supervisor` (a flag de quem supervisiona uma equipe). */
+export type Papel = Perfil | "supervisor";
+
 /** Tipo do contexto do Hono em toda rota autenticada: `new Hono<Ambiente>()`. */
 export type Ambiente = { Variables: { usuario: UsuarioAutenticado } };
 
-/** Perfis que enxergam todas as equipes (técnico e supervisor só veem a própria). */
-export const veTodasAsEquipes = (u: UsuarioAutenticado) => u.perfil === "analista" || u.perfil === "seguranca" || u.perfil === "admin";
+/** Só o administrador enxerga todas as equipes (técnico, supervisor ou não, só vê as suas). */
+export const veTodasAsEquipes = (u: UsuarioAutenticado) => u.perfil === "admin";
 
-/** `equipe_id` a que a consulta deve se limitar: a do usuário, ou `null` quando ele vê todas. */
-export const equipeDoEscopo = (u: UsuarioAutenticado) => (veTodasAsEquipes(u) ? null : u.equipeId);
+/** Supervisor de ao menos uma equipe (`equipe.supervisor_id`): é um técnico com as ações de supervisão nas equipes que supervisiona. */
+export const ehSupervisor = (u: UsuarioAutenticado) => u.equipesSupervisionadas.length > 0;
 
-/** Técnico e supervisor sem equipe não enxergam nada; os demais perfis enxergam qualquer equipe. */
-export const podeVerEquipe = (u: UsuarioAutenticado, equipeId: string) => veTodasAsEquipes(u) || (u.equipeId !== null && u.equipeId === equipeId);
+/** Equipes que a pessoa enxerga: `null` quando vê todas; senão a própria e as que supervisiona. */
+export function equipesDoEscopo(u: UsuarioAutenticado): string[] | null {
+  if (veTodasAsEquipes(u)) return null;
+  return [...new Set([u.equipeId, ...u.equipesSupervisionadas].filter((id): id is string => id !== null))];
+}
+
+/** Quem não vê todas as equipes só enxerga as do próprio escopo; sem equipe nem supervisão, nenhuma. */
+export const podeVerEquipe = (u: UsuarioAutenticado, equipeId: string) => equipesDoEscopo(u)?.includes(equipeId) ?? true;
+
+/** Supervisão da equipe: quem é o supervisor dela e o administrador. */
+export const podeSupervisionarEquipe = (u: UsuarioAutenticado, equipeId: string) =>
+  veTodasAsEquipes(u) || u.equipesSupervisionadas.includes(equipeId);
 
 export interface OpcoesAutenticacao {
   /**
@@ -37,6 +52,11 @@ export interface OpcoesAutenticacao {
   permitirDesativado?: boolean;
   /** Com a senha inicial, só a troca de senha (e a leitura de `/me`) passa. */
   permitirSenhaProvisoria?: boolean;
+  /**
+   * Usuário `pendente` (aguarda a liberação de um admin) só passa nas rotas que ligam esta opção: as que ele precisa para
+   * entrar, trocar a senha e fazer o Campo de treino. Nas demais, `403 aguardando_liberacao`.
+   */
+  permitirPendente?: boolean;
 }
 
 export function criarAutenticacao(deps: Deps) {
@@ -70,10 +90,17 @@ export function criarAutenticacao(deps: Deps) {
 
     const [linha] = await deps.db.select().from(usuario).where(eq(usuario.id, id)).limit(1);
     if (!linha) throw naoAutenticado();
+    // Recusado nunca passa, nem para enviar fila offline (quem nasce pendente não chega a ter fila).
+    if (linha.liberacao === "recusado") throw new ErroApi(401, "acesso_revogado", "Acesso revogado");
     if (!linha.ativo && !opcoes.permitirDesativado) throw new ErroApi(401, "acesso_revogado", "Acesso revogado");
+    if (linha.liberacao === "pendente" && !opcoes.permitirPendente) {
+      throw new ErroApi(403, "aguardando_liberacao", "Seu acesso aguarda a liberação de um administrador");
+    }
     if (linha.senhaProvisoria && !opcoes.permitirSenhaProvisoria) {
       throw new ErroApi(403, "senha_provisoria", "Defina sua senha antes de continuar");
     }
+
+    const supervisionadas = await deps.db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, linha.id));
 
     c.set("usuario", {
       id: linha.id,
@@ -82,6 +109,7 @@ export function criarAutenticacao(deps: Deps) {
       email: linha.email,
       perfil: linha.perfil,
       equipeId: linha.equipeId,
+      equipesSupervisionadas: supervisionadas.map((e) => e.id),
       ativo: linha.ativo,
       senhaProvisoria: linha.senhaProvisoria,
       assinaturaPath: linha.assinaturaPath,
@@ -89,9 +117,10 @@ export function criarAutenticacao(deps: Deps) {
     await proximo();
   };
 
-  /** Depois de `autenticar`: `403` se o perfil não está na lista. */
-  const exigirPerfil = (...perfis: Perfil[]): MiddlewareHandler<Ambiente> => async (c, proximo) => {
-    if (!perfis.includes(c.get("usuario").perfil)) throw proibido();
+  /** Depois de `autenticar`: `403` se o perfil não está na lista. O papel `supervisor` casa com quem supervisiona ao menos uma equipe. */
+  const exigirPerfil = (...papeis: Papel[]): MiddlewareHandler<Ambiente> => async (c, proximo) => {
+    const eu = c.get("usuario");
+    if (!papeis.includes(eu.perfil) && !(papeis.includes("supervisor") && ehSupervisor(eu))) throw proibido();
     await proximo();
   };
 

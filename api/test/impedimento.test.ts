@@ -15,9 +15,7 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
   let osOrigemId: string;
   let supervisorA: UsuarioDeTeste;
   let supervisorB: UsuarioDeTeste;
-  let analista: UsuarioDeTeste;
   let admin: UsuarioDeTeste;
-  let seguranca: UsuarioDeTeste;
   let tecnico: UsuarioDeTeste;
   let contador = 0;
 
@@ -25,11 +23,9 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
     amb = await criarAmbiente({ relogio: new Date("2026-10-11T12:00:00Z") });
     equipeA = (await amb.criarEquipe()).id;
     equipeB = (await amb.criarEquipe()).id;
-    supervisorA = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeA });
-    supervisorB = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeB });
-    analista = await amb.criarUsuario({ perfil: "analista" });
+    supervisorA = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, supervisor: true });
+    supervisorB = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeB, supervisor: true });
     admin = await amb.criarUsuario({ perfil: "admin" });
-    seguranca = await amb.criarUsuario({ perfil: "seguranca" });
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA });
     const [local] = await amb.db.insert(localInstalacao).values({ codigo: "LOCAL/TESTE" }).returning({ id: localInstalacao.id });
     localId = local!.id;
@@ -101,7 +97,7 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
 
     it("data fim nula continua nula e antecipar a data desloca o fim para trás", async () => {
       const semFim = await criarOs({ inicio: "2026-10-20", fim: null });
-      await amb.esperar(200, "POST", `/os/${semFim.id}/reprogramar`, { como: analista, json: { data_inicio_prog: "2026-10-15", justificativa: "Antecipada" } });
+      await amb.esperar(200, "POST", `/os/${semFim.id}/reprogramar`, { como: admin, json: { data_inicio_prog: "2026-10-15", justificativa: "Antecipada" } });
       const a = await lerOs(semFim.id);
       assert.equal(a.dataInicioProg, "2026-10-15");
       assert.equal(a.dataFimProg, null);
@@ -131,7 +127,7 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
     it("equipe inexistente é 422 e nada é gravado", async () => {
       const o = await criarOs();
       const r = await amb.req("POST", `/os/${o.id}/reprogramar`, {
-        como: analista,
+        como: admin,
         json: { data_inicio_prog: "2026-10-25", equipe_id: ID_INEXISTENTE, justificativa: "x" },
       });
       assert.equal(r.status, 422);
@@ -159,7 +155,7 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
     it("valida a data: formato errado, data inexistente e ausente são 422", async () => {
       const o = await criarOs();
       for (const data of ["25/10/2026", "2026-02-30", undefined]) {
-        const r = await amb.req("POST", `/os/${o.id}/reprogramar`, { como: analista, json: { data_inicio_prog: data, justificativa: "x" } });
+        const r = await amb.req("POST", `/os/${o.id}/reprogramar`, { como: admin, json: { data_inicio_prog: data, justificativa: "x" } });
         assert.equal(r.status, 422);
         assert.equal(r.corpo.erro.codigo, "validacao");
       }
@@ -168,7 +164,7 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
     it("OS encerrada ou cancelada é 409 e nada muda", async () => {
       for (const status of ["encerrada", "cancelada"] as const) {
         const o = await criarOs({ status });
-        const r = await amb.req("POST", `/os/${o.id}/reprogramar`, { como: analista, json: { data_inicio_prog: "2026-12-01", justificativa: "x" } });
+        const r = await amb.req("POST", `/os/${o.id}/reprogramar`, { como: admin, json: { data_inicio_prog: "2026-12-01", justificativa: "x" } });
         assert.equal(r.status, 409, status);
         assert.equal(r.corpo.erro.codigo, "os_finalizada");
         assert.equal((await lerOs(o.id)).dataInicioProg, "2026-10-20");
@@ -190,45 +186,38 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
       const corpo = { data_inicio_prog: "2026-12-01", justificativa: "x" };
       assert.equal((await amb.req("POST", `/os/${o.id}/reprogramar`, { como: supervisorB, json: corpo })).status, 404);
       assert.equal((await amb.req("POST", `/os/${ID_INEXISTENTE}/reprogramar`, { como: supervisorB, json: corpo })).status, 404);
-      assert.equal((await amb.req("POST", "/os/abc/reprogramar", { como: analista, json: corpo })).status, 404);
+      assert.equal((await amb.req("POST", "/os/abc/reprogramar", { como: admin, json: corpo })).status, 404);
       assert.equal((await lerOs(o.id)).dataInicioProg, "2026-10-20");
     });
 
-    it("perfis: técnico e segurança 403; sem token 401; analista e admin reprogramam qualquer equipe", async () => {
+    it("perfis: técnico (que não supervisiona) 403; sem token 401; admin reprograma qualquer equipe", async () => {
       const o = await criarOs({ equipeId: equipeB });
       const corpo = { data_inicio_prog: "2026-12-01", justificativa: "x" };
       assert.equal((await amb.req("POST", `/os/${o.id}/reprogramar`, { json: corpo })).status, 401);
       assert.equal((await amb.req("POST", `/os/${o.id}/reprogramar`, { como: tecnico, json: corpo })).status, 403);
-      assert.equal((await amb.req("POST", `/os/${o.id}/reprogramar`, { como: seguranca, json: corpo })).status, 403);
-      await amb.esperar(200, "POST", `/os/${o.id}/reprogramar`, { como: analista, json: corpo });
+      await amb.esperar(200, "POST", `/os/${o.id}/reprogramar`, { como: admin, json: corpo });
       await amb.esperar(200, "POST", `/os/${o.id}/reprogramar`, { como: admin, json: { ...corpo, data_inicio_prog: "2026-12-02" } });
       assert.equal((await historico(o.id)).length, 2);
     });
   });
 
   describe("POST /os/:id/cancelar", () => {
-    it("analista cancela OS de apoio liberada ou pendente e grava quem, quando e por quê", async () => {
+    it("admin cancela OS de apoio liberada ou pendente e grava quem, quando e por quê", async () => {
       for (const status of ["liberada", "pendente"] as const) {
         const o = await criarOs({ status });
-        const r = await amb.esperar(200, "POST", `/os/${o.id}/cancelar`, { como: analista, json: { justificativa: "  Aberta em duplicidade " } });
+        const r = await amb.esperar(200, "POST", `/os/${o.id}/cancelar`, { como: admin, json: { justificativa: "  Aberta em duplicidade " } });
         assert.deepEqual(r, { id: o.id, status: "cancelada" });
         const depois = await lerOs(o.id);
         assert.equal(depois.status, "cancelada");
-        assert.equal(depois.canceladaPor, analista.id);
+        assert.equal(depois.canceladaPor, admin.id);
         assert.deepEqual(depois.canceladaEm, new Date("2026-10-11T12:00:00Z"));
         assert.equal(depois.justificativaCancelamento, "Aberta em duplicidade");
       }
     });
 
-    it("admin também cancela", async () => {
-      const o = await criarOs();
-      await amb.esperar(200, "POST", `/os/${o.id}/cancelar`, { como: admin, json: { justificativa: "Erro" } });
-      assert.equal((await lerOs(o.id)).canceladaPor, admin.id);
-    });
-
     it("OS do SAP é 422 e continua como estava", async () => {
       const o = await criarOs({ origem: "sap" });
-      const r = await amb.req("POST", `/os/${o.id}/cancelar`, { como: analista, json: { justificativa: "x" } });
+      const r = await amb.req("POST", `/os/${o.id}/cancelar`, { como: admin, json: { justificativa: "x" } });
       assert.equal(r.status, 422);
       assert.equal(r.corpo.erro.mensagem, "Só OS de apoio pode ser cancelada pelo sistema");
       assert.equal((await lerOs(o.id)).status, "liberada");
@@ -237,7 +226,7 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
     it("em execução, encerrada ou já cancelada é 409", async () => {
       for (const status of ["em_execucao", "encerrada", "cancelada"] as const) {
         const o = await criarOs({ status });
-        const r = await amb.req("POST", `/os/${o.id}/cancelar`, { como: analista, json: { justificativa: "x" } });
+        const r = await amb.req("POST", `/os/${o.id}/cancelar`, { como: admin, json: { justificativa: "x" } });
         assert.equal(r.status, 409, status);
         assert.equal((await lerOs(o.id)).status, status);
       }
@@ -246,21 +235,21 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
     it("justificativa obrigatória: ausente ou em branco é 422", async () => {
       const o = await criarOs();
       for (const json of [{}, { justificativa: "" }, { justificativa: "  " }]) {
-        const r = await amb.req("POST", `/os/${o.id}/cancelar`, { como: analista, json });
+        const r = await amb.req("POST", `/os/${o.id}/cancelar`, { como: admin, json });
         assert.equal(r.status, 422);
         assert.equal(r.corpo.erro.codigo, "justificativa_obrigatoria");
       }
       assert.equal((await lerOs(o.id)).status, "liberada");
     });
 
-    it("perfis: supervisor, técnico e segurança 403; sem token 401; OS inexistente 404", async () => {
+    it("perfis: supervisor e técnico 403; sem token 401; OS inexistente 404", async () => {
       const o = await criarOs();
       const json = { justificativa: "x" };
       assert.equal((await amb.req("POST", `/os/${o.id}/cancelar`, { json })).status, 401);
-      for (const quem of [supervisorA, tecnico, seguranca]) {
+      for (const quem of [supervisorA, tecnico]) {
         assert.equal((await amb.req("POST", `/os/${o.id}/cancelar`, { como: quem, json })).status, 403, quem.perfil);
       }
-      assert.equal((await amb.req("POST", `/os/${ID_INEXISTENTE}/cancelar`, { como: analista, json })).status, 404);
+      assert.equal((await amb.req("POST", `/os/${ID_INEXISTENTE}/cancelar`, { como: admin, json })).status, 404);
       assert.equal((await lerOs(o.id)).status, "liberada");
     });
   });
@@ -270,18 +259,18 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
     let osB: Awaited<ReturnType<typeof criarOs>>;
     let aSupAntigo: Awaited<ReturnType<typeof criarAlerta>>;
     let aSupNovo: Awaited<ReturnType<typeof criarAlerta>>;
-    let aAnalista: Awaited<ReturnType<typeof criarAlerta>>;
+    let aAdmin: Awaited<ReturnType<typeof criarAlerta>>;
     let aSupB: Awaited<ReturnType<typeof criarAlerta>>;
     let leitor: UsuarioDeTeste;
 
     before(async () => {
       // Supervisor novo, só com os alertas criados aqui.
-      leitor = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipeA });
+      leitor = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeA, supervisor: true });
       osA = await criarOs({ equipeId: equipeA, status: "pendente", origem: "sap" });
       osB = await criarOs({ equipeId: equipeB, status: "pendente" });
       aSupAntigo = await criarAlerta(osA.id, leitor.id, "bloqueio", new Date("2026-10-01T10:00:00Z"));
       aSupNovo = await criarAlerta(osA.id, leitor.id, "conflito_planejamento", new Date("2026-10-05T10:00:00Z"));
-      aAnalista = await criarAlerta(osB.id, analista.id, "apoio_encerrado", new Date("2026-10-03T10:00:00Z"));
+      aAdmin = await criarAlerta(osB.id, admin.id, "apoio_encerrado", new Date("2026-10-03T10:00:00Z"));
       aSupB = await criarAlerta(osB.id, supervisorB.id, "bloqueio", new Date("2026-10-04T10:00:00Z"));
     });
 
@@ -305,17 +294,13 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
       assert.ok(a.criado_em);
     });
 
-    it("analista vê só os alertas em que é destinatário", async () => {
-      assert.deepEqual(ids(await amb.esperar(200, "GET", "/alertas", { como: analista })), [aAnalista.id]);
-    });
-
-    it("admin e segurança veem todos e filtram por equipe", async () => {
-      const meus = [aSupNovo, aSupAntigo, aAnalista, aSupB].map((a) => a.id);
-      for (const quem of [admin, seguranca]) {
+    it("admin vê todos e filtra por equipe", async () => {
+      const meus = [aSupNovo, aSupAntigo, aAdmin, aSupB].map((a) => a.id);
+      for (const quem of [admin]) {
         const todos = ids(await amb.esperar(200, "GET", "/alertas", { como: quem }));
         for (const id of meus) assert.ok(todos.includes(id), quem.perfil);
         const daB = ids(await amb.esperar(200, "GET", "/alertas", { como: quem, consulta: { equipe_id: equipeB } }));
-        assert.deepEqual(daB.filter((id) => meus.includes(id)), [aSupB.id, aAnalista.id]);
+        assert.deepEqual(daB.filter((id) => meus.includes(id)), [aSupB.id, aAdmin.id]);
         assert.ok(!daB.includes(aSupNovo.id));
       }
     });
@@ -364,17 +349,15 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
       assert.equal((await lerAlerta(aSupNovo.id)).lidoEm, null);
     });
 
-    it("só o destinatário (ou o admin) marca: outro supervisor e outro analista recebem 404; técnico e segurança 403", async () => {
+    it("só o destinatário (ou o admin) marca: outro supervisor recebe 404; técnico 403", async () => {
       assert.equal((await amb.req("PATCH", `/alertas/${aSupB.id}`, { como: leitor, json: { lido: true } })).status, 404);
-      assert.equal((await amb.req("PATCH", `/alertas/${aSupB.id}`, { como: analista, json: { lido: true } })).status, 404);
       assert.equal((await amb.req("PATCH", `/alertas/${aSupB.id}`, { como: tecnico, json: { lido: true } })).status, 403);
-      assert.equal((await amb.req("PATCH", `/alertas/${aSupB.id}`, { como: seguranca, json: { lido: true } })).status, 403);
       assert.equal((await amb.req("PATCH", `/alertas/${ID_INEXISTENTE}`, { como: admin, json: { lido: true } })).status, 404);
       assert.equal((await lerAlerta(aSupB.id)).lidoEm, null);
 
       await amb.esperar(200, "PATCH", `/alertas/${aSupB.id}`, { como: admin, json: { lido: true } });
       assert.ok((await lerAlerta(aSupB.id)).lidoEm);
-      await amb.esperar(200, "PATCH", `/alertas/${aAnalista.id}`, { como: analista, json: { lido: true } });
+      await amb.esperar(200, "PATCH", `/alertas/${aAdmin.id}`, { como: admin, json: { lido: true } });
     });
   });
 });

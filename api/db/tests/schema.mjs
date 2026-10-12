@@ -33,13 +33,16 @@ await deve("equipe", `insert into equipe (id,nome,centro_trabalho) values ('${id
 await deve("usuário técnico", `insert into usuario (id,nome,matricula,email,perfil,equipe_id) values ('${id(10)}','Carlos','10482','carlos.silva@empresa.com.br','tecnico','${id(1)}')`);
 await deve("usuário técnico 2", `insert into usuario (id,nome,matricula,email,perfil,equipe_id) values ('${id(11)}','Diego','10483','diego.souza@empresa.com.br','tecnico','${id(1)}')`);
 await deve("usuário com cargo e CREA", `update usuario set cargo='Técnico em Elétrica', registro_profissional='ES-050003/D' where id='${id(11)}'`);
-await recusa("usuário sem e-mail", `insert into usuario (id,nome,matricula,perfil) values ('${id(12)}','Marcos','90001','supervisor')`);
-await deve("supervisor com e-mail", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(12)}','Marcos','90001','supervisor','marcos.lima@empresa.com.br')`);
+await recusa("usuário sem e-mail", `insert into usuario (id,nome,matricula,perfil) values ('${id(12)}','Marcos','90001','tecnico')`);
+await deve("técnico (futuro supervisor) com e-mail", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(12)}','Marcos','90001','tecnico','marcos.lima@empresa.com.br')`);
 await recusa("e-mail repetido", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(14)}','Outro','90002','tecnico','marcos.lima@empresa.com.br')`);
 await recusa("e-mail com maiúsculas", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(14)}','Outro','90002','tecnico','Outro.Nome@empresa.com.br')`);
 await recusa("matrícula repetida", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(13)}','Outro','10482','tecnico','outro.nome@empresa.com.br')`);
-await recusa("perfil inválido", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(13)}','X','777','gerente','x.y@empresa.com.br')`);
+await recusa("perfil inválido (supervisor e analista não são mais perfis)", `insert into usuario (id,nome,matricula,perfil,email) values ('${id(13)}','X','777','supervisor','x.y@empresa.com.br')`);
 await deve("supervisor da equipe", `update equipe set supervisor_id='${id(12)}' where id='${id(1)}'`);
+await recusa("liberação inválida", `update usuario set liberacao='quase' where id='${id(11)}'`);
+await deve("usuário pendente, criado pelo supervisor", `insert into usuario (id,nome,matricula,perfil,email,equipe_id,liberacao,criado_por_id) values ('${id(15)}','Novato','90010','tecnico','novato.silva@empresa.com.br','${id(1)}','pendente','${id(12)}')`);
+await deve("recusar com motivo", `update usuario set liberacao='recusado', ativo=false, recusa_motivo='Matrícula não confere' where id='${id(15)}'`);
 
 // modelo
 await deve("modelo rascunho", `insert into modelo_apr (id,codigo,versao,titulo) values ('${id(20)}','APR 03',4,'Operação e manutenção')`);

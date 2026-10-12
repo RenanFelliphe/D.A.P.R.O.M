@@ -56,7 +56,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
   const riscos = ids.length ? await db.select().from(riscoModeloApr).where(inArray(riscoModeloApr.modeloAprId, ids)) : [];
   const itens = ids.length ? await db.select().from(itemModeloApr).where(inArray(itemModeloApr.modeloAprId, ids)) : [];
 
-  const equipe = await db.select().from(usuario).where(and(eq(usuario.equipeId, usuarioLogado.equipeId), eq(usuario.ativo, true)));
+  const equipe = await db.select().from(usuario).where(and(eq(usuario.equipeId, usuarioLogado.equipeId), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")));
 
   return {
     os: ordens,

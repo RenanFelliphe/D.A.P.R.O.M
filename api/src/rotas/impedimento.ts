@@ -27,7 +27,7 @@ const dataValida = dataIso.refine((v) => {
 export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
-  r.post("/os/:id/reprogramar", autenticar(), exigirPerfil("supervisor", "analista", "admin"), async (c) => {
+  r.post("/os/:id/reprogramar", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ data_inicio_prog: dataValida, equipe_id: uuid.optional(), justificativa }));
     const motivo = justificativaObrigatoria(dados.justificativa);
@@ -39,20 +39,20 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     return responder(c, resultado);
   });
 
-  r.post("/os/:id/cancelar", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+  r.post("/os/:id/cancelar", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ justificativa }));
     const motivo = justificativaObrigatoria(dados.justificativa);
     return responder(c, await cancelarOsDeApoio(deps.db, c.get("usuario"), id, motivo, deps.agora()));
   });
 
-  r.get("/alertas", autenticar(), exigirPerfil("supervisor", "analista", "seguranca", "admin"), async (c) => {
+  r.get("/alertas", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
     const filtros = lerConsulta(c, esquemaPaginacao.extend({ lido: booleanoDaConsulta, equipe_id: uuid.optional() }));
     const { linhas, total } = await listarAlertas(deps.db, c.get("usuario"), filtros);
     return responder(c, { alertas: linhas, ...meta(filtros, total) });
   });
 
-  r.patch("/alertas/:id", autenticar(), exigirPerfil("supervisor", "analista", "admin"), async (c) => {
+  r.patch("/alertas/:id", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
     const id = lerId(c);
     await lerCorpo(c, z.object({ lido: z.literal(true, { error: "Só é possível marcar o alerta como lido" }) }));
     await marcarComoLido(deps.db, c.get("usuario"), id, deps.agora());

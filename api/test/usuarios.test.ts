@@ -53,7 +53,7 @@ describe("Plataforma, usuários e equipes", () => {
   });
 
   it("valida o corpo: o e-mail é obrigatório (inclusive do supervisor) e precisa ser um e-mail", async () => {
-    const semEmail = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", matricula: "S1", perfil: "supervisor", senha_inicial: "senha-inicial-1" } });
+    const semEmail = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", matricula: "S1", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
     assert.equal(semEmail.status, 422);
     assert.equal(semEmail.corpo.erro.codigo, "validacao");
     const ruim = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", matricula: "S2", email: "isto não é e-mail", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
@@ -126,7 +126,7 @@ describe("Plataforma, usuários e equipes", () => {
 
   it("DELETE /usuarios: quem já tem histórico (supervisor de equipe) não é removido: 409 e continua cadastrado", async () => {
     const equipe = await amb.criarEquipe();
-    const sup = await amb.criarUsuario({ perfil: "supervisor", equipeId: equipe.id });
+    const sup = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipe.id });
     await amb.esperar(200, "PATCH", `/equipes/${equipe.id}`, { como: admin, json: { supervisor_id: sup.id } });
     const r = await amb.req("DELETE", `/usuarios/${sup.id}`, { como: admin });
     assert.equal(r.status, 409);
@@ -147,17 +147,19 @@ describe("Plataforma, usuários e equipes", () => {
     assert.equal(eu.usuario.equipe_id, equipeId);
     assert.equal(eu.equipe.id, equipeId);
     assert.ok("centro_trabalho" in eu.equipe);
+    assert.deepEqual(eu.equipes_supervisionadas, []);
   });
 
-  it("admin cria e edita equipes; centro de trabalho repetido é 409; supervisor precisa ter perfil supervisor", async () => {
+  it("admin cria e edita equipes; centro de trabalho repetido é 409; supervisor é qualquer usuário ativo, de qualquer perfil", async () => {
     const criada = await amb.esperar(201, "POST", "/equipes", { como: admin, json: { nome: "Instrumentação", centro_trabalho: "INSTR" } });
     const dup = await amb.req("POST", "/equipes", { como: admin, json: { nome: "Outra", centro_trabalho: "INSTR" } });
     assert.equal(dup.status, 409);
     assert.equal((await amb.req("POST", "/equipes", { como: tecnico, json: { nome: "X", centro_trabalho: "X" } })).status, 403);
 
-    const naoSupervisor = await amb.req("PATCH", `/equipes/${criada.id}`, { como: admin, json: { supervisor_id: tecnico.id } });
-    assert.equal(naoSupervisor.status, 422);
-    const sup = await amb.criarUsuario({ perfil: "supervisor", equipeId: criada.id });
+    const inativo = await amb.criarUsuario({ perfil: "tecnico", ativo: false });
+    assert.equal((await amb.req("PATCH", `/equipes/${criada.id}`, { como: admin, json: { supervisor_id: inativo.id } })).status, 422);
+    assert.equal((await amb.req("PATCH", `/equipes/${criada.id}`, { como: admin, json: { supervisor_id: "nao-e-uuid" } })).status, 422);
+    const sup = await amb.criarUsuario({ perfil: "tecnico", equipeId: criada.id });
     await amb.esperar(200, "PATCH", `/equipes/${criada.id}`, { como: admin, json: { nome: "Instrumentação 2", supervisor_id: sup.id } });
     const lista = await amb.esperar(200, "GET", "/equipes", { como: tecnico });
     const e = lista.equipes.find((x: any) => x.id === criada.id);

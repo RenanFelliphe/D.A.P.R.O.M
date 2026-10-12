@@ -66,13 +66,13 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const carregarUsuario = async (matricula: string) => {
     const [u] = await db.select().from(usuario).where(eq(sql`lower(${usuario.matricula})`, matricula.toLowerCase()));
     if (!u) return null;
-    if (!u.assinaturaPath && u.perfil !== "analista" && u.perfil !== "seguranca" && u.perfil !== "admin") {
+    if (!u.assinaturaPath && u.perfil !== "admin") {
       const id = randomUUID();
       await deps.armazenamento.gravar("assinaturas", id, assinaturaDemo(matricula.length + matricula.charCodeAt(matricula.length - 1)), "image/png");
       await db.update(usuario).set({ assinaturaPath: id, assinaturaEm: deps.agora() }).where(eq(usuario.id, u.id));
       u.assinaturaPath = id;
     }
-    return { id: u.id, nome: u.nome, matricula: u.matricula, email: u.email, perfil: u.perfil, equipeId: u.equipeId, ativo: u.ativo, senhaProvisoria: u.senhaProvisoria, assinaturaPath: u.assinaturaPath } satisfies UsuarioAutenticado;
+    return { id: u.id, nome: u.nome, matricula: u.matricula, email: u.email, perfil: u.perfil, equipeId: u.equipeId, equipesSupervisionadas: (await db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, u.id))).map((e) => e.id), ativo: u.ativo, senhaProvisoria: u.senhaProvisoria, assinaturaPath: u.assinaturaPath } satisfies UsuarioAutenticado;
   };
   const garantir = async (matricula: string, nome: string, perfil: Perfil, centro: string | null, cargo: string | null = null) => {
     let u = await carregarUsuario(matricula);
@@ -97,15 +97,14 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     return u;
   };
 
-  const sup1 = await garantir("sup1", "Sandra Supervisora", "supervisor", "SERV_ESP");
-  const sup2 = await garantir("sup2", "Saulo Supervisor", "supervisor", "INSTRUM");
+  const sup1 = await garantir("sup1", "Sandra Supervisora", "tecnico", "SERV_ESP");
+  const sup2 = await garantir("sup2", "Saulo Supervisor", "tecnico", "INSTRUM");
   const tec1 = await garantir("tec1", "Tiago Técnico", "tecnico", "SERV_ESP", "Técnico em Gás");
   const tec2 = await garantir("tec2", "Taís Técnica", "tecnico", "SERV_ESP", "Técnica em Gás");
   const tec5 = await garantir("tec5", "Tadeu Técnico", "tecnico", "SERV_ESP", "Técnico em Gás");
   const tec3 = await garantir("tec3", "Tomás Técnico", "tecnico", "INSTRUM", "Técnico em Instrumentação");
   const tec4 = await garantir("tec4", "Tânia Técnica", "tecnico", "INSTRUM", "Técnica em Instrumentação");
-  const ana = await garantir("ana", "Ana Analista", "analista", null);
-  await garantir("seg", "Sérgio Segurança", "seguranca", null);
+  const adm = await garantir("adm", "Ana Administradora", "admin", null);
   await db.update(equipe).set({ supervisorId: sup1.id }).where(and(eq(equipe.id, equipes.SERV_ESP!), sql`${equipe.supervisorId} is null`));
   await db.update(equipe).set({ supervisorId: sup2.id }).where(and(eq(equipe.id, equipes.INSTRUM!), sql`${equipe.supervisorId} is null`));
 
@@ -411,14 +410,14 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const idsLiberadas: string[] = [];
   for (const d of liberadas) idsLiberadas.push(await criarOs(d));
 
-  // reprogramada pela analista: a OS atrasada (índice 0) ganha nova data e justificativa
+  // reprogramada pelo admin: a OS atrasada (índice 0) ganha nova data e justificativa
   const reprog = idsLiberadas[0]!;
-  await db.insert(reprogramacao).values({ osId: reprog, usuarioId: ana.id, dataAnterior: dia(5), dataNova: dia(-2), equipeAnteriorId: equipes.SERV_ESP!, equipeNovaId: equipes.SERV_ESP!, justificativa: "Aguardando liberação de acesso à estação pelo cliente." });
+  await db.insert(reprogramacao).values({ osId: reprog, usuarioId: adm.id, dataAnterior: dia(5), dataNova: dia(-2), equipeAnteriorId: equipes.SERV_ESP!, equipeNovaId: equipes.SERV_ESP!, justificativa: "Aguardando liberação de acesso à estação pelo cliente." });
   await db.update(os).set({ dataInicioProg: dia(-2), dataFimProg: dia(-3) }).where(eq(os.id, reprog));
 
   // ================= APOIO CANCELADO ================================================================================
   const cancelada = await criarOs({ titulo: "Apoio aberto em duplicidade", local: L.erp, equipe: equipes.INSTRUM, prioridade: "Baixo", inicio: 4, fim: 4, apoioDe: idOriginal, origem: "apoio" });
-  await db.update(os).set({ status: "cancelada", canceladaEm: minutosAtras(60 * 24 * 3), canceladaPor: ana.id, justificativaCancelamento: "Apoio aberto em duplicidade; o primeiro segue em andamento." }).where(eq(os.id, cancelada));
+  await db.update(os).set({ status: "cancelada", canceladaEm: minutosAtras(60 * 24 * 3), canceladaPor: adm.id, justificativaCancelamento: "Apoio aberto em duplicidade; o primeiro segue em andamento." }).where(eq(os.id, cancelada));
 
   // ================= ALERTAS: parte já lida =========================================================================
   const lidos = await db.select({ id: alerta.id }).from(alerta).orderBy(alerta.criadoEm);

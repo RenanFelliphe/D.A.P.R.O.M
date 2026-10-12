@@ -17,7 +17,7 @@ describe("Perfil do técnico: histórico e execuções abertas", () => {
 
   before(async () => {
     amb = await criarAmbiente({ comCarga: true });
-    const supervisor = await amb.criarUsuario({ perfil: "supervisor" });
+    const supervisor = await amb.criarUsuario({ perfil: "tecnico" });
     equipeId = (await amb.criarEquipe({ supervisorId: supervisor.id })).id;
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     colega = await amb.criarUsuario({ perfil: "tecnico", equipeId });

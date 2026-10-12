@@ -23,6 +23,9 @@ export function rotasAuth(deps: Deps, { autenticar }: Autenticacao) {
     const { email, senha } = await lerCorpo(c, z.object({ email: emailInstitucional, senha: z.string().min(1) }));
     const [u] = await deps.db.select().from(usuario).where(eq(usuario.email, email)).limit(1);
     if (!u) throw usuarioInexistente();
+    if (u.liberacao === "recusado") {
+      throw new ErroApi(403, "acesso_recusado", `Seu acesso foi recusado por um administrador${u.recusaMotivo ? `: ${u.recusaMotivo}` : ""}`);
+    }
     if (!u.ativo) throw new ErroApi(401, "acesso_revogado", "Acesso revogado");
 
     const sessao = await deps.auth.entrar(u.email, senha);
@@ -43,12 +46,12 @@ export function rotasAuth(deps: Deps, { autenticar }: Autenticacao) {
     const sessao = await deps.auth.renovar(refresh_token);
     if (!sessao) throw new ErroApi(401, "nao_autenticado", "Sessão inválida ou expirada");
     const id = decodeJwt(sessao.accessToken).sub;
-    const [u] = id ? await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.id, id)).limit(1) : [];
-    if (!u) throw new ErroApi(401, "nao_autenticado", "Sessão inválida ou expirada");
+    const [u] = id ? await deps.db.select({ id: usuario.id, liberacao: usuario.liberacao }).from(usuario).where(eq(usuario.id, id)).limit(1) : [];
+    if (!u || u.liberacao === "recusado") throw new ErroApi(401, "nao_autenticado", "Sessão inválida ou expirada");
     return responder(c, { accessToken: sessao.accessToken, refreshToken: sessao.refreshToken, expiraEm: sessao.expiraEm });
   });
 
-  r.post("/auth/trocar-senha", autenticar({ permitirSenhaProvisoria: true }), async (c) => {
+  r.post("/auth/trocar-senha", autenticar({ permitirSenhaProvisoria: true, permitirPendente: true }), async (c) => {
     const eu = c.get("usuario");
     const { senha_atual, senha_nova } = await lerCorpo(c, z.object({ senha_atual: z.string().min(1), senha_nova: senhaNova }));
     if (senha_atual === senha_nova) throw invalido("senha_igual", "A senha nova precisa ser diferente da atual");

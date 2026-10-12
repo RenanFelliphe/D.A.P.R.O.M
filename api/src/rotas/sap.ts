@@ -11,7 +11,7 @@ import { lerPlanilha } from "../dominio/importacao-planilha";
 import { resumoDasImportacoes } from "../dominio/importacao-resumo";
 import { esquemaPeriodo } from "../dominio/periodo";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
-import { podeVerEquipe } from "../http/autenticacao";
+import { podeSupervisionarEquipe } from "../http/autenticacao";
 import { ErroApi, invalido, naoEncontrado } from "../http/erros";
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
@@ -70,7 +70,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
   const r = new Hono<Ambiente>();
 
   /** "Ler agora": registra a leitura e enfileira a tarefa; quem lê é o executor de tarefas. */
-  r.post("/sap/leituras", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+  r.post("/sap/leituras", autenticar(), exigirPerfil("admin"), async (c) => {
     const eu = c.get("usuario");
     const importacaoId = await deps.db.transaction(async (tx) => {
       const [criada] = await tx.insert(importacao).values({ origem: "api", usuarioId: eu.id }).returning({ id: importacao.id });
@@ -86,7 +86,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
    * arquivo e o registro da importação com o erro ficam no histórico, sai o alerta de falha para quem enviou, e a resposta
    * é o próprio erro.
    */
-  r.post("/importacoes", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+  r.post("/importacoes", autenticar(), exigirPerfil("admin"), async (c) => {
     const eu = c.get("usuario");
     const form = await c.req.parseBody().catch(() => null);
     const arquivo = form?.arquivo;
@@ -132,7 +132,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
   });
 
   /** Histórico das leituras e importações, inclusive as que falharam (com `erro`). */
-  r.get("/importacoes", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+  r.get("/importacoes", autenticar(), exigirPerfil("admin"), async (c) => {
     const p = lerConsulta(c, esquemaPaginacao);
     const { limit, offset } = limiteEDeslocamento(p);
     const linhas = await deps.db
@@ -162,13 +162,13 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
    * 30 dias se ausente), as leituras da API com e sem falha, os motivos das linhas ignoradas e a comparação com o período
    * anterior.
    */
-  r.get("/importacoes/resumo", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+  r.get("/importacoes/resumo", autenticar(), exigirPerfil("admin"), async (c) => {
     const { periodo } = lerConsulta(c, z.object({ periodo: esquemaPeriodo }));
     return responder(c, await resumoDasImportacoes(deps.db, periodo, deps.agora()));
   });
 
   /** Estado da sincronização com a API: a última leitura sem erro e a leitura agendada. As falhas viram alerta no sino. */
-  r.get("/sap/sincronizacao", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+  r.get("/sap/sincronizacao", autenticar(), exigirPerfil("admin"), async (c) => {
     const ultimaLeitura = await ultimaLeituraConcluida(deps.db);
     return responder(c, {
       ultimaLeituraSemErroEm: ultimaLeitura ?? null,
@@ -181,9 +181,9 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
   /**
    * OS de apoio: a única OS que nasce no sistema (as demais vêm da leitura do SAP ou da planilha). Fica ligada à OS que
    * destrava (`os_origem_id`, obrigatório) e ainda não tem número SAP. O supervisor abre para qualquer equipe, desde que
-   * veja a OS de origem; analista e admin, a partir de qualquer OS.
+   * veja a OS de origem; o admin, a partir de qualquer OS.
    */
-  r.post("/os", autenticar(), exigirPerfil("supervisor", "analista", "admin"), async (c) => {
+  r.post("/os", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
     const eu = c.get("usuario");
     const dados = await lerCorpo(
       c,
@@ -206,7 +206,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
     }
 
     const [origem] = await deps.db.select({ equipeId: os.equipeId }).from(os).where(eq(os.id, dados.os_origem_id));
-    if (!origem || (eu.perfil === "supervisor" && !podeVerEquipe(eu, origem.equipeId))) {
+    if (!origem || !podeSupervisionarEquipe(eu, origem.equipeId)) {
       throw invalido("os_origem_inexistente", "OS de origem não encontrada");
     }
     const [local] = await deps.db.select({ id: localInstalacao.id }).from(localInstalacao).where(eq(localInstalacao.id, dados.local_instalacao_id));
@@ -238,7 +238,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
   });
 
   /** Criticidade do local, editada no painel. */
-  r.patch("/locais/:id", autenticar(), exigirPerfil("analista", "admin"), async (c) => {
+  r.patch("/locais/:id", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const { critico } = await lerCorpo(c, z.object({ critico: z.boolean() }));
     const atualizados = await deps.db.update(localInstalacao).set({ critico }).where(eq(localInstalacao.id, id)).returning({ id: localInstalacao.id });

@@ -59,7 +59,7 @@ async function localizar(deps: Deps, id: string): Promise<{ bucket: Bucket; equi
 }
 
 const podeLer = (u: UsuarioAutenticado, alvo: { equipeId: string | null; donoId?: string }) =>
-  alvo.donoId === u.id || (alvo.equipeId !== null ? podeVerEquipe(u, alvo.equipeId) : u.perfil === "admin" || u.perfil === "analista");
+  alvo.donoId === u.id || (alvo.equipeId !== null ? podeVerEquipe(u, alvo.equipeId) : u.perfil === "admin");
 
 /** Fotos e assinaturas sobem com o id gerado no cliente, antes do evento que as referencia (Decisão-chave 3). */
 export function rotasArquivos(deps: Deps, { autenticar }: Autenticacao) {

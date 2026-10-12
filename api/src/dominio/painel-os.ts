@@ -24,8 +24,8 @@ import {
   type OsStatus,
   OS_STATUS,
 } from "../db/schema";
-import { podeVerEquipe, type UsuarioAutenticado } from "../http/autenticacao";
-import { conflito, naoEncontrado } from "../http/erros";
+import { podeSupervisionarEquipe, podeVerEquipe, type UsuarioAutenticado } from "../http/autenticacao";
+import { conflito, naoEncontrado, proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { enfileirarTarefa } from "../servicos/fila";
 import { buscaDeOs } from "./busca";
@@ -55,6 +55,8 @@ export interface FiltrosOs extends Paginacao {
   numero_ordem?: string;
   /** Número, título, código do local, nota ou cliente (ver `dominio/busca.ts`). */
   busca?: string;
+  /** `prioridade` (padrão): da mais alta à mais baixa; `data_limite`: do prazo mais próximo ao mais distante. */
+  ordem?: "prioridade" | "data_limite";
 }
 
 /** Condições do quadro; `comStatus: false` serve à contagem por coluna (mesmo filtro, sem o status). */
@@ -98,7 +100,10 @@ async function execucoesAbertas(db: Db, osIds: string[], agora: Date): Promise<M
   return horas;
 }
 
-/** O quadro de OS: ordenado com as de local crítico primeiro e depois por `data_inicio_prog`. */
+/** Peso da prioridade do SAP (texto livre): Muito alto 4, Alto 3, Médio 2, Baixo 1; sem prioridade ou desconhecida, 0. */
+const pesoDaPrioridade = sql`case lower(${os.prioridade}) when 'muito alto' then 4 when 'alto' then 3 when 'médio' then 2 when 'medio' then 2 when 'baixo' then 1 else 0 end`;
+
+/** O quadro de OS, por prioridade (padrão) ou por data limite; em ambos, local crítico, número e id desempatam. */
 export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosOs, agora: Date) {
   const hoje = diaNoFuso(agora);
   const onde = condicoesDoQuadro(eu, filtros, true);
@@ -129,7 +134,14 @@ export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosO
     .innerJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
     .innerJoin(equipe, eq(equipe.id, os.equipeId))
     .where(onde)
-    .orderBy(desc(localInstalacao.critico), asc(os.dataInicioProg), asc(os.numeroOrdem), asc(os.id))
+    .orderBy(
+      ...(filtros.ordem === "data_limite"
+        ? [asc(sql`coalesce(${os.dataFimProg}, ${os.dataInicioProg})`), desc(pesoDaPrioridade)]
+        : [desc(pesoDaPrioridade), asc(sql`coalesce(${os.dataFimProg}, ${os.dataInicioProg})`)]),
+      desc(localInstalacao.critico),
+      asc(os.numeroOrdem),
+      asc(os.id),
+    )
     .limit(limit)
     .offset(offset);
 
@@ -551,6 +563,21 @@ export async function listarAprsDaOs(db: Db, eu: UsuarioAutenticado, osId: strin
   return carregarAprs(db, osId);
 }
 
+/** A pessoa executou, preencheu ou assinou a APR de alguma execução da OS: não pode dar ciência nela. */
+async function participouDaExecucao(db: Db, osId: string, usuarioId: string): Promise<boolean> {
+  const [executou] = await db.select({ id: execucao.id }).from(execucao).where(and(eq(execucao.osId, osId), eq(execucao.executorId, usuarioId))).limit(1);
+  if (executou) return true;
+  const [preencheu] = await db.select({ id: apr.id }).from(apr).where(and(eq(apr.osId, osId), eq(apr.preenchidaPor, usuarioId))).limit(1);
+  if (preencheu) return true;
+  const [assinou] = await db
+    .select({ aprId: aprParticipante.aprId })
+    .from(aprParticipante)
+    .innerJoin(apr, eq(apr.id, aprParticipante.aprId))
+    .where(and(eq(apr.osId, osId), eq(aprParticipante.usuarioId, usuarioId)))
+    .limit(1);
+  return Boolean(assinou);
+}
+
 /**
  * Ciência do supervisor da equipe da OS encerrada. Grava `ciencia_por` e `ciencia_em` e enfileira a nova geração do
  * PDF (agora com a ciência), na mesma transação. A condição no `update` fecha a corrida entre dois cliques.
@@ -559,8 +586,12 @@ export async function darCiencia(db: Db, eu: UsuarioAutenticado, osId: string, a
   return db.transaction(async (tx) => {
     const [atual] = await tx.select({ equipeId: os.equipeId, status: os.status, cienciaEm: os.cienciaEm }).from(os).where(eq(os.id, osId)).for("update");
     if (!atual || !podeVerEquipe(eu, atual.equipeId)) throw naoEncontrado("OS não encontrada");
+    if (!podeSupervisionarEquipe(eu, atual.equipeId)) throw proibido("Só o supervisor da equipe da OS dá a ciência");
     if (atual.status !== "encerrada") throw conflito("os_nao_encerrada", "Só é possível dar ciência em OS encerrada");
     if (atual.cienciaEm !== null) throw conflito("ciencia_ja_dada", "A ciência desta OS já foi dada");
+    if (await participouDaExecucao(tx as unknown as Db, osId, eu.id)) {
+      throw conflito("ciencia_propria", "Quem participou da execução não dá a ciência da própria OS");
+    }
 
     await tx.update(os).set({ cienciaPor: eu.id, cienciaEm: agora }).where(eq(os.id, osId));
     await enfileirarTarefa(tx as unknown as Db, "pdf_os", osId, agora);

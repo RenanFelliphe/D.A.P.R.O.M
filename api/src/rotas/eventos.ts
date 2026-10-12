@@ -33,7 +33,7 @@ export function rotasEventos(deps: Deps, { autenticar }: Autenticacao) {
   /** Só do modo offline: baixa a cópia local da equipe. O `cursor` é opcional e, por ora, ignorado (snapshot completo). */
   r.post("/sync/pull", autenticar(), async (c) => {
     const eu = c.get("usuario");
-    if ((eu.perfil !== "tecnico" && eu.perfil !== "supervisor") || !eu.equipeId) throw proibido("O modo offline é das equipes de campo");
+    if (eu.perfil !== "tecnico" || !eu.equipeId) throw proibido("O modo offline é das equipes de campo");
     return responder(c, await montarSnapshot(deps.db, { id: eu.id, equipeId: eu.equipeId }, deps.agora()));
   });
 

@@ -14,8 +14,8 @@ import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, textoObrigatorio, uui
 
 async function exigirSupervisor(deps: Deps, supervisorId: string | null | undefined) {
   if (!supervisorId) return;
-  const [u] = await deps.db.select({ perfil: usuario.perfil, ativo: usuario.ativo }).from(usuario).where(eq(usuario.id, supervisorId));
-  if (!u || !u.ativo || u.perfil !== "supervisor") throw invalido("supervisor_invalido", "O supervisor precisa ser um usuário ativo com perfil supervisor");
+  const [u] = await deps.db.select({ ativo: usuario.ativo }).from(usuario).where(eq(usuario.id, supervisorId));
+  if (!u || !u.ativo) throw invalido("supervisor_invalido", "O supervisor precisa ser um usuário ativo");
 }
 
 export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
@@ -57,7 +57,7 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
 
   /**
    * Qualquer perfil lê: as telas filtram por equipe. Com `busca` (nome ou centro de trabalho) ou `global=true` é a busca
-   * global: fica só o que o perfil enxerga (técnico e supervisor, a própria equipe), aceita os filtros `id` e
+   * global: fica só o que o perfil enxerga (técnico e supervisor, a própria equipe e as que supervisiona), aceita os filtros `id` e
    * `supervisor_id`, e cada equipe traz o supervisor e o total de membros ativos.
    */
   r.get("/equipes", autenticar(), async (c) => {
@@ -88,7 +88,7 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
       ? await deps.db
           .select({ equipeId: usuario.equipeId, n: sql<number>`count(*)::int` })
           .from(usuario)
-          .where(and(inArray(usuario.equipeId, ids), eq(usuario.ativo, true)))
+          .where(and(inArray(usuario.equipeId, ids), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")))
           .groupBy(usuario.equipeId)
       : [];
     const supervisorIds = linhas.flatMap((e) => (e.supervisorId ? [e.supervisorId] : []));
@@ -107,7 +107,7 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
 
   /**
    * Perfil da equipe: dados, supervisor, membros, a situação das OS e as mais recentes. Quem não enxerga a equipe
-   * (técnico e supervisor de outra equipe) recebe `404`; só o admin vê membros inativos.
+   * (quem não é da equipe nem a supervisiona) recebe `404`; só o admin vê membros inativos.
    */
   r.get("/equipes/:id", autenticar(), async (c) => {
     const eu = c.get("usuario");
@@ -125,7 +125,7 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
     const membros = await deps.db
       .select({ id: usuario.id, nome: usuario.nome, matricula: usuario.matricula, cargo: usuario.cargo, perfil: usuario.perfil, ativo: usuario.ativo })
       .from(usuario)
-      .where(admin ? eq(usuario.equipeId, id) : and(eq(usuario.equipeId, id), eq(usuario.ativo, true)))
+      .where(admin ? eq(usuario.equipeId, id) : and(eq(usuario.equipeId, id), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")))
       .orderBy(asc(usuario.nome));
     const { itens, total, contagemPorStatus } = await listarOs(deps.db, eu, { equipe_id: id, pagina: 1, tamanho: OS_RECENTES_DA_EQUIPE }, deps.agora());
 
