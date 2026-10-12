@@ -19,7 +19,7 @@ export function RiscosApr({ riscos, itens, marcados, aoAlternar }: RiscosAprProp
   const medidas = (riscoId: string) => itens.filter((i) => i.risco_id === riscoId).length;
 
   return (
-    <div className="stack g8">
+    <div className="stack g8" data-treino="apr-riscos">
       <h2 style={{ fontSize: 16, fontWeight: 600 }}>Riscos da atividade</h2>
       <div className="row g8 small">
         <Icon name="alert" size={16} />

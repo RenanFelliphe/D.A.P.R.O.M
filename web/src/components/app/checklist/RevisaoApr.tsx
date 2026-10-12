@@ -34,7 +34,7 @@ export function RevisaoApr({ rascunho, resumo, esperado, semAssinatura, euSemAss
 
   return (
     <>
-      <div className="card stack g6">
+      <div className="card stack g6" data-treino="ck-revisao">
         <h2 style={{ fontSize: 17, fontWeight: 600 }}>Revisão da APR</h2>
         <p className="muted">
           {resumo.respondidas} de {perguntas.length} perguntas respondidas. Depois de validada, a APR não pode ser alterada.
@@ -165,7 +165,7 @@ export function RevisaoApr({ rascunho, resumo, esperado, semAssinatura, euSemAss
         <Button variant="line" onClick={aoVoltar} disabled={concluindo}>
           Voltar
         </Button>
-        <Button variant="p" disabled={!resumo.completo || faltaAssinatura || concluindo} onClick={aoConcluir}>
+        <Button variant="p" disabled={!resumo.completo || faltaAssinatura || concluindo} onClick={aoConcluir} data-treino="ck-concluir">
           {concluindo ? "Enviando…" : "Concluir e validar"}
         </Button>
       </div>

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { api, apiOuNulo } from "@/lib/api";
-import type { Equipe, OsStatus, Paginacao, Perfil } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor, type Equipe, type OsStatus, type Paginacao, type Usuario } from "@/lib/tipos";
 
 /** OS como a `api` a devolve em `GET /os` (quadro). */
 export interface OsDoQuadro {
@@ -39,6 +39,8 @@ export interface FiltrosDoQuadro {
   critica?: boolean;
   periodo?: string;
   busca?: string;
+  /** Ordem dos cartões: por prioridade (padrão) ou pela data limite. */
+  ordem?: "prioridade" | "data_limite";
   /** Quando presente, o quadro mostra só esse status, paginado. */
   status?: OsStatus;
   pagina?: number;
@@ -58,6 +60,7 @@ const consultaDe = (f: FiltrosDoQuadro) => ({
   critica: f.critica,
   periodo: f.periodo,
   busca: f.busca,
+  ordem: f.ordem,
 });
 
 export interface DadosDoQuadro {
@@ -91,9 +94,9 @@ export async function osPorNumeroExato(busca: string): Promise<string | null> {
   return r.os.length === 1 ? r.os[0]!.id : null;
 }
 
-/** Alertas não lidos do usuário (supervisor e analista) ou de todos (admin e Segurança, só leitura). Os demais perfis não têm alertas. */
-export async function totalDeAlertasNaoLidos(perfil: Perfil): Promise<number> {
-  if (perfil === "tecnico") return 0;
+/** Alertas não lidos do usuário (supervisor) ou de todos (admin). O técnico que não supervisiona não tem alertas. */
+export async function totalDeAlertasNaoLidos(usuario: Pick<Usuario, "perfil" | "equipes_supervisionadas">): Promise<number> {
+  if (!ehAdmin(usuario) && !ehSupervisor(usuario)) return 0;
   const r = await apiOuNulo<{ total: number }>("/alertas", { consulta: { lido: false, tamanho: 1 } });
   return r?.total ?? 0;
 }

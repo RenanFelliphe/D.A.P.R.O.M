@@ -63,7 +63,7 @@ export function FormularioEncerrar({ osId, execucaoId, participantes, usuarioId,
 
   return (
     <>
-      <div className="panel">
+      <div className="panel" data-treino="enc-descricao">
         <Field
           label={
             <>
@@ -75,10 +75,10 @@ export function FormularioEncerrar({ osId, execucaoId, participantes, usuarioId,
           <textarea className="textarea" id="descricao" rows={4} value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="O que foi feito, o que foi encontrado e o que ficou pendente." />
         </Field>
       </div>
-      <div className="panel">
+      <div className="panel" data-treino="enc-fotos">
         <FotosExecucao fotos={fotos} onChange={setFotos} desabilitado={ocupado} />
       </div>
-      <div className="panel">
+      <div className="panel" data-treino="enc-assinaturas">
         <AssinaturasExecutantes
           participantes={participantes}
           usuarioId={usuarioId}
@@ -102,7 +102,7 @@ export function FormularioEncerrar({ osId, execucaoId, participantes, usuarioId,
       <div className="panel stack g8">
         {!podeEncerrar && faltas.length > 0 && <span className="small">Falta: {faltas.join(", ")}.</span>}
         <div className="row g8">
-          <Button variant="p" onClick={encerrar} disabled={!podeEncerrar || ocupado}>
+          <Button variant="p" onClick={encerrar} disabled={!podeEncerrar || ocupado} data-treino="enc-confirmar">
             <Icon name="check" size={18} />
             {ocupado ? "Encerrando…" : "Encerrar OS"}
           </Button>

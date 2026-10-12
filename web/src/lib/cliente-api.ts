@@ -30,6 +30,14 @@ async function lerResposta(resposta: Response) {
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/app/entrar");
   }
+  if (resposta.status === 403 && dados?.erro?.codigo === "aguardando_liberacao" && typeof window !== "undefined") {
+    // Rede de segurança: a casca do técnico pendente não dispara chamadas da `api` real, mas se uma escapar, leva à tela de espera.
+    if (window.location.pathname !== "/app/aguardando") {
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/app/aguardando");
+    }
+    throw new ErroCliente(403, "aguardando_liberacao", "Seu acesso ainda está aguardando liberação de um administrador. Enquanto isso, use o Campo de treino.");
+  }
   if (!resposta.ok) throw new ErroCliente(resposta.status, dados?.erro?.codigo ?? "erro", dados?.erro?.mensagem ?? "Erro ao falar com o servidor");
   return dados;
 }

@@ -9,7 +9,7 @@ interface BotaoCriticoProps {
   critico: boolean;
 }
 
-/** Marca o local como crítico ou não crítico (`PATCH /locais/{id}`; analista e admin). Vale para todas as OS do local. */
+/** Marca o local como crítico ou não crítico (`PATCH /locais/{id}`; admin). Vale para todas as OS do local. */
 export function BotaoCritico({ localId, critico }: BotaoCriticoProps) {
   const router = useRouter();
   const [enviando, setEnviando] = useState(false);
@@ -31,7 +31,7 @@ export function BotaoCritico({ localId, critico }: BotaoCriticoProps) {
 
   return (
     <div className="stack g6">
-      <button className="btn btn-line btn-sm" type="button" onClick={alternar} disabled={enviando} style={{ alignSelf: "flex-start" }}>
+      <button className="btn btn-line btn-block" type="button" onClick={alternar} disabled={enviando}>
         {enviando ? "Salvando…" : critico ? "Marcar local como não crítico" : "Marcar local como crítico"}
       </button>
       {erro && (

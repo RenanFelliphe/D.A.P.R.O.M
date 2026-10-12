@@ -34,7 +34,7 @@ interface FiltrosBuscaProps {
   perfis: Perfil[];
   /** Só o admin filtra pela situação da conta. */
   admin: boolean;
-  /** Admin, analista e Segurança enxergam e filtram todas as equipes; os demais só a própria. */
+  /** O admin enxerga e filtra todas as equipes; o técnico (e o supervisor) só as dele. */
   veEquipes: boolean;
 }
 

@@ -157,19 +157,19 @@ export function ExecucaoEmAndamento({ os, usuario, situacao, onEncerrada }: Prop
             </div>
           ) : (
             <>
-              <Button variant="p" block onClick={() => abrir("encerrar")} disabled={ocupado || !!pausaAberta}>
+              <Button variant="p" block onClick={() => abrir("encerrar")} disabled={ocupado || !!pausaAberta} data-treino="exec-encerrar">
                 <Icon name="check" size={18} />
                 Encerrar OS
               </Button>
               {pausaAberta && <p className="small">Continue a execução para poder encerrá-la.</p>}
               <div className="nav2">
                 {pausaAberta ? (
-                  <Button variant="line" onClick={continuar} disabled={ocupado}>
+                  <Button variant="line" onClick={continuar} disabled={ocupado} data-treino="exec-pausa">
                     <Icon name="play" size={18} />
                     <span>Continuar</span>
                   </Button>
                 ) : (
-                  <Button variant="line" onClick={pausar} disabled={ocupado}>
+                  <Button variant="line" onClick={pausar} disabled={ocupado} data-treino="exec-pausa">
                     <Icon name="pause" size={18} />
                     <span>Pausar</span>
                   </Button>

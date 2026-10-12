@@ -1,6 +1,7 @@
 /** Tipos das respostas da `api` que várias telas usam (os demais ficam junto da tela que os consome). Chaves em snake_case, como a `api` devolve. */
 
-export type Perfil = "tecnico" | "supervisor" | "analista" | "seguranca" | "admin";
+/** Só técnico e administrador. Supervisor não é perfil: é quem a equipe aponta (`equipes_supervisionadas` de `GET /me`) e sempre é técnico. */
+export type Perfil = "tecnico" | "admin";
 
 export interface Usuario {
   id: string;
@@ -18,6 +19,35 @@ export interface Usuario {
   /** Id do arquivo da assinatura (bucket `assinaturas`); `GET /arquivos/{id}/url` dá o endereço da imagem. */
   assinatura_path: string | null;
   assinatura_em: string | null;
+  /** Equipes de que a pessoa é supervisora (qualquer perfil). Só `GET /me` preenche. */
+  equipes_supervisionadas?: { id: string; nome: string }[];
+  /** Situação do treinamento do técnico (Campo de treino); `GET /me` preenche. O admin não tem treinamento. */
+  treinamento?: Treinamento;
+  /** Liberação do acesso geral. Técnico cadastrado por supervisor nasce `pendente` até um admin liberar; `recusado` não entra. Ausente (API antiga) vale `liberado`. */
+  liberacao?: Liberacao;
+  /** Quem cadastrou a pessoa (supervisor ou admin); `null` nas contas antigas. */
+  criado_por_id?: string | null;
+  /** Quando o admin liberou o acesso. */
+  liberado_em?: string | null;
+  /** Motivo informado pelo admin ao recusar o cadastro. */
+  recusa_motivo?: string | null;
+  /** Nome de quem cadastrou e o instante do cadastro: a tela de espera os mostra quando a `api` os devolve em `/me`. */
+  criado_por_nome?: string | null;
+  criado_em?: string | null;
+}
+
+export type Liberacao = "liberado" | "pendente" | "recusado";
+
+export const rotuloDaLiberacao: Record<Liberacao, string> = {
+  liberado: "Liberado",
+  pendente: "Pendente",
+  recusado: "Recusado",
+};
+
+/** Onde o técnico está no Campo de treino: `nao_iniciado` abre as boas-vindas no login; `concluido` e `pulado` não. */
+export interface Treinamento {
+  estado: "nao_iniciado" | "concluido" | "pulado";
+  em: string | null;
 }
 
 export interface Equipe {
@@ -36,11 +66,32 @@ export interface Paginacao {
   total: number;
 }
 
+type ComPerfil = Pick<Usuario, "perfil">;
+type ComSupervisao = Pick<Usuario, "perfil" | "equipes_supervisionadas">;
+
+/** Administrador: só gestão (`/web`); vê todas as equipes, importa e exporta OS e edita modelos de APR. */
+export const ehAdmin = (u: ComPerfil): boolean => u.perfil === "admin";
+
+/** Supervisor: técnico que supervisiona ao menos uma equipe. Usa a área de campo e o painel de gestão das equipes dele. */
+export const ehSupervisor = (u: ComSupervisao): boolean => u.perfil === "tecnico" && (u.equipes_supervisionadas?.length ?? 0) > 0;
+
+/** Cadastro aguardando o admin: só o Campo de treino e a troca de senha estão liberados. */
+export const estaPendente = (u: Pick<Usuario, "liberacao">): boolean => u.liberacao === "pendente";
+
+/** Cadastro recusado pelo admin: a pessoa não entra. */
+export const foiRecusado = (u: Pick<Usuario, "liberacao">): boolean => u.liberacao === "recusado";
+
+/** Ids das equipes que o supervisor acompanha. `null` para quem não é supervisor (o admin vê todas as equipes). */
+export function equipesDoSupervisor(u: ComSupervisao): string[] | null {
+  if (!ehSupervisor(u)) return null;
+  return [...new Set(u.equipes_supervisionadas?.map((e) => e.id) ?? [])];
+}
+
+/** Nomes das equipes que o supervisor acompanha, separados por vírgula. */
+export const nomesDasEquipesDoSupervisor = (u: Pick<Usuario, "equipes_supervisionadas">): string => u.equipes_supervisionadas?.map((e) => e.nome).join(", ") ?? "";
+
 export const rotuloDoPerfil: Record<Perfil, string> = {
   tecnico: "Técnico",
-  supervisor: "Supervisor",
-  analista: "Analista",
-  seguranca: "Segurança do Trabalho",
   admin: "Administrador",
 };
 

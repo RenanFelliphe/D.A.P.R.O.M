@@ -13,12 +13,12 @@ interface CartaoApoioProps {
   equipes: Equipe[];
   atividades: Atividade[];
   hoje: string;
-  /** Equipe do usuário, se ele é supervisor: só ele abre OS da própria equipe pelo link da confirmação. */
-  equipeDoSupervisor: string | null;
+  /** Equipes do usuário, se ele é supervisor: só ele abre OS de uma delas pelo link da confirmação. */
+  equipesDoSupervisor: string[] | null;
 }
 
 /** Cartão de decisão "Abrir OS de apoio" (destaque principal): `POST /os` com `os_origem_id` apontando para a OS do alerta. */
-export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, local, equipes, atividades, hoje, equipeDoSupervisor }: CartaoApoioProps) {
+export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, local, equipes, atividades, hoje, equipesDoSupervisor }: CartaoApoioProps) {
   const referencia = numeroOrdem ? `OS ${numeroOrdem}` : "OS de origem";
   return (
     <div className="dcard main">
@@ -42,7 +42,7 @@ export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, local, equipes, ati
         hoje={hoje}
         rotuloEnviar="Criar OS de apoio"
         mensagemCriada="OS de apoio criada. A original continua pendente."
-        podeAbrirOs={(equipeId) => equipeDoSupervisor === null || equipeId === equipeDoSupervisor}
+        podeAbrirOs={(equipeId) => equipesDoSupervisor === null || equipesDoSupervisor.includes(equipeId)}
       />
     </div>
   );

@@ -78,3 +78,70 @@
   font-size: 13px;
   color: var(--ink4)
 }
+
+/* ===== Técnico aguardando liberação (tela de espera e cadastro recusado) ===== */
+
+.aguardando {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 620px;
+  margin: 24px auto 0;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px
+}
+
+.aguardando h1 {
+  font-size: 24px
+}
+
+.aguardando-icone {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--brand-bg);
+  color: var(--brand)
+}
+
+.aguardando-recusado {
+  background: var(--blq-bg);
+  color: var(--blq)
+}
+
+.aguardando-dados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  margin: 0;
+  font-size: 14px
+}
+
+.aguardando-dados dt {
+  font-size: 12px;
+  color: var(--ink3)
+}
+
+.aguardando-dados dd {
+  margin: 0;
+  font-weight: 600
+}
+
+.aguardando-motivo {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--blq-bg);
+  color: var(--blq);
+  font-size: 14px;
+  overflow-wrap: anywhere
+}
+
+@media (max-width: 560px) {
+  .aguardando {
+    padding: 20px 16px;
+    margin-top: 8px
+  }
+}

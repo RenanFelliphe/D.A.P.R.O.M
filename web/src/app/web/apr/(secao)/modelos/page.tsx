@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Modelos de APR" };
 
 /**
  * Aba Modelos: um cartão por modelo (versão em uso, rascunho, atividades e APRs), os totais e os modelos excluídos.
- * Todo perfil de gestão lê; a Segurança do Trabalho e o administrador criam, editam e excluem.
+ * O supervisor lê; o administrador cria, edita e exclui.
  */
 export default async function ModelosPage({ searchParams }: PageProps<"/web/apr/modelos">) {
   // Endereço antigo (`/web/modelos?codigo=APR 03`): abre o modelo.
@@ -25,7 +25,7 @@ export default async function ModelosPage({ searchParams }: PageProps<"/web/apr/
   if (codigo?.trim()) redirect(rotas.web.modelo(codigo.trim()));
 
   const { usuario } = await usuarioAtual();
-  const podeEditar = editaModelos(usuario.perfil);
+  const podeEditar = editaModelos(usuario);
   const [ativos, arquivados, semModelo] = await Promise.all([
     api<{ modelos: ResumoModelo[] }>("/modelos-apr", { consulta: { tamanho: 200 } }),
     api<{ modelos: ResumoModelo[] }>("/modelos-apr", { consulta: { arquivados: true, tamanho: 200 } }),
@@ -42,7 +42,7 @@ export default async function ModelosPage({ searchParams }: PageProps<"/web/apr/
         <span className="muted" style={{ fontSize: 14, maxWidth: 820 }}>
           Cada modelo segue um documento de APR da Segurança do Trabalho. Editar cria o rascunho da próxima versão; ao publicar, ela passa a valer para as
           APRs novas, e as já preenchidas continuam ligadas à versão que usaram.
-          {podeEditar ? "" : " Só a Segurança do Trabalho e o administrador alteram os modelos."}
+          {podeEditar ? "" : " Só o administrador altera os modelos."}
         </span>
         {podeEditar && (
           <LinkButton variant="p" sm href={rotas.web.novoModelo}>

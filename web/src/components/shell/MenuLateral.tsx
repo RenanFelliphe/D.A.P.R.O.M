@@ -15,8 +15,12 @@ export interface ItemMenu {
   href: string;
   icone: IconName;
   rotulo: string;
+  /** Chave `data-treino` do link, para o tutorial do campo de treino apontar para ele. */
+  chave?: string;
   /** Contador exibido à direita do item (alertas não lidos). */
   contador?: number;
+  /** Texto lido pelos leitores de tela no lugar do rótulo quando há contador (ex.: "3 pendentes de liberação"). */
+  rotuloDoContador?: string;
   /** Outros prefixos de rota que deixam este item ativo (por exemplo `/web/os` para o quadro). */
   prefixos?: string[];
   /** Subpáginas: o item vira um grupo que abre e fecha (dropdown) com um link para cada uma. */
@@ -27,7 +31,7 @@ interface MenuLateralProps {
   titulo: string;
   itens: ItemMenu[];
   /** Atalho para a outra área do sistema, quando o perfil tem acesso a ela. */
-  outraArea?: Omit<ItemMenu, "contador" | "prefixos" | "subitens">;
+  outraArea?: Omit<ItemMenu, "contador" | "rotuloDoContador" | "prefixos" | "subitens">;
   rodape: string;
 }
 
@@ -119,7 +123,7 @@ export function MenuLateral({ titulo, itens, outraArea, rodape }: MenuLateralPro
         item.subitens?.length ? (
           <GrupoMenu key={item.href} item={{ ...item, subitens: item.subitens }} pathname={pathname} ativo={item.href === ativo} />
         ) : (
-          <Link key={item.href} href={item.href} title={item.rotulo} aria-label={item.rotulo} aria-current={item.href === ativo ? "page" : undefined}>
+          <Link key={item.href} href={item.href} title={item.rotulo} aria-label={item.contador && item.rotuloDoContador ? `${item.rotulo}, ${item.rotuloDoContador}` : item.rotulo} aria-current={item.href === ativo ? "page" : undefined} data-treino={item.chave}>
             <Icon name={item.icone} size={18} />
             <span className="rot">{item.rotulo}</span>
             {item.contador !== undefined && item.contador > 0 && <span className="cnt">{item.contador}</span>}

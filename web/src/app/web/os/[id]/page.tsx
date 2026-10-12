@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
-import { AcoesDaOs } from "@/components/web/detalhe/AcoesDaOs";
+import { AbasDaOs, abaDaConsulta } from "@/components/web/detalhe/AbasDaOs";
 import { AlertasDaOs } from "@/components/web/detalhe/AlertasDaOs";
 import { AprsDaOs } from "@/components/web/detalhe/AprsDaOs";
+import { BotaoCritico } from "@/components/web/detalhe/BotaoCritico";
+import { CancelarOs } from "@/components/web/detalhe/CancelarOs";
 import { BaixaSap } from "@/components/web/detalhe/BaixaSap";
 import { CienciaSupervisor } from "@/components/web/detalhe/CienciaSupervisor";
 import { DadosSap } from "@/components/web/detalhe/DadosSap";
@@ -16,6 +18,7 @@ import { LinhaDoTempo } from "@/components/web/detalhe/LinhaDoTempo";
 import { carregarDetalhe, carregarHistorico } from "@/data/detalhe";
 import { usuarioAtual } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
+import { ehAdmin, equipesDoSupervisor } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Detalhe da OS" };
 
@@ -31,21 +34,37 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   if (!detalhe) notFound();
   const { os, aprs, execucoes, alertas, reprogramacoes, linha_do_tempo } = detalhe;
 
-  // Histórico: do equipamento, quando a OS tem um, ou de todo o local (`?escopo=local`).
+  const aba = abaDaConsulta(sp.aba);
+
+  // Histórico (só na aba dele): do equipamento, quando a OS tem um, ou de todo o local (`?escopo=local`).
   const escopo = os.equipamento && sp.escopo !== "local" ? "equipamento" : "local";
   const paginaHistorico = Math.max(1, Number.parseInt(typeof sp.hist === "string" ? sp.hist : "1", 10) || 1);
-  const historico = await carregarHistorico(os.local_instalacao_id, escopo === "equipamento" ? os.equipamento : null, paginaHistorico);
+  const historico =
+    aba === "historico"
+      ? await carregarHistorico(os.local_instalacao_id, escopo === "equipamento" ? os.equipamento : null, paginaHistorico)
+      : null;
   const hrefHistorico = (e: "equipamento" | "local", pagina: number) => {
-    const q = new URLSearchParams({ escopo: e });
+    const q = new URLSearchParams({ aba: "historico", escopo: e });
     if (pagina > 1) q.set("hist", String(pagina));
-    return `${rotas.web.os(os.id)}?${q}#historico`;
+    return `${rotas.web.os(os.id)}?${q}`;
   };
 
-  const podeEditar = usuario.perfil === "analista" || usuario.perfil === "admin";
+  const podeEditar = ehAdmin(usuario);
+  // Dá a ciência quem supervisiona a equipe da OS e não participou dela (a `api` confere os dois).
+  const supervisaEquipeDaOs = equipesDoSupervisor(usuario)?.includes(os.equipe.id) ?? false;
+  const podeCancelar = os.origem === "apoio" && (os.status === "liberada" || os.status === "pendente");
 
   return (
     <Screen>
-      <DetalheCabecalho os={os} />
+      <DetalheCabecalho
+        os={os}
+        acoes={podeEditar && podeCancelar && <CancelarOs osId={os.id} />}
+      />
+      {os.status === "cancelada" && (
+        <Notice tone="al" icon="alert">
+          <strong>OS cancelada.</strong> {os.justificativa_cancelamento}
+        </Notice>
+      )}
       {os.eventos_com_relogio_suspeito > 0 && (
         <Notice tone="al" icon="clock">
           <strong>Relógio do aparelho suspeito.</strong>{" "}
@@ -60,30 +79,41 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           <strong>Execução aberta há {os.execucao_aberta_ha_horas} h.</strong> Pode ter ficado esquecida em andamento.
         </Notice>
       )}
+      <AbasDaOs osId={os.id} atual={aba} contagens={{ aprs: aprs.length + execucoes.length }} />
       <div className="two">
         <div className="stack g16">
-          <DadosSap os={os} />
-          <AprsDaOs aprs={aprs} />
-          <ExecucoesDaOs execucoes={execucoes} />
-          <div id="historico" className="stack">
-            <HistoricoDoLocal
-              osId={os.id}
-              local={os.local_instalacao.codigo}
-              equipamento={os.equipamento}
-              escopo={escopo}
-              historico={historico}
-              hrefDoEscopo={(e) => hrefHistorico(e, 1)}
-              hrefDaPagina={(p) => hrefHistorico(escopo, p)}
-            />
-          </div>
+          {aba === "resumo" && (
+            <>
+              <DadosSap os={os} />
+              <AlertasDaOs alertas={alertas} reprogramacoes={reprogramacoes} />
+            </>
+          )}
+          {aba === "aprs" && (
+            <>
+              <AprsDaOs aprs={aprs} />
+              <ExecucoesDaOs execucoes={execucoes} />
+            </>
+          )}
+          {aba === "historico" && historico && (
+            <>
+              <LinhaDoTempo eventos={linha_do_tempo} />
+              <HistoricoDoLocal
+                osId={os.id}
+                local={os.local_instalacao.codigo}
+                equipamento={os.equipamento}
+                escopo={escopo}
+                historico={historico}
+                hrefDoEscopo={(e) => hrefHistorico(e, 1)}
+                hrefDaPagina={(p) => hrefHistorico(escopo, p)}
+              />
+            </>
+          )}
         </div>
         <aside className="stack g16">
+          {podeEditar && <BotaoCritico localId={os.local_instalacao.id} critico={os.local_instalacao.critico} />}
           <DocumentoOs os={os} />
-          {os.status === "encerrada" && <CienciaSupervisor os={os} podeDarCiencia={usuario.perfil === "supervisor"} />}
+          {os.status === "encerrada" && <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs} />}
           <BaixaSap os={os} podeExportar={podeEditar} />
-          <AcoesDaOs os={os} podeEditar={podeEditar} />
-          <LinhaDoTempo eventos={linha_do_tempo} />
-          <AlertasDaOs alertas={alertas} reprogramacoes={reprogramacoes} />
         </aside>
       </div>
     </Screen>

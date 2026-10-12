@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { dataDoDia } from "@/lib/formatar";
 import type { OsDetalhada } from "@/lib/os-app";
 import { cx } from "@/lib/cx";
+import { Recolhivel } from "./Recolhivel";
 
 const lista: CSSProperties = {
   margin: 0,
@@ -32,8 +33,7 @@ export function DadosSapCard({ os }: { os: OsDetalhada }) {
     { rotulo: "Status no SAP", valor: os.status_sap, mono: true },
   ];
   return (
-    <div className="card stack g8">
-      <h2 style={{ fontSize: 15, fontWeight: 600 }}>Dados do SAP</h2>
+    <Recolhivel titulo="Dados do SAP">
       <dl style={lista}>
         {campos
           .filter((campo) => campo.valor)
@@ -48,6 +48,6 @@ export function DadosSapCard({ os }: { os: OsDetalhada }) {
             </div>
           ))}
       </dl>
-    </div>
+    </Recolhivel>
   );
 }

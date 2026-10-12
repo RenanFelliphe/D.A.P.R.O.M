@@ -16,7 +16,7 @@ export interface OpcaoSupervisor {
 interface FormularioEquipeProps {
   /** Sem `equipe`, cria (`POST /equipes`); com ela, edita nome e supervisor (`PATCH /equipes/{id}`). */
   equipe?: { id: string; nome: string; centro_trabalho: string; supervisor_id: string | null };
-  /** Usuários ativos de perfil supervisor: só esses a `api` aceita. */
+  /** Usuários ativos, de qualquer perfil: quem a equipe aponta passa a supervisioná-la. */
   supervisores: OpcaoSupervisor[];
   aoConcluir: () => void;
 }
@@ -75,7 +75,7 @@ export function FormularioEquipe({ equipe, supervisores, aoConcluir }: Formulari
       </Field>
       <Field label="Supervisor">
         <select className="input" value={supervisorId} onChange={(e) => setSupervisorId(e.target.value)}>
-          <option value="">Sem supervisor (os alertas vão aos analistas)</option>
+          <option value="">Sem supervisor (os alertas ficam só com o admin)</option>
           {opcoes.map((s) => (
             <option key={s.id} value={s.id}>
               {s.nome}

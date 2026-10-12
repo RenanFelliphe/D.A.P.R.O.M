@@ -146,7 +146,7 @@ export async function PerfilEquipe({ area, equipeId }: PerfilEquipeProps) {
                 </span>
               </Link>
             ) : (
-              <p className="muted">Sem supervisor: os alertas desta equipe vão para os analistas.</p>
+              <p className="muted">Sem supervisor: os alertas desta equipe ficam só com o admin.</p>
             )}
           </section>
 

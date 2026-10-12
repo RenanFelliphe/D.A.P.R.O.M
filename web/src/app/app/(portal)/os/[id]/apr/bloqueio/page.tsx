@@ -46,7 +46,7 @@ export default async function BloqueioPage({ params, searchParams }: PageProps<"
           {rotuloDaOs(os)} · {apr.modelo.codigo} v{apr.modelo.versao} · {dataHora(apr.concluida_em)}
         </span>
       </CabecalhoPagina>
-      <div className="res-banner rb-blq">
+      <div className="res-banner rb-blq" data-treino="bloqueio-banner">
         <span className="ic">
           <Icon name="octagon" size={24} />
         </span>
@@ -63,7 +63,7 @@ export default async function BloqueioPage({ params, searchParams }: PageProps<"
       <Colunas
         principal={
           <>
-            <div className="stack g8">
+            <div className="stack g8" data-treino="bloqueio-itens">
               {itens.map((item, i) => (
                 <ItemReprovadoCard key={item.item_id} item={item} numero={i + 1} />
               ))}
@@ -79,7 +79,7 @@ export default async function BloqueioPage({ params, searchParams }: PageProps<"
         lateral={
           <PainelAcoes>
             <NotasBloqueio />
-            <LinkButton variant="p" block href={rotas.app.lista}>
+            <LinkButton variant="p" block href={rotas.app.lista} data-treino="bloqueio-voltar">
               Voltar à lista de OS
             </LinkButton>
             <LinkButton variant="line" block href={rotas.app.os(id)}>

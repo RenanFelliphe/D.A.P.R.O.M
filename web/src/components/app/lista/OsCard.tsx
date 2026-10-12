@@ -5,6 +5,7 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { diaMes } from "@/lib/formatar";
 import { rotuloDaOs, rotuloDoTipo, statusDaOs, type OsResumo } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
+import { OS_BLOQUEIO, OS_GUIADA } from "@/treino/ids";
 
 const numeroOs: CSSProperties = { fontSize: 13, fontWeight: 600 };
 
@@ -27,7 +28,7 @@ export function OsCard({ os }: { os: OsResumo }) {
   const status = statusDaOs[os.status];
   const detalhe = linhaDeDetalhe(os);
   return (
-    <Link className="os-card" href={rotas.app.os(os.id)}>
+    <Link className="os-card" href={rotas.app.os(os.id)} data-treino={os.id === OS_GUIADA ? "os-guiada" : os.id === OS_BLOQUEIO ? "os-bloqueio" : undefined}>
       <div className="row between">
         <div className="row wrap">
           <span className="mono" style={numeroOs}>

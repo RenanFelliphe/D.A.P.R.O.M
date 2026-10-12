@@ -155,15 +155,15 @@ function Locais({ locais }: { locais: Dados["locais"] }) {
 interface DashboardOsProps {
   dados: Dados;
   rotuloAnterior: string;
-  /** Entrada de OS (`GET /importacoes/resumo`): só analista e admin. */
+  /** Entrada de OS (`GET /importacoes/resumo`): só o admin. */
   entrada: ResumoDasImportacoes | null;
-  /** Baixa no SAP (as encerradas ainda não exportadas): só analista e admin. */
+  /** Baixa no SAP (as encerradas ainda não exportadas): só o admin. */
   exportacao: { total: number; os: OsDoQuadro[] } | null;
 }
 
 /**
  * Dashboard de OS: a carteira de agora, as programadas e encerradas no período (por tipo e por faixa), as preventivas,
- * o tempo, as interrupções por risco e os locais; para analista e admin, a entrada de OS e a baixa no SAP.
+ * o tempo, as interrupções por risco e os locais; para o admin, a entrada de OS e a baixa no SAP.
  */
 export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao }: DashboardOsProps) {
   const { carteira: c, programadas: prog, encerradas: e } = dados;

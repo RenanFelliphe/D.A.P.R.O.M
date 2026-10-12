@@ -1,13 +1,15 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
+import { PilulaPrioridade } from "@/components/web/PilulaPrioridade";
 import { aparenciaDoStatus } from "@/components/web/quadro/ColunaQuadro";
 import type { OsDetalhe } from "@/data/detalhe";
 import { rotas } from "@/lib/rotas";
 import { rotuloDoStatus } from "@/lib/tipos";
 
-/** Trilha, identificação da OS (número, status, tipo, criticidade, atraso) e o atalho para o PDF. */
-export function DetalheCabecalho({ os }: { os: OsDetalhe }) {
+/** Trilha, identificação da OS (número, status, tipo, criticidade, atraso) e, se houver, as ações de gestão (`acoes`). */
+export function DetalheCabecalho({ os, acoes }: { os: OsDetalhe; acoes?: ReactNode }) {
   const numero = os.numero_ordem ?? "sem número";
   const a = aparenciaDoStatus[os.status];
   return (
@@ -34,6 +36,7 @@ export function DetalheCabecalho({ os }: { os: OsDetalhe }) {
             </Badge>
             {os.origem === "apoio" && <Badge tone="neu">OS de apoio</Badge>}
             {os.local_instalacao.critico && <Badge tone="crit">Local crítico</Badge>}
+            <PilulaPrioridade prioridade={os.prioridade} />
             {os.atrasada && <Badge tone="blq">Atrasada</Badge>}
           </div>
           <h1>{os.titulo}</h1>
@@ -41,15 +44,8 @@ export function DetalheCabecalho({ os }: { os: OsDetalhe }) {
             {os.local_instalacao.codigo}
             {os.local_instalacao.endereco ? ` — ${os.local_instalacao.endereco}` : ""} · {os.equipe.nome}
           </span>
+          {acoes && <div className="row wrap g8">{acoes}</div>}
         </div>
-        {os.status === "encerrada" && (
-          <div className="row g8">
-            <Link className="btn btn-p btn-sm" href={rotas.doc.os(os.id)}>
-              <Icon name="file" size={16} />
-              Ver PDF
-            </Link>
-          </div>
-        )}
       </div>
     </>
   );

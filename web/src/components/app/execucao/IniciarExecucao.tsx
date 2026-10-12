@@ -48,7 +48,7 @@ export function IniciarExecucao({ osId, apr }: { osId: string; apr: Extract<Situ
         </Notice>
       )}
       <PainelAcoes>
-        <Button variant="p" block onClick={iniciar} disabled={!valido || ocupado}>
+        <Button variant="p" block onClick={iniciar} disabled={!valido || ocupado} data-treino="exec-iniciar">
           <Icon name="play" size={18} />
           {ocupado ? "Iniciando…" : "Iniciar execução"}
         </Button>

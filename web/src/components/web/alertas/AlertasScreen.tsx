@@ -6,7 +6,7 @@ import { FiltrosAlertas, type ValoresDosFiltros } from "@/components/web/alertas
 import { ListaAlertas } from "@/components/web/alertas/ListaAlertas";
 import { Panel } from "@/components/web/Panel";
 import { rotas } from "@/lib/rotas";
-import type { Equipe, Usuario } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor as supervisa, nomesDasEquipesDoSupervisor, type Equipe, type Usuario } from "@/lib/tipos";
 import type { Alerta } from "./tipos";
 
 interface AlertasScreenProps {
@@ -38,9 +38,9 @@ function endereco(filtros: ValoresDosFiltros, extra: { alerta?: string; pagina?:
 
 /** Alertas do painel: lista à esquerda e, à direita, o detalhe do alerta aberto. */
 export function AlertasScreen({ usuario, alertas, selecionado, alertaNaoEncontrado, alertaPedido, filtros, pagina, tamanho, total, naoLidos, equipes }: AlertasScreenProps) {
-  const ehSupervisor = usuario.perfil === "supervisor";
-  const nomeDaEquipe = ehSupervisor ? equipes.find((e) => e.id === usuario.equipe_id)?.nome : undefined;
-  const leitura = usuario.perfil === "admin" || usuario.perfil === "seguranca";
+  const ehSupervisor = supervisa(usuario);
+  const nomeDaEquipe = ehSupervisor ? nomesDasEquipesDoSupervisor(usuario) : undefined;
+  const leitura = ehAdmin(usuario);
   const ultimaPagina = Math.max(1, Math.ceil(total / tamanho));
   const hrefDoAlerta = (id: string) => endereco(filtros, { alerta: id, pagina });
   // Sem `?alerta=` a tela abre o primeiro da lista. Com o filtro de não lidos, marcá-lo o tiraria da lista e o próximo seria

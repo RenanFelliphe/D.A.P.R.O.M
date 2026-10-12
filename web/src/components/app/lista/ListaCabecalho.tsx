@@ -5,7 +5,7 @@ import { diaPorExtenso } from "@/lib/os-app";
 export function ListaCabecalho({ equipe }: { equipe: string | null }) {
   return (
     <CabecalhoPagina>
-      <h1>OS da equipe</h1>
+      <h1 data-treino="lista-titulo">OS da equipe</h1>
       <span className="muted">
         {equipe ? `${equipe} · ` : ""}
         {diaPorExtenso()}

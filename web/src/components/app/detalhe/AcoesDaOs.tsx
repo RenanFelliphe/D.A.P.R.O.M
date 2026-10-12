@@ -72,7 +72,7 @@ export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel }: Acoe
           <Notice tone="ok" icon="check">
             <strong>APR aprovada hoje às {hora(aprDisponivel.concluida_em)}.</strong> Ela ampara uma execução nesta OS.
           </Notice>
-          <LinkButton variant="p" block href={rotas.app.execucao(os.id)}>
+          <LinkButton variant="p" block href={rotas.app.execucao(os.id)} data-treino="os-iniciar-execucao">
             <Icon name="play" size={18} fill />
             Iniciar execução
           </LinkButton>

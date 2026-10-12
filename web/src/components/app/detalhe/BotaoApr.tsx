@@ -22,7 +22,7 @@ export function BotaoApr({ osId, usuarioId, pendente, jaAprovada }: BotaoAprProp
     const aprovada = rascunho.concluidaEm !== null;
     return (
       <>
-        <LinkButton variant={jaAprovada ? "line" : "p"} block href={aprovada ? rotas.app.aprovada(osId) : rotas.app.checklist(osId)}>
+        <LinkButton variant={jaAprovada ? "line" : "p"} block href={aprovada ? rotas.app.aprovada(osId) : rotas.app.checklist(osId)} data-treino="os-nova-apr">
           <Icon name="save" size={18} />
           Continuar APR
         </LinkButton>
@@ -33,7 +33,7 @@ export function BotaoApr({ osId, usuarioId, pendente, jaAprovada }: BotaoAprProp
     );
   }
   return (
-    <LinkButton variant={jaAprovada ? "line" : "p"} block href={rotas.app.apr(osId)}>
+    <LinkButton variant={jaAprovada ? "line" : "p"} block href={rotas.app.apr(osId)} data-treino="os-nova-apr">
       {jaAprovada ? "Fazer uma nova APR" : pendente ? "Retomar com APR nova" : "Nova APR"}
     </LinkButton>
   );

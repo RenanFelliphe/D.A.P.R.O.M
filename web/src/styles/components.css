@@ -633,3 +633,33 @@ table.tb {
   justify-content: center;
   color: var(--ink3)
 }
+
+/* Card recolhível do detalhe da OS (técnico) */
+.recolhivel > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none
+}
+
+.recolhivel > summary::-webkit-details-marker {
+  display: none
+}
+
+.recolhivel > summary::after {
+  content: "+";
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink3);
+  margin-left: auto
+}
+
+.recolhivel[open] > summary::after {
+  content: "\2212"
+}
+
+.recolhivel > summary .small {
+  color: var(--ink4)
+}

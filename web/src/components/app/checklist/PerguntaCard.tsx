@@ -35,7 +35,7 @@ interface PerguntaCardProps {
 /** Cartão da pergunta atual com o texto e os botões Sim/Não (e NA, só nos itens que o permitem). */
 export function PerguntaCard({ numero, item, resposta, aoResponder }: PerguntaCardProps) {
   return (
-    <section className="q-card" aria-label="Pergunta atual">
+    <section className="q-card" aria-label="Pergunta atual" data-treino="ck-pergunta" data-treino-item={item.id}>
       <div className="row between">
         <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--brand)" }}>
           Pergunta {numero}
@@ -43,7 +43,7 @@ export function PerguntaCard({ numero, item, resposta, aoResponder }: PerguntaCa
         <TagPergunta item={item} />
       </div>
       <p className="q">{item.texto}</p>
-      <div className="answer" style={item.permite_na ? { gridTemplateColumns: "1fr 1fr 1fr" } : undefined}>
+      <div className="answer" data-treino="ck-resposta" style={item.permite_na ? { gridTemplateColumns: "1fr 1fr 1fr" } : undefined}>
         <button type="button" aria-pressed={resposta === "sim"} onClick={() => aoResponder("sim")}>
           <Icon name="check" size={22} />
           Sim

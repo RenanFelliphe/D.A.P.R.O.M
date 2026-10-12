@@ -28,7 +28,7 @@ function decodificar(valor: string) {
 }
 
 /**
- * Um modelo de APR: as versões, o editor do rascunho (Segurança do Trabalho e admin) ou a versão em leitura, onde o
+ * Um modelo de APR: as versões, o editor do rascunho (admin) ou a versão em leitura, onde o
  * modelo é usado, e as ações de excluir e restaurar. `?versao=` escolhe a versão; sem ela, abre o rascunho ou a em uso.
  */
 export default async function ModeloPage({ params, searchParams }: PageProps<"/web/apr/modelos/[codigo]">) {
@@ -39,7 +39,7 @@ export default async function ModeloPage({ params, searchParams }: PageProps<"/w
 
   const [{ usuario }, detalhe] = await Promise.all([usuarioAtual(), apiOuNulo<DetalheModelo>(caminho)]);
   if (!detalhe) notFound();
-  const podeEditar = editaModelos(usuario.perfil);
+  const podeEditar = editaModelos(usuario);
   const excluido = Boolean(detalhe.arquivado_em);
   const rascunho = detalhe.versoes.find((v) => v.rascunho);
   const emUso = detalhe.versoes.find((v) => !v.rascunho);
@@ -47,7 +47,7 @@ export default async function ModeloPage({ params, searchParams }: PageProps<"/w
 
   const [modelo, uso, publicados] = await Promise.all([
     apiOuNulo<ModeloCompleto>(`${caminho}/versoes/${escolhida.versao}`),
-    veTodasAsEquipes(usuario.perfil) ? apiOuNulo<Uso>(`${caminho}/uso`) : Promise.resolve(null),
+    veTodasAsEquipes(usuario) ? apiOuNulo<Uso>(`${caminho}/uso`) : Promise.resolve(null),
     podeEditar && !excluido ? api<{ modelos: ResumoModelo[] }>("/modelos-apr", { consulta: { publicados: true, tamanho: 200 } }) : Promise.resolve(null),
   ]);
   const substitutos = agruparModelos(publicados?.modelos ?? [])

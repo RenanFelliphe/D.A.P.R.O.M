@@ -2,6 +2,7 @@ import "server-only";
 
 import { listarEquipes } from "@/data/quadro";
 import { usuarioAtual } from "@/lib/api";
+import { ehSupervisor as supervisa, nomesDasEquipesDoSupervisor } from "@/lib/tipos";
 import { consultaDoFiltro, lerFiltroDoPainel, rotuloDoAnterior } from "./filtro";
 
 /**
@@ -9,9 +10,9 @@ import { consultaDoFiltro, lerFiltroDoPainel, rotuloDoAnterior } from "./filtro"
  * para a `api` e para os links entre dashboards, e as equipes do seletor (o supervisor não escolhe: fica com o nome da dele).
  */
 export async function prepararDashboard(searchParams: Promise<Record<string, string | string[] | undefined>>) {
-  const [{ usuario, equipe }, sp] = await Promise.all([usuarioAtual(), searchParams]);
-  const filtro = lerFiltroDoPainel(sp, usuario.perfil);
-  const ehSupervisor = usuario.perfil === "supervisor";
+  const [{ usuario }, sp] = await Promise.all([usuarioAtual(), searchParams]);
+  const filtro = lerFiltroDoPainel(sp, usuario);
+  const ehSupervisor = supervisa(usuario);
   const equipes = ehSupervisor ? null : await listarEquipes();
   const consulta = consultaDoFiltro(filtro);
   const parametros = new URLSearchParams();
@@ -23,7 +24,7 @@ export async function prepararDashboard(searchParams: Promise<Record<string, str
     /** `periodo=…&equipe_id=…`, para os links que levam o filtro junto. */
     consultaDaUrl: parametros.toString(),
     equipes,
-    nomeDaEquipe: ehSupervisor ? (equipe?.nome ?? "sem equipe") : undefined,
+    nomeDaEquipe: ehSupervisor ? nomesDasEquipesDoSupervisor(usuario) || "sem equipe" : undefined,
     rotuloAnterior: rotuloDoAnterior(filtro.periodo),
   };
 }

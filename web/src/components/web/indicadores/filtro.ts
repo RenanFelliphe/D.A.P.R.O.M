@@ -1,5 +1,5 @@
 import { rotuloDoMes } from "@/data/quadro";
-import type { Perfil } from "@/lib/tipos";
+import { ehSupervisor, type Usuario } from "@/lib/tipos";
 
 /**
  * Filtro comum dos quatro dashboards de Indicadores e exportação, na URL: `?periodo=` (7d, 30d, 90d, 12m ou um mês
@@ -26,12 +26,12 @@ const um = (valor: string | string[] | undefined) => (Array.isArray(valor) ? val
 const movel = (periodo: string) => PERIODOS_MOVEIS.find((p) => p.valor === periodo);
 
 /** Lê o filtro da URL, descartando o que não tem a forma esperada (a `api` recusaria com 422). */
-export function lerFiltroDoPainel(sp: Record<string, string | string[] | undefined>, perfil: Perfil): FiltroDoPainel {
+export function lerFiltroDoPainel(sp: Record<string, string | string[] | undefined>, usuario: Pick<Usuario, "perfil" | "equipes_supervisionadas">): FiltroDoPainel {
   const periodo = um(sp.periodo);
   const equipeId = um(sp.equipe_id);
   return {
     periodo: periodo && (movel(periodo) || MES.test(periodo)) ? periodo : "30d",
-    equipeId: perfil !== "supervisor" && equipeId && UUID.test(equipeId) ? equipeId : undefined,
+    equipeId: !ehSupervisor(usuario) && equipeId && UUID.test(equipeId) ? equipeId : undefined,
   };
 }
 

@@ -14,7 +14,7 @@ interface GradePerguntasProps {
 /** Grade com um chip por pergunta, para ir a qualquer uma; o contorno vermelho marca a que ainda pede evidência. */
 export function GradePerguntas({ total, atual, respondida, pendente, aoSelecionar }: GradePerguntasProps) {
   return (
-    <section className="panel" style={{ gap: 10 }} aria-label="Todas as perguntas">
+    <section className="panel" style={{ gap: 10 }} aria-label="Todas as perguntas" data-treino="ck-grade">
       <span className="lbl">Perguntas · clique para ir a uma pergunta</span>
       <div className="qgrid">
         {Array.from({ length: total }, (_, i) => (

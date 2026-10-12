@@ -5,6 +5,7 @@ import { DashboardGeral } from "@/components/web/indicadores/DashboardGeral";
 import type { DashboardGeral as Dados } from "@/data/dashboards";
 import { api } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
+import { ehAdmin } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Dashboard geral" };
 
@@ -15,7 +16,6 @@ export default async function GeralPage({ searchParams }: PageProps<"/web/indica
     api<Dados>("/indicadores/geral", { consulta: painel.consulta }),
     api<{ total: number }>("/alertas", { consulta: { lido: false, tamanho: 1 } }),
   ]);
-  const perfil = painel.usuario.perfil;
   return (
     <>
       <CabecalhoDoPainel acao={rotas.web.indicadores} filtro={painel.filtro} de={dados.de} ate={dados.ate} equipes={painel.equipes} nomeDaEquipe={painel.nomeDaEquipe} />
@@ -23,7 +23,7 @@ export default async function GeralPage({ searchParams }: PageProps<"/web/indica
         dados={dados}
         rotuloAnterior={painel.rotuloAnterior}
         alertasNaoLidos={alertas.total}
-        verExportacao={perfil === "analista" || perfil === "admin"}
+        verExportacao={ehAdmin(painel.usuario)}
         consulta={painel.consultaDaUrl}
       />
     </>

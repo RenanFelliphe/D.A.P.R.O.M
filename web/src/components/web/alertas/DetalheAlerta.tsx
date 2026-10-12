@@ -7,7 +7,7 @@ import type { Atividade } from "@/components/web/apoio/tipos";
 import { apiOuNulo, api } from "@/lib/api";
 import { data, dataDoDia, dataHora, hoje } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
-import { rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
+import { equipesDoSupervisor, rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
 import { CartaoApoio } from "./CartaoApoio";
 import { CartaoReprogramar } from "./CartaoReprogramar";
 import { CausaDoBloqueio } from "./DetalheBloqueio";
@@ -19,20 +19,20 @@ interface DetalheAlertaProps {
   alerta: Alerta;
   usuario: Usuario;
   equipes: Equipe[];
-  /** Abrir o alerta o marca como lido (só para quem pode agir sobre alertas; a Segurança só lê). */
+  /** Abrir o alerta o marca como lido (só para quem pode agir sobre alertas). */
   marcarAoAbrir: boolean;
 }
 
 /**
  * Painel de detalhe do alerta: a OS, o que aconteceu e, para o impedimento, o que causou e as decisões do supervisor ou
- * analista. Abrir o alerta o marca como lido, sem botão.
+ * admin. Abrir o alerta o marca como lido, sem botão.
  */
 export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }: DetalheAlertaProps) {
   // A falha de importação não tem OS: detalhe próprio.
   if (alerta.tipo === "falha_importacao" || !alerta.os_id) return <DetalheFalhaImportacao alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   const osId = alerta.os_id;
   const bloqueio = alerta.tipo === "bloqueio";
-  const podeAgir = perfilAgeSobreAlertas(usuario.perfil);
+  const podeAgir = perfilAgeSobreAlertas(usuario);
   const naoLido = alerta.lido_em === null;
 
   // A OS pode já não ser visível ao usuário (por exemplo, o supervisor reprogramou para outra equipe): 404.
@@ -130,7 +130,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
                 equipes={equipes}
                 atividades={atividades}
                 hoje={hojeDia}
-                equipeDoSupervisor={usuario.perfil === "supervisor" ? usuario.equipe_id : null}
+                equipesDoSupervisor={equipesDoSupervisor(usuario)}
               />
             )}
             <CartaoReprogramar osId={os.id} dataAtual={os.data_inicio_prog} equipeAtualId={os.equipe_id} equipes={equipes} hoje={hojeDia} />

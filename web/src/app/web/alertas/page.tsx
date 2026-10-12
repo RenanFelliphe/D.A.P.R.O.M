@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AlertasScreen } from "@/components/web/alertas/AlertasScreen";
 import { TIPOS_DE_ALERTA, type Alerta, type TipoDeAlerta } from "@/components/web/alertas/tipos";
 import { api, usuarioAtual } from "@/lib/api";
-import type { Equipe, Paginacao } from "@/lib/tipos";
+import { ehSupervisor, type Equipe, type Paginacao } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Alertas e impedimento" };
 
@@ -23,7 +23,7 @@ export default async function AlertasPage({ searchParams }: PageProps<"/web/aler
   const filtros = {
     lido: um("lido") === "nao" ? "nao" : "",
     tipo: (TIPOS_DE_ALERTA as string[]).includes(um("tipo")) ? um("tipo") : "",
-    equipe_id: usuario.perfil === "supervisor" ? "" : um("equipe_id"),
+    equipe_id: ehSupervisor(usuario) ? "" : um("equipe_id"),
   };
   const comFiltroDeTipo = filtros.tipo !== "";
   const pagina = comFiltroDeTipo ? 1 : Math.max(1, Number.parseInt(um("pagina"), 10) || 1);

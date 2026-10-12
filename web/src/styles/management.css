@@ -142,7 +142,7 @@
   font-size: 19px
 }
 
-/* Cartões das formas de entrada (três para o admin, dois para o analista), lado a lado em colunas iguais; o botão de
+/* Cartões das formas de entrada (três para o admin), lado a lado em colunas iguais; o botão de
    cada um cobre o cartão inteiro (::after) */
 .entradas {
   display: grid;
@@ -1479,4 +1479,10 @@ details.excluidos > summary {
 .menu-acoes-item[disabled] {
   opacity: .4;
   cursor: not-allowed
+}
+
+/* Pendentes de liberação (tela de usuários do admin): destaque no topo */
+.panel.painel-pendentes {
+  border-color: var(--al-bd);
+  box-shadow: inset 4px 0 0 var(--al-bd)
 }

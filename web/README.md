@@ -1,6 +1,6 @@
 # web
 
-Versão web do D.A.P.R.O.M, em **Next.js 16 (App Router) + React 19 + TypeScript**, só para desktop. Serve a todos os perfis: o técnico usa a área de campo (`/app`) e os demais perfis usam o painel de gestão (`/web`); o que cada pessoa vê depende do perfil. Os dados vêm da [`api`](../api/README.md); o `web` nunca fala com o Supabase.
+Versão web do D.A.P.R.O.M, em **Next.js 16 (App Router) + React 19 + TypeScript**, só para desktop. Há dois perfis, técnico e admin; supervisor não é perfil, é o técnico que a equipe aponta como supervisor (`equipes_supervisionadas` de `GET /me`). O técnico usa a área de campo (`/app`); o supervisor usa também o painel de gestão (`/web`) das equipes que supervisiona; o admin é só gestão (`/web`) e não executa OS. Os dados vêm da [`api`](../api/README.md); o `web` nunca fala com o Supabase.
 
 ## Executar
 
@@ -11,7 +11,7 @@ cd api && pnpm install && pnpm dev:local     # http://localhost:3333
 cd web && pnpm install && pnpm dev           # http://localhost:3000, abre na tela de entrada
 ```
 
-Usuários do modo local (senha `daprom123`): `tec1`, `tec2` (técnicos, Serviços Especiais), `tec3` (técnico, Instrumentação), `sup1`, `sup2` (supervisores), `ana` (analista), `seg` (Segurança do Trabalho), `adm` (admin). Os dados somem quando a `api` reinicia.
+Usuários do modo local (senha `daprom123`): `tec1`, `tec2` (técnicos, Serviços Especiais), `tec3` (técnico, Instrumentação), `sup1`, `sup2` (técnicos que supervisionam equipes), `adm` (admin). Os dados somem quando a `api` reinicia.
 
 ```bash
 pnpm build       # build de produção
@@ -29,28 +29,40 @@ Variáveis de ambiente (só do servidor do `web`): `API_URL` (padrão `http://lo
 
 ## Rotas
 
-| Rota | Tela | Perfis |
+| Rota | Tela | Quem |
 |---|---|---|
 | `/app/entrar` · `/app/trocar-senha` | Entrada e "Defina sua senha" | todos |
-| `/app/lista` · `/app/os/[id]` | OS da equipe e detalhe | técnico |
-| `/app/os/[id]/apr` · `…/apr/checklist` · `…/apr/aprovada` · `…/apr/bloqueio` | Nova APR, checklist, assinaturas e resultado | técnico |
-| `/app/os/[id]/execucao` · `/app/perfil` | Execução (iniciar, pausar, suspender, interromper, encerrar) e perfil com assinatura e histórico | técnico |
-| `/web/os/quadro` · `/web/os/[id]` · `/doc/os/[id]` | Ordem de Serviço, aba Quadro: quadro por status; detalhe com histórico de APRs; PDF da OS | supervisor, analista, segurança, admin |
-| `/web/os/importacao` | Ordem de Serviço, aba Importação: métodos de entrada (Sincronização pela API, Importação de planilha .xlsx ou PDF, Digitalização pela câmera — só admin; PDF e câmera em desenvolvimento), colunas lidas e histórico | analista, admin |
-| `/web/alertas` | Alertas, reprogramação e OS de apoio | supervisor, analista (os seus), admin e segurança (leitura) |
-| `/web/indicadores/geral` | Indicadores e exportação, dashboard Geral: a carteira de OS de agora, o resumo do período (OS encerradas, APRs e bloqueios, tempo, interrupções), o que precisa de atenção (com atalhos) e os resultados do período | supervisor (a própria equipe), analista, segurança, admin |
-| `/web/indicadores/equipes` | Dashboard de equipes e usuários: situação das preventivas por equipe, uma linha por equipe e por técnico (execuções, tempo, APRs, bloqueios, interrupções) e, só para o admin, o estado do cadastro | supervisor (a própria equipe), analista, segurança, admin |
-| `/web/indicadores/os` | Dashboard de OS: carteira de agora, programadas e encerradas no período (por tipo e por dia/semana/mês), preventivas, tempo, interrupções por risco e locais; para analista e admin, a entrada de OS (métodos, sincronização, linhas ignoradas) e a planilha de baixa no SAP | supervisor (a própria equipe), analista, segurança, admin |
-| `/web/indicadores/apr` | Dashboard de APR: APRs respondidas e bloqueadas, alertas, APRs com modelo escolhido pelo técnico, APRs por dia/semana/mês, itens que mais bloqueiam, alertas mais registrados e APRs por modelo e por equipe | supervisor (a própria equipe), analista, segurança, admin |
-| `/web/apr/modelos` | APR, aba Modelos: um cartão por modelo (versão em uso, rascunho, atividades e APRs), totais e modelos excluídos com "Restaurar" | segurança e admin editam; os demais leem |
-| `/web/apr/modelos/novo` | Novo modelo: código, título, revisão e data do documento, em branco ou copiado de outro modelo; nasce rascunho | segurança, admin |
-| `/web/apr/modelos/[codigo]` | Um modelo: versões, editor do rascunho ou versão em leitura, "Onde é usado" (atividades, OS abertas, APRs) e "Excluir modelo" | segurança e admin editam; os demais leem (o uso, só analista, segurança e admin) |
-| `/web/apr/atividades` | APR, aba Atividades: a tabela atividade → modelo, que liga cada OS ao modelo, com filtro por modelo e "só sem modelo" | segurança e admin editam; os demais leem |
-| `/web/usuarios` | Equipes e usuários | admin |
+| `/app/lista` · `/app/os/[id]` | OS da equipe e detalhe | técnico (inclusive o supervisor); o admin vai para `/web` |
+| `/app/os/[id]/apr` · `…/apr/checklist` · `…/apr/aprovada` · `…/apr/bloqueio` | Nova APR, checklist, assinaturas e resultado | técnico (inclusive o supervisor); o admin vai para `/web` |
+| `/app/os/[id]/execucao` · `/app/perfil` | Execução (iniciar, pausar, suspender, interromper, encerrar) e perfil com assinatura e histórico | técnico (inclusive o supervisor); o admin vai para `/web` |
+| `/web/os/quadro` · `/web/os/[id]` · `/doc/os/[id]` | Ordem de Serviço, aba Quadro: quadro por status; detalhe com histórico de APRs; PDF da OS | supervisor (as suas equipes), admin |
+| `/web/os/importacao` | Ordem de Serviço, aba Importação: métodos de entrada (Sincronização pela API, Importação de planilha .xlsx ou PDF, Digitalização pela câmera — só admin; PDF e câmera em desenvolvimento), colunas lidas e histórico | admin |
+| `/web/alertas` | Alertas, reprogramação e OS de apoio | supervisor (os das suas equipes), admin |
+| `/web/indicadores/geral` | Indicadores e exportação, dashboard Geral: a carteira de OS de agora, o resumo do período (OS encerradas, APRs e bloqueios, tempo, interrupções), o que precisa de atenção (com atalhos) e os resultados do período | supervisor (as suas equipes), admin |
+| `/web/indicadores/equipes` | Dashboard de equipes e usuários: situação das preventivas por equipe, uma linha por equipe e por técnico (execuções, tempo, APRs, bloqueios, interrupções) e, só para o admin, o estado do cadastro | supervisor (as suas equipes), admin |
+| `/web/indicadores/os` | Dashboard de OS: carteira de agora, programadas e encerradas no período (por tipo e por dia/semana/mês), preventivas, tempo, interrupções por risco e locais; para o admin, a entrada de OS (métodos, sincronização, linhas ignoradas) e a planilha de baixa no SAP | supervisor (as suas equipes), admin |
+| `/web/indicadores/apr` | Dashboard de APR: APRs respondidas e bloqueadas, alertas, APRs com modelo escolhido pelo técnico, APRs por dia/semana/mês, itens que mais bloqueiam, alertas mais registrados e APRs por modelo e por equipe | supervisor (as suas equipes), admin |
+| `/web/apr/modelos` | APR, aba Modelos: um cartão por modelo (versão em uso, rascunho, atividades e APRs), totais e modelos excluídos com "Restaurar" | admin edita; o supervisor lê |
+| `/web/apr/modelos/novo` | Novo modelo: código, título, revisão e data do documento, em branco ou copiado de outro modelo; nasce rascunho | admin |
+| `/web/apr/modelos/[codigo]` | Um modelo: versões, editor do rascunho ou versão em leitura, "Onde é usado" (atividades, OS abertas, APRs) e "Excluir modelo" | admin edita; o supervisor lê (o uso, só o admin) |
+| `/web/apr/atividades` | APR, aba Atividades: a tabela atividade → modelo, que liga cada OS ao modelo, com filtro por modelo e "só sem modelo" | admin edita; o supervisor lê |
+| `/web/usuarios` | Equipes e usuários; no topo o painel "Pendentes de liberação" (quem cadastrou, Liberar, Recusar com motivo obrigatório), filtro "Acesso" e selo com a contagem no item do menu; recusados mostram o motivo e só podem ser excluídos | admin (o supervisor vai para `/web/minha-equipe`) |
+| `/web/minha-equipe` | Minha equipe: técnicos das equipes que ele supervisiona com o selo de acesso (Pendente, Liberado, Recusado + motivo), "Novo técnico" (nasce pendente; mostra a senha provisória uma vez), editar nome, cargo e registro e "Cancelar cadastro" dos pendentes que ele criou | supervisor (o admin vai para `/web/usuarios`) |
+| `/app/aguardando` | "Seu acesso está aguardando liberação": quem cadastrou, atalho para o Campo de treino, "Verificar liberação" e conferência automática a cada 30 s | técnico pendente |
 
-`/` leva ao início do perfil, `/web/os` ao quadro, `/web/apr` aos modelos e `/web/indicadores` ao dashboard geral. Os quatro dashboards têm o mesmo filtro na URL (`?periodo=7d|30d|90d|12m|AAAA-MM`, 30 dias se ausente, e `?equipe_id=`), que acompanha a troca de aba. Os endereços antigos `/web/quadro`, `/web/importacao`, `/web/modelos`, `/web/os/diagnostico`, `/web/apr/diagnostico`, `/web/indicadores/dashboard` e `/web/indicadores/diagnostico-*` redirecionam (em `next.config.ts`). Os endereços ficam em [`src/lib/rotas.ts`](src/lib/rotas.ts).
+`/` leva ao início do papel (admin e supervisor, ao quadro de gestão; técnico comum, à lista de OS), `/web/os` ao quadro, `/web/apr` aos modelos e `/web/indicadores` ao dashboard geral. Os quatro dashboards têm o mesmo filtro na URL (`?periodo=7d|30d|90d|12m|AAAA-MM`, 30 dias se ausente, e `?equipe_id=`), que acompanha a troca de aba. Os endereços antigos `/web/quadro`, `/web/importacao`, `/web/modelos`, `/web/os/diagnostico`, `/web/apr/diagnostico`, `/web/indicadores/dashboard` e `/web/indicadores/diagnostico-*` redirecionam (em `next.config.ts`). Os endereços ficam em [`src/lib/rotas.ts`](src/lib/rotas.ts).
 
 Excluir um modelo que já foi publicado o **arquiva**: ele some das listas, das APRs novas e da cópia offline, mas as versões ficam, porque APRs, PDFs e a APR offline que ainda vai chegar apontam para elas. As atividades dele passam para o modelo escolhido na exclusão ou ficam sem modelo (o técnico escolhe ao abrir a APR). Modelo que nunca foi publicado é apagado de vez.
+
+### Liberação de técnicos cadastrados por supervisor
+
+O supervisor cadastra técnicos nas equipes dele; o usuário nasce `liberacao: "pendente"` e só ganha o acesso geral quando um admin libera (`POST /usuarios/{id}/liberar`); recusar (`/recusar`, com `motivo`) impede a entrada e o motivo aparece no login (`403 acesso_recusado`). Regras no web:
+
+- **Pendente fora do treino**: a casca do técnico (`TecnicoShell`, servidor) redireciona todo `/app/*` para `/app/aguardando`, exceto `/app/aguardando`, `/app/treino` (a página de escolha; as rotas `treino/entrar|sair` são handlers sem casca), `/app/trocar-senha` e `/app/entrar`. **Sem laço**: a tela de espera está na lista de liberadas e só lê o `/me` real (`lib/situacao-real.ts`, ignora o treino), que a `api` permite ao pendente. O endereço pedido vem do `proxy.ts` (`x-daprom-endereco`); sem ele a casca não redireciona. O menu mostra só "Campo de treino" e "Aguardando liberação", sem busca global.
+- **Pendente no treino** (cookie `treino`): menu completo (o tutorial aponta para ele) mais "Aguardando liberação"; a `api` fictícia atende tudo. Ao concluir o tutorial, "Ver situação do meu acesso" no lugar de "Ir ao sistema" (sair do treino cai na tela de espera).
+- **Rede de segurança**: `403 aguardando_liberacao` vindo de `chamarApi` (servidor) redireciona para `/app/aguardando`; `chamar` (navegador) faz o mesmo e devolve uma mensagem amigável. `403 acesso_recusado` volta à entrada. Com a sessão ainda aberta e `liberacao: "recusado"`, a casca mostra uma tela com o motivo e o botão Sair.
+- **Login**: `403 acesso_recusado` mostra a mensagem da `api` (com o motivo). Quem entra pendente vai à tela de espera (`inicioDoUsuario`).
+- A tela de espera mostra "quem cadastrou/quando" se `/me` trouxer `criado_por_nome` e `criado_em` (campos opcionais). O painel do admin usa `criado_por_nome`/`criado_por_id` e `criado_em`.
 
 ## Estrutura
 
@@ -64,7 +76,7 @@ src/
 │   ├── web/                  # painel de gestão
 │   └── doc/                  # PDF da OS dentro do painel
 ├── components/
-│   ├── shell/                # Shell, MenuLateral, Barras, TecnicoShell, GestaoShell (leem o usuário e filtram o menu por perfil)
+│   ├── shell/                # Shell, MenuLateral, Barras, TecnicoShell, GestaoShell (leem o usuário e filtram o menu por papel; o supervisor tem o atalho "Painel de supervisão" no campo e "Minhas OS (campo)" na gestão)
 │   ├── ui/                   # peças compartilhadas: Icon, Badge, Button, Notice, Field, AssinaturaCanvas, AdicionarFoto, ImagemArquivo
 │   ├── app/                  # componentes da área do técnico, por tela
 │   └── web/                  # componentes do painel, por tela

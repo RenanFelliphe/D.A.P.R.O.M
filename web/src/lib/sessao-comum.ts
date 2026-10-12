@@ -2,6 +2,8 @@
 
 export const COOKIE_ACESSO = "daprom_at";
 export const COOKIE_RENOVACAO = "daprom_rt";
+/** Cabeçalho que o `proxy.ts` põe na requisição com o endereço pedido (só o servidor lê). */
+export const CABECALHO_ENDERECO = "x-daprom-endereco";
 
 /** Endereço da `api` (variável `API_URL`, só do servidor do `web`). */
 export const apiUrl = () => (process.env.API_URL ?? "http://localhost:3333").replace(/\/$/, "");

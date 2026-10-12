@@ -47,7 +47,7 @@ export default async function PerfilPage() {
                 </div>
               </div>
             </section>
-            <section className="stack g8">
+            <section className="stack g8" data-treino="perfil-historico">
               <h2>OS que encerrei nos últimos 60 dias</h2>
               {execucoes.length === 0 ? (
                 <div className="card muted">Nenhuma OS encerrada por você nos últimos 60 dias.</div>

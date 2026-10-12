@@ -10,7 +10,7 @@ import { rotas } from "@/lib/rotas";
 
 export const metadata: Metadata = { title: "Novo modelo de APR" };
 
-/** Cadastro de um modelo de APR novo (Segurança do Trabalho e admin): nasce como rascunho e segue para o editor. */
+/** Cadastro de um modelo de APR novo (admin): nasce como rascunho e segue para o editor. */
 export default async function NovoModeloPage() {
   const { usuario } = await usuarioAtual();
   const cabecalho = (
@@ -30,12 +30,12 @@ export default async function NovoModeloPage() {
     </>
   );
 
-  if (!editaModelos(usuario.perfil)) {
+  if (!editaModelos(usuario)) {
     return (
       <Screen>
         {cabecalho}
         <Notice tone="al" icon="lock" style={{ fontSize: 14.5 }}>
-          Só a Segurança do Trabalho e o administrador cadastram modelos. Você pode consultar os existentes na <Link href={rotas.web.modelos}>aba Modelos</Link>.
+          Só o administrador cadastra modelos. Você pode consultar os existentes na <Link href={rotas.web.modelos}>aba Modelos</Link>.
         </Notice>
       </Screen>
     );

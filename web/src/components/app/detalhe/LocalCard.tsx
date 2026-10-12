@@ -5,7 +5,7 @@ import type { LocalDaOs } from "@/lib/os-app";
 export function LocalCard({ local }: { local: LocalDaOs }) {
   const consulta = local.plus_code ?? local.endereco ?? local.codigo;
   return (
-    <div className="card row" style={{ alignItems: "flex-start", gap: 12 }}>
+    <div className="card row" style={{ alignItems: "flex-start", gap: 12 }} data-treino="os-local">
       <Icon name="pin" size={22} style={{ color: "var(--brand)", marginTop: 2 }} />
       <div className="grow stack" style={{ gap: 2 }}>
         <strong>{local.codigo}</strong>

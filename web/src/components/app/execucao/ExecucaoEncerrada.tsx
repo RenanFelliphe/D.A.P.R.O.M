@@ -38,7 +38,7 @@ export function ExecucaoEncerrada({ osId, jaEncerrada }: { osId: string; jaEncer
   }, [osId, jaEncerrada]);
 
   return (
-    <div className="panel stack g12" style={{ maxWidth: 560 }}>
+    <div className="panel stack g12" style={{ maxWidth: 560 }} data-treino="exec-encerrada">
       <h2>{jaEncerrada ? "OS já encerrada" : "Encerrada"}</h2>
       <Notice tone="ok" icon="check">
         {jaEncerrada ? "Esta OS já foi encerrada." : "A OS foi encerrada e o supervisor dá ciência no painel."}{" "}

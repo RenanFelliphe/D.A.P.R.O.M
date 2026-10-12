@@ -11,7 +11,7 @@ import { TabelaPerguntas } from "./TabelaPerguntas";
 
 interface VisaoModeloProps {
   modelo: ModeloCompleto;
-  /** Segurança do Trabalho ou administrador: pode criar a próxima versão. */
+  /** Administrador: pode criar a próxima versão. */
   podeEditar: boolean;
   /** Versão do rascunho que já existe para este código, se houver. */
   rascunho?: number;
@@ -47,7 +47,7 @@ export function VisaoModelo({ modelo, podeEditar, rascunho, emUso }: VisaoModelo
           ? "Este modelo foi excluído: a versão fica guardada para o histórico."
           : podeEditar
             ? "Para alterar, crie uma nova versão: ela nasce como rascunho, copiada desta."
-            : "Só a Segurança do Trabalho e o administrador criam novas versões."}{" "}
+            : "Só o administrador cria novas versões."}{" "}
         As APRs já preenchidas continuam ligadas à versão que usaram.
       </Notice>
       <TabelaPerguntas itens={modelo.itens} riscos={modelo.riscos} />

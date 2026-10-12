@@ -45,7 +45,7 @@ export default async function AtividadesPage({ searchParams }: PageProps<"/web/a
         semModelo={semModelo}
         modelo={modelo}
         modelos={codigos}
-        podeEditar={editaModelos(usuario.perfil)}
+        podeEditar={editaModelos(usuario)}
       />
     </>
   );

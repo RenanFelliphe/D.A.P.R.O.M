@@ -6,6 +6,7 @@ import { ColunaQuadro, aparenciaDoStatus } from "@/components/web/quadro/ColunaQ
 import { FaixaAlertas } from "@/components/web/quadro/FaixaAlertas";
 import { FiltrosRecolhiveis } from "@/components/web/quadro/FiltrosRecolhiveis";
 import { FiltrosQuadro } from "@/components/web/quadro/FiltrosQuadro";
+import { OrdemDoQuadro } from "@/components/web/quadro/OrdemDoQuadro";
 import { KpisQuadro } from "@/components/web/quadro/KpisQuadro";
 import { Paginas } from "@/components/web/quadro/Paginas";
 import {
@@ -20,7 +21,7 @@ import {
 import { usuarioAtual } from "@/lib/api";
 import { hoje, hora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
-import { rotuloDoStatus, type OsStatus } from "@/lib/tipos";
+import { ehSupervisor as supervisa, nomesDasEquipesDoSupervisor, rotuloDoStatus, type OsStatus } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Quadro de OS" };
 
@@ -45,6 +46,7 @@ function lerFiltros(sp: Record<string, string | string[] | undefined>): FiltrosD
     critica: um("critica") === "true" ? true : undefined,
     periodo: periodo && /^\d{4}-(0[1-9]|1[0-2])$/.test(periodo) ? periodo : undefined,
     busca: um("busca"),
+    ordem: um("ordem") === "data_limite" ? "data_limite" : undefined,
     status: status && STATUS_VALIDOS.includes(status) ? status : undefined,
     pagina: Number.isInteger(pagina) && pagina > 0 ? pagina : undefined,
   };
@@ -61,7 +63,7 @@ function hrefDoQuadro(f: FiltrosDoQuadro, mudar: Partial<Record<keyof FiltrosDoQ
 
 export default async function QuadroPage({ searchParams }: PageProps<"/web/os/quadro">) {
   const filtros = lerFiltros(await searchParams);
-  const { usuario, equipe } = await usuarioAtual();
+  const { usuario } = await usuarioAtual();
 
   // A busca do quadro que casa exatamente com o número de uma ordem vai direto ao detalhe.
   if (filtros.busca) {
@@ -69,14 +71,14 @@ export default async function QuadroPage({ searchParams }: PageProps<"/web/os/qu
     if (id) redirect(rotas.web.os(id));
   }
 
-  const ehSupervisor = usuario.perfil === "supervisor";
+  const ehSupervisor = supervisa(usuario);
   const [quadro, equipes, alertas] = await Promise.all([
     carregarQuadro(filtros),
     ehSupervisor ? Promise.resolve(null) : listarEquipes(),
-    totalDeAlertasNaoLidos(usuario.perfil),
+    totalDeAlertasNaoLidos(usuario),
   ]);
 
-  const nomeDaEquipe = ehSupervisor ? equipe?.nome : equipes?.find((e) => e.id === filtros.equipe_id)?.nome;
+  const nomeDaEquipe = ehSupervisor ? nomesDasEquipesDoSupervisor(usuario) : equipes?.find((e) => e.id === filtros.equipe_id)?.nome;
   const periodo = filtros.periodo ? rotuloDoMes(filtros.periodo) : "todos os períodos";
   const subtitulo = [nomeDaEquipe ?? "Todas as equipes", periodo, `atualizado às ${hora(new Date())}`].join(" · ");
   const filtrado = Boolean(filtros.equipe_id || filtros.tipo || filtros.critica || filtros.periodo || filtros.busca || filtros.status);
@@ -91,6 +93,7 @@ export default async function QuadroPage({ searchParams }: PageProps<"/web/os/qu
         {subtitulo}
       </span>
       <KpisQuadro contagem={quadro.contagem} periodo={filtros.periodo ? periodo : "todas as datas"} />
+      <OrdemDoQuadro atual={filtros.ordem ?? "prioridade"} hrefDa={(ordem) => hrefDoQuadro(filtros, { ordem: ordem === "prioridade" ? undefined : ordem, pagina: undefined })} />
       <FaixaAlertas total={alertas} />
       <FiltrosRecolhiveis filtrado={filtrado}><FiltrosQuadro equipes={equipes} meses={meses} valores={filtros} filtrado={filtrado} /></FiltrosRecolhiveis>
 

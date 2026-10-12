@@ -14,7 +14,7 @@ interface SeletorModeloProps {
 /** Quando a OS não tem atividade mapeada, o técnico escolhe o modelo entre os publicados (sempre a versão mais recente). */
 export function SeletorModelo({ codigoMapeado, modelos, escolhido, carregando, aoEscolher }: SeletorModeloProps) {
   return (
-    <div className="stack g8">
+    <div className="stack g8" data-treino="apr-modelo">
       <h2 style={{ fontSize: 16, fontWeight: 600 }}>Modelo de APR</h2>
       <Notice tone="info" icon="info">
         {codigoMapeado

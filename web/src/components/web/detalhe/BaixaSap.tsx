@@ -5,7 +5,7 @@ import type { OsDetalhe } from "@/data/detalhe";
 import { dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 
-/** Situação da exportação da OS para a baixa no SAP. `podeExportar`: analista e admin, que têm a tela de exportação. */
+/** Situação da exportação da OS para a baixa no SAP. `podeExportar`: o admin, que tem a tela de exportação. */
 export function BaixaSap({ os, podeExportar }: { os: OsDetalhe; podeExportar: boolean }) {
   return (
     <Panel style={{ gap: 8 }}>

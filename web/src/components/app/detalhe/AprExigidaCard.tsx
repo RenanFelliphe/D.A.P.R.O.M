@@ -18,7 +18,7 @@ export function AprExigidaCard({ modelo, codigoDoModelo, aprs, status }: AprExig
   const bloqueadas = aprs.filter((a) => a.resultado === "bloqueada");
   const ultima = bloqueadas[bloqueadas.length - 1];
   return (
-    <div className="card stack g6">
+    <div className="card stack g6" data-treino="os-apr-exigida">
       <div className="row g8">
         <Icon name="clip" size={18} style={{ color: "var(--brand)" }} />
         <h2 style={{ fontSize: 15, fontWeight: 600 }}>APR exigida antes de executar</h2>

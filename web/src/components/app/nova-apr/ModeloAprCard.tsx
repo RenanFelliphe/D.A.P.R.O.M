@@ -4,7 +4,7 @@ import type { ModeloCompleto } from "@/lib/apr";
 /** Card com o modelo de APR que vale para esta APR: o publicado mais recente. */
 export function ModeloAprCard({ modelo, daAtividade }: { modelo: Pick<ModeloCompleto, "codigo" | "titulo" | "versao" | "publicado_em">; daAtividade: boolean }) {
   return (
-    <div className="card stack" style={{ gap: 2 }}>
+    <div className="card stack" style={{ gap: 2 }} data-treino="apr-modelo">
       <span className="lbl">Modelo</span>
       <strong style={{ fontSize: 16 }}>
         {modelo.codigo} — {modelo.titulo}

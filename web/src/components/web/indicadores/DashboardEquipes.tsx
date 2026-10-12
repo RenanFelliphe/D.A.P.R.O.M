@@ -179,7 +179,7 @@ function TabelaDeTecnicos({ tecnicos }: { tecnicos: Dados["tecnicos"] }) {
   );
 }
 
-const ORDEM_DOS_PERFIS: Perfil[] = ["tecnico", "supervisor", "analista", "seguranca", "admin"];
+const ORDEM_DOS_PERFIS: Perfil[] = ["tecnico", "admin"];
 
 /** Estado do cadastro (admin): usuários ativos por perfil e quem ainda não consegue trabalhar. */
 function Cadastro({ cadastro }: { cadastro: NonNullable<Dados["cadastro"]> }) {
@@ -187,7 +187,7 @@ function Cadastro({ cadastro }: { cadastro: NonNullable<Dados["cadastro"]> }) {
     { total: cadastro.tecnicos_sem_assinatura, texto: ["técnico sem assinatura", "técnicos sem assinatura"], nota: "a APR exige a assinatura de cada participante" },
     { total: cadastro.senha_provisoria, texto: ["usuário com a senha provisória", "usuários com a senha provisória"], nota: "o primeiro acesso ainda não foi feito" },
     { total: cadastro.sem_equipe, texto: ["técnico ou supervisor sem equipe", "técnicos e supervisores sem equipe"], nota: "sem equipe, não se vê nenhuma OS" },
-    { total: cadastro.equipes_sem_supervisor, texto: ["equipe sem supervisor", "equipes sem supervisor"], nota: "os alertas vão aos analistas" },
+    { total: cadastro.equipes_sem_supervisor, texto: ["equipe sem supervisor", "equipes sem supervisor"], nota: "os alertas ficam só com o admin" },
   ];
   return (
     <Panel>

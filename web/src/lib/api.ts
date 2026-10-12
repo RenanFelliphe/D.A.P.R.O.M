@@ -1,9 +1,11 @@
 import "server-only";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { COOKIE_ACESSO, apiUrl } from "./sessao-comum";
+import { emResponse, responderTreino } from "../treino/api-ficticia";
+import { rotaSempreReal, usuarioDoTreino } from "../treino/sessao";
+import { CABECALHO_ENDERECO, COOKIE_ACESSO, apiUrl } from "./sessao-comum";
 import type { Equipe, Usuario } from "./tipos";
 
 /** Erro de uma resposta da `api` (`{erro: {codigo, mensagem}}`). */
@@ -37,12 +39,22 @@ function montarUrl(caminho: string, consulta: OpcoesApi["consulta"]) {
  * Chama a `api` com o token da sessão (cookie `httpOnly`). Só roda no servidor: componentes de servidor e ações. Sem
  * sessão ou com a sessão recusada (`401`), leva o usuário para a tela de entrada; o `proxy.ts` já renova o token que está
  * perto de vencer, então um `401` aqui é sessão revogada. Respostas de erro viram `ErroDaApi`.
+ *
+ * No Campo de treino (cookie `treino=1` e usuário `tecnico`) a `api` real NÃO é chamada: quem responde é a API fictícia
+ * (`treino/api-ficticia.ts`), com a mesma forma de resposta.
  */
 export async function chamarApi(caminho: string, opcoes: OpcoesApi = {}): Promise<Response> {
   const token = (await cookies()).get(COOKIE_ACESSO)?.value;
   if (!token) redirect("/app/entrar");
+  const metodo = opcoes.metodo ?? (opcoes.corpo === undefined ? "GET" : "POST");
+  // O treino só vale na área de campo: o `proxy.ts` informa o endereço; `/web` e `/doc` seguem na `api` real.
+  const endereco = (await headers()).get(CABECALHO_ENDERECO) ?? "";
+  const noTreino = endereco.startsWith("/web") || endereco.startsWith("/doc") ? null : await usuarioDoTreino(token);
+  if (noTreino && !rotaSempreReal(metodo, caminho)) {
+    return emResponse(await responderTreino(noTreino, metodo, caminho, opcoes.consulta, opcoes.corpo));
+  }
   const resposta = await fetch(montarUrl(caminho, opcoes.consulta), {
-    method: opcoes.metodo ?? (opcoes.corpo === undefined ? "GET" : "POST"),
+    method: metodo,
     headers: { Authorization: `Bearer ${token}`, ...(opcoes.corpo === undefined ? {} : { "Content-Type": "application/json" }) },
     body: opcoes.corpo === undefined ? undefined : JSON.stringify(opcoes.corpo),
     cache: "no-store",
@@ -52,6 +64,10 @@ export async function chamarApi(caminho: string, opcoes: OpcoesApi = {}): Promis
     // Com a senha inicial só a troca de senha está liberada: leva à tela "Defina sua senha".
     const corpo = await resposta.clone().json().catch(() => null);
     if (corpo?.erro?.codigo === "senha_provisoria") redirect("/app/trocar-senha");
+    // Cadastro ainda não liberado por um admin: só o Campo de treino e a tela de espera funcionam (ela não chama nada que a `api` trave).
+    if (corpo?.erro?.codigo === "aguardando_liberacao" && endereco !== "/app/aguardando") redirect("/app/aguardando");
+    // Cadastro recusado com a sessão ainda aberta: volta à entrada, onde o login mostra o motivo.
+    if (corpo?.erro?.codigo === "acesso_recusado") redirect("/app/entrar");
   }
   return resposta;
 }
@@ -78,4 +94,7 @@ export async function apiOuNulo<T = unknown>(caminho: string, opcoes: OpcoesApi 
 }
 
 /** Usuário logado e a equipe dele (`GET /me`), lido uma vez por requisição. */
-export const usuarioAtual = cache(() => api<{ usuario: Usuario; equipe: Equipe | null }>("/me"));
+export const usuarioAtual = cache(async () => {
+  const eu = await api<{ usuario: Usuario; equipe: Equipe | null; equipes_supervisionadas: { id: string; nome: string }[] }>("/me");
+  return { usuario: { ...eu.usuario, equipes_supervisionadas: eu.equipes_supervisionadas }, equipe: eu.equipe };
+});

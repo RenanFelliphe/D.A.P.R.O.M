@@ -244,7 +244,7 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
               </div>
               <div className="stack g8">
                 {!revisando && (
-                  <Button variant="line" sm block onClick={() => navegar(abrirRevisao)}>
+                  <Button variant="line" sm block onClick={() => navegar(abrirRevisao)} data-treino="ck-revisar">
                     Ir para a revisão
                   </Button>
                 )}

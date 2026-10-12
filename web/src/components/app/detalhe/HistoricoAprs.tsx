@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/Badge";
 import { dataHora } from "@/lib/formatar";
 import { aprAprovadaDisponivel, type AprDaOs, type ExecucaoDaOs } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
+import { Recolhivel } from "./Recolhivel";
 
 /** Histórico das APRs desta OS (da mais recente para a mais antiga), com o resultado de cada uma. */
 export function HistoricoAprs({ aprs, execucoes, osId }: { aprs: AprDaOs[]; execucoes: ExecucaoDaOs[]; osId: string }) {
@@ -11,8 +12,7 @@ export function HistoricoAprs({ aprs, execucoes, osId }: { aprs: AprDaOs[]; exec
   const usadas = new Set(execucoes.filter((e) => e.resultado !== "cancelada").map((e) => e.apr_id));
 
   return (
-    <div className="card stack g8">
-      <h2 style={{ fontSize: 15, fontWeight: 600 }}>APRs desta OS</h2>
+    <Recolhivel titulo="APRs desta OS" resumo={`${aprs.length} ${aprs.length === 1 ? "APR" : "APRs"}`}>
       <div className="list-box">
         {[...aprs].reverse().map((apr) => {
           const aprovada = apr.resultado === "aprovada";
@@ -43,6 +43,6 @@ export function HistoricoAprs({ aprs, execucoes, osId }: { aprs: AprDaOs[]; exec
           );
         })}
       </div>
-    </div>
+    </Recolhivel>
   );
 }

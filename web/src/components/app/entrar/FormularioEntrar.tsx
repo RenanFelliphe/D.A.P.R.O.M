@@ -14,10 +14,10 @@ export function FormularioEntrar() {
     <form className="stack g12" action={acao}>
       <h2>Entrar</h2>
       <Field label="E-mail institucional" htmlFor="email">
-        <input className="input" id="email" name="email" type="email" autoComplete="username" autoFocus required placeholder="nome.sobrenome@empresa.com.br" />
+        <input className="input" id="email" name="email" type="email" autoComplete="username" defaultValue={estado.email} autoFocus={!estado.email} required placeholder="nome.sobrenome@empresa.com.br" />
       </Field>
       <Field label="Senha" htmlFor="senha">
-        <input className="input" id="senha" name="senha" type="password" autoComplete="current-password" required />
+        <input className="input" id="senha" name="senha" type="password" autoComplete="current-password" autoFocus={!!estado.email} required />
       </Field>
       {estado.erro && (
         <Notice tone="blq" icon="alert">

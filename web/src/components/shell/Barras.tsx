@@ -2,6 +2,7 @@ import type { Alerta } from "@/components/web/alertas/tipos";
 import { Icon } from "@/components/ui/Icon";
 import { sair } from "@/lib/acoes-sessao";
 import { BuscaBarra } from "./BuscaBarra";
+import { SeloTreino } from "@/components/treino/SeloTreino";
 import { MenuUsuario } from "./MenuUsuario";
 import { SinoAlertas } from "./SinoAlertas";
 
@@ -65,16 +66,21 @@ export function BarraGestao({
 }
 
 /** Barra superior da área do técnico: marca, busca global, situação da conexão e usuário. */
-export function BarraTecnico({ usuario }: { usuario: UsuarioDaBarra }) {
+export function BarraTecnico({ usuario, treino, semBusca }: { usuario: UsuarioDaBarra; treino?: boolean; semBusca?: boolean }) {
   return (
     <header className="topbar">
-      <Marca subtitulo="Técnico em campo" />
-      <BuscaBarra area="app" />
+      <Marca subtitulo={treino ? "Campo de treino" : "Técnico em campo"} />
+      {/* Técnico pendente fora do treino: a busca global é da `api` real e ele ainda não pode usá-la. */}
+      {semBusca ? <div className="grow" /> : <BuscaBarra area="app" />}
       <div className="right">
-        <span className="net on">
-          <Icon name="check" size={16} />
-          Online
-        </span>
+        {treino ? (
+          <SeloTreino />
+        ) : (
+          <span className="net on">
+            <Icon name="check" size={16} />
+            Online
+          </span>
+        )}
         <Usuario {...usuario} />
       </div>
     </header>

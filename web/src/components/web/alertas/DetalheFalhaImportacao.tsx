@@ -15,7 +15,7 @@ import { metodoDaFalha, perfilAgeSobreAlertas, rotuloDoAlerta, type Alerta } fro
  * abrir; o atalho leva à aba Importação, onde está o histórico e onde se tenta de novo.
  */
 export function DetalheFalhaImportacao({ alerta, usuario, marcarAoAbrir }: { alerta: Alerta; usuario: Usuario; marcarAoAbrir: boolean }) {
-  const podeAgir = perfilAgeSobreAlertas(usuario.perfil);
+  const podeAgir = perfilAgeSobreAlertas(usuario);
   const naoLido = alerta.lido_em === null;
   const api = alerta.importacao_origem === "api";
   return (
@@ -31,7 +31,7 @@ export function DetalheFalhaImportacao({ alerta, usuario, marcarAoAbrir }: { ale
           </div>
           <h2 style={{ fontSize: 21, lineHeight: 1.25 }}>{metodoDaFalha(alerta.importacao_origem)}</h2>
         </div>
-        {veImportacao(usuario.perfil) && (
+        {veImportacao(usuario) && (
           <Link href={rotas.web.importacao} style={{ fontSize: 14, fontWeight: 600 }}>
             Abrir a Importação
           </Link>

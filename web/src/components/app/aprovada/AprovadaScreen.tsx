@@ -171,7 +171,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
     <Screen>
       {cabecalho}
       <EtapasApr atual={2} />
-      <div className="res-banner rb-ok">
+      <div className="res-banner rb-ok" data-treino="apr-resultado">
         <span className="ic">
           <Icon name="check" size={24} />
         </span>
@@ -198,7 +198,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
       )}
       <Colunas
         principal={
-          <section className="stack g8">
+          <section className="stack g8" data-treino="assinaturas">
             <h2>Assinaturas</h2>
             <div className="nav2">
               {linhas.map((linha) => (
@@ -229,7 +229,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
               </Notice>
             )}
             {registrada ? (
-              <LinkButton variant="p" block href={rotas.app.execucao(os.id)}>
+              <LinkButton variant="p" block href={rotas.app.execucao(os.id)} data-treino="iniciar-execucao">
                 <Icon name="play" size={18} fill />
                 Iniciar execução · {os.rotulo}
               </LinkButton>

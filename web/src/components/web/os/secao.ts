@@ -1,17 +1,17 @@
 import type { AbaDaSecao } from "@/components/web/AbasSecao";
 import { rotas } from "@/lib/rotas";
-import type { Perfil } from "@/lib/tipos";
+import { ehAdmin, type Usuario } from "@/lib/tipos";
 
 /**
- * Importação, e no dashboard de OS a entrada de OS e a baixa no SAP, são do analista e do administrador (a `api` recusa os
- * demais perfis com `403`).
+ * Importação, e no dashboard de OS a entrada de OS e a baixa no SAP, são do administrador (a `api` recusa os
+ * demais com `403`).
  */
-export const veImportacao = (perfil: Perfil) => perfil === "analista" || perfil === "admin";
+export const veImportacao = (u: Pick<Usuario, "perfil">) => ehAdmin(u);
 
 const abas: AbaDaSecao[] = [
   { href: rotas.web.quadro, rotulo: "Quadro", icone: "grid" },
   { href: rotas.web.importacao, rotulo: "Importação", icone: "upload" },
 ];
 
-/** As abas da seção Ordem de Serviço que o perfil vê: supervisor e Segurança do Trabalho, só o Quadro. */
-export const abasDoPerfil = (perfil: Perfil): AbaDaSecao[] => (veImportacao(perfil) ? abas : abas.slice(0, 1));
+/** As abas da seção Ordem de Serviço que a pessoa vê: o supervisor, só o Quadro. */
+export const abasDoPerfil = (u: Pick<Usuario, "perfil">): AbaDaSecao[] => (veImportacao(u) ? abas : abas.slice(0, 1));

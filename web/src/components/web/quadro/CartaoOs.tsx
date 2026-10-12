@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
+import { PilulaPrioridade } from "@/components/web/PilulaPrioridade";
 import type { OsDoQuadro } from "@/data/quadro";
 import { dataDoDia, diaMes } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
@@ -20,15 +21,12 @@ export function CartaoOs({ os }: { os: OsDoQuadro }) {
             Crítico
           </Badge>
         )}
+        <PilulaPrioridade prioridade={os.prioridade} compacta />
       </div>
       <div className="tt">{os.titulo}</div>
       <div className="m">
         <Icon name="pin" size={13} />
         {os.local_instalacao.codigo}
-      </div>
-      <div className="m">
-        {os.equipe_nome}
-        {os.prioridade ? ` · ${os.prioridade}` : ""}
       </div>
       <div className="m" style={os.atrasada ? { color: "var(--blq)", fontWeight: 500 } : undefined}>
         <Icon name="clock" size={13} />

@@ -18,7 +18,7 @@ export function EvidenciaCard({ item, observacao, fotos, aoObservar, aoFotoEnvia
   const apenasTexto = item.evidencia === "texto";
 
   return (
-    <section className="evid" aria-label="Evidência do item reprovado">
+    <section className="evid" aria-label="Evidência do item reprovado" data-treino="ck-evidencia">
       <div className="row g8" style={{ color: "var(--blq)" }}>
         <Icon name="octagon" size={18} />
         <strong style={{ fontSize: 14 }}>Resposta reprovada · evidência obrigatória</strong>

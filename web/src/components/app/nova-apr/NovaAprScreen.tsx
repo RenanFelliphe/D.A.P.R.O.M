@@ -134,7 +134,7 @@ export function NovaAprScreen({ os, usuarioId, colegas, modeloDaAtividade, codig
                 <Icon name="check" size={16} />
                 {os.rotulo} · {marcados.length} {marcados.length === 1 ? "participante" : "participantes"} · {riscos.length} {riscos.length === 1 ? "risco marcado" : "riscos marcados"}
               </div>
-              <Button variant="p" block disabled={!modelo || carregandoModelo} onClick={comecar}>
+              <Button variant="p" block disabled={!modelo || carregandoModelo} onClick={comecar} data-treino="apr-comecar">
                 {modelo ? `Começar checklist · ${total} ${total === 1 ? "item" : "itens"}` : "Escolha o modelo para começar"}
               </Button>
             </PainelAcoes>

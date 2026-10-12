@@ -11,7 +11,7 @@ import { destacar } from "@/lib/destacar";
 import { dataDoDia } from "@/lib/formatar";
 import { ordemDosStatus } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
-import { iniciaisDe, rotuloDoPerfil, rotuloDoStatus, type Equipe, type OsStatus, type Paginacao, type Perfil, type Usuario } from "@/lib/tipos";
+import { ehAdmin, iniciaisDe, rotuloDoPerfil, rotuloDoStatus, type Equipe, type OsStatus, type Paginacao, type Perfil, type Usuario } from "@/lib/tipos";
 import { ColunaFiltros } from "./ColunaFiltros";
 import { ColunaResultados, Paginador } from "./ColunaResultados";
 import { FiltrosBusca } from "./FiltrosBusca";
@@ -33,7 +33,7 @@ interface AchadoExato {
 
 type Area = "web" | "app";
 
-const PERFIS: Perfil[] = ["tecnico", "supervisor", "analista", "seguranca", "admin"];
+const PERFIS: Perfil[] = ["tecnico", "admin"];
 
 type Consulta = Record<string, string | string[] | undefined>;
 
@@ -177,8 +177,8 @@ interface PaginaBuscaProps {
 export async function PaginaBusca({ area, consulta }: PaginaBuscaProps) {
   const caminho = area === "web" ? rotas.web.busca : rotas.app.busca;
   const { usuario } = await usuarioAtual();
-  const admin = usuario.perfil === "admin";
-  const veEquipes = usuario.perfil === "admin" || usuario.perfil === "analista" || usuario.perfil === "seguranca";
+  const admin = ehAdmin(usuario);
+  const veEquipes = ehAdmin(usuario);
 
   const parametros = {
     q: um(consulta.q),
@@ -211,7 +211,7 @@ export async function PaginaBusca({ area, consulta }: PaginaBuscaProps) {
 
   const [equipesApi, supervisoresApi, os, usuarios, equipes] = await Promise.all([
     api<{ equipes: Equipe[] }>("/equipes", { consulta: { tamanho: 200 } }),
-    veEquipes ? api<{ usuarios: Usuario[] }>("/usuarios", { consulta: { perfil: "supervisor", ativo: admin ? true : undefined, tamanho: 200 } }) : null,
+    veEquipes ? api<{ usuarios: Usuario[] }>("/usuarios", { consulta: { supervisor: true, ativo: admin ? true : undefined, tamanho: 200 } }) : null,
     procurando && mostrarOs
       ? api<RespostaOs>("/os", {
           consulta: { busca: q, tipo: parametros.tipo, status: parametros.status, critica: parametros.critica, equipe_id: parametros.equipe, pagina: paginaOs, tamanho: TAMANHO },

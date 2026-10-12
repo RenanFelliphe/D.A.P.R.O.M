@@ -17,7 +17,7 @@ export function NavegacaoChecklist({ indice, total, podeAvancar, aoVoltar, aoAva
       <Button variant="line" disabled={indice === 0} onClick={aoVoltar}>
         Anterior
       </Button>
-      <Button variant="p" id="ck-next" disabled={!podeAvancar} onClick={aoAvancar}>
+      <Button variant="p" id="ck-next" data-treino="ck-proxima" disabled={!podeAvancar} onClick={aoAvancar}>
         {indice === total - 1 ? "Revisar e concluir" : "Próxima"}
       </Button>
     </div>

@@ -6,6 +6,8 @@ export const rotas = {
   app: {
     entrar: "/app/entrar",
     trocarSenha: "/app/trocar-senha",
+    /** Técnico cadastrado por supervisor que ainda espera o admin liberar o acesso (só ele e o Campo de treino ficam abertos). */
+    aguardando: "/app/aguardando",
     lista: "/app/lista",
     /** Detalhe da OS para o técnico. */
     os: (id: string) => `/app/os/${id}`,
@@ -22,6 +24,12 @@ export const rotas = {
     equipe: (id: string) => `/app/equipes/${id}`,
     /** Resultados da busca global (`?q=`). */
     busca: "/app/busca",
+    /** Campo de treino: entrada com a escolha Direcionado/Livre. */
+    treino: "/app/treino",
+    /** Liga o modo treino (cookie) e leva à lista; `?modo=direcionado|livre` guarda a escolha. */
+    treinoEntrar: (modo?: "direcionado" | "livre") => (modo ? `/app/treino/entrar?modo=${modo}` : "/app/treino/entrar"),
+    /** Desliga o modo treino e volta ao sistema real. */
+    treinoSair: "/app/treino/sair",
   },
   web: {
     /** Seção Ordem de Serviço (menu "Ordem de Serviço"): duas abas. `/web/os` sozinho leva ao quadro. */
@@ -45,6 +53,8 @@ export const rotas = {
     modelo: (codigo: string, versao?: number) => `/web/apr/modelos/${encodeURIComponent(codigo)}${versao ? `?versao=${versao}` : ""}`,
     novoModelo: "/web/apr/modelos/novo",
     usuarios: "/web/usuarios",
+    /** Visão do supervisor: técnicos das equipes dele, com a situação da liberação, e o cadastro de novos técnicos. */
+    minhaEquipe: "/web/minha-equipe",
     perfil: "/web/perfil",
     /** Perfil de outra pessoa (aberto pela busca). */
     perfilDe: (id: string) => `/web/perfil/${id}`,

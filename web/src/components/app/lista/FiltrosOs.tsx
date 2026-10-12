@@ -44,7 +44,7 @@ export function FiltrosOs({ ativo, contagem, total }: FiltrosOsProps) {
   }
 
   return (
-    <div className="stack g12">
+    <div className="stack g12" data-treino="filtros">
       <div className="chips" role="group" aria-label="Filtrar por status">
         <button type="button" aria-pressed={!ativo.status} onClick={() => aplicar({ status: undefined })}>
           Todas · {total}

@@ -20,7 +20,7 @@ interface LinhaAtividadeProps {
   podeEditar: boolean;
 }
 
-/** Linha da tabela "atividade → modelo"; para quem edita (Segurança e admin), edita descrição, modelo e a marca de provisório no lugar. */
+/** Linha da tabela "atividade → modelo"; para quem edita (admin), edita descrição, modelo e a marca de provisório no lugar. */
 export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividadeProps) {
   const router = useRouter();
   const exibirAviso = useToast();

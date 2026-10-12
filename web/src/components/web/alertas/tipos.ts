@@ -1,5 +1,5 @@
 import type { IconName } from "@/components/ui/Icon";
-import type { Perfil } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor, type Usuario } from "@/lib/tipos";
 
 /** Alerta como `GET /alertas` devolve. */
 export type TipoDeAlerta = "bloqueio" | "conflito_planejamento" | "execucao_duplicada" | "apoio_encerrado" | "falha_importacao";
@@ -53,8 +53,8 @@ export function referenciaDoAlerta(a: Alerta): { codigo: string | null; texto: s
   return { codigo: a.numero_ordem ?? "OS de apoio", texto: a.titulo ?? "" };
 }
 
-/** Perfis que decidem sobre a OS (reprogramar e abrir OS de apoio) e marcam o alerta como lido; a Segurança só lê. */
-export const perfilAgeSobreAlertas = (perfil: Perfil) => perfil === "supervisor" || perfil === "analista" || perfil === "admin";
+/** Quem decide sobre a OS (reprogramar e abrir OS de apoio) e marca o alerta como lido: o supervisor (dele) e o admin. */
+export const perfilAgeSobreAlertas = (u: Pick<Usuario, "perfil" | "equipes_supervisionadas">) => ehSupervisor(u) || ehAdmin(u);
 
 /** Parte do `GET /os/{id}` que o detalhe do alerta usa. */
 export interface DetalheDaOs {

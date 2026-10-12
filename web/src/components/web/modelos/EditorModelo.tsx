@@ -216,7 +216,7 @@ function LinhaItem({ item, numero, total, verificacao, aoMudar, aoMover, aoRemov
 // ---- Editor -----------------------------------------------------------------------------------------------------
 
 /**
- * Editor do rascunho de uma versão do modelo (só a Segurança do Trabalho e o administrador chegam aqui). Edita título,
+ * Editor do rascunho de uma versão do modelo (só o administrador chega aqui). Edita título,
  * itens (texto, tipo, resposta bloqueante, evidência, NA), riscos e medidas; o PAE fica como está, com um campo JSON
  * para quem precisar ajustá-lo. "Salvar" faz o `PUT` que substitui o conteúdo do rascunho; "Publicar" salva o que falta
  * e publica. `temPublicada` diz se o modelo já tem uma versão publicada: sem ela, descartar o rascunho apaga o modelo.

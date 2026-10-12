@@ -1,10 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { COOKIE_ACESSO, COOKIE_RENOVACAO, apiUrl, expiracaoDoJwt, opcoesDoCookie, validadeDaRenovacao } from "@/lib/sessao-comum";
+import { CABECALHO_ENDERECO, COOKIE_ACESSO, COOKIE_RENOVACAO, apiUrl, expiracaoDoJwt, opcoesDoCookie, validadeDaRenovacao } from "@/lib/sessao-comum";
 
 /** Renova o token quando falta menos que isto para vencer. */
 const MARGEM_MS = 60_000;
 
 const ENTRAR = "/app/entrar";
+
+/** Acrescenta à requisição o endereço pedido (o Campo de treino só vale na área de campo, `/app`; ver `lib/api.ts`). */
+const comEndereco = (req: NextRequest, base: Headers = new Headers(req.headers)) => {
+  base.set(CABECALHO_ENDERECO, req.nextUrl.pathname);
+  return base;
+};
 
 function semSessao(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -29,7 +35,7 @@ export async function proxy(req: NextRequest) {
   if (!acesso && !renovacao) return semSessao(req);
 
   const expira = acesso ? expiracaoDoJwt(acesso) : null;
-  if (acesso && expira && expira - Date.now() > MARGEM_MS) return NextResponse.next();
+  if (acesso && expira && expira - Date.now() > MARGEM_MS) return NextResponse.next({ request: { headers: comEndereco(req) } });
   if (!renovacao) return semSessao(req);
 
   let novos: { accessToken: string; refreshToken: string; expiraEm: string } | null = null;
@@ -49,10 +55,10 @@ export async function proxy(req: NextRequest) {
   } catch {
     /* api fora do ar: segue com o token atual; a página mostra o erro */
   }
-  if (!novos) return NextResponse.next();
+  if (!novos) return NextResponse.next({ request: { headers: comEndereco(req) } });
 
   // A renderização desta mesma requisição precisa enxergar os cookies novos: reescreve o cabeçalho `cookie` da requisição.
-  const cabecalhos = new Headers(req.headers);
+  const cabecalhos = comEndereco(req);
   const outros = (req.headers.get("cookie") ?? "")
     .split(/;\s*/)
     .filter((c) => c && !c.startsWith(`${COOKIE_ACESSO}=`) && !c.startsWith(`${COOKIE_RENOVACAO}=`));

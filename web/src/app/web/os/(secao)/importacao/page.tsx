@@ -8,7 +8,7 @@ import { AcessoRestrito } from "@/components/web/os/AcessoRestrito";
 import { veImportacao } from "@/components/web/os/secao";
 import { api, usuarioAtual } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
-import type { Paginacao } from "@/lib/tipos";
+import { ehAdmin, type Paginacao } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Importação de OS" };
 
@@ -17,7 +17,7 @@ const TAMANHO_DO_HISTORICO = 20;
 /** Aba Importação: só os métodos de entrada de OS, as colunas lidas da planilha e o histórico (os gráficos ficam no dashboard de OS, em Indicadores e exportação). */
 export default async function ImportacaoPage({ searchParams }: PageProps<"/web/os/importacao">) {
   const { usuario } = await usuarioAtual();
-  if (!veImportacao(usuario.perfil)) return <AcessoRestrito />;
+  if (!veImportacao(usuario)) return <AcessoRestrito />;
 
   const pedida = (await searchParams).pagina;
   const pagina = Math.max(1, Number.parseInt((Array.isArray(pedida) ? pedida[0] : pedida) ?? "", 10) || 1);
@@ -45,7 +45,7 @@ export default async function ImportacaoPage({ searchParams }: PageProps<"/web/o
           ultimaLeituraEm={sincronizacao.ultima_leitura_sem_erro_em}
           automatica={sincronizacao.automatica}
           intervaloMin={sincronizacao.intervalo_min}
-          ehAdmin={usuario.perfil === "admin"}
+          ehAdmin={ehAdmin(usuario)}
         />
       </section>
 
