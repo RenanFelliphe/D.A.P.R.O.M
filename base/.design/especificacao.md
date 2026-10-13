@@ -26,7 +26,7 @@ Volume: ~390 OS encerradas no mês passado, variando de ~200 a 409 por mês (Reu
 
 Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por arquivo (a planilha exportada ou o PDF da OS impresso pelo SAP); aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor da equipe; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP. Só há dois perfis, `tecnico` e `admin`; o supervisor é o técnico que a equipe aponta, não um perfil, e a Segurança do Trabalho não usa o sistema.
 
-Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Catálogo de serviço, escaneamento de OS e APR antigas, monitoramento do intervalo entre preventivas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP. Substituir o BI ou o site Lovable — são de outra equipe. Cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin (pronto na API), e tela de treinamento no primeiro login (ver [Cadastro pelo supervisor, liberação e treinamento](#cadastro-pelo-supervisor-liberação-e-treinamento)). Importação de OS pelo supervisor foi adiada: fica só com o admin ([pontos-a-validar.md](pontos-a-validar.md), questão 63).
+Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Escaneamento de OS e APR antigas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP (o catálogo de serviço, a evidência em PDF e o intervalo entre ciclos das preventivas, que também eram ideias para depois, foram feitos em 13/10/2026: ver [Catálogo de serviço](#catálogo-de-serviço), [Execução](#execução) e [Ciclo das preventivas](#ciclo-das-preventivas)). Baixa de material consumido na execução — o catálogo diz o que cada serviço prevê, não o que foi gasto. Substituir o BI ou o site Lovable — são de outra equipe. Cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin (pronto na API), e tela de treinamento no primeiro login (ver [Cadastro pelo supervisor, liberação e treinamento](#cadastro-pelo-supervisor-liberação-e-treinamento)). Importação de OS pelo supervisor foi adiada: fica só com o admin ([pontos-a-validar.md](pontos-a-validar.md), questão 63).
 
 Não muda: SAP (continua gerando, liberando e encerrando as ordens); site Lovable de controle; o conteúdo das APRs continua sendo da segurança do trabalho.
 
@@ -58,6 +58,8 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 | [Execução](#execução) | execução com pausa, assinaturas, interrupção e PDF de 2 páginas | definida |
 | [Impedimento](#impedimento) | OS pendente, alerta ao supervisor, reprogramação e OS de apoio | aberta — 3 suposições adotadas |
 | [Painel](#painel) | quadro, histórico, ciência, indicadores e planilha para o SAP | aberta — 3 suposições adotadas |
+| [Catálogo de serviço](#catálogo-de-serviço) | materiais, ferramentas e EPIs de cada serviço (atividade), mostrados no detalhe da OS | feita em 13/10/2026 — a lista real depende da ES Gás (questão 65) |
+| [Ciclo das preventivas](#ciclo-das-preventivas) | intervalo entre ciclos de cada plano de manutenção, contagem até o próximo ciclo e alertas de ciclo próximo e vencido (sem criar OS) | feita em 13/10/2026 — onde o SAP guarda o ciclo depende do Iago (questão 66) |
 
 Ordem: Plataforma → Usuário e Equipe → Integração SAP → Modelo de APR (só a carga inicial) → Eventos (o envio online) → APR → Execução → Impedimento → Painel → Modelo de APR (editor) → Modo offline. O fluxo online de APR e execução é a base e vem primeiro; o contrato de eventos precisa existir antes das telas de campo, porque elas o usam. O modo offline (fila local, cópia da equipe e login sem sinal) entra por último e é o maior risco de prazo do recurso adicional: ele só reaproveita o contrato de eventos. O editor de modelos fica depois do painel porque a carga inicial já destrava a demo.
 
@@ -87,10 +89,10 @@ Todas as questões que estavam abertas em [pontos-a-validar.md](pontos-a-validar
 | Tarefa em segundo plano falha | nova tentativa com espera crescente (1, 5 e 15 minutos, no máximo 5 tentativas); depois fica `falhou` e aparece no painel | "PDF pendente" ou "E-mail não enviado" |
 
 `GET /saude` → `200` `{versao, banco}`
-`PUT /arquivos/{id}` `multipart: arquivo, tipo` → `200` `{id, caminho}`
+`PUT /arquivos/{id}` `multipart: arquivo, tipo` → `200` `{id, caminho}` — `tipo`: `foto` (imagem, até 10 MB), `assinatura` (imagem, até 1 MB) ou `pdf` (documento de evidência, até 10 MB, conferido pelo conteúdo: precisa começar como um PDF)
 `GET /arquivos/{id}/url` → `200` `{url}`
 
-Buckets privados: `fotos`, `assinaturas`, `pdfs`, `importacoes`. Um processo do próprio back-end executa as tarefas, lendo `tarefa` sem disputar a mesma linha.
+Buckets privados: `fotos`, `assinaturas`, `pdfs` (o PDF gerado de cada OS), `importacoes` e `documentos` (os PDFs anexados como evidência). Um processo do próprio back-end executa as tarefas, lendo `tarefa` sem disputar a mesma linha.
 
 Tabela `tarefa`.
 
@@ -402,7 +404,7 @@ Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
 | `item_modelo_apr.texto` | text | não | | |
 | `item_modelo_apr.resposta_bloqueante` | text | sim | | `sim` \| `nao` \| nulo (Decisão-chave 5) |
 | `item_modelo_apr.tipo` | text | não | | `eliminatorio` \| `alerta` |
-| `item_modelo_apr.evidencia` | text | não | | `foto` (padrão) \| `texto`; `texto` dispensa a foto obrigatória |
+| `item_modelo_apr.evidencia` | text | não | | `foto` (padrão) \| `texto` \| `pdf`; `texto` dispensa o arquivo obrigatório e `pdf` pede um documento em vez da foto |
 | `item_modelo_apr.permite_na` | boolean | não | | as APR 04 e 05 têm coluna NA (todos os itens); na APR 06, só o item do teste de explosividade (questão 61) |
 | `atividade.codigo` | text | não | | código do plano de manutenção do SAP (`8.7.1`); PK |
 | `atividade.descricao` | text | não | | ex.: `Drenagem Caixa de Válvula` |
@@ -410,9 +412,119 @@ Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
 | `atividade.provisorio` | boolean | não | | código inventado na carga inicial, à espera do código real do SAP |
 
 1. Critério de bloqueio — quem define é a Segurança do Trabalho, **por item**, e o admin cadastra no editor de modelos o que ela definiu: quais perguntas existem, qual resposta é a correta e quais são eliminatórias (nem toda pergunta bloqueia no "Não"). A carga inicial não traz esse critério (as planilhas não o dizem) e usa só um ponto de partida, que o admin ajusta, conforme a Segurança, criando uma versão nova: todo item de verificação é `eliminatorio` e bloqueia no Não, exceto "O serviço requer uso de iluminação auxiliar?" (`alerta`, registra no Sim) e "Existe algum impedimento para executar a atividade?" (`eliminatorio`, bloqueia no Sim); toda medida preventiva é `alerta` sem resposta que avise. Os riscos da planilha são marcados pela equipe com "( )", e só as medidas dos riscos marcados são respondidas: nas duas APR 03 preenchidas dos exemplos, as medidas dos riscos sem marca ficam em branco. Por isso o risco é uma entidade do modelo (`risco_modelo_apr`) e a marcação fica em `apr_risco` (questão 59). O ponto de partida é provisório até a Segurança do Trabalho validar, via Iago.
-2. Evidência por item — `texto` só para "Todos os participantes da atividade estão em boas condições psicológicas?" (e equivalentes), porque condição psicológica não se comprova com foto e a NR 01 dá ao trabalhador o direito de recusa; todos os demais são `foto`. O admin altera isso no editor, conforme a Segurança do Trabalho (questão 50).
+2. Evidência por item — `texto` só para "Todos os participantes da atividade estão em boas condições psicológicas?" (e equivalentes), porque condição psicológica não se comprova com foto e a NR 01 dá ao trabalhador o direito de recusa; todos os demais são `foto`. O admin altera isso no editor, conforme a Segurança do Trabalho (questão 50), e pode pedir um documento em PDF (`pdf`) onde a prova é um papel: um certificado de calibração vencido, um laudo. Foto e PDF a mais são sempre aceitos (questão 46).
 3. Resposta "NA" — passa, exige observação, e só é oferecida nos itens com `permite_na` (questão 9): todos os itens das APR 04 e 05 (que têm a coluna) e o teste de explosividade da APR 06 (questão 61).
 4. Tabela de atividades — editável pelo admin, com o que a Segurança do Trabalho define; o código real do SAP ainda não foi confirmado e o plano de manutenção está em revisão, então os códigos vão mudar (questões 3, 52 e 58). Toda a carga entra como `provisorio`; a chave é o código do plano quando existe e o texto quando não. Um modelo por OS: o que a APR 06 repete das listas das APR 01, 02 e 03 fica com a primeira.
+
+### Catálogo de serviço
+
+**Entrega** o catálogo de materiais, ferramentas e EPIs e a lista do que cada serviço usa, com a quantidade prevista por execução, mostrada ao técnico no detalhe da OS (o que levar para o campo). O serviço é a atividade do plano de manutenção (`atividade`), a mesma que liga a OS ao modelo de APR: a OS chega ao serviço pelo `codigo_atividade`. No painel, fica na seção Catálogo (abas Serviços e Materiais, em `/app/catalogo`), aberta a todos os perfis; só o admin edita. **Status: feita em 13/10/2026.** A lista real de cada serviço depende da ES Gás (questão 65); o modo local e a demonstração trazem uma carga fictícia (`api/src/db/seed/catalogo-demo.ts`).
+
+| Estado | O que deve acontecer | O que o usuário vê |
+|---|---|---|
+| Admin cadastra um material | entra no catálogo, ativo; código do SAP opcional | `201` |
+| Mesmo código do SAP, ou a mesma descrição na mesma unidade | recusado | `409` `material_duplicado` |
+| Admin define a lista de um serviço | a lista enviada substitui a anterior, na ordem enviada; quantidade vazia = conforme a necessidade | `200` |
+| Material repetido, inexistente ou quantidade não positiva na lista | recusado; nada muda | `422` |
+| Material desativado | sai das escolhas de novos serviços; continua nos que já o listam (sinalizado) | "Desativado" |
+| Excluir material em uso | recusado: tirar dos serviços ou desativar | `409` `material_em_uso` |
+| Excluir a atividade | apaga a lista dela; os materiais ficam | |
+| Técnico abre a OS com atividade | vê a lista do serviço, agrupada em materiais, ferramentas e EPIs | "Materiais e ferramentas" |
+| OS sem atividade, ou serviço sem lista | aviso, e valem as instruções do SAP | "Esta OS não tem serviço do catálogo" |
+| Técnico ou supervisor tenta editar | recusado | `403` |
+| Modo offline | o snapshot leva a lista de cada atividade (`atividades[].materiais`) | |
+
+`GET /catalogo/materiais` `?busca&categoria&ativo&pagina&tamanho` → `200` `{materiais: [{id, codigo, descricao, unidade, categoria, ativo, criado_em, servicos_total}], pagina, tamanho, total}`
+`POST /catalogo/materiais` `{codigo?, descricao, unidade, categoria}` → `201` — só admin
+`PUT /catalogo/materiais/{id}` `{codigo?, descricao, unidade, categoria, ativo?}` → `200` — só admin
+`DELETE /catalogo/materiais/{id}` → `200` — só admin
+`GET /catalogo/servicos` `?busca&sem_materiais&material_id&pagina&tamanho` → `200` `{servicos: [{codigo, descricao, modelo_apr_codigo, provisorio, materiais: [{material_id, codigo, descricao, unidade, categoria, ativo, quantidade, observacao, ordem}]}], pagina, tamanho, total}`
+`GET /catalogo/servicos/{codigo}` → `200` o serviço com a lista
+`PUT /catalogo/servicos/{codigo}` `{materiais: [{material_id, quantidade?, observacao?}]}` → `200` — só admin; troca a lista inteira
+`GET /os/{id}` passa a trazer `servico: {codigo, descricao, materiais[]} | null`
+
+Tabelas `material` e `atividade_material`.
+
+| Coluna | Tipo | Nulo | Referência | Nota |
+|---|---|---|---|---|
+| `material.id` | uuid | não | | |
+| `material.codigo` | text | sim | | código do material no SAP; unique |
+| `material.descricao` | text | não | | |
+| `material.unidade` | text | não | | `un`, `par`, `m`, `kg`, `L`… |
+| `material.categoria` | text | não | | `material` (padrão) \| `ferramenta` \| `epi` |
+| `material.ativo` | boolean | não | | desativado não entra em novos serviços |
+| `material.criado_em` | timestamptz | não | | |
+| `atividade_material.atividade_codigo` | text | não | `atividade.codigo` | PK composta com `material_id`; apagar a atividade apaga a lista |
+| `atividade_material.material_id` | uuid | não | `material.id` | material em uso não é apagado |
+| `atividade_material.quantidade` | numeric(12,3) | sim | | por execução, na unidade do material; nula = conforme a necessidade; maior que zero |
+| `atividade_material.observacao` | text | sim | | ex.: "só se houver vazamento" |
+| `atividade_material.ordem` | integer | não | | ordem na lista; única por serviço |
+
+A trilha de auditoria registra `material.criar`, `material.editar`, `material.desativar`, `material.ativar`, `material.excluir` e `atividade.materiais` (a troca da lista, com o antes e o depois).
+
+1. Serviço = atividade — não há tabela de serviço à parte: a atividade já é o que a OS traz do SAP e o que escolhe o modelo de APR. O código e a descrição continuam sendo editados em APR › Atividades.
+2. Previsto, não consumido — o catálogo diz o que levar; a baixa do material gasto no SAP fica fora (ver Escopo).
+3. Sem lista ainda — a ES Gás precisa passar o que cada serviço usa; até lá, o detalhe da OS avisa e valem as instruções do SAP (questão 65).
+
+### Ciclo das preventivas
+
+**Entrega** o intervalo entre ciclos de cada preventiva: o tempo até o próximo ciclo de cada plano de manutenção do SAP, com alerta quando ele se aproxima e quando vence sem OS nova do plano. **O sistema não cria OS**: as OS de cada ciclo continuam vindo do SAP (API, planilha ou PDF); o ciclo só avisa quem planeja. No quadro de OS, admin e supervisor têm o botão "OS preventivas", que abre a janela com a contagem regressiva de cada preventiva; na Importação, o intervalo vem da coluna da planilha, da Periodicidade do PDF ou é definido na conferência e na seção "Intervalo das preventivas". **Status: feita em 13/10/2026.** Onde o SAP guarda o ciclo do plano ainda é uma pergunta ao Iago (questão 66): o campo Periodicidade veio vazio na OS 4019821.
+
+O plano é a chave plano + item de manutenção (`os.plano_manutencao`, `os.item_manutencao`), criado na importação da primeira OS preventiva dele (a migração cria os das OS que já existiam, sem intervalo). As OS do plano são as preventivas com a mesma chave, sem as canceladas; a última é a de início programado mais recente. O próximo ciclo é a referência mais o intervalo, e a referência depende de `contar_a_partir`:
+
+- `execucao` (padrão): o dia (São Paulo) em que a última OS foi encerrada. Enquanto ela não é executada, o ciclo fica "aguardando execução", sem contagem.
+- `programacao`: a data programada da última OS, executada ou não (o calendário fixo do plano).
+
+Intervalo: `n` dias, semanas, quinzenas (15 dias), meses, bimestres, trimestres, semestres ou anos; as unidades de mês em diante somam meses de calendário (31/01 + 1 mês = último dia de fevereiro).
+
+| Estado | O que deve acontecer | O que o usuário vê |
+|---|---|---|
+| Primeira OS preventiva de um plano importada | o plano é criado; com intervalo na ordem, ele é gravado | sem intervalo: "Preventivas sem intervalo" no resultado da importação, com o campo para definir |
+| Ordem traz `intervalo_ciclo` ("3 MES", "trimestral", "30 dias" ou `{quantidade, unidade}`) | grava o intervalo no plano (vale o último informado) | |
+| `intervalo_ciclo` que não dá para entender | a OS entra; o plano fica como estava | aviso "Intervalo entre ciclos não reconhecido" |
+| Ordem sem `intervalo_ciclo` (ou célula vazia) | o intervalo do plano não muda | |
+| Corretiva com plano | não vira ciclo | |
+| Próximo ciclo a mais de `antecedencia_dias` (padrão 7) | "Em dia" | contagem regressiva ("Faltam 23 dias") |
+| Próximo ciclo dentro da antecedência | alerta `preventiva_proxima` uma vez por vencimento, para o supervisor da equipe da última OS (sem supervisor, os admins) | "Vence em breve" |
+| Próximo ciclo vencido sem OS nova do plano | alerta `preventiva_vencida` uma vez por vencimento | "Vencido há N dias" |
+| OS do ciclo seguinte chega do SAP | ela passa a ser a última e a contagem recomeça; nenhum alerta novo | |
+| Sem intervalo, pausado ou sem OS ativa | sem contagem e sem alertas | "Sem intervalo", "Pausado", "Sem OS ativa" |
+| Admin ou supervisor da equipe edita o ciclo | grava; o ciclo é conferido na hora (o vencimento novo pode já gerar alerta) | `200` com o detalhe |
+| Técnico tenta editar | recusado | `403` |
+| Plano de outra equipe | não aparece | `404` no detalhe |
+
+Os alertas do ciclo são conferidos pelo executor de tarefas ao subir e a cada 60 minutos, depois de cada importação (API, planilha e PDF) e de cada edição do plano. Não vão por e-mail; o alerta aponta para o plano (`alerta.plano_preventiva_id`) e para a última OS dele.
+
+`GET /preventivas` `?situacao&equipe_id&busca` → `200` `{hoje, contagem: {vencido, proximo, aguardando_execucao, em_dia, sem_intervalo, sem_historico, pausado, total}, planos: [{id, plano_manutencao, item_manutencao, titulo, equipe, local, equipamento, intervalo: {quantidade, unidade} | null, intervalo_descricao, base_do_ciclo, antecedencia_dias, ativo, observacao, situacao, referencia, proximo_ciclo, dias_restantes, progresso, ultima_os, os_abertas, total_ciclos, atualizado_em, pode_editar}]}` — o escopo é a equipe da última OS; a contagem vem antes do filtro de situação; a lista vem do que pede ação ao que não pede
+`GET /preventivas/{id}` → `200` `{hoje, plano, ciclos: [{os_id, numero_ordem, titulo, status, equipe_nome, data_inicio_prog, data_fim_prog, encerrada_em, previsto, atraso_dias, no_prazo}], estatisticas: {ciclos_encerrados, no_prazo, com_atraso, intervalo_real_medio_dias, intervalo_definido_dias}, proximas_datas}` — `previsto` é o vencimento que o ciclo anterior marcou; o prazo de cada OS é o mesmo do indicador de atraso
+`PUT /preventivas/{id}` `{intervalo?: {quantidade, unidade} | null, base_do_ciclo?, antecedencia_dias?, ativo?, observacao?}` → `200` o detalhe — admin e supervisor da equipe
+`GET /os/{id}/preventiva` → `200` o plano da OS (com `eh_ultima_do_plano`) ou `404` quando a OS não é preventiva de plano
+`POST /importacoes/pdf/leitura` passa a trazer, por OS, `preventiva: {plano_id, intervalo_atual, intervalo_atual_descricao, intervalo_lido} | null`; `POST /importacoes` e `POST /importacoes/pdf` trazem `planos_sem_intervalo: [{plano_id, plano_manutencao, item_manutencao, titulo, numero_ordem}]`
+
+Tabela `plano_preventiva`.
+
+| Coluna | Tipo | Nulo | Referência | Nota |
+|---|---|---|---|---|
+| `plano_preventiva.id` | uuid | não | | |
+| `plano_preventiva.plano_manutencao` | text | não | | `10573`; unique com o item (`NULLS NOT DISTINCT`) |
+| `plano_preventiva.item_manutencao` | text | sim | | `10603` |
+| `plano_preventiva.intervalo_quantidade` | integer | sim | | 1 a 999; nulo junto com a unidade (sem intervalo) |
+| `plano_preventiva.intervalo_unidade` | text | sim | | `dia` \| `semana` \| `quinzena` \| `mes` \| `bimestre` \| `trimestre` \| `semestre` \| `ano` |
+| `plano_preventiva.contar_a_partir` | text | não | | `execucao` (padrão) \| `programacao`; na API, `base_do_ciclo` |
+| `plano_preventiva.antecedencia_dias` | integer | não | | 0 a 365, padrão 7 |
+| `plano_preventiva.ativo` | boolean | não | | pausado: sem contagem nem alertas |
+| `plano_preventiva.observacao` | text | sim | | |
+| `plano_preventiva.alerta_proximo_para` | date | sim | | o vencimento já avisado como próximo |
+| `plano_preventiva.alerta_vencido_para` | date | sim | | o vencimento já avisado como vencido |
+| `plano_preventiva.criado_em` · `atualizado_em` | timestamptz | não | | |
+| `plano_preventiva.atualizado_por` | uuid | sim | `usuario.id` | quem mexeu por último |
+| `alerta.plano_preventiva_id` | uuid | sim | `plano_preventiva.id` | só nos alertas `preventiva_proxima` e `preventiva_vencida` (`CHECK`) |
+
+A trilha de auditoria registra `plano_preventiva.editar`, `plano_preventiva.pausar` e `plano_preventiva.retomar`, com o antes e o depois.
+
+1. Sem OS automática — o SAP continua gerando as ordens do plano; o sistema só conta e avisa (decisão do time em 13/10/2026).
+2. Ciclo pelo plano + item — é o que a OS preventiva traz; se os códigos do plano mudarem (o Iago disse que o plano está em revisão), o plano novo começa sem histórico e sem intervalo, e aparece na Importação para definir.
+3. Pendente do ciclo anterior — a OS anterior não é fechada nem ligada à nova (questão 48); com `execucao`, o ciclo aguarda a execução dela, e com `programacao` segue o calendário.
 
 ### Eventos e modo offline
 
@@ -453,7 +565,7 @@ Tipos de evento e o que cada `payload` leva:
 | `execucao_suspensa` | `execucao_id`, `fim` |
 | `execucao_cancelada` | `execucao_id` |
 
-Fotos e assinaturas sobem ao Storage (`PUT /arquivos/{id}`) antes do evento que as referencia. No MVP o `pull` entrega o snapshot completo; o `cursor` continua no contrato, opcional, para a troca por pull incremental sem quebrar o app (questão 4).
+Fotos, PDFs e assinaturas sobem ao Storage (`PUT /arquivos/{id}`) antes do evento que os referencia. Cada evidência do payload é `{id, arquivo_id?, tipo?: foto | pdf, nome?, item_id?, capturada_em, latitude?, longitude?}`; sem `tipo`, é foto, e `nome` (o nome do PDF anexado) só vale no PDF. No MVP o `pull` entrega o snapshot completo; o `cursor` continua no contrato, opcional, para a troca por pull incremental sem quebrar o app (questão 4).
 
 Tabela `evento_campo`.
 
@@ -474,7 +586,7 @@ sequenceDiagram
   participant A as Cliente (web, ou app com fila SQLite)
   participant S as api (Node)
   participant DB as Postgres (Supabase)
-  A->>S: PUT /arquivos (fotos e assinaturas)
+  A->>S: PUT /arquivos (fotos, PDFs e assinaturas)
   A->>S: POST /eventos {eventos}
   alt sessão inválida ou usuário desativado sem eventos
     S-->>A: 401 — nada lido
@@ -537,7 +649,9 @@ Alternativas consideradas: replicação genérica com mesclagem campo a campo �
 | Marcar os riscos | o técnico marca os riscos que existem na atividade (a "( )" da planilha), agrupados por classificação; só as medidas desses riscos aparecem para resposta e só elas são exigidas | lista de riscos por classificação |
 | Responder item | livre, em qualquer ordem, nos itens de verificação e nas medidas dos riscos marcados; dá para voltar e mudar até concluir; as respostas nunca vêm preenchidas | pergunta atual e lista numerada |
 | Resposta bloqueante em item `eliminatorio` | não bloqueia na hora e **nada muda na tela**: a pergunta não é marcada e nenhuma evidência é pedida; o técnico segue respondendo sem saber que o item é eliminatório | a mesma tela de qualquer pergunta |
-| Item de condição pessoal reprovado (`evidencia` = `texto`) | depois da validação, basta a justificativa em texto; a foto é opcional (direito de recusa) | "Justifique em texto" |
+| Item de condição pessoal reprovado (`evidencia` = `texto`) | depois da validação, basta a justificativa em texto; a foto e o PDF são opcionais (direito de recusa) | "Justifique em texto" |
+| Item reprovado que pede documento (`evidencia` = `pdf`) | depois da validação, a observação e ao menos um PDF (laudo, certificado, relatório); a foto é opcional e não substitui o PDF | "Anexe ao menos 1 documento em PDF" |
+| Item reprovado que pede foto, com um PDF a mais | vale: o PDF acompanha a foto, mas não a substitui (a foto mostra o obstáculo no local e na hora) | "Fotos · ao menos 1" e "Documentos em PDF · opcional" |
 | Resposta bloqueante em item `alerta` | segue; o item fica marcado só no PDF e no painel do admin; o técnico não é avisado | nada na tela do técnico |
 | "NA" em item sem `permite_na` | não é oferecido | — |
 | "NA" em item com `permite_na` | passa, com observação obrigatória | campo de observação |
@@ -623,15 +737,16 @@ Uma Execução é um trecho de trabalho amparado por uma APR. Uma atividade de v
 | Suspender (fim do expediente) | Execução `suspensa`; a OS fica `pendente`; sem alerta | "OS pendente — retome com APR nova" |
 | Interromper por risco | motivo e ao menos 1 foto obrigatórios; Execução `interrompida`; a OS fica `pendente`; `alerta` `bloqueio` | "Atividade interrompida — supervisor será avisado" |
 | Cancelar por engano | só até 10 minutos depois do início, sem foto nem pausa; a Execução fica `cancelada` e a APR volta a poder ser usada no mesmo dia; a OS volta ao status anterior | "Execução cancelada" |
-| Encerrar sem descrição, sem foto ou sem a assinatura de todos os participantes | recusado | "Descrição, foto e assinaturas de todos são obrigatórias" |
-| Encerrar | grava descrição da atividade, fim, fotos e as assinaturas de todos os participantes da APR; a OS fica `encerrada` (aguardando envio) | "Encerrada (aguardando envio)" |
+| Encerrar sem descrição, sem foto ou sem a assinatura de todos os participantes | recusado; só PDF, sem foto, também | "Descrição, foto e assinaturas de todos são obrigatórias" |
+| Encerrar | grava descrição da atividade, fim, fotos (de 1 a 10), PDFs opcionais (até 5: laudo, relatório de medição) e as assinaturas de todos os participantes da APR; a OS fica `encerrada` (aguardando envio) | "Encerrada (aguardando envio)" |
+| Interromper com PDF | o PDF acompanha a foto obrigatória (até 5) | |
 | Evento de encerramento chega ao servidor | cria a tarefa `pdf_os`; o PDF é gerado e guardado no Storage | link do PDF na OS, no app e na web |
 | Falha ao gerar o PDF | a OS continua `encerrada`; nova tentativa automática (ver [Plataforma](#plataforma)) | "PDF pendente" no painel |
 | Supervisor dá ciência | o PDF é gerado de novo, agora com a ciência | "Ciente em dd/mm hh:mm" |
 
 `GET /os/{id}/pdf` → `200` `application/pdf`
 
-O PDF segue o papel atual: **página 1, a APR** (cabeçalho com ordem, instalação ou local, data, hora e descrição do serviço; participantes com função, nome, matrícula e assinatura; todos os itens com a resposta, destacando os alertas e as observações; observação geral; o bloco de contatos de emergência do modelo; o código, a versão e a data do documento) e **página 2, a OS** (cabeçalho da ordem com o número, a data de emissão e o registro digital; centro de trabalho, tipo de atividade, status e criador; local de instalação e equipamento; nota de manutenção; planejamento com prioridade e criticidade; execução com início, fim, tempo total, pausas, tempo líquido, número de pessoas e descrição; assinaturas de **todos** os executantes, do responsável da manutenção, a ciência do supervisor e o solicitante, quando existir; fotos com data, hora e posição). Em atividades de vários dias, a página 1 é a APR da Execução que encerrou, o tempo líquido soma os trechos, e a página 2 lista as datas dos trechos anteriores. Cada página cabe numa folha A4: como a planilha da APR, que é impressa "ajustada à página" (de 41% a 61%), o conteúdo que passa da folha é reduzido por inteiro (até 45%; a maior APR da carga inicial, com todos os riscos marcados, cabe em 60%), e a observação de cada item sai sob o texto dele. Só uma APR ou uma lista de fotos que não caiba nem na menor escala continua em outra folha, em vez de cortar.
+O PDF segue o papel atual: **página 1, a APR** (cabeçalho com ordem, instalação ou local, data, hora e descrição do serviço; participantes com função, nome, matrícula e assinatura; todos os itens com a resposta, destacando os alertas e as observações; observação geral; o bloco de contatos de emergência do modelo; o código, a versão e a data do documento) e **página 2, a OS** (cabeçalho da ordem com o número, a data de emissão e o registro digital; centro de trabalho, tipo de atividade, status e criador; local de instalação e equipamento; nota de manutenção; planejamento com prioridade e criticidade; execução com início, fim, tempo total, pausas, tempo líquido, número de pessoas e descrição; assinaturas de **todos** os executantes, do responsável da manutenção, a ciência do supervisor e o solicitante, quando existir; fotos com data, hora e posição; os PDFs anexados à execução só são listados, com o nome e a hora, porque o arquivo não entra nas 2 páginas e fica no detalhe da OS). Em atividades de vários dias, a página 1 é a APR da Execução que encerrou, o tempo líquido soma os trechos, e a página 2 lista as datas dos trechos anteriores. Cada página cabe numa folha A4: como a planilha da APR, que é impressa "ajustada à página" (de 41% a 61%), o conteúdo que passa da folha é reduzido por inteiro (até 45%; a maior APR da carga inicial, com todos os riscos marcados, cabe em 60%), e a observação de cada item sai sob o texto dele. Só uma APR ou uma lista de fotos que não caiba nem na menor escala continua em outra folha, em vez de cortar.
 
 Tabelas `execucao`, `execucao_pausa`, `execucao_assinatura`, `evidencia`.
 
@@ -661,7 +776,9 @@ Tabelas `execucao`, `execucao_pausa`, `execucao_assinatura`, `evidencia`.
 | `evidencia.execucao_id` | uuid | sim | `execucao.id` | uma das duas referências é obrigatória |
 | `evidencia.apr_id` | uuid | sim | `apr.id` | foto do item reprovado |
 | `evidencia.item_id` | uuid | sim | `item_modelo_apr.id` | obrigatório quando `apr_id` está preenchido |
-| `evidencia.foto_path` | text | não | | bucket `fotos` |
+| `evidencia.tipo` | text | não | | `foto` (padrão) \| `pdf` |
+| `evidencia.foto_path` | text | não | | o caminho do arquivo no bucket do tipo: `fotos` (foto) ou `documentos` (PDF); o nome vem de quando a evidência só podia ser foto |
+| `evidencia.nome_arquivo` | text | sim | | nome do PDF como foi anexado, para exibir; só no PDF |
 | `evidencia.capturada_em` | timestamptz | não | | |
 | `evidencia.latitude` / `longitude` | numeric | sim | | quando o GPS estiver disponível |
 
@@ -811,8 +928,10 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 41 | aparelhos do piloto definidos antes do piloto | time |
 | 43 e 54 | adaptador de leitura da API, com simulador no mesmo contrato e fixtures a partir do PDF de exemplo, trocadas pela planilha de 2025 quando chegar | Iago |
 | 44 | perfil com assinatura e as OS encerradas do próprio técnico (60 dias) | time |
-| 45 | catálogo, escaneamento, intervalo das preventivas, chatbot e gamificação ficam fora do MVP | time |
-| 46 | evidência é foto ou texto, por item; anexo em PDF fica para depois | time |
+| 45 | escaneamento, chatbot e gamificação ficam fora do MVP; o catálogo de serviço e o intervalo entre ciclos das preventivas foram feitos em 13/10/2026 | time |
+| 46 | evidência é foto, texto ou PDF, por item (o modelo diz o que é exigido); PDF a mais é sempre aceito e não substitui a foto exigida | time |
+| 65 | catálogo de serviço: a lista de cada serviço é cadastrada pelo admin; a carga fictícia só serve à demonstração | Iago |
+| 66 | ciclo das preventivas: o intervalo vem do campo Periodicidade (PDF), da coluna da planilha, de `intervalo_ciclo` na API ou é definido no sistema; o próximo ciclo conta do encerramento da última OS | Iago |
 | 47 | o PDF lista todos os participantes | Iago |
 | 48 | sem vínculo automático entre OS pendente e a OS nova do mês | Iago |
 | 49 | ciência por botão na web, depois do encerramento | Iago |

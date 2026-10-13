@@ -125,6 +125,7 @@ As oito planilhas de referência de APR correspondem aos modelos de operação, 
 ## Documentação de referência
 
 - [DesignDoc.md](./DesignDoc.md) — definições e visão do produto.
+- [funcionalidades.md](./funcionalidades.md) — o que está pronto das funcionalidades essenciais e das extras, e o que fazer a seguir.
 - [Especificação funcional e técnica](./base/.design/especificacao.md) — escopo, regras de negócio, arquitetura proposta, contratos e decisões.
 - [Pontos a validar](./base/.design/pontos-a-validar.md) — questões que ainda dependem de confirmação.
 - [Resumo das correções da reunião 2](./base/reunioes/correcoes-reuniao-2-resumo.md) — decisões recentes sobre APR, execução, integração e stack.
@@ -134,4 +135,4 @@ As oito planilhas de referência de APR correspondem aos modelos de operação, 
 
 Para avançar do protótipo para um piloto, ainda será necessário implementar e validar as três aplicações, contratos e API simulada do SAP, autenticação e permissões, envio idempotente dos eventos de campo (base do modo offline e da fila local), persistência de evidências, geração real do PDF, notificações, exportação de encerramentos e testes do fluxo de ponta a ponta. A integração real e as decisões de segurança corporativa devem ser confirmadas com as áreas responsáveis; dados reais não devem ser conectados ao protótipo atual. Planejado para a próxima entrega, ainda não pronto: cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin, e tela de treinamento com dados fictícios no primeiro login dos técnicos (a importação de OS pelo supervisor foi adiada).
 
-Funcionalidades sugeridas para depois do MVP — como catálogo de serviços, digitalização de documentos antigos, acompanhamento do intervalo entre ciclos preventivos, chatbot e gamificação — não fazem parte da demonstração nem do escopo prioritário atual.
+Funcionalidades sugeridas para depois do MVP — como digitalização de documentos antigos, acompanhamento do intervalo entre ciclos preventivos, chatbot e gamificação — não fazem parte da demonstração nem do escopo prioritário atual. Três ideias dessa lista foram feitas em 13/10/2026: o catálogo de serviço (os materiais de cada serviço, no detalhe da OS), a evidência em PDF e o intervalo entre ciclos das preventivas (a contagem até o próximo ciclo de cada plano, com alertas, sem criar OS); ver [funcionalidades.md](./funcionalidades.md).

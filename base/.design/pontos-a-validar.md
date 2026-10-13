@@ -2,7 +2,7 @@
 
 > Questões que a [especificação](especificacao.md) ainda não responde. Cada uma traz uma recomendação para não travar o desenvolvimento: se ninguém discordar, ela vale.
 >
-> **Atualizado em 12/10/2026** (perfis: só `tecnico` e `admin`; questões 63 e 64), a partir do que foi atualizado em 10/10/2026, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
+> **Atualizado em 13/10/2026** (evidência em PDF: questão 46; catálogo de serviço: questão 65) e em 12/10/2026 (perfis: só `tecnico` e `admin`; questões 63 e 64), a partir do que foi atualizado em 10/10/2026, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
 >
 > **Todas as questões abertas seguem com a recomendação adotada** na [especificação](especificacao.md) (seção "Suposições adotadas"), para a implementação não esperar. Elas continuam listadas aqui para a confirmação com o Iago, o Mario e o time; se a resposta for outra, o ajuste é restrito ao que a especificação cita. As questões 22–46 estavam só no [contexto da sessão](../contexto/contexto-sessao-2026-10-10.md) e entram aqui; as 47–54 são novas.
 
@@ -49,7 +49,7 @@
 | 39 | Atraso conta do início ou do fim programado | 🟡 | Time | igual |
 | 40 | Colunas da planilha de saída para a baixa no SAP | 🟡 | Time + Iago | ligada à 51 |
 | 44 | Painel pessoal do funcionário | 🟡 | Time | protótipo já tem Perfil e histórico |
-| 46 | Evidência em PDF além da foto | 🟡 | Time | evidência é foto **ou texto**, por item |
+| 46 | Evidência em PDF além da foto | 🟡 | Time | **feita em 13/10/2026:** evidência é foto, texto ou PDF, por item; PDF a mais é sempre aceito |
 | **47** | PDF tem 3 vagas de executante; a APR pode ter 10 pessoas | 🟡 | Iago | nova |
 | **48** | Preventiva pendente do ciclo anterior × OS nova do mês | 🟡 | Iago | nova |
 | **49** | Ciência do supervisor: quando e onde assina | 🟡 | Iago | nova |
@@ -59,6 +59,8 @@
 | **54** | API simulada do SAP: contrato e base fictícia | 🟡 | Time | nova |
 | **63** | Importação de OS pelo supervisor (adiada) | 🟡 | Time | nova |
 | **64** | Cadastro pelo supervisor, liberação pelo admin e treinamento (decidida em 12/10/2026) | 🟡 | Time + Iago | decidida |
+| **65** | Catálogo de serviço: a lista real de materiais de cada serviço | 🟡 | Iago | nova (13/10/2026) |
+| **66** | Ciclo das preventivas: onde o SAP guarda o intervalo do plano e de onde contar o próximo ciclo | 🟡 | Iago | nova (13/10/2026) |
 | 17 | Relógio do aparelho errado | 🟢 | Time | agora afeta também o cronômetro |
 | 18 | Esqueci a senha / senha offline | 🟢 | Time | o reset passa a ser do Supabase Auth |
 | 20 | Quais alertas vão por e-mail | 🟢 | Iago | o envio passa a ser do back-end Node |
@@ -176,7 +178,7 @@
 | 39 | Atraso pela data de fim programado quando existir; senão, a de início |
 | 40 | Pedir ao Iago um exemplo da planilha de saída, junto com o export de entrada (ligada à 51) |
 | 44 | Já existe a tela Perfil e histórico no protótipo, com as OS do próprio técnico; exige baixar também as encerradas dele no pull |
-| 46 | Evidência é foto **ou texto**, por item; anexar PDF fica para depois |
+| 46 | **Feita em 13/10/2026.** Evidência é foto, texto ou PDF, por item: o modelo diz o que o item exige (`foto`, `texto` ou `pdf`), e foto e PDF a mais são sempre aceitos; o PDF não substitui a foto exigida. No encerramento e na interrupção, até 5 PDFs acompanham as fotos |
 
 ### 47. O PDF tem 3 vagas de executante, mas a APR pode ter 10 pessoas (nova)
 
@@ -272,6 +274,19 @@
 **Ainda em aberto:** nada desta questão; a importação de OS pelo supervisor segue adiada (questão 63).
 **Detalhes:** [Cadastro pelo supervisor, liberação e treinamento](especificacao.md#cadastro-pelo-supervisor-liberação-e-treinamento). Impacto 🟡.
 
+### 65. Catálogo de serviço: a lista real de materiais de cada serviço (nova, 13/10/2026)
+
+**Contexto:** o catálogo de serviço foi feito em 13/10/2026: cada serviço é a atividade do plano de manutenção (a mesma que escolhe o modelo de APR), com os materiais, ferramentas e EPIs e a quantidade prevista por execução; o técnico vê a lista no detalhe da OS. Falta o conteúdo: hoje os materiais chegam só como texto na descrição da OS, e o modo local e a demonstração usam uma carga fictícia.
+**Perguntas:** (1) a ES Gás tem a lista de materiais por serviço (ou por plano de manutenção) em algum lugar que dê para importar? (2) os materiais têm código no SAP que valha guardar? (3) além do previsto, o técnico deve registrar o que gastou, para a baixa de material no SAP?
+**Recomendação:** o admin cadastra a lista dos serviços mais frequentes à mão, com o código do SAP quando houver; a baixa do material gasto fica fora do MVP. Como os códigos do plano vão mudar (questão 58), a lista acompanha a atividade: se o código mudar, o admin recria a atividade e copia a lista. Impacto 🟡.
+**Detalhes:** [Catálogo de serviço](especificacao.md#catálogo-de-serviço).
+
+### 66. Ciclo das preventivas: onde o SAP guarda o intervalo do plano (nova, 13/10/2026)
+
+**Contexto:** o time decidiu acompanhar o intervalo entre ciclos das preventivas sem criar OS: o sistema conta o tempo até o próximo ciclo de cada plano (plano + item de manutenção) e avisa quem planeja quando ele se aproxima ou vence sem OS nova. O PDF da OS 4019821 tem o campo "Periodicidade", mas ele veio vazio, e a planilha de 2025 ainda não chegou. Também não está claro se o SAP conta o ciclo do encerramento da última ordem ("Dt.Enc.Ult.Ord Plan", impresso no PDF) ou da data planejada.
+**Recomendação (adotada):** ler o intervalo da Periodicidade do PDF, da coluna Intervalo/Periodicidade da planilha e do campo `intervalo_ciclo` da API, e deixar o admin (ou o supervisor da equipe) defini-lo no sistema; contar do encerramento da última OS por padrão, com a opção de contar da data programada. Perguntar ao Iago onde o SAP guarda o ciclo do plano e qual das duas contagens ele usa. Impacto 🟡.
+**Detalhes:** [Ciclo das preventivas](especificacao.md#ciclo-das-preventivas).
+
 ## 4. Adotadas de baixo impacto (🟢)
 
 | # | Recomendação |
@@ -305,7 +320,7 @@
 
 | # | Questão | Por quê |
 |---|---|---|
-| 45 | Catálogo de serviço, escaneamento de papéis antigos, intervalo das preventivas: entram no MVP? | **Adotado: ficam fora do MVP**, junto com o chatbot e a gamificação; o time escolhe depois quais ideias guardar para a apresentação final |
+| 45 | Catálogo de serviço, escaneamento de papéis antigos, intervalo das preventivas: entram no MVP? | **Adotado: ficam fora do MVP**, junto com o chatbot e a gamificação; o time escolhe depois quais ideias guardar para a apresentação final. **Exceções (13/10/2026):** o catálogo de serviço (questão 65) e o intervalo entre ciclos das preventivas (questão 66) foram feitos |
 | 51 | O encerramento da OS atualiza o status no SAP? (o Iago descreve o status mudando para encerrada, 25:27–25:43) | **Adotado: a baixa segue por planilha**, com as colunas da aba `Encerradas`; o Iago confirma se o SAP espera outra coisa |
 
 ## 7. Já decidido
