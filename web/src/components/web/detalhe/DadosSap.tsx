@@ -15,6 +15,7 @@ interface Dado {
 const ROTULO_ORIGEM: Record<OsDetalhe["origem"], string> = {
   sap: "Lida do SAP",
   planilha: "Importada da planilha",
+  pdf: "Importada do PDF da OS",
   apoio: "Aberta como apoio",
 };
 

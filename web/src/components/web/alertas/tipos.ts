@@ -17,7 +17,7 @@ export interface Alerta {
   equipe_id: string | null;
   /** Só na falha de importação: o registro da importação que falhou e o método. */
   importacao_id: string | null;
-  importacao_origem: "api" | "planilha" | null;
+  importacao_origem: "api" | "planilha" | "pdf" | null;
   detalhe: string;
   email_enviado_em: string | null;
   lido_em: string | null;
@@ -48,7 +48,8 @@ export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; u
 }
 
 /** Nome do método de uma importação que falhou. */
-export const metodoDaFalha = (origem: Alerta["importacao_origem"]) => (origem === "api" ? "Sincronização com a API do SAP" : "Importação de planilha");
+export const metodoDaFalha = (origem: Alerta["importacao_origem"]) =>
+  origem === "api" ? "Sincronização com a API do SAP" : origem === "pdf" ? "Importação do PDF da OS" : "Importação de planilha";
 
 /** A que o alerta se refere, na lista e no sino: a OS (número em fonte mono e título) ou o método da importação. */
 export function referenciaDoAlerta(a: Alerta): { codigo: string | null; texto: string } {

@@ -44,6 +44,11 @@ async function lerResposta(resposta: Response) {
   return dados;
 }
 
+/** `enviarFormulario("/importacoes", form)`: POST multipart (arquivos). Lança `ErroCliente` com a mensagem da `api`. */
+export async function enviarFormulario<T = unknown>(caminho: string, form: FormData): Promise<T> {
+  return lerResposta(await fetch(`/api${caminho}`, { method: "POST", body: form, cache: "no-store" })) as Promise<T>;
+}
+
 /** `chamar("POST", "/os/123/ciencia")`; o corpo vai como JSON. Lança `ErroCliente` com a mensagem da `api`. */
 export async function chamar<T = unknown>(metodo: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", caminho: string, corpo?: unknown): Promise<T> {
   const resposta = await fetch(`/api${caminho}`, {

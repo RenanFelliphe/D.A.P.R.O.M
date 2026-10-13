@@ -1,6 +1,10 @@
-/** Formatos das respostas de `GET /importacoes`, `POST /importacoes` e `GET /importacoes/resumo`. */
+/**
+ * Formatos das respostas de `GET /importacoes`, `POST /importacoes` (planilha), `POST /importacoes/pdf/leitura` e
+ * `POST /importacoes/pdf` (PDF da OS) e `GET /importacoes/resumo`.
+ */
 
 import { dataDoDia } from "@/lib/formatar";
+import type { OsStatus } from "@/lib/tipos";
 
 export interface LinhaIgnorada {
   /** Número da linha na planilha; na leitura pela API vem só o `numero_ordem`. */
@@ -18,8 +22,8 @@ export interface AvisoDaOrdem {
 
 export interface Importacao {
   id: string;
-  origem: "api" | "planilha";
-  /** `<id>/<nome>.xlsx` no bucket; só as planilhas têm. */
+  origem: "api" | "planilha" | "pdf";
+  /** `<id>/<nome>.xlsx` ou `<id>/<nome>.pdf` no bucket; só os arquivos têm. */
   arquivo: string | null;
   usuario_id: string | null;
   usuario_nome: string | null;
@@ -31,12 +35,61 @@ export interface Importacao {
   criada_em: string;
 }
 
-export interface ResultadoDaPlanilha {
+/** O que a importação de um arquivo (planilha ou PDF) fez. */
+export interface ResultadoDaImportacao {
   importacao_id: string;
   criadas: number;
   atualizadas: number;
   ignoradas: LinhaIgnorada[];
   avisos: AvisoDaOrdem[];
+}
+
+/** Uma OS no formato do contrato do SAP, como o PDF a trouxe e a conferência a deixou; `null` no que não veio. */
+export interface OrdemDoPdf {
+  numero_ordem: string;
+  numero_nota: string | null;
+  tipo_ordem: "YBA1" | "YBA2" | null;
+  tipo_atividade: string | null;
+  codigo_atividade: string | null;
+  titulo: string | null;
+  descricao: string | null;
+  centro_trabalho: string | null;
+  local_instalacao: { codigo: string | null; endereco: string | null; plus_code: string | null; cliente: string | null };
+  equipamento: string | null;
+  prioridade: string | null;
+  data_inicio_prog: string | null;
+  data_fim_prog: string | null;
+  status_sap: string | null;
+  solicitante: string | null;
+  criado_por: string | null;
+  criada_em: string | null;
+  plano_manutencao: string | null;
+  item_manutencao: string | null;
+}
+
+export type CampoObrigatorioDoPdf = "tipo_ordem" | "titulo" | "centro_trabalho" | "local_instalacao" | "data_inicio_prog";
+
+/** Uma OS lida do PDF, com o que faltou e o que o sistema já sabe dela. */
+export interface OsLidaDoPdf {
+  /** Folhas do PDF (a partir de 1). */
+  paginas: number[];
+  ordem: OrdemDoPdf;
+  faltando: CampoObrigatorioDoPdf[];
+  /** O que foi deduzido, e não lido. */
+  observacoes: string[];
+  existente: { id: string; status: OsStatus; origem: string } | null;
+  /** A equipe do centro de trabalho lido (`null`: centro sem equipe cadastrada). */
+  equipe: { id: string; nome: string } | null;
+  /** A atividade cadastrada que casou com o título. */
+  atividade: { codigo: string; com_modelo: boolean } | null;
+}
+
+/** `POST /importacoes/pdf/leitura`. */
+export interface LeituraDoPdf {
+  arquivo: string;
+  paginas: number;
+  paginas_sem_ordem: number[];
+  ordens: OsLidaDoPdf[];
 }
 
 /** Nome da planilha sem a pasta do bucket. */
@@ -91,13 +144,17 @@ export interface ResumoDasImportacoes {
 
 /**
  * As três formas de uma OS nova entrar, com a cor de cada uma nos gráficos (paleta categórica de `variables.css`). A
- * digitalização ainda não registra OS (a `api` não tem essa origem): no painel ela aparece sempre com zero.
+ * Importação (arquivo) leva a chave `planilha` e soma a planilha e o PDF da OS. A digitalização ainda não registra OS (a
+ * `api` não tem essa origem): no painel ela aparece sempre com zero.
  */
 export const origensDeEntrada = {
   api: { nome: "Sincronização (API)", curto: "API", cor: "var(--o-api)" },
   planilha: { nome: "Importação (arquivo)", curto: "Arquivo", cor: "var(--o-arq)" },
   digitalizacao: { nome: "Digitalização (câmera)", curto: "Câmera", cor: "var(--o-cam)" },
 } as const;
+
+/** O método de entrada de uma importação do histórico: a planilha e o PDF são os dois arquivos da Importação. */
+export const metodoDaImportacao = (origem: Importacao["origem"]) => (origem === "api" ? origensDeEntrada.api : origensDeEntrada.planilha);
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const MESES_LONGOS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];

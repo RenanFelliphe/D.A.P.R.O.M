@@ -383,12 +383,12 @@
     grid-template-columns: minmax(0, 1fr)
   }
 
-  .previa-pdf {
+  .conferencia-campos {
     grid-template-columns: minmax(0, 1fr)
   }
 
-  .previa-pdf object {
-    height: 300px
+  .conferencia-previa object {
+    height: 380px
   }
 
   .segmentos {

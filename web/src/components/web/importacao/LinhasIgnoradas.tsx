@@ -6,14 +6,15 @@ import type { LinhaIgnorada } from "./tipos";
 const link = { fontSize: 13.5, fontWeight: 600 } as const;
 const SEM_EQUIPE = "Centro de trabalho sem equipe cadastrada";
 
-/** Tabela das linhas (ou ordens) que não entraram, com o motivo de cada uma. */
+/** Tabela das linhas (ou ordens) que não entraram, com o motivo de cada uma. A coluna Linha só aparece na planilha. */
 export function TabelaIgnoradas({ ignoradas }: { ignoradas: LinhaIgnorada[] }) {
+  const comLinha = ignoradas.some((l) => l.linha !== undefined);
   return (
     <TableWrap>
       <table className="tb">
         <thead>
           <tr>
-            <th style={{ width: 70 }}>Linha</th>
+            {comLinha && <th style={{ width: 70 }}>Linha</th>}
             <th style={{ width: 110 }}>Ordem</th>
             <th style={{ width: 160 }}>Centro de trabalho</th>
             <th>Motivo</th>
@@ -22,7 +23,7 @@ export function TabelaIgnoradas({ ignoradas }: { ignoradas: LinhaIgnorada[] }) {
         <tbody>
           {ignoradas.map((l, i) => (
             <tr key={i}>
-              <td className="mono">{l.linha ?? "—"}</td>
+              {comLinha && <td className="mono">{l.linha ?? "—"}</td>}
               <td className="mono">{l.numero_ordem ?? "—"}</td>
               <td className="mono">{l.centro_trabalho ?? "—"}</td>
               <td>{l.motivo}</td>
@@ -34,13 +35,15 @@ export function TabelaIgnoradas({ ignoradas }: { ignoradas: LinhaIgnorada[] }) {
   );
 }
 
-/** Painel com as linhas da planilha que não entraram e o motivo. */
-export function LinhasIgnoradas({ ignoradas, podeCadastrarEquipe }: { ignoradas: LinhaIgnorada[]; podeCadastrarEquipe: boolean }) {
+/** Painel com as linhas da planilha (ou as OS do PDF) que não entraram e o motivo. */
+export function LinhasIgnoradas({ ignoradas, podeCadastrarEquipe, titulo = "Linhas ignoradas" }: { ignoradas: LinhaIgnorada[]; podeCadastrarEquipe: boolean; titulo?: string }) {
   const centrosSemEquipe = [...new Set(ignoradas.filter((l) => l.motivo === SEM_EQUIPE && l.centro_trabalho).map((l) => l.centro_trabalho!))];
   return (
     <Panel>
       <div className="row between wrap">
-        <h2>Linhas ignoradas · {ignoradas.length}</h2>
+        <h2>
+          {titulo} · {ignoradas.length}
+        </h2>
         {podeCadastrarEquipe && centrosSemEquipe.length > 0 && (
           <Link href={rotas.app.usuarios} style={link}>
             Cadastrar equipe para {centrosSemEquipe.join(", ")}

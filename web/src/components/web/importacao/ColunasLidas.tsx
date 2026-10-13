@@ -27,7 +27,20 @@ function Lista({ itens, icone }: { itens: string[]; icone: "check" | "plus" }) {
   );
 }
 
-/** As colunas da planilha que o sistema reconhece, obrigatórias ao lado das opcionais (o título fica na página). */
+/** Os rótulos impressos na OS do SAP de onde sai cada campo (`api/src/dominio/importacao-pdf.ts`). */
+const rotulosDoPdf = [
+  "Ordem de Manutenção (o número no cabeçalho de cada folha)",
+  "Tipo Ativ Manut (Z01 corretiva, Z02 preventiva)",
+  "Centro de trabalho principal da ordem",
+  "O título, logo acima de Objetos técnicos",
+  "Local de Instalação e Endereço",
+  "Data de inicio programada e Data fim programada",
+  "Equipamento, Prioridade, Nota, Plano e Item de manutenção",
+  "Status do sistema, Criado por e Data da Ordem",
+  "O texto longo, depois da tabela de operações",
+];
+
+/** As colunas da planilha que o sistema reconhece, obrigatórias ao lado das opcionais, e o que sai do PDF da OS (o título fica na página). */
 export function ColunasLidas() {
   return (
     <Panel>
@@ -44,6 +57,14 @@ export function ColunasLidas() {
         </div>
       </div>
       <p className="small">O mapeamento será ajustado ao export oficial do SAP quando ele chegar.</p>
+      <div className="stack g8" style={{ paddingTop: 12, borderTop: "1px solid var(--line2)" }}>
+        <span className="lbl">PDF da OS</span>
+        <span className="small">
+          Do PDF gerado pelo SAP, o sistema lê os mesmos campos pelos rótulos impressos. Antes de registrar, você confere cada OS ao lado do PDF e preenche o
+          que faltou; o número da ordem vem sempre do documento. Uma folha digitalizada (só imagem) não tem texto para ler.
+        </span>
+        <Lista itens={rotulosDoPdf} icone="check" />
+      </div>
     </Panel>
   );
 }

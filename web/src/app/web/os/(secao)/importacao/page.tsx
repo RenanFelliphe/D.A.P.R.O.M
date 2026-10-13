@@ -54,7 +54,7 @@ export default async function ImportacaoPage({ searchParams }: PageProps<"/web/o
           <h2 id="colunas-t" className="secao-t">
             Colunas lidas
           </h2>
-          <span className="muted">O que o sistema lê da planilha exportada do SAP.</span>
+          <span className="muted">O que o sistema lê da planilha exportada do SAP e do PDF da OS.</span>
         </div>
         <ColunasLidas />
       </section>
@@ -64,7 +64,7 @@ export default async function ImportacaoPage({ searchParams }: PageProps<"/web/o
           <h2 id="historico-t" className="secao-t">
             Histórico
           </h2>
-          <span className="muted">Sincronizações com a API e planilhas importadas, da mais recente à mais antiga.</span>
+          <span className="muted">Sincronizações com a API e arquivos importados (planilha e PDF), do mais recente ao mais antigo.</span>
         </div>
         <ImportacoesAnteriores importacoes={historico.importacoes} />
         {ultimaPagina > 1 && (

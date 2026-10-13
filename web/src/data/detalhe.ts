@@ -38,7 +38,7 @@ export interface OsDetalhe {
   status_sap: string | null;
   solicitante: string | null;
   os_origem_id: string | null;
-  origem: "sap" | "planilha" | "apoio";
+  origem: "sap" | "planilha" | "pdf" | "apoio";
   pdf_path: string | null;
   pdf_em: string | null;
   ciencia_por: string | null;

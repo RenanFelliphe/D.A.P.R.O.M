@@ -4,6 +4,7 @@ import { Panel } from "@/components/web/Panel";
 
 interface ArquivoProcessadoProps {
   nome: string;
+  formato: "planilha" | "pdf";
   /** Subtítulo, ex.: "processada agora". */
   detalhe: string;
   criadas: number;
@@ -11,28 +12,13 @@ interface ArquivoProcessadoProps {
   ignoradas: number;
 }
 
-/** Planilha processada, com o resumo de criadas, atualizadas e ignoradas. */
-export function ArquivoProcessado({ nome, detalhe, criadas, atualizadas, ignoradas }: ArquivoProcessadoProps) {
+/** Arquivo processado (planilha ou PDF da OS), com o resumo de criadas, atualizadas e ignoradas. */
+export function ArquivoProcessado({ nome, formato, detalhe, criadas, atualizadas, ignoradas }: ArquivoProcessadoProps) {
   return (
     <Panel>
       <div className="row g12 wrap">
-        <span
-          style={{
-            width: 38,
-            height: 46,
-            flex: "none",
-            borderRadius: 6,
-            background: "var(--enc)",
-            color: "#fff",
-            display: "inline-flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-            paddingBottom: 6,
-            fontSize: 10,
-            fontWeight: 700,
-          }}
-        >
-          XLSX
+        <span className={`arq-tag ${formato === "pdf" ? "pdf" : "xlsx"}`} aria-hidden="true">
+          {formato === "pdf" ? "PDF" : "XLSX"}
         </span>
         <span className="stack" style={{ flex: 1, lineHeight: 1.3, minWidth: 0 }}>
           <span className="mono" style={{ fontSize: 14, fontWeight: 600, overflowWrap: "anywhere" }}>
@@ -69,7 +55,7 @@ export function ArquivoProcessado({ nome, detalhe, criadas, atualizadas, ignorad
           </span>
           <span className="v">{ignoradas}</span>
           <span className="small" style={ignoradas > 0 ? { color: "var(--al)" } : undefined}>
-            {ignoradas > 0 ? "motivo de cada uma abaixo" : "nenhuma linha ficou de fora"}
+            {ignoradas > 0 ? "motivo de cada uma abaixo" : formato === "pdf" ? "nenhuma OS ficou de fora" : "nenhuma linha ficou de fora"}
           </span>
         </div>
       </div>

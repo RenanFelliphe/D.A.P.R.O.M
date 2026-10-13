@@ -128,7 +128,7 @@ function MotivosIgnoradas({ motivos }: { motivos: ResumoDasImportacoes["motivos_
 /**
  * Entrada de OS, no dashboard de OS: contadores por método de origem, o que as sincronizações e importações fizeram, as
  * OS registradas por faixa, a saúde da sincronização e os motivos das linhas ignoradas. O período é o do filtro comum; a
- * equipe não se aplica (uma leitura ou planilha traz OS de todas as equipes).
+ * equipe não se aplica (uma leitura ou um arquivo, planilha ou PDF, traz OS de todas as equipes).
  */
 export function EntradaDeOs({ resumo, rotuloAnterior }: { resumo: ResumoDasImportacoes; rotuloAnterior: string }) {
   const unidade = nomeDaUnidade[resumo.agrupamento];

@@ -3,13 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { chamar } from "@/lib/cliente-api";
+import { chamar, enviarFormulario, ErroCliente } from "@/lib/cliente-api";
 import { cx } from "@/lib/cx";
 import { dataHora } from "@/lib/formatar";
+import { ConferenciaPdf } from "./ConferenciaPdf";
 import { JanelaCamera } from "./JanelaCamera";
-import { PreviaPdf } from "./PreviaPdf";
-import { ResultadoPlanilha } from "./ResultadoPlanilha";
-import type { ResultadoDaPlanilha } from "./tipos";
+import { ResultadoArquivo } from "./ResultadoArquivo";
+import type { LeituraDoPdf, ResultadoDaImportacao } from "./tipos";
 
 const LIMITE_MB = 10;
 /** Esperas (ms) até atualizar a tela depois de sincronizar: a leitura roda em segundo plano. */
@@ -26,7 +26,10 @@ interface EntradasDeOsProps {
   ehAdmin: boolean;
 }
 
-type Resultado = { tipo: "planilha"; nome: string; dados: ResultadoDaPlanilha } | { tipo: "pdf"; arquivo: File; url: string };
+/** O que aparece abaixo dos cartões: o resultado de um arquivo importado, ou o PDF lido à espera da conferência. */
+type Resultado =
+  | { tipo: "importado"; formato: "planilha" | "pdf"; nome: string; dados: ResultadoDaImportacao }
+  | { tipo: "conferencia"; arquivo: File; url: string; leitura: LeituraDoPdf };
 
 interface CartaoProps {
   tom: "api" | "arq" | "cam";
@@ -85,8 +88,9 @@ function Cartao({ tom, icone, titulo, canal, selos, descricao, detalhes, acao, a
 
 /**
  * As três formas de uma OS nova entrar no sistema, um cartão para cada: Sincronização (força a leitura da API, como o
- * antigo "Ler agora"), Importação (planilha .xlsx exportada do SAP; o PDF ainda só mostra como vai funcionar) e
- * Digitalização (câmera, ainda sem leitura), que só o administrador vê. O resultado da importação aparece logo abaixo.
+ * antigo "Ler agora"), Importação (planilha .xlsx exportada do SAP, ou o PDF da OS impresso pelo SAP, que é lido e
+ * conferido campo a campo antes de registrar) e Digitalização (câmera, ainda sem leitura), que só o administrador vê. O
+ * resultado da importação, ou a conferência do PDF, aparece logo abaixo.
  */
 export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmin }: EntradasDeOsProps) {
   const roteador = useRouter();
@@ -99,7 +103,8 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
   const [erroSinc, setErroSinc] = useState<string | null>(null);
 
   const [arrastando, setArrastando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
+  /** O arquivo em andamento: o PDF sendo lido ou a planilha sendo importada. */
+  const [enviando, setEnviando] = useState<"lendo" | "importando" | null>(null);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
@@ -115,7 +120,7 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
 
   function mostrar(novo: Resultado | null) {
     if (urlDoPdf.current) URL.revokeObjectURL(urlDoPdf.current);
-    urlDoPdf.current = novo?.tipo === "pdf" ? novo.url : null;
+    urlDoPdf.current = novo?.tipo === "conferencia" ? novo.url : null;
     setResultado(novo);
   }
 
@@ -142,49 +147,41 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
     }
   }
 
+  /**
+   * Planilha: importa direto (o resultado aparece abaixo). PDF: só lê e abre a conferência; nada é gravado até a pessoa
+   * registrar. Falha de importação da planilha fica no histórico e vira alerta, por isso a tela é atualizada também nela.
+   */
   async function importar(arquivo: File | undefined) {
     if (!arquivo) return;
     const nome = arquivo.name.toLowerCase();
+    const pdf = nome.endsWith(".pdf") || arquivo.type === "application/pdf";
     setErroArquivo(null);
-    if (nome.endsWith(".pdf") || arquivo.type === "application/pdf") {
-      mostrar({ tipo: "pdf", arquivo, url: URL.createObjectURL(arquivo) });
-      return;
-    }
-    if (!nome.endsWith(".xlsx")) {
+    if (!pdf && !nome.endsWith(".xlsx")) {
       setErroArquivo("Envie a planilha .xlsx exportada do SAP ou o PDF de uma OS.");
       return;
     }
     if (arquivo.size > LIMITE_MB * 1024 * 1024) {
-      setErroArquivo(`A planilha passa de ${LIMITE_MB} MB.`);
+      setErroArquivo(`${pdf ? "O PDF" : "A planilha"} passa de ${LIMITE_MB} MB.`);
       return;
     }
     mostrar(null);
-    setEnviando(true);
+    setEnviando(pdf ? "lendo" : "importando");
     try {
       const form = new FormData();
       form.set("arquivo", arquivo);
-      const resposta = await fetch("/api/importacoes", { method: "POST", body: form, cache: "no-store" });
-      if (resposta.status === 401) {
-        roteador.push("/app/entrar");
-        return;
+      if (pdf) {
+        const leitura = await enviarFormulario<LeituraDoPdf>("/importacoes/pdf/leitura", form);
+        mostrar({ tipo: "conferencia", arquivo, url: URL.createObjectURL(arquivo), leitura });
+      } else {
+        const dados = await enviarFormulario<ResultadoDaImportacao>("/importacoes", form);
+        mostrar({ tipo: "importado", formato: "planilha", nome: arquivo.name, dados });
+        roteador.refresh();
       }
-      const texto = await resposta.text();
-      let corpo: { erro?: { mensagem?: string } } & Partial<ResultadoDaPlanilha> = {};
-      try {
-        corpo = texto ? JSON.parse(texto) : {};
-      } catch {
-        /* resposta que não é JSON */
-      }
-      if (!resposta.ok) {
-        setErroArquivo(corpo?.erro?.mensagem ?? "Não foi possível importar a planilha.");
-        return;
-      }
-      mostrar({ tipo: "planilha", nome: arquivo.name, dados: corpo as ResultadoDaPlanilha });
-      roteador.refresh();
-    } catch {
-      setErroArquivo("Servidor indisponível. Tente de novo.");
+    } catch (e) {
+      setErroArquivo(e instanceof ErroCliente ? e.message : "Servidor indisponível. Tente de novo.");
+      if (!pdf && e instanceof ErroCliente) roteador.refresh();
     } finally {
-      setEnviando(false);
+      setEnviando(null);
     }
   }
 
@@ -253,7 +250,11 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
             <>
               <span>
                 <Icon name="check" size={13} />
-                Planilha .xlsx de até {LIMITE_MB} MB
+                Planilha .xlsx ou PDF gerado pelo SAP, até {LIMITE_MB} MB
+              </span>
+              <span>
+                <Icon name="file" size={13} />
+                No PDF, você confere cada OS antes de registrar
               </span>
               <span>
                 <Icon name="refresh" size={13} />
@@ -261,9 +262,9 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
               </span>
             </>
           }
-          acao={enviando ? "Importando…" : arrastando ? "Solte o arquivo aqui" : "Escolher arquivo"}
+          acao={enviando === "lendo" ? "Lendo o PDF…" : enviando ? "Importando…" : arrastando ? "Solte o arquivo aqui" : "Escolher arquivo"}
           aoClicar={() => campo.current?.click()}
-          ocupado={enviando}
+          ocupado={enviando !== null}
           arrastando={arrastando}
           aoArrastar={arrastar}
           retorno={
@@ -314,8 +315,22 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
         }}
       />
 
-      {resultado?.tipo === "planilha" && <ResultadoPlanilha nome={resultado.nome} dados={resultado.dados} podeCadastrarEquipe={ehAdmin} />}
-      {resultado?.tipo === "pdf" && <PreviaPdf arquivo={resultado.arquivo} url={resultado.url} aoDescartar={() => mostrar(null)} />}
+      {resultado?.tipo === "importado" && <ResultadoArquivo nome={resultado.nome} formato={resultado.formato} dados={resultado.dados} podeCadastrarEquipe={ehAdmin} />}
+      {resultado?.tipo === "conferencia" && (
+        <ConferenciaPdf
+          key={resultado.url}
+          arquivo={resultado.arquivo}
+          url={resultado.url}
+          leitura={resultado.leitura}
+          podeCadastrarEquipe={ehAdmin}
+          aoDescartar={() => mostrar(null)}
+          aoRegistrar={(dados) => {
+            mostrar({ tipo: "importado", formato: "pdf", nome: resultado.arquivo.name, dados });
+            roteador.refresh();
+          }}
+          aoFalhar={() => roteador.refresh()}
+        />
+      )}
 
       {cameraAberta && <JanelaCamera aoFechar={() => setCameraAberta(false)} />}
     </div>

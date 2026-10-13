@@ -52,7 +52,9 @@ export function DetalheFalhaImportacao({ alerta, usuario, marcarAoAbrir }: { ale
           <dd>
             {api
               ? "Confira a configuração da API do SAP e sincronize de novo na aba Importação."
-              : "Corrija a planilha e envie de novo na aba Importação; a tentativa que falhou fica no histórico."}
+              : alerta.importacao_origem === "pdf"
+                ? "Confira o PDF (o gerado pelo SAP, com texto) e envie de novo na aba Importação; a tentativa que falhou fica no histórico."
+                : "Corrija a planilha e envie de novo na aba Importação; a tentativa que falhou fica no histórico."}
           </dd>
         </div>
       </dl>

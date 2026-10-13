@@ -2,14 +2,14 @@ import { Fragment } from "react";
 import { Panel, TableWrap } from "@/components/web/Panel";
 import { dataHora } from "@/lib/formatar";
 import { TabelaIgnoradas } from "./LinhasIgnoradas";
-import { nomeDoArquivo, origensDeEntrada, type Importacao } from "./tipos";
+import { metodoDaImportacao, nomeDoArquivo, origensDeEntrada, type Importacao } from "./tipos";
 
-/** Histórico das sincronizações com a API e das planilhas importadas, com o detalhe das linhas ignoradas (o título fica na página). */
+/** Histórico das sincronizações com a API e dos arquivos importados (planilha e PDF), com o detalhe do que ficou de fora (o título fica na página). */
 export function ImportacoesAnteriores({ importacoes }: { importacoes: Importacao[] }) {
   return (
     <Panel>
       {importacoes.length === 0 ? (
-        <p className="muted">Nenhuma sincronização ou planilha ainda.</p>
+        <p className="muted">Nenhuma sincronização ou arquivo importado ainda.</p>
       ) : (
         <TableWrap>
           <table className="tb">
@@ -30,11 +30,11 @@ export function ImportacoesAnteriores({ importacoes }: { importacoes: Importacao
                     <td>{dataHora(i.criada_em)}</td>
                     <td>
                       <span className="row g8" style={{ alignItems: "baseline" }}>
-                        <i className="sw" style={{ background: origensDeEntrada[i.origem].cor }} aria-hidden="true"></i>
+                        <i className="sw" style={{ background: metodoDaImportacao(i.origem).cor }} aria-hidden="true"></i>
                         {i.origem === "api" ? (
                           origensDeEntrada.api.nome
                         ) : (
-                          <span className="mono" style={{ fontSize: 12.5, overflowWrap: "anywhere" }} title={origensDeEntrada.planilha.nome}>
+                          <span className="mono" style={{ fontSize: 12.5, overflowWrap: "anywhere" }} title={`${origensDeEntrada.planilha.nome}: ${i.origem === "pdf" ? "PDF da OS" : "planilha"}`}>
                             {nomeDoArquivo(i.arquivo)}
                           </span>
                         )}
@@ -56,7 +56,7 @@ export function ImportacoesAnteriores({ importacoes }: { importacoes: Importacao
                         {(i.detalhe_ignoradas?.length ?? 0) > 0 && (
                           <details>
                             <summary style={{ cursor: "pointer", fontSize: 13.5, fontWeight: 600 }}>
-                              Ver {i.detalhe_ignoradas!.length} {i.detalhe_ignoradas!.length === 1 ? "linha ignorada" : "linhas ignoradas"}
+                              Ver {i.detalhe_ignoradas!.length} {i.origem === "planilha" ? (i.detalhe_ignoradas!.length === 1 ? "linha ignorada" : "linhas ignoradas") : i.detalhe_ignoradas!.length === 1 ? "OS ignorada" : "OS ignoradas"}
                             </summary>
                             <div style={{ marginTop: 8 }}>
                               <TabelaIgnoradas ignoradas={i.detalhe_ignoradas!} />
