@@ -1,12 +1,13 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { os, reprogramacao, type EventoTipo } from "../db/schema";
+import { EVIDENCIA_TIPOS, os, reprogramacao, type EventoTipo } from "../db/schema";
 import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid, validar } from "../http/validacao";
 import type { Bucket } from "../servicos/armazenamento";
 import { criarAlertas } from "./alertas";
+import { bucketDaEvidencia } from "./evidencias";
 
 /** Um evento pode ser recusado para sempre (`rejeitado`) ou ficar na fila do cliente até a causa sumir (`pendente`). */
 export class RejeicaoEvento extends Error {
@@ -51,6 +52,10 @@ export const evidenciaPayload = z
     id: uuid,
     /** Id do arquivo enviado com `PUT /arquivos/{id}`; padrão: o próprio id da evidência. */
     arquivo_id: uuid.optional(),
+    /** `foto` (padrão, `PUT /arquivos` com `tipo=foto`) ou `pdf` (documento, `tipo=pdf`). */
+    tipo: z.enum(EVIDENCIA_TIPOS).default("foto"),
+    /** Nome do PDF como foi anexado, para exibir; ignorado na foto. */
+    nome: z.string().trim().min(1).max(200).nullable().optional(),
     item_id: uuid.optional(),
     capturada_em: instanteIso,
     latitude: z.number().min(-90).max(90).nullable().optional(),
@@ -58,6 +63,18 @@ export const evidenciaPayload = z
   })
   .refine((e) => (e.latitude == null) === (e.longitude == null), { message: "Informe latitude e longitude juntas" });
 export type EvidenciaPayload = z.infer<typeof evidenciaPayload>;
+
+/** A linha de `evidencia` de uma evidência do payload, ligada à execução ou ao item da APR. */
+export const linhaDeEvidencia = (e: EvidenciaPayload, dono: { execucaoId: string } | { aprId: string; itemId: string }) => ({
+  id: e.id,
+  ...dono,
+  tipo: e.tipo,
+  fotoPath: e.arquivo_id ?? e.id,
+  nomeArquivo: e.tipo === "pdf" ? (e.nome ?? null) : null,
+  capturadaEm: e.capturada_em,
+  latitude: e.latitude ?? null,
+  longitude: e.longitude ?? null,
+});
 
 export const lerPayload = <T extends z.ZodType>(esquema: T, bruto: unknown): z.infer<T> => {
   try {
@@ -70,6 +87,11 @@ export const lerPayload = <T extends z.ZodType>(esquema: T, bruto: unknown): z.i
 /** Arquivo ainda não enviado → o evento fica pendente (Eventos, tabela de estados: "Evento cujo arquivo ainda não subiu"). */
 export async function exigirArquivo(ctx: Contexto, bucket: Bucket, id: string) {
   if (!(await ctx.deps.armazenamento.existe(bucket, id))) throw adiar("arquivo_ausente", `O arquivo ${id} ainda não foi enviado`);
+}
+
+/** Os arquivos das evidências (fotos e PDFs), cada um no bucket do seu tipo, já precisam ter subido. */
+export async function exigirArquivosDasEvidencias(ctx: Contexto, evidencias: EvidenciaPayload[]) {
+  for (const e of evidencias) await exigirArquivo(ctx, bucketDaEvidencia(e.tipo), e.arquivo_id ?? e.id);
 }
 
 /**

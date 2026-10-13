@@ -312,5 +312,13 @@ export function paginaOs(c: Cursor, d: DadosPdf, geradoEm: Date): string {
     }
   }
 
+  if (d.documentos.length > 0) {
+    // O PDF anexado não entra nas 2 páginas: o documento registra que ele existe, e o arquivo fica no detalhe da OS.
+    c.y += 4;
+    faixa(c, "DOCUMENTOS ANEXADOS (PDF)");
+    const lista = d.documentos.map((doc, i) => `${i + 1}. ${doc.nome ?? "Documento em PDF"} — anexado em ${dataBr(doc.capturadaEm)} ${horaBr(doc.capturadaEm)}`).join("\n");
+    linhaDeCelulas(c, [{ fracao: 1, rotulo: "OS ARQUIVOS FICAM NO SISTEMA, NO DETALHE DA OS", valor: lista }], 7);
+  }
+
   return `OS ${o.numeroOrdem ?? o.id} · registro digital gerado em ${dataHoraBr(geradoEm)} (horário de Brasília)`;
 }

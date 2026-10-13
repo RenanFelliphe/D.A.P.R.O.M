@@ -1,19 +1,36 @@
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { alerta, apr, aprResposta, equipe, evidencia, execucao, itemModeloApr, localInstalacao, os, usuario } from "../db/schema";
 import type { Deps } from "../deps";
+import { bucketDaEvidencia } from "../dominio/evidencias";
 import { dataHoraBr } from "./pdf-formato";
 
 type TarefaAtual = { id: string; referenciaId: string | null };
 
-/** Validade dos links das fotos no e-mail: o supervisor pode abri-lo dias depois. */
+/** Validade dos links das fotos e dos PDFs no e-mail: o supervisor pode abri-lo dias depois. */
 const VALIDADE_LINKS_S = 7 * 24 * 3600;
 
 const escaparHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/** Um arquivo de evidência no e-mail: "Foto 2" ou "PDF 1: laudo.pdf", com o link assinado. */
+interface Anexo {
+  rotulo: string;
+  url: string;
+}
+
 interface Reprovado {
   texto: string;
   observacao: string | null;
-  fotos: string[];
+  anexos: Anexo[];
+}
+
+const colunasDoAnexo = { tipo: evidencia.tipo, caminho: evidencia.fotoPath, nome: evidencia.nomeArquivo };
+
+/** As fotos e os PDFs de uma evidência, numerados cada um na sua série e com o link que vale por 7 dias. */
+function anexosDe(deps: Deps, linhas: { tipo: "foto" | "pdf"; caminho: string; nome: string | null }[]): Promise<Anexo[]> {
+  let fotos = 0;
+  let pdfs = 0;
+  const rotulos = linhas.map((e) => (e.tipo === "pdf" ? `PDF ${++pdfs}: ${e.nome ?? "documento"}` : `Foto ${++fotos}`));
+  return Promise.all(linhas.map(async (e, i) => ({ rotulo: rotulos[i]!, url: await deps.armazenamento.urlAssinada(bucketDaEvidencia(e.tipo), e.caminho, VALIDADE_LINKS_S) })));
 }
 
 /**
@@ -48,9 +65,7 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
 
   let tecnicoId = aprDoAlerta?.preenchidaPor ?? null;
   const reprovados: Reprovado[] = [];
-  let interrupcao: { motivo: string; fotos: string[] } | null = null;
-
-  const urlFoto = (caminho: string) => deps.armazenamento.urlAssinada("fotos", caminho, VALIDADE_LINKS_S);
+  let interrupcao: { motivo: string; anexos: Anexo[] } | null = null;
 
   if (aprDoAlerta) {
     const [interrompida] = await db
@@ -60,8 +75,8 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
       .limit(1);
     if (interrompida) {
       tecnicoId = interrompida.executorId;
-      const fotos = await db.select({ f: evidencia.fotoPath }).from(evidencia).where(eq(evidencia.execucaoId, interrompida.id)).orderBy(asc(evidencia.capturadaEm));
-      interrupcao = { motivo: interrompida.motivo ?? "", fotos: await Promise.all(fotos.map((x) => urlFoto(x.f))) };
+      const arquivos = await db.select(colunasDoAnexo).from(evidencia).where(eq(evidencia.execucaoId, interrompida.id)).orderBy(asc(evidencia.capturadaEm), asc(evidencia.id));
+      interrupcao = { motivo: interrompida.motivo ?? "", anexos: await anexosDe(deps, arquivos) };
     }
 
     const respostas = await db
@@ -72,8 +87,12 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
       .orderBy(asc(itemModeloApr.ordem));
     for (const r of respostas) {
       if (r.tipo !== "eliminatorio" || r.bloqueante === null || r.resposta !== r.bloqueante) continue;
-      const fotos = await db.select({ f: evidencia.fotoPath }).from(evidencia).where(and(eq(evidencia.aprId, aprDoAlerta.id), eq(evidencia.itemId, r.itemId))).orderBy(asc(evidencia.capturadaEm));
-      reprovados.push({ texto: r.texto, observacao: r.observacao, fotos: await Promise.all(fotos.map((x) => urlFoto(x.f))) });
+      const arquivos = await db
+        .select(colunasDoAnexo)
+        .from(evidencia)
+        .where(and(eq(evidencia.aprId, aprDoAlerta.id), eq(evidencia.itemId, r.itemId)))
+        .orderBy(asc(evidencia.capturadaEm), asc(evidencia.id));
+      reprovados.push({ texto: r.texto, observacao: r.observacao, anexos: await anexosDe(deps, arquivos) });
     }
   }
 
@@ -94,20 +113,20 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
   if (a.detalhe) linhas.push(`Detalhe: ${a.detalhe}`);
   if (interrupcao) {
     linhas.push("", "Execução interrompida por risco.", `Motivo: ${interrupcao.motivo}`);
-    interrupcao.fotos.forEach((u, i) => linhas.push(`Foto ${i + 1}: ${u}`));
+    interrupcao.anexos.forEach((x) => linhas.push(`${x.rotulo}: ${x.url}`));
   }
   if (reprovados.length > 0) {
     linhas.push("", "Itens reprovados:");
     reprovados.forEach((r, i) => {
       linhas.push(`${i + 1}. ${r.texto}`);
       if (r.observacao) linhas.push(`   Observação: ${r.observacao}`);
-      r.fotos.forEach((u, k) => linhas.push(`   Foto ${k + 1}: ${u}`));
+      r.anexos.forEach((x) => linhas.push(`   ${x.rotulo}: ${x.url}`));
     });
   }
   linhas.push("", `Abrir no painel: ${link}`);
 
   const li = (s: string) => `<li>${s}</li>`;
-  const links = (urls: string[]) => urls.map((u, k) => `<a href="${escaparHtml(u)}">Foto ${k + 1}</a>`).join(" · ");
+  const links = (anexos: Anexo[]) => anexos.map((x) => `<a href="${escaparHtml(x.url)}">${escaparHtml(x.rotulo)}</a>`).join(" · ");
   const html = [
     `<p><strong>Atividade impedida na OS ${escaparHtml(numero)}.</strong></p>`,
     "<ul>",
@@ -118,10 +137,10 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
     li(`<strong>Registrado em:</strong> ${dataHoraBr(a.criadoEm)}`),
     a.detalhe ? li(`<strong>Detalhe:</strong> ${escaparHtml(a.detalhe)}`) : "",
     "</ul>",
-    interrupcao ? `<p><strong>Execução interrompida por risco.</strong><br>Motivo: ${escaparHtml(interrupcao.motivo)}<br>${links(interrupcao.fotos)}</p>` : "",
+    interrupcao ? `<p><strong>Execução interrompida por risco.</strong><br>Motivo: ${escaparHtml(interrupcao.motivo)}<br>${links(interrupcao.anexos)}</p>` : "",
     reprovados.length > 0
       ? `<p><strong>Itens reprovados:</strong></p><ol>${reprovados
-          .map((r) => li(`${escaparHtml(r.texto)}${r.observacao ? `<br>Observação: ${escaparHtml(r.observacao)}` : ""}${r.fotos.length ? `<br>${links(r.fotos)}` : ""}`))
+          .map((r) => li(`${escaparHtml(r.texto)}${r.observacao ? `<br>Observação: ${escaparHtml(r.observacao)}` : ""}${r.anexos.length ? `<br>${links(r.anexos)}` : ""}`))
           .join("")}</ol>`
       : "",
     `<p><a href="${escaparHtml(link)}">Abrir a OS no painel</a></p>`,

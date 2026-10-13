@@ -20,6 +20,9 @@ import { usuario } from "./usuarios";
 
 export const EXECUCAO_RESULTADOS = ["encerrada", "interrompida", "suspensa", "cancelada"] as const;
 export const PAUSA_MOTIVOS = ["almoco", "descanso", "outro"] as const;
+/** O arquivo de uma evidência: a foto (bucket `fotos`) ou um documento em PDF (bucket `documentos`), como um laudo ou um atestado. */
+export const EVIDENCIA_TIPOS = ["foto", "pdf"] as const;
+export type EvidenciaTipo = (typeof EVIDENCIA_TIPOS)[number];
 
 /**
  * Um trecho de trabalho amparado por uma APR aprovada. Os ids nascem no cliente.
@@ -121,17 +124,25 @@ export const evidencia = pgTable(
   {
     id: uuid().primaryKey(),
     execucaoId: uuid().references(() => execucao.id),
-    /** Foto do item reprovado. */
+    /** Evidência do item reprovado. */
     aprId: uuid().references(() => apr.id),
     itemId: uuid().references(() => itemModeloApr.id),
-    /** Bucket `fotos`. */
+    tipo: text({ enum: EVIDENCIA_TIPOS }).notNull().default("foto"),
+    /**
+     * Caminho do arquivo no bucket do tipo: `fotos` (foto) ou `documentos` (PDF). O nome da coluna vem de quando a
+     * evidência só podia ser foto.
+     */
     fotoPath: text().notNull(),
+    /** Nome do PDF como foi anexado (`laudo-medicao.pdf`), para exibir; a foto não tem. */
+    nomeArquivo: text(),
     capturadaEm: instante().notNull(),
     latitude: numeric({ precision: 9, scale: 6, mode: "number" }),
     longitude: numeric({ precision: 9, scale: 6, mode: "number" }),
   },
   (t) => [
     check("evidencia_tem_dono", sql`${t.execucaoId} is not null or ${t.aprId} is not null`),
+    check("evidencia_tipo_check", emLista(t.tipo, EVIDENCIA_TIPOS)),
+    check("evidencia_nome_so_no_pdf", sql`${t.nomeArquivo} is null or ${t.tipo} = 'pdf'`),
     check("evidencia_item_da_apr", sql`(${t.aprId} is null) = (${t.itemId} is null)`),
     check("evidencia_gps_completo", sql`(${t.latitude} is null) = (${t.longitude} is null)`),
     check("evidencia_latitude_check", sql`${t.latitude} between -90 and 90`),

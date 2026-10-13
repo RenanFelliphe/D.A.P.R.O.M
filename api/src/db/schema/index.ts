@@ -2,6 +2,7 @@
 export * from "./plataforma";
 export * from "./usuarios";
 export * from "./modelos-apr";
+export * from "./catalogo";
 export * from "./sap";
 export * from "./apr";
 export * from "./execucao";

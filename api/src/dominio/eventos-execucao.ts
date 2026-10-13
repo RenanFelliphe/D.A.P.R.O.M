@@ -3,12 +3,25 @@ import { z } from "zod";
 import { PAUSA_MOTIVOS, apr, aprParticipante, evidencia, execucao, execucaoAssinatura, execucaoPausa, os, usuario } from "../db/schema";
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas } from "./alertas";
-import { avisarConflitoDePlanejamento, carregarOsDoUsuario, evidenciaPayload, exigirArquivo, lerPayload, rejeitar, adiar, type Contexto } from "./eventos-base";
+import {
+  avisarConflitoDePlanejamento,
+  carregarOsDoUsuario,
+  evidenciaPayload,
+  exigirArquivosDasEvidencias,
+  lerPayload,
+  linhaDeEvidencia,
+  rejeitar,
+  adiar,
+  type Contexto,
+  type EvidenciaPayload,
+} from "./eventos-base";
 import { diaDe } from "./tempo";
 import { enfileirarTarefa } from "../servicos/fila";
 
 const vazio = (s: string | null | undefined) => !s || s.trim() === "";
 const MAX_FOTOS = 10;
+/** Documentos em PDF (laudos, relatórios) anexados ao encerramento ou à interrupção, além das fotos. */
+const MAX_PDFS = 5;
 const CANCELAR_ATE_MS = 10 * 60_000;
 
 /** Execução do evento, ainda em andamento e do usuário logado (ninguém encerra a execução de outro). */
@@ -27,15 +40,20 @@ async function fecharPausaAberta(ctx: Contexto, execucaoId: string, fim: Date) {
   await ctx.tx.update(execucaoPausa).set({ fim }).where(and(eq(execucaoPausa.execucaoId, execucaoId), isNull(execucaoPausa.fim)));
 }
 
-const fotosDe = async (ctx: Contexto, evidencias: z.infer<typeof evidenciaPayload>[]) => {
-  for (const e of evidencias) await exigirArquivo(ctx, "fotos", e.arquivo_id ?? e.id);
-};
-const gravarFotos = (ctx: Contexto, execucaoId: string, evidencias: z.infer<typeof evidenciaPayload>[]) =>
-  evidencias.length === 0
-    ? Promise.resolve()
-    : ctx.tx.insert(evidencia).values(
-        evidencias.map((e) => ({ id: e.id, execucaoId, fotoPath: e.arquivo_id ?? e.id, capturadaEm: e.capturada_em, latitude: e.latitude ?? null, longitude: e.longitude ?? null })),
-      );
+const contar = (evidencias: EvidenciaPayload[]) => ({
+  fotos: evidencias.filter((e) => e.tipo === "foto").length,
+  pdfs: evidencias.filter((e) => e.tipo === "pdf").length,
+});
+
+/** Fotos e PDFs da execução: no máximo `MAX_FOTOS` fotos e `MAX_PDFS` PDFs. */
+function conferirArquivos(evidencias: EvidenciaPayload[]) {
+  const { fotos, pdfs } = contar(evidencias);
+  if (fotos > MAX_FOTOS) throw rejeitar("fotos_demais", `No máximo ${MAX_FOTOS} fotos por execução`);
+  if (pdfs > MAX_PDFS) throw rejeitar("pdfs_demais", `No máximo ${MAX_PDFS} documentos em PDF por execução`);
+}
+
+const gravarEvidencias = (ctx: Contexto, execucaoId: string, evidencias: EvidenciaPayload[]) =>
+  evidencias.length === 0 ? Promise.resolve() : ctx.tx.insert(evidencia).values(evidencias.map((e) => linhaDeEvidencia(e, { execucaoId })));
 
 // ---------------------------------------------------------------------------------------------------------------
 
@@ -129,7 +147,10 @@ const esquemaEncerrada = z.object({
   assinaturas: z.array(z.object({ usuario_id: uuid, assinada_em: instanteIso.optional() })).default([]),
 });
 
-/** `execucao_encerrada`: descrição, ao menos uma foto e a assinatura de todos os participantes da APR. */
+/**
+ * `execucao_encerrada`: descrição, ao menos uma foto e a assinatura de todos os participantes da APR. Documentos em PDF
+ * (laudo, relatório de medição) podem acompanhar as fotos, mas não as substituem.
+ */
 export async function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
   const p = lerPayload(esquemaEncerrada, bruto);
   const e = await carregarExecucaoDoUsuario(ctx, p.execucao_id, { aceitarFinalizada: true });
@@ -140,20 +161,20 @@ export async function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
   const participantes = await ctx.tx.select({ usuarioId: aprParticipante.usuarioId, assinaturaPath: usuario.assinaturaPath, nome: usuario.nome }).from(aprParticipante).innerJoin(usuario, eq(usuario.id, aprParticipante.usuarioId)).where(eq(aprParticipante.aprId, e.aprId));
   const assinaram = new Set(p.assinaturas.map((a) => a.usuario_id));
   const todosAssinaram = participantes.every((x) => assinaram.has(x.usuarioId)) && p.assinaturas.every((a) => participantes.some((x) => x.usuarioId === a.usuario_id));
-  if (vazio(p.descricao_atividade) || p.evidencias.length === 0 || !todosAssinaram) {
+  if (vazio(p.descricao_atividade) || contar(p.evidencias).fotos === 0 || !todosAssinaram) {
     throw rejeitar("encerramento_incompleto", "Descrição, foto e assinaturas de todos são obrigatórias");
   }
-  if (p.evidencias.length > MAX_FOTOS) throw rejeitar("fotos_demais", `No máximo ${MAX_FOTOS} fotos por execução`);
+  conferirArquivos(p.evidencias);
   const semAssinatura = participantes.find((x) => !x.assinaturaPath);
   if (semAssinatura) throw rejeitar("assinatura_ausente", `${semAssinatura.nome} ainda não cadastrou a assinatura no perfil`);
-  await fotosDe(ctx, p.evidencias);
+  await exigirArquivosDasEvidencias(ctx, p.evidencias);
 
   await fecharPausaAberta(ctx, e.id, p.fim);
   await ctx.tx.update(execucao).set({ fim: p.fim, resultado: "encerrada", descricaoAtividade: p.descricao_atividade!.trim(), dadosInspecao: p.dados_inspecao ?? null }).where(eq(execucao.id, e.id));
   await ctx.tx.insert(execucaoAssinatura).values(
     participantes.map((x) => ({ execucaoId: e.id, usuarioId: x.usuarioId, assinaturaPath: x.assinaturaPath!, assinadaEm: p.assinaturas.find((a) => a.usuario_id === x.usuarioId)?.assinada_em ?? p.fim })),
   );
-  await gravarFotos(ctx, e.id, p.evidencias);
+  await gravarEvidencias(ctx, e.id, p.evidencias);
 
   const [ordem] = await ctx.tx.select().from(os).where(eq(os.id, e.osId));
   const [outra] = await ctx.tx.select({ id: execucao.id }).from(execucao).where(and(eq(execucao.osId, e.osId), eq(execucao.resultado, "encerrada"), ne(execucao.id, e.id)));
@@ -177,19 +198,23 @@ export async function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
 
 const esquemaInterrompida = z.object({ execucao_id: uuid, fim: instanteIso, motivo: z.string().nullable().optional(), evidencias: z.array(evidenciaPayload).default([]) });
 
-/** `execucao_interrompida` (por risco): motivo e ao menos uma foto; a OS fica pendente e o supervisor é avisado. */
+/**
+ * `execucao_interrompida` (por risco): motivo e ao menos uma foto, com PDFs opcionais; a OS fica pendente e o supervisor
+ * é avisado.
+ */
 export async function aplicarExecucaoInterrompida(ctx: Contexto, bruto: unknown) {
   const p = lerPayload(esquemaInterrompida, bruto);
   const e = await carregarExecucaoDoUsuario(ctx, p.execucao_id, { aceitarFinalizada: true });
   if (e.resultado === "interrompida") return;
   if (e.resultado !== null) throw rejeitar("execucao_finalizada", "A execução já foi finalizada");
-  if (vazio(p.motivo) || p.evidencias.length === 0) throw rejeitar("interrupcao_incompleta", "Motivo e ao menos uma foto são obrigatórios");
+  if (vazio(p.motivo) || contar(p.evidencias).fotos === 0) throw rejeitar("interrupcao_incompleta", "Motivo e ao menos uma foto são obrigatórios");
   if (p.fim < e.inicio) throw rejeitar("fim_antes_do_inicio", "O fim é anterior ao início da execução");
-  await fotosDe(ctx, p.evidencias);
+  conferirArquivos(p.evidencias);
+  await exigirArquivosDasEvidencias(ctx, p.evidencias);
 
   await fecharPausaAberta(ctx, e.id, p.fim);
   await ctx.tx.update(execucao).set({ fim: p.fim, resultado: "interrompida", motivo: p.motivo!.trim() }).where(eq(execucao.id, e.id));
-  await gravarFotos(ctx, e.id, p.evidencias);
+  await gravarEvidencias(ctx, e.id, p.evidencias);
 
   const [ordem] = await ctx.tx.select().from(os).where(eq(os.id, e.osId));
   ctx.saida.alertas.push(...(await criarAlertas(ctx.tx, { tipo: "bloqueio", osId: e.osId, equipeId: ordem!.equipeId, detalhe: `Execução interrompida por risco: ${p.motivo!.trim()}` })));

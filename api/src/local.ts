@@ -4,7 +4,7 @@
  * - Banco: PGlite (Postgres em WebAssembly), em memória, com as migrações aplicadas e a carga inicial dos modelos de APR.
  * - Autenticação, arquivos e e-mail: versões em memória (`AuthEmMemoria`, `ArmazenamentoEmMemoria`, `EmailEmMemoria`).
  * - SAP: o simulador do próprio back-end; as OS das fixtures entram logo depois da subida.
- * - Dados de exemplo: equipes, um usuário de cada perfil e a assinatura deles.
+ * - Dados de exemplo: equipes, um usuário de cada perfil e a assinatura deles, e um catálogo de serviço fictício.
  *
  * Tudo some quando o processo termina e a cada subida recomeça igual. Serve ao `web` e ao `mobile` em desenvolvimento
  * e aos testes manuais; nunca à produção.
@@ -19,6 +19,7 @@ import { criarApp } from "./app";
 import type { Config } from "./config";
 import { PASTA_MIGRACOES, type Db } from "./db/conexao";
 import { equipe, usuario, type Perfil } from "./db/schema";
+import { popularCatalogoDemo } from "./db/seed/catalogo-demo";
 import { carregarDadosIniciais } from "./db/seed/carregar";
 import type { Deps } from "./deps";
 import { executarLeitura } from "./servicos/leitura-sap";
@@ -59,6 +60,7 @@ async function main() {
   await migrate(drizzle(cliente, { casing: "snake_case" }), { migrationsFolder: PASTA_MIGRACOES });
   const carga = await carregarDadosIniciais(db);
   console.log(`Modelos de APR: ${carga.modelosCarregados.join(", ")}`);
+  console.log(`Catálogo de serviço fictício: ${await popularCatalogoDemo(db)} serviços com materiais`);
 
   const auth = new AuthEmMemoria(SEGREDO_JWT, () => new Date(), 8 * 3600);
   const armazenamento = new ArmazenamentoEmMemoria(`http://localhost:${PORTA}/arquivos-locais`);

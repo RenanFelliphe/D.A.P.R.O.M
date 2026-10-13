@@ -1,11 +1,12 @@
 import { ErroApi } from "../http/erros";
 import { cabecalhosDeServico } from "./auth";
 
-export const BUCKETS = ["fotos", "assinaturas", "pdfs", "importacoes"] as const;
+/** `pdfs` guarda o PDF gerado de cada OS; `documentos`, os PDFs anexados como evidência (laudos, atestados). */
+export const BUCKETS = ["fotos", "assinaturas", "pdfs", "importacoes", "documentos"] as const;
 export type Bucket = (typeof BUCKETS)[number];
 
 /**
- * Arquivos (fotos, assinaturas, PDFs, planilhas) no Storage do Supabase, em buckets privados. O banco guarda só o
+ * Arquivos (fotos, assinaturas, PDFs, planilhas, documentos de evidência) no Storage do Supabase, em buckets privados. O banco guarda só o
  * caminho; dentro do bucket o caminho é o id do arquivo, gerado no cliente (ou o da OS, nos PDFs).
  */
 export interface Armazenamento {

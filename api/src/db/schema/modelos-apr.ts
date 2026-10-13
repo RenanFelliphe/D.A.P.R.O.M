@@ -4,7 +4,11 @@ import { emLista, instante } from "./comum";
 
 export const ITEM_SECOES = ["verificacao", "medida_preventiva"] as const;
 export const ITEM_TIPOS = ["eliminatorio", "alerta"] as const;
-export const ITEM_EVIDENCIAS = ["foto", "texto"] as const;
+/**
+ * O que o item reprovado exige, além da observação: `foto` (obstáculo físico), `texto` (só a justificativa, como no
+ * direito de recusa) ou `pdf` (um documento, como um laudo ou certificado vencido). Fotos e PDFs a mais são sempre aceitos.
+ */
+export const ITEM_EVIDENCIAS = ["foto", "texto", "pdf"] as const;
 export const RESPOSTAS_BLOQUEANTES = ["sim", "nao"] as const;
 
 /** Um modelo publicado é imutável: editar cria versão nova (gatilho em `gatilhos.sql`). */

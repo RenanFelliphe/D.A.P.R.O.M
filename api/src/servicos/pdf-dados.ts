@@ -60,6 +60,8 @@ export interface DadosPdf {
   }[];
   assinaturasExecucao: { usuarioId: string; nome: string; matricula: string; cargo: string | null; registro: string | null; assinaturaPath: string; assinadaEm: Instante }[];
   fotos: { fotoPath: string; capturadaEm: Instante; latitude: number | null; longitude: number | null }[];
+  /** PDFs anexados à execução (laudos, relatórios): só o nome e a hora entram no documento; o arquivo fica no sistema. */
+  documentos: { nome: string | null; capturadaEm: Instante }[];
   ciencia: { nome: string; cargo: string | null; registro: string | null; assinaturaPath: string | null; em: Instante } | null;
   /** Bytes das imagens (fotos e assinaturas) por `bucket/caminho`; `null` = ausente no armazenamento. */
   imagens: Map<string, Uint8Array | null>;
@@ -185,11 +187,13 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
     .where(eq(execucaoAssinatura.execucaoId, principal.id))
     .orderBy(asc(execucaoAssinatura.assinadaEm), asc(usuario.nome));
 
-  const fotos = await db
-    .select({ fotoPath: evidencia.fotoPath, capturadaEm: evidencia.capturadaEm, latitude: evidencia.latitude, longitude: evidencia.longitude })
+  const evidencias = await db
+    .select({ tipo: evidencia.tipo, fotoPath: evidencia.fotoPath, nomeArquivo: evidencia.nomeArquivo, capturadaEm: evidencia.capturadaEm, latitude: evidencia.latitude, longitude: evidencia.longitude })
     .from(evidencia)
     .where(eq(evidencia.execucaoId, principal.id))
-    .orderBy(asc(evidencia.capturadaEm));
+    .orderBy(asc(evidencia.capturadaEm), asc(evidencia.id));
+  const fotos = evidencias.filter((e) => e.tipo === "foto").map(({ fotoPath, capturadaEm, latitude, longitude }) => ({ fotoPath, capturadaEm, latitude, longitude }));
+  const documentos = evidencias.filter((e) => e.tipo === "pdf").map((e) => ({ nome: e.nomeArquivo, capturadaEm: e.capturadaEm }));
 
   let ciencia: DadosPdf["ciencia"] = null;
   if (base.os.cienciaPor && base.os.cienciaEm) {
@@ -232,6 +236,7 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
     itens,
     assinaturasExecucao,
     fotos,
+    documentos,
     ciencia,
     imagens,
   };

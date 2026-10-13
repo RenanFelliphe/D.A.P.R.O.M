@@ -412,10 +412,10 @@ describe("Painel: quadro, detalhe e ciência", () => {
   });
 
   describe("GET /os/{id}", () => {
-    it("devolve o detalhe completo: OS, APRs, execuções, alertas, reprogramações e linha do tempo", async () => {
+    it("devolve o detalhe completo: OS, serviço do catálogo, APRs, execuções, alertas, reprogramações e linha do tempo", async () => {
       // Só o admin vê o que é eliminatório e o que é alerta (tipo, evidência, resposta bloqueante, alerta marcado).
       const c = await amb.esperar(200, "GET", `/os/${osPendente.id}`, { como: admin });
-      assert.deepEqual(Object.keys(c).sort(), ["alertas", "aprs", "execucoes", "linha_do_tempo", "os", "reprogramacoes"]);
+      assert.deepEqual(Object.keys(c).sort(), ["alertas", "aprs", "execucoes", "linha_do_tempo", "os", "reprogramacoes", "servico"]);
 
       assert.equal(c.os.id, osPendente.id);
       assert.equal(c.os.numero_ordem, "4003");

@@ -4,7 +4,18 @@ import type { Db } from "../db/conexao";
 import { APR_FUNCOES, APR_RESPOSTAS, APR_RESULTADOS, apr, aprParticipante, aprResposta, aprRisco, evidencia, execucao, itemModeloApr, modeloApr, riscoModeloApr, usuario } from "../db/schema";
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas } from "./alertas";
-import { avisarConflitoDePlanejamento, carregarOsDoUsuario, evidenciaPayload, exigirArquivo, lerPayload, rejeitar, type Contexto } from "./eventos-base";
+import { arquivoExigido } from "./evidencias";
+import {
+  avisarConflitoDePlanejamento,
+  carregarOsDoUsuario,
+  evidenciaPayload,
+  exigirArquivosDasEvidencias,
+  lerPayload,
+  linhaDeEvidencia,
+  rejeitar,
+  type Contexto,
+  type EvidenciaPayload,
+} from "./eventos-base";
 
 const esquemaApr = z.object({
   /** Id da APR, gerado no cliente. */
@@ -16,7 +27,7 @@ const esquemaApr = z.object({
   /** Riscos que a equipe marcou "( )": só as medidas deles são respondidas (questão 59). */
   riscos: z.array(uuid).default([]),
   respostas: z.array(z.object({ item_id: uuid, resposta: z.enum(APR_RESPOSTAS), observacao: z.string().nullable().optional(), respondida_em: instanteIso.optional() })),
-  /** Fotos dos itens reprovados. */
+  /** Fotos e PDFs dos itens reprovados. */
   evidencias: z.array(evidenciaPayload).default([]),
   observacao_geral: z.string().nullable().optional(),
   concluida_em: instanteIso,
@@ -118,27 +129,34 @@ async function respostasGravadas(db: Db, aprId: string) {
 /** Os itens que reprovaram uma APR já gravada, na ordem do modelo. */
 export const reprovadosDaAprGravada = async (db: Db, aprId: string) => (await respostasGravadas(db, aprId)).filter((r) => r.reprovado);
 
+/** O item tem o arquivo que a evidência dele exige (foto ou PDF), entre os já gravados e os que chegaram agora? */
+const temOArquivoExigido = (item: { id: string; evidencia: string }, arquivos: { itemId: string | null | undefined; tipo: string }[]) => {
+  const exigido = arquivoExigido(item.evidencia);
+  return exigido === null || arquivos.some((a) => a.itemId === item.id && a.tipo === exigido);
+};
+const doPayload = (evidencias: EvidenciaPayload[]) => evidencias.map((e) => ({ itemId: e.item_id, tipo: e.tipo }));
+
 /**
- * Completa a APR bloqueada na validação com a evidência dos itens reprovados: a observação de cada um e as fotos. As
- * respostas não mudam, e a APR que já tem a evidência completa não aceita mais nada. Online, a evidência precisa vir
- * inteira; da fila offline, vale o que chegou.
+ * Completa a APR bloqueada na validação com a evidência dos itens reprovados: a observação de cada um e os arquivos
+ * (fotos e PDFs). As respostas não mudam, e a APR que já tem a evidência completa não aceita mais nada. Online, a
+ * evidência precisa vir inteira; da fila offline, vale o que chegou.
  */
 async function completarEvidencia(ctx: Contexto, aprId: string, p: PayloadApr) {
   const gravadas = await respostasGravadas(ctx.tx, aprId);
   const reprovados = gravadas.filter((r) => r.reprovado);
-  const comFoto = new Set((await ctx.tx.select({ itemId: evidencia.itemId }).from(evidencia).where(eq(evidencia.aprId, aprId))).map((e) => e.itemId));
-  const completo = (r: (typeof reprovados)[number], observacao: string | null | undefined, fotoNova = false) =>
-    !vazio(observacao) && (r.evidencia !== "foto" || comFoto.has(r.id) || fotoNova);
+  const jaGravados = await ctx.tx.select({ itemId: evidencia.itemId, tipo: evidencia.tipo }).from(evidencia).where(eq(evidencia.aprId, aprId));
+  const completo = (r: (typeof reprovados)[number], observacao: string | null | undefined, novos: EvidenciaPayload[] = []) =>
+    !vazio(observacao) && temOArquivoExigido(r, [...jaGravados, ...doPayload(novos)]);
   if (reprovados.every((r) => completo(r, r.observacao))) return;
 
   for (const e of p.evidencias) {
-    if (!e.item_id || !gravadas.some((r) => r.id === e.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
+    if (!e.item_id || !gravadas.some((r) => r.id === e.item_id)) throw rejeitar("evidencia_invalida", "Evidência ligada a um item que a APR não respondeu");
   }
   const observacaoEnviada = new Map(p.respostas.map((r) => [r.item_id, r.observacao]));
   const observacaoDe = (r: (typeof reprovados)[number]) => (vazio(r.observacao) ? observacaoEnviada.get(r.id) : r.observacao);
-  const semEvidencia = reprovados.filter((r) => !completo(r, observacaoDe(r), p.evidencias.some((e) => e.item_id === r.id)));
+  const semEvidencia = reprovados.filter((r) => !completo(r, observacaoDe(r), p.evidencias));
   if (semEvidencia.length > 0 && !ctx.offline) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
-  for (const e of p.evidencias) await exigirArquivo(ctx, "fotos", e.arquivo_id ?? e.id);
+  await exigirArquivosDasEvidencias(ctx, p.evidencias);
 
   for (const r of reprovados) {
     const texto = observacaoEnviada.get(r.id);
@@ -149,7 +167,7 @@ async function completarEvidencia(ctx: Contexto, aprId: string, p: PayloadApr) {
   if (p.evidencias.length > 0) {
     await ctx.tx
       .insert(evidencia)
-      .values(p.evidencias.map((e) => ({ id: e.id, aprId, itemId: e.item_id!, fotoPath: e.arquivo_id ?? e.id, capturadaEm: e.capturada_em, latitude: e.latitude ?? null, longitude: e.longitude ?? null })))
+      .values(p.evidencias.map((e) => linhaDeEvidencia(e, { aprId, itemId: e.item_id! })))
       .onConflictDoNothing();
   }
 }
@@ -178,17 +196,16 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   const { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados } = await conferirApr(ctx, osId, p);
   ctx.saida.osAfetadas.add(ordem.id);
 
-  // Item reprovado: exige observação e, se o item pede foto, ao menos uma. O aparelho só conhece os reprovados depois de
-  // `POST /aprs/avaliar`, que já registra a APR bloqueada sem a evidência (ela chega depois); o que veio da fila offline
-  // não pôde perguntar, então a APR vale mesmo sem a evidência.
+  // Item reprovado: exige observação e, se o item pede foto ou PDF, ao menos um arquivo desse tipo. O aparelho só conhece
+  // os reprovados depois de `POST /aprs/avaliar`, que já registra a APR bloqueada sem a evidência (ela chega depois); o
+  // que veio da fila offline não pôde perguntar, então a APR vale mesmo sem a evidência.
   for (const e of p.evidencias) {
-    if (!e.item_id || !respostaPorItem.has(e.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
+    if (!e.item_id || !respostaPorItem.has(e.item_id)) throw rejeitar("evidencia_invalida", "Evidência ligada a um item que a APR não respondeu");
   }
-  const semEvidencia = reprovados.filter(
-    (i) => vazio(respostaPorItem.get(i.id)!.observacao) || (i.evidencia === "foto" && !p.evidencias.some((e) => e.item_id === i.id)),
-  );
+  const arquivos = doPayload(p.evidencias);
+  const semEvidencia = reprovados.filter((i) => vazio(respostaPorItem.get(i.id)!.observacao) || !temOArquivoExigido(i, arquivos));
   if (semEvidencia.length > 0 && !ctx.offline && !ctx.evidenciaDepois) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
-  for (const e of p.evidencias) await exigirArquivo(ctx, "fotos", e.arquivo_id ?? e.id);
+  await exigirArquivosDasEvidencias(ctx, p.evidencias);
 
   const resultado = reprovados.length > 0 ? "bloqueada" : "aprovada";
 
@@ -217,9 +234,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
     );
   }
   if (p.evidencias.length > 0) {
-    await ctx.tx.insert(evidencia).values(
-      p.evidencias.map((e) => ({ id: e.id, aprId: p.id, itemId: e.item_id!, fotoPath: e.arquivo_id ?? e.id, capturadaEm: e.capturada_em, latitude: e.latitude ?? null, longitude: e.longitude ?? null })),
-    );
+    await ctx.tx.insert(evidencia).values(p.evidencias.map((e) => linhaDeEvidencia(e, { aprId: p.id, itemId: e.item_id! })));
   }
   ctx.saida.aprs.push({ id: p.id, resultado });
 

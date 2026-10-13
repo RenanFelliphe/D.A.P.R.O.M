@@ -29,6 +29,8 @@ import { conflito, naoEncontrado, proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { enfileirarTarefa } from "../servicos/fila";
 import { buscaDeOs } from "./busca";
+import { servicoDaAtividade } from "./catalogo";
+import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
 import {
   condicaoEscopo,
   diaBr,
@@ -242,7 +244,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
   if (linhas.length === 0) return [];
   const ids = linhas.map((l) => l.id);
 
-  const [participantes, riscos, respostas, fotos] = await Promise.all([
+  const [participantes, riscos, respostas, arquivos] = await Promise.all([
     db
       .select({
         aprId: aprParticipante.aprId,
@@ -283,15 +285,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
       .where(inArray(aprResposta.aprId, ids))
       .orderBy(asc(itemModeloApr.ordem)),
     db
-      .select({
-        id: evidencia.id,
-        aprId: evidencia.aprId,
-        itemId: evidencia.itemId,
-        fotoPath: evidencia.fotoPath,
-        capturadaEm: evidencia.capturadaEm,
-        latitude: evidencia.latitude,
-        longitude: evidencia.longitude,
-      })
+      .select({ ...colunasDeEvidencia, aprId: evidencia.aprId, itemId: evidencia.itemId })
       .from(evidencia)
       .where(inArray(evidencia.aprId, ids))
       .orderBy(asc(evidencia.capturadaEm), asc(evidencia.id)),
@@ -344,9 +338,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
           resposta: r.resposta,
           observacao: r.observacao,
           ...(comClassificacao ? { tipo: r.tipo, evidencia: r.evidencia } : {}),
-          fotos: fotos
-            .filter((f) => f.aprId === l.id && f.itemId === r.itemId)
-            .map((f) => ({ id: f.id, fotoPath: f.fotoPath, capturadaEm: f.capturadaEm, latitude: f.latitude, longitude: f.longitude })),
+          ...separarEvidencias(arquivos.filter((f) => f.aprId === l.id && f.itemId === r.itemId)),
         })),
     };
   });
@@ -376,7 +368,7 @@ async function carregarExecucoes(db: Db, osId: string) {
   if (linhas.length === 0) return [];
   const ids = linhas.map((l) => l.id);
 
-  const [pausas, assinaturas, fotos] = await Promise.all([
+  const [pausas, assinaturas, arquivos] = await Promise.all([
     db.select().from(execucaoPausa).where(inArray(execucaoPausa.execucaoId, ids)).orderBy(asc(execucaoPausa.inicio)),
     db
       .select({
@@ -392,14 +384,7 @@ async function carregarExecucoes(db: Db, osId: string) {
       .where(inArray(execucaoAssinatura.execucaoId, ids))
       .orderBy(asc(usuario.nome)),
     db
-      .select({
-        id: evidencia.id,
-        execucaoId: evidencia.execucaoId,
-        fotoPath: evidencia.fotoPath,
-        capturadaEm: evidencia.capturadaEm,
-        latitude: evidencia.latitude,
-        longitude: evidencia.longitude,
-      })
+      .select({ ...colunasDeEvidencia, execucaoId: evidencia.execucaoId })
       .from(evidencia)
       .where(inArray(evidencia.execucaoId, ids))
       .orderBy(asc(evidencia.capturadaEm), asc(evidencia.id)),
@@ -423,18 +408,19 @@ async function carregarExecucoes(db: Db, osId: string) {
       pausaMin: tempo ? emMinutos(tempo.pausaMs) : null,
       pausas: dela.map((p) => ({ id: p.id, inicio: p.inicio, fim: p.fim, motivo: p.motivo })),
       assinaturas: assinaturas.filter((a) => a.execucaoId === l.id).map(({ execucaoId: _e, ...a }) => a),
-      fotos: fotos.filter((f) => f.execucaoId === l.id).map(({ execucaoId: _e, ...f }) => f),
+      ...separarEvidencias(arquivos.filter((f) => f.execucaoId === l.id)),
     };
   });
 }
 
-/** Detalhe da OS: dados do SAP, APRs, execuções, alertas, reprogramações e a linha do tempo que une tudo. */
+/** Detalhe da OS: dados do SAP, o serviço do catálogo, APRs, execuções, alertas, reprogramações e a linha do tempo que une tudo. */
 export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, agora: Date) {
   const { os: o, local, equipeNome, equipeCentro, equipeSupervisorId, cienciaPorNome, modeloAprCodigo } = await osVisivel(db, eu, osId);
 
   const equipeAnterior = alias(equipe, "equipe_anterior");
   const equipeNova = alias(equipe, "equipe_nova");
-  const [aprs, execucoes, alertas, reprogramacoes, abertas, [suspeitos]] = await Promise.all([
+  const [servico, aprs, execucoes, alertas, reprogramacoes, abertas, [suspeitos]] = await Promise.all([
+    o.codigoAtividade ? servicoDaAtividade(db, o.codigoAtividade) : null,
     carregarAprs(db, osId, eu.perfil === "admin"),
     carregarExecucoes(db, osId),
     db
@@ -494,6 +480,11 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
       atrasada: estaAtrasada(o, diaNoFuso(agora)),
       eventosComRelogioSuspeito: suspeitos?.n ?? 0,
     },
+    /**
+     * O serviço do catálogo (a atividade da OS) com os materiais, ferramentas e EPIs que ele usa; `null` quando a OS não
+     * tem atividade. O modelo de APR fica de fora: o técnico não o escolhe por aqui.
+     */
+    servico: servico ? { codigo: servico.codigo, descricao: servico.descricao, materiais: servico.materiais } : null,
     aprs,
     execucoes,
     alertas,

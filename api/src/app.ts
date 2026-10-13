@@ -6,6 +6,7 @@ import { rotasArquivos } from "./rotas/arquivos";
 import { rotasAuditoria } from "./rotas/auditoria";
 import { rotasAuth } from "./rotas/auth";
 import { rotasBusca } from "./rotas/busca";
+import { rotasCatalogo } from "./rotas/catalogo";
 import { rotasEquipes } from "./rotas/equipes";
 import { rotasEventos } from "./rotas/eventos";
 import { rotasImpedimento } from "./rotas/impedimento";
@@ -39,6 +40,7 @@ export function criarApp(deps: Deps) {
   app.route("/", rotasArquivos(deps, auth));
   app.route("/", rotasSap(deps, auth));
   app.route("/", rotasModelosApr(deps, auth));
+  app.route("/", rotasCatalogo(deps, auth));
   app.route("/", rotasEventos(deps, auth));
   app.route("/", rotasImpedimento(deps, auth));
   app.route("/", rotasPainel(deps, auth));

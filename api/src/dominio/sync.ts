@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { apr, aprParticipante, atividade, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
+import { materiaisDosServicos } from "./catalogo";
 import { semClassificacao } from "./modelo-apr-banco";
 import { usuarioParaApi } from "./usuarios";
 
@@ -9,8 +10,9 @@ const DIAS_DE_HISTORICO = 60;
 /**
  * Snapshot da equipe para o modo offline (Eventos, tabela "Dados do snapshot"): as OS `liberada`, `pendente` e
  * `em_execucao` da equipe, as `encerrada` do próprio técnico dos últimos 60 dias, com o resumo das APRs e execuções de
- * cada uma, os modelos publicados (mais as versões que as APRs do snapshot usaram), a tabela de atividades, os locais
- * dessas OS e os usuários da equipe. No MVP é sempre completo: o `cursor` devolvido é só o instante da geração.
+ * cada uma, os modelos publicados (mais as versões que as APRs do snapshot usaram), a tabela de atividades (com os
+ * materiais de cada serviço do catálogo), os locais dessas OS e os usuários da equipe. No MVP é sempre completo: o
+ * `cursor` devolvido é só o instante da geração.
  */
 export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipeId: string }, agora: Date) {
   const desde = new Date(agora.getTime() - DIAS_DE_HISTORICO * 86_400_000);
@@ -46,6 +48,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
 
   const locais = osIds.length ? await db.select().from(localInstalacao).where(inArray(localInstalacao.id, [...new Set(ordens.map((o) => o.localInstalacaoId))])) : [];
   const atividades = await db.select().from(atividade);
+  const materiais = await materiaisDosServicos(db, atividades.map((a) => a.codigo));
 
   // Modelos: a publicada mais recente de cada código não excluído e as versões usadas pelas APRs do snapshot.
   const publicados = await db.select().from(modeloApr).where(isNotNull(modeloApr.publicadoEm)).orderBy(desc(modeloApr.versao));
@@ -64,7 +67,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
     aprs: aprs.map((a) => ({ ...a, participantes: participantes.filter((p) => p.aprId === a.id).map(({ usuarioId, funcao }) => ({ usuarioId, funcao })) })),
     execucoes: execucoes.map((e) => ({ ...e, pausas: pausas.filter((p) => p.execucaoId === e.id) })),
     locais,
-    atividades,
+    atividades: atividades.map((a) => ({ ...a, materiais: materiais.get(a.codigo) ?? [] })),
     modelosApr: modelos.map((m) => ({ ...m, riscos: riscos.filter((r) => r.modeloAprId === m.id), itens: itens.filter((i) => i.modeloAprId === m.id).map(semClassificacao) })),
     usuarios: equipe.map((u) => usuarioParaApi(u, { semEmail: true })),
     cursor: agora.toISOString(),

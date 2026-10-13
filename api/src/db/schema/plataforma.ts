@@ -31,7 +31,7 @@ export const tarefa = pgTable(
 ).enableRLS();
 
 /** O que a trilha de auditoria registra: cada entidade que o admin (ou o supervisor) cria, altera ou remove. */
-export const AUDITORIA_ENTIDADES = ["usuario", "equipe", "modelo_apr", "atividade", "os", "importacao", "exportacao"] as const;
+export const AUDITORIA_ENTIDADES = ["usuario", "equipe", "modelo_apr", "atividade", "material", "os", "importacao", "exportacao"] as const;
 export type AuditoriaEntidade = (typeof AUDITORIA_ENTIDADES)[number];
 
 /**
