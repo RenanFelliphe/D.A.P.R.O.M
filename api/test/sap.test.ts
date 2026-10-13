@@ -207,14 +207,16 @@ describe("Integração SAP: leitura das ordens", () => {
     await ler();
     await amb.db.update(os).set({ status: "pendente" }).where(eq(os.numeroOrdem, b.numero_ordem));
 
-    amb.relogio.agora = new Date("2026-10-12T15:00:00Z");
+    // Uma hora à frente do relógio real: as leituras seguintes deste bloco continuam sendo as mais recentes do histórico.
+    const cancelamento = new Date(Math.ceil(Date.now() / 1000) * 1000 + 3_600_000);
+    amb.relogio.agora = cancelamento;
     comOrdens({ ...a, status_sap: "ENCE" }, { ...b, status_sap: "CNF" });
     const r = await ler();
     assert.deepEqual([r.criadas, r.atualizadas, r.ignoradas.length], [0, 2, 0]);
     for (const n of [a.numero_ordem, b.numero_ordem]) {
       const o = (await osDe(n))!;
       assert.equal(o.status, "cancelada");
-      assert.equal(o.canceladaEm?.toISOString(), "2026-10-12T15:00:00.000Z");
+      assert.equal(o.canceladaEm?.toISOString(), cancelamento.toISOString());
       assert.equal(o.canceladaPor, null);
     }
     assert.equal((await osDe(a.numero_ordem))!.statusSap, "ENCE");
