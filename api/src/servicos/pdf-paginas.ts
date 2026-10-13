@@ -1,17 +1,6 @@
 import { chaveImagem, type DadosPdf } from "./pdf-dados";
 import { dataBr, dataHoraBr, dataIsoBr, duracao, horaBr } from "./pdf-formato";
-import {
-  COR,
-  LARGURA_UTIL,
-  MARGEM,
-  desenharImagem,
-  faixa,
-  garantirEspaco,
-  linhaDeCelulas,
-  linhaDeTabela,
-  rodape,
-  type Cursor,
-} from "./pdf-layout";
+import { COR, MARGEM, desenharImagem, escrever, faixa, garantirEspaco, linhaDeCelulas, linhaDeTabela, type Cursor } from "./pdf-layout";
 
 const RESPOSTAS: Record<string, string> = { sim: "Sim", nao: "Não", na: "NA" };
 const FUNCOES: Record<string, string> = { responsavel: "Supervisor da Atividade", executor: "Executante" };
@@ -37,8 +26,8 @@ function cabecalho(c: Cursor, titulo: string, direita: string) {
   );
 }
 
-/** Página 1: a APR da Execução que encerrou, como o papel. */
-export function paginaApr(c: Cursor, d: DadosPdf) {
+/** Página 1: a APR da Execução que encerrou, como o papel. Devolve o texto do rodapé. */
+export function paginaApr(c: Cursor, d: DadosPdf): string {
   const aprovada = d.apr.resultado === "aprovada";
   cabecalho(c, `ANÁLISE PRELIMINAR DE RISCO — ${d.modelo.codigo}\n${d.modelo.titulo}`, `Versão ${String(d.modelo.versao).padStart(2, "0")}\nData: ${dataIsoBr(d.modelo.dataDocumento)}`);
 
@@ -55,7 +44,7 @@ export function paginaApr(c: Cursor, d: DadosPdf) {
   c.y += 4;
 
   faixa(c, "PARTICIPANTES");
-  const lp = [0.2, 0.4, 0.15, 0.25].map((f) => f * LARGURA_UTIL);
+  const lp = [0.2, 0.4, 0.15, 0.25].map((f) => f * c.largura);
   linhaDeTabela(
     c,
     [
@@ -71,7 +60,7 @@ export function paginaApr(c: Cursor, d: DadosPdf) {
     garantirEspaco(c, altura);
     const topo = c.y;
     linhaDeTabelaFixa(c, [lp[0]!, lp[1]!, lp[2]!, lp[3]!], [FUNCOES[p.funcao] ?? p.funcao, p.nome, p.matricula, ""], altura);
-    desenharImagem(c.doc, d.imagens.get(chaveImagem("assinaturas", p.assinaturaPath)), MARGEM + lp[0]! + lp[1]! + lp[2]! + 3, topo + 2, lp[3]! - 6, altura - 4);
+    desenharImagem(c, d.imagens.get(chaveImagem("assinaturas", p.assinaturaPath)), MARGEM + lp[0]! + lp[1]! + lp[2]! + 3, topo + 2, lp[3]! - 6, altura - 4);
   }
   c.y += 4;
 
@@ -86,16 +75,16 @@ export function paginaApr(c: Cursor, d: DadosPdf) {
   }
 
   faixa(c, "ITENS DA APR");
-  const lt = [24, 262, 50, LARGURA_UTIL - 24 - 262 - 50];
+  // Sem coluna de observação (quase sempre vazia): ela sai sob o texto do item, que fica com a largura toda e quebra menos.
+  const lt = [22, c.largura - 22 - 72, 72];
   linhaDeTabela(
     c,
     [
       { largura: lt[0]!, texto: "Nº", negrito: true },
-      { largura: lt[1]!, texto: "Item", negrito: true },
+      { largura: lt[1]!, texto: "Item (e observação)", negrito: true },
       { largura: lt[2]!, texto: "Resposta", negrito: true },
-      { largura: lt[3]!, texto: "Observação", negrito: true },
     ],
-    { fundo: COR.cinza },
+    { fundo: COR.cinza, respiro: 3.5, minimo: 10 },
   );
   let numero = 0;
   let grupoAtual: string | null = null;
@@ -104,24 +93,24 @@ export function paginaApr(c: Cursor, d: DadosPdf) {
     if (it.secao !== secaoAtual) {
       secaoAtual = it.secao;
       grupoAtual = null;
-      linhaDeTabela(c, [{ largura: LARGURA_UTIL, texto: it.secao === "verificacao" ? "VERIFICAÇÃO" : "MEDIDAS PREVENTIVAS", negrito: true }], { fundo: COR.cinza, tamanho: 6.5 });
+      linhaDeTabela(c, [{ largura: c.largura, texto: it.secao === "verificacao" ? "VERIFICAÇÃO" : "MEDIDAS PREVENTIVAS", negrito: true }], { fundo: COR.cinza, tamanho: 6.5, respiro: 3, minimo: 9 });
     }
     const grupo = it.risco ? `${it.classificacao} › ${it.risco}` : null;
     if (grupo && grupo !== grupoAtual) {
       grupoAtual = grupo;
-      linhaDeTabela(c, [{ largura: LARGURA_UTIL, texto: grupo, negrito: true }], { tamanho: 6.5 });
+      linhaDeTabela(c, [{ largura: c.largura, texto: grupo, negrito: true }], { tamanho: 6.5, respiro: 3, minimo: 9 });
     }
     numero++;
-    const marca = it.reprovado ? "\nREPROVADO" : it.alerta ? "\nALERTA" : "";
+    const marca = it.reprovado ? " · REPROVADO" : it.alerta ? " · ALERTA" : "";
+    const observacao = it.observacao?.trim();
     linhaDeTabela(
       c,
       [
         { largura: lt[0]!, texto: String(numero) },
-        { largura: lt[1]!, texto: it.texto },
+        { largura: lt[1]!, texto: observacao ? `${it.texto}\nObs.: ${observacao}` : it.texto },
         { largura: lt[2]!, texto: `${RESPOSTAS[it.resposta] ?? it.resposta}${marca}`, negrito: it.reprovado || it.alerta },
-        { largura: lt[3]!, texto: it.observacao ?? "" },
       ],
-      { fundo: it.reprovado ? COR.reprovado : it.alerta ? COR.alerta : undefined },
+      { fundo: it.reprovado ? COR.reprovado : it.alerta ? COR.alerta : undefined, respiro: 3, minimo: 9.5 },
     );
   }
   c.y += 4;
@@ -133,7 +122,8 @@ export function paginaApr(c: Cursor, d: DadosPdf) {
 
   pae(c, d.modelo.pae);
 
-  rodape(c.doc, `${d.modelo.codigo} · Versão ${String(d.modelo.versao).padStart(2, "0")} · Data do documento: ${dataIsoBr(d.modelo.dataDocumento)} · APR preenchida por ${d.preenchidaPor.nome} (${d.preenchidaPor.matricula})`);
+
+  return `${d.modelo.codigo} · Versão ${String(d.modelo.versao).padStart(2, "0")} · Data do documento: ${dataIsoBr(d.modelo.dataDocumento)} · APR preenchida por ${d.preenchidaPor.nome} (${d.preenchidaPor.matricula})`;
 }
 
 /** Linha de tabela de altura fixa, para as células que levam imagem. */
@@ -141,7 +131,7 @@ function linhaDeTabelaFixa(c: Cursor, larguras: number[], textos: string[], altu
   let x = MARGEM;
   larguras.forEach((l, i) => {
     c.doc.lineWidth(0.4).strokeColor(COR.borda).rect(x, c.y, l, altura).stroke();
-    if (textos[i]) c.doc.font("Helvetica").fontSize(7).fillColor(COR.texto).text(textos[i]!, x + 3, c.y + 2.5, { width: l - 6 });
+    if (textos[i]) escrever(c.doc.font("Helvetica").fontSize(7).fillColor(COR.texto), textos[i]!, x + 3, c.y + 2.5, { width: l - 6 });
     x += l;
   });
   c.y += altura;
@@ -160,20 +150,35 @@ function pae(c: Cursor, bruto: unknown) {
   if (!p || typeof p !== "object") return;
   faixa(c, [p.titulo, p.subtitulo].filter(Boolean).join(" — ") || "Plano de atendimento a emergências", 7);
   if (p.fluxo) linhaDeCelulas(c, [{ fracao: 1, valor: p.fluxo }], 6.5);
-  const colunas = 6;
-  const larguraRotulo = 0.16 * LARGURA_UTIL;
-  const largura = (LARGURA_UTIL - larguraRotulo) / colunas;
-  for (const linha of p.linhas ?? []) {
-    const textos = Array.from({ length: colunas }, (_, i) => linha.celulas.find((x) => x.coluna === i + 1)?.texto ?? "");
+  const larguraRotulo = 0.16 * c.largura;
+  const largura = (c.largura - larguraRotulo) / COLUNAS_DO_PAE;
+  for (const bloco of blocosDoPae(p.linhas ?? [])) {
     linhaDeTabela(
       c,
       [
-        { largura: larguraRotulo, texto: linha.rotulo ?? "", negrito: true },
-        ...textos.map((t) => ({ largura, texto: t })),
+        { largura: larguraRotulo, texto: bloco.rotulo, negrito: true },
+        ...bloco.textos.map((t) => ({ largura, texto: t })),
       ],
-      { tamanho: 5.5 },
+      { tamanho: 5.5, respiro: 3, minimo: 9 },
     );
   }
+}
+
+const COLUNAS_DO_PAE = 6;
+
+/**
+ * As linhas do PAE agrupadas pelo rótulo: as linhas sem rótulo continuam a de cima (a cidade, o "Contato Operação:" e os
+ * telefones dela viram uma célula só, linha a linha), o que poupa a borda e o respiro de cada linha da planilha.
+ */
+function blocosDoPae(linhas: NonNullable<Pae["linhas"]>) {
+  const blocos: { rotulo: string; colunas: string[][] }[] = [];
+  for (const linha of linhas) {
+    if (linha.rotulo !== null || blocos.length === 0) blocos.push({ rotulo: linha.rotulo ?? "", colunas: Array.from({ length: COLUNAS_DO_PAE }, () => []) });
+    const bloco = blocos[blocos.length - 1]!;
+    bloco.colunas.forEach((col, i) => col.push(linha.celulas.find((x) => x.coluna === i + 1)?.texto ?? ""));
+  }
+  // Linhas vazias no meio mantêm o alinhamento entre as colunas; as do fim não ocupam espaço.
+  return blocos.map((b) => ({ rotulo: b.rotulo, textos: b.colunas.map((col) => col.join("\n").replace(/\n+$/, "")) }));
 }
 
 const caixaAssinatura = 3;
@@ -188,18 +193,18 @@ interface Assinante {
 
 /** Linhas de caixas de assinatura (imagem, nome, cargo/registro e data), três por linha. */
 function assinaturas(c: Cursor, d: DadosPdf, lista: Assinante[]) {
-  const l = LARGURA_UTIL / caixaAssinatura;
+  const l = c.largura / caixaAssinatura;
   const altura = 74;
   for (let i = 0; i < lista.length; i += caixaAssinatura) {
     garantirEspaco(c, altura);
     lista.slice(i, i + caixaAssinatura).forEach((a, k) => {
       const x = MARGEM + k * l;
       c.doc.lineWidth(0.5).strokeColor(COR.borda).rect(x, c.y, l, altura).stroke();
-      c.doc.font("Helvetica").fontSize(5.5).fillColor(COR.rotulo).text(a.titulo.toUpperCase(), x + 3, c.y + 2, { width: l - 6, lineBreak: false });
-      desenharImagem(c.doc, a.caminho ? d.imagens.get(chaveImagem("assinaturas", a.caminho)) : null, x + 4, c.y + 10, l - 8, 34);
-      c.doc.font("Helvetica-Bold").fontSize(7.5).fillColor(COR.texto).text(a.nome, x + 3, c.y + 47, { width: l - 6, lineBreak: false });
-      c.doc.font("Helvetica").fontSize(6).fillColor(COR.texto).text(a.detalhe, x + 3, c.y + 57, { width: l - 6, lineBreak: false });
-      if (a.quando) c.doc.font("Helvetica").fontSize(6).fillColor(COR.rotulo).text(`Data: ${dataHoraBr(a.quando)}`, x + 3, c.y + 65, { width: l - 6, lineBreak: false });
+      escrever(c.doc.font("Helvetica").fontSize(5.5).fillColor(COR.rotulo), a.titulo.toUpperCase(), x + 3, c.y + 2, { width: l - 6, lineBreak: false });
+      desenharImagem(c, a.caminho ? d.imagens.get(chaveImagem("assinaturas", a.caminho)) : null, x + 4, c.y + 10, l - 8, 34);
+      escrever(c.doc.font("Helvetica-Bold").fontSize(7.5).fillColor(COR.texto), a.nome, x + 3, c.y + 47, { width: l - 6, lineBreak: false });
+      escrever(c.doc.font("Helvetica").fontSize(6).fillColor(COR.texto), a.detalhe, x + 3, c.y + 57, { width: l - 6, lineBreak: false });
+      if (a.quando) escrever(c.doc.font("Helvetica").fontSize(6).fillColor(COR.rotulo), `Data: ${dataHoraBr(a.quando)}`, x + 3, c.y + 65, { width: l - 6, lineBreak: false });
     });
     c.y += altura;
   }
@@ -208,8 +213,8 @@ function assinaturas(c: Cursor, d: DadosPdf, lista: Assinante[]) {
 const cargoERegistro = (u: { cargo: string | null; registro: string | null; matricula?: string }) =>
   [u.cargo, u.registro ? `CREA ${u.registro}` : null, u.matricula ? `Mat. ${u.matricula}` : null].filter(Boolean).join(" · ");
 
-/** Página 2: a ordem, a execução, as assinaturas e as fotos. */
-export function paginaOs(c: Cursor, d: DadosPdf, geradoEm: Date) {
+/** Página 2: a ordem, a execução, as assinaturas e as fotos. Devolve o texto do rodapé. */
+export function paginaOs(c: Cursor, d: DadosPdf, geradoEm: Date): string {
   const o = d.os;
   cabecalho(c, `ORDEM DE MANUTENÇÃO Nº ${o.numeroOrdem ?? "(sem ordem SAP)"}`, `Data da ordem: ${dataIsoBr(o.dataOrdem)}\nRegistro digital: ${dataHoraBr(geradoEm)}`);
 
@@ -291,21 +296,21 @@ export function paginaOs(c: Cursor, d: DadosPdf, geradoEm: Date) {
   if (d.fotos.length > 0) {
     faixa(c, "FOTOS");
     const colunas = 3;
-    const l = LARGURA_UTIL / colunas;
+    const l = c.largura / colunas;
     const altura = 112;
     for (let i = 0; i < d.fotos.length; i += colunas) {
       garantirEspaco(c, altura);
       d.fotos.slice(i, i + colunas).forEach((f, k) => {
         const x = MARGEM + k * l;
         c.doc.lineWidth(0.5).strokeColor(COR.borda).rect(x, c.y, l, altura).stroke();
-        desenharImagem(c.doc, d.imagens.get(chaveImagem("fotos", f.fotoPath)), x + 3, c.y + 3, l - 6, altura - 22);
+        desenharImagem(c, d.imagens.get(chaveImagem("fotos", f.fotoPath)), x + 3, c.y + 3, l - 6, altura - 22);
         const posicao = f.latitude !== null && f.longitude !== null ? `Posição: ${f.latitude.toFixed(6)}, ${f.longitude.toFixed(6)}` : "Posição: não informada";
-        c.doc.font("Helvetica").fontSize(6).fillColor(COR.texto).text(`${dataBr(f.capturadaEm)} ${horaBr(f.capturadaEm)}`, x + 3, c.y + altura - 17, { width: l - 6, lineBreak: false });
-        c.doc.text(posicao, x + 3, c.y + altura - 9, { width: l - 6, lineBreak: false });
+        escrever(c.doc.font("Helvetica").fontSize(6).fillColor(COR.texto), `${dataBr(f.capturadaEm)} ${horaBr(f.capturadaEm)}`, x + 3, c.y + altura - 17, { width: l - 6, lineBreak: false });
+        escrever(c.doc, posicao, x + 3, c.y + altura - 9, { width: l - 6, lineBreak: false });
       });
       c.y += altura;
     }
   }
 
-  rodape(c.doc, `OS ${o.numeroOrdem ?? o.id} · registro digital gerado em ${dataHoraBr(geradoEm)} (horário de Brasília)`);
+  return `OS ${o.numeroOrdem ?? o.id} · registro digital gerado em ${dataHoraBr(geradoEm)} (horário de Brasília)`;
 }

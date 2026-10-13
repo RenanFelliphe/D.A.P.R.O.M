@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { eq } from "drizzle-orm";
-import { os } from "../src/db/schema";
+import { eq, isNotNull } from "drizzle-orm";
+import { apr, aprResposta, aprRisco, itemModeloApr, modeloApr, os, riscoModeloApr } from "../src/db/schema";
 import { gerarPdfOs, manipularPdfOs } from "../src/servicos/pdf-os";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 import { criarOs, paginasDoPdf, textoDoPdf } from "./fixture-os";
@@ -119,6 +119,40 @@ describe("PDF da OS", () => {
     const o = await criarOs(amb, { equipeId });
     await assert.rejects(() => manipularPdfOs(amb.deps, { id: "t", referenciaId: o.osId }));
     await assert.rejects(() => manipularPdfOs(amb.deps, { id: "t", referenciaId: null }), /referência/);
+  });
+});
+
+describe("PDF da OS com os modelos de APR reais", () => {
+  let amb: Ambiente;
+  let equipeId: string;
+
+  before(async () => {
+    amb = await criarAmbiente({ relogio: new Date("2026-10-10T15:00:00Z"), comCarga: true });
+    equipeId = (await amb.criarEquipe()).id;
+  });
+  after(() => amb.fechar());
+
+  it("cada modelo da carga inicial, com todos os riscos marcados, todas as perguntas e 6 fotos, sai em 2 páginas", async () => {
+    const modelos = await amb.db.select().from(modeloApr).where(isNotNull(modeloApr.publicadoEm));
+    assert.ok(modelos.length >= 8);
+    for (const m of modelos) {
+      const o = await criarOs(amb, { equipeId, encerrada: true, fotos: 6 });
+      await amb.db.update(apr).set({ modeloAprId: m.id }).where(eq(apr.id, o.aprId));
+      await amb.db.delete(aprResposta).where(eq(aprResposta.aprId, o.aprId));
+      await amb.db.delete(aprRisco).where(eq(aprRisco.aprId, o.aprId));
+      const riscos = await amb.db.select({ id: riscoModeloApr.id }).from(riscoModeloApr).where(eq(riscoModeloApr.modeloAprId, m.id));
+      if (riscos.length > 0) await amb.db.insert(aprRisco).values(riscos.map((r) => ({ aprId: o.aprId, riscoId: r.id })));
+      const itens = await amb.db.select({ id: itemModeloApr.id }).from(itemModeloApr).where(eq(itemModeloApr.modeloAprId, m.id));
+      await amb.db
+        .insert(aprResposta)
+        .values(itens.map((i, n) => ({ aprId: o.aprId, itemId: i.id, resposta: "sim" as const, observacao: n % 7 === 0 ? "Conferido no local" : null, respondidaEm: amb.relogio.agora })));
+
+      const pdf = await gerarPdfOs(amb.deps, o.osId, { comprimir: false });
+      assert.equal(paginasDoPdf(pdf), 2, `${m.codigo} v${m.versao}`);
+      const texto = textoDoPdf(pdf);
+      assert.ok(texto.includes("Obs.: Conferido no local"), `${m.codigo}: a observação sai sob o item`);
+      assert.ok(texto.includes("Posição: não informada"), `${m.codigo}: as fotos ficam na página da OS`);
+    }
   });
 });
 

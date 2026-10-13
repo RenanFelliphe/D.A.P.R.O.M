@@ -3,17 +3,53 @@ import { eq } from "drizzle-orm";
 import { os } from "../db/schema";
 import type { Deps } from "../deps";
 import { carregarDadosPdf } from "./pdf-dados";
-import { MARGEM, novoCursor } from "./pdf-layout";
+import { abrirEscala, fecharEscala, MARGEM, novoCursor, rodape, type Cursor, type Doc } from "./pdf-layout";
 import { paginaApr, paginaOs } from "./pdf-paginas";
 
 export { manipularEmailAlerta } from "./email-alerta";
 
 type TarefaAtual = { id: string; referenciaId: string | null };
 
+const MARGENS = { top: MARGEM, bottom: MARGEM, left: MARGEM, right: MARGEM };
+
+/**
+ * Escalas tentadas, da natural para a menor. A APR em papel sai "ajustada à página" entre 41% e 61%; com todos os riscos
+ * marcados, a maior APR da carga inicial (APR 05) cabe em 60%. Abaixo de 45% o texto dos itens (7 pt) fica pequeno demais
+ * para ler, e o conteúdo que nem assim couber continua na folha seguinte.
+ */
+const ESCALAS = [1, 0.95, 0.9, 0.85, 0.8, 0.76, 0.72, 0.68, 0.64, 0.6, 0.55, 0.5, 0.45];
+
+/** Desenha uma página do documento e devolve o texto do rodapé. */
+type Pagina = (c: Cursor) => string;
+
+/** A maior escala em que a página cabe numa folha, medida num documento de rascunho (sem as imagens). */
+function escalaQueCabe(pagina: Pagina): number {
+  for (const escala of ESCALAS) {
+    const rascunho = new PDFDocument({ size: "A4", margins: MARGENS });
+    const c = novoCursor(rascunho, { escala, medindo: true });
+    abrirEscala(c);
+    pagina(c);
+    fecharEscala(c);
+    rascunho.end();
+    if (c.quebras === 0) return escala;
+  }
+  return ESCALAS[ESCALAS.length - 1]!;
+}
+
+/** A página na escala que a faz caber numa folha, com o rodapé na última folha dela. */
+function desenharPagina(doc: Doc, pagina: Pagina) {
+  const c = novoCursor(doc, { escala: escalaQueCabe(pagina) });
+  abrirEscala(c);
+  const textoDoRodape = pagina(c);
+  fecharEscala(c);
+  rodape(doc, textoDoRodape);
+}
+
 /**
  * PDF de 2 páginas da OS, como o papel: página 1 = APR da Execução que encerrou; página 2 = a OS (execução com tempo
- * líquido somado dos trechos, assinaturas, ciência e fotos). Lança erro se a OS não tem Execução encerrada. Se o conteúdo
- * não couber (APR muito longa, muitas fotos), o PDF ganha páginas extras em vez de cortar.
+ * líquido somado dos trechos, assinaturas, ciência e fotos). Cada página é reduzida até caber numa folha A4, como a
+ * planilha da APR impressa; só o que não couber nem na menor escala (APR muito longa, fotos demais) continua em outra
+ * folha, em vez de cortar. Lança erro se a OS não tem Execução encerrada.
  */
 export async function gerarPdfOs(deps: Deps, osId: string, opcoes: { comprimir?: boolean } = {}): Promise<Uint8Array> {
   const dados = await carregarDadosPdf(deps, osId);
@@ -22,7 +58,7 @@ export async function gerarPdfOs(deps: Deps, osId: string, opcoes: { comprimir?:
   const doc = new PDFDocument({
     size: "A4",
     compress: opcoes.comprimir ?? true,
-    margins: { top: MARGEM, bottom: MARGEM, left: MARGEM, right: MARGEM },
+    margins: MARGENS,
     info: { Title: `OS ${dados.os.numeroOrdem ?? dados.os.id}`, Author: "D.A.P.R.O.M", CreationDate: geradoEm },
   });
   const pedacos: Buffer[] = [];
@@ -32,11 +68,9 @@ export async function gerarPdfOs(deps: Deps, osId: string, opcoes: { comprimir?:
     doc.on("error", rejeitar);
   });
 
-  const cursor = novoCursor(doc);
-  paginaApr(cursor, dados);
+  desenharPagina(doc, (c) => paginaApr(c, dados));
   doc.addPage();
-  cursor.y = MARGEM;
-  paginaOs(cursor, dados, geradoEm);
+  desenharPagina(doc, (c) => paginaOs(c, dados, geradoEm));
   doc.end();
   await pronto;
   return new Uint8Array(Buffer.concat(pedacos));
