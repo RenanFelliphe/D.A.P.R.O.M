@@ -9,14 +9,25 @@ interface FiltrosQuadroProps {
   equipes: Equipe[] | null;
   meses: { valor: string; rotulo: string }[];
   valores: { equipe_id?: string; tipo?: string; critica?: boolean; periodo?: string; busca?: string };
+  /**
+   * O que não é filtro e o formulário precisa levar adiante: a ordenação escolhida e a visão de um status só. Filtrar e
+   * "Limpar" mantêm os dois; a página volta à primeira.
+   */
+  manter: { ordem?: string; status?: string };
   /** Há algum filtro em uso (liga o "Limpar"). */
   filtrado: boolean;
 }
 
 /** Filtros do quadro: formulário GET, então ficam na URL (equipe, tipo, criticidade, período e a busca da barra superior). */
-export function FiltrosQuadro({ acao, equipes, meses, valores, filtrado }: FiltrosQuadroProps) {
+export function FiltrosQuadro({ acao, equipes, meses, valores, manter, filtrado }: FiltrosQuadroProps) {
+  const mantidos = Object.entries(manter).filter((par): par is [string, string] => Boolean(par[1]));
+  const limpo = mantidos.length > 0 ? `${acao}?${new URLSearchParams(mantidos).toString()}` : acao;
   return (
-    <form className="filters" action={acao} method="get">
+    // Os campos são não controlados: a chave refaz o formulário quando a URL muda sem recarregar a página ("Limpar", ordenação).
+    <form key={JSON.stringify({ valores, manter })} className="filters" action={acao} method="get">
+      {mantidos.map(([nome, valor]) => (
+        <input key={nome} type="hidden" name={nome} value={valor} />
+      ))}
       {equipes && (
         <Field label="Equipe" htmlFor="f-eq">
           <select className="select" id="f-eq" name="equipe_id" defaultValue={valores.equipe_id ?? ""}>
@@ -66,7 +77,7 @@ export function FiltrosQuadro({ acao, equipes, meses, valores, filtrado }: Filtr
         Filtrar
       </button>
       {filtrado && (
-        <Link className="btn btn-line btn-sm" href={acao}>
+        <Link className="btn btn-line btn-sm" href={limpo}>
           Limpar
         </Link>
       )}

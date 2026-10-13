@@ -37,6 +37,8 @@ export const rotas = {
     dashboard: "/app/dashboard/geral",
     dashboardEquipes: "/app/dashboard/equipes",
     dashboardOs: "/app/dashboard/os",
+    /** Bloco "Exportação para baixa no SAP" do dashboard de OS (só o admin o vê). */
+    exportacaoSap: "/app/dashboard/os#exportacao",
     dashboardApr: "/app/dashboard/apr",
     dashboardMeus: "/app/dashboard/meus",
     /** Equipes e usuários (admin), Minha equipe com cadastro (supervisor) ou Minha equipe só para consulta (técnico): um endereço só. */

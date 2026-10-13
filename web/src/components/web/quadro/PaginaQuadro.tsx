@@ -87,7 +87,8 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
   const nomeDaEquipe = admin ? equipes?.find((e) => e.id === filtros.equipe_id)?.nome : supervisor ? nomesDasEquipesDoSupervisor(usuario) : equipe?.nome;
   const periodo = filtros.periodo ? rotuloDoMes(filtros.periodo) : "todos os períodos";
   const subtitulo = [nomeDaEquipe ?? "Todas as equipes", periodo, `atualizado às ${hora(new Date())}`].join(" · ");
-  const filtrado = Boolean(filtros.equipe_id || filtros.tipo || filtros.critica || filtros.periodo || filtros.busca || filtros.status);
+  // A visão de um status só e a ordenação não são filtros: o "Limpar" as mantém ("Voltar ao quadro" sai da visão).
+  const filtrado = Boolean(filtros.equipe_id || filtros.tipo || filtros.critica || filtros.periodo || filtros.busca);
   const meses = mesesDoSeletor(hoje().slice(0, 7), filtros.periodo);
 
   const unica = filtros.status ? quadro.colunas[0] : undefined;
@@ -101,7 +102,7 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
       <OrdemDoQuadro atual={filtros.ordem ?? "prioridade"} hrefDa={(ordem) => hrefDoQuadro(rota.quadro, filtros, { ordem: ordem === "prioridade" ? undefined : ordem, pagina: undefined })} />
       {gestao && <FaixaAlertas total={alertas} />}
       <FiltrosRecolhiveis filtrado={filtrado}>
-        <FiltrosQuadro acao={rota.quadro} equipes={equipes} meses={meses} valores={filtros} filtrado={filtrado} />
+        <FiltrosQuadro acao={rota.quadro} equipes={equipes} meses={meses} valores={filtros} manter={{ ordem: filtros.ordem, status: filtros.status }} filtrado={filtrado} />
       </FiltrosRecolhiveis>
 
       {unica ? (

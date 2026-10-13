@@ -24,7 +24,7 @@ export function BaixaSap({ os, podeExportar }: { os: OsDetalhe; podeExportar: bo
           </Badge>
           <p className="muted">Entra na próxima planilha de OS encerradas, com o link do PDF.</p>
           {podeExportar && (
-            <Link href={rotas.app.dashboard} style={{ fontSize: 13.5, fontWeight: 600 }}>
+            <Link href={rotas.app.exportacaoSap} style={{ fontSize: 13.5, fontWeight: 600 }}>
               Ir para exportação
             </Link>
           )}
