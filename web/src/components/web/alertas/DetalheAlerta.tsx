@@ -3,13 +3,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/web/Panel";
-import type { Atividade } from "@/components/web/apoio/tipos";
-import { apiOuNulo, api } from "@/lib/api";
-import { data, dataDoDia, dataHora, hoje } from "@/lib/formatar";
+import { apiOuNulo } from "@/lib/api";
+import { data, dataDoDia, dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
-import { equipesDoSupervisor, rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
-import { CartaoApoio } from "./CartaoApoio";
-import { CartaoReprogramar } from "./CartaoReprogramar";
+import { rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
+import { DecisoesDaOs } from "./DecisoesDaOs";
 import { CausaDoBloqueio } from "./DetalheBloqueio";
 import { DetalheFalhaImportacao } from "./DetalheFalhaImportacao";
 import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
@@ -40,8 +38,6 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
   const os = detalhe?.os ?? null;
   const aberta = os !== null && os.status !== "encerrada" && os.status !== "cancelada";
   const decide = podeAgir && aberta && (bloqueio || alerta.tipo === "apoio_encerrado");
-  const atividades = decide && bloqueio ? (await api<{ atividades: Atividade[] }>("/atividades", { consulta: { tamanho: 200 } })).atividades : [];
-  const hojeDia = hoje();
 
   return (
     <Panel style={{ padding: "20px 22px", gap: 16 }}>
@@ -120,21 +116,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
                 : "A OS original continua pendente: a equipe já pode fazer uma nova APR, e reprogramar é opcional."}
             </p>
           </div>
-          <div className={bloqueio ? "decide" : "decide um"}>
-            {bloqueio && (
-              <CartaoApoio
-                osId={os.id}
-                numeroOrdem={os.numero_ordem}
-                tituloDaOs={os.titulo}
-                local={{ id: os.local_instalacao.id, codigo: os.local_instalacao.codigo, endereco: os.local_instalacao.endereco }}
-                equipes={equipes}
-                atividades={atividades}
-                hoje={hojeDia}
-                equipesDoSupervisor={equipesDoSupervisor(usuario)}
-              />
-            )}
-            <CartaoReprogramar osId={os.id} dataAtual={os.data_inicio_prog} equipeAtualId={os.equipe_id} equipes={equipes} hoje={hojeDia} />
-          </div>
+          <DecisoesDaOs os={os} usuario={usuario} equipes={equipes} comApoio={bloqueio} />
         </>
       )}
 

@@ -9,6 +9,8 @@ interface CartaoApoioProps {
   osId: string;
   numeroOrdem: string | null;
   tituloDaOs: string;
+  /** Como a OS original fica enquanto o apoio resolve ("pendente", "liberada"). */
+  situacaoDaOriginal: string;
   local: LocalEscolhido;
   equipes: Equipe[];
   atividades: Atividade[];
@@ -17,8 +19,8 @@ interface CartaoApoioProps {
   equipesDoSupervisor: string[] | null;
 }
 
-/** Cartão de decisão "Abrir OS de apoio" (destaque principal): `POST /os` com `os_origem_id` apontando para a OS do alerta. */
-export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, local, equipes, atividades, hoje, equipesDoSupervisor }: CartaoApoioProps) {
+/** Cartão de decisão "Abrir OS de apoio" (destaque principal): `POST /os` com `os_origem_id` apontando para a OS original. */
+export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, situacaoDaOriginal, local, equipes, atividades, hoje, equipesDoSupervisor }: CartaoApoioProps) {
   const referencia = numeroOrdem ? `OS ${numeroOrdem}` : "OS de origem";
   return (
     <div className="dcard main">
@@ -29,7 +31,7 @@ export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, local, equipes, ati
         <h4>Abrir OS de apoio</h4>
       </div>
       <p className="muted">
-        Outra equipe resolve antes. A OS original continua pendente e você recebe um aviso quando o apoio terminar.
+        Outra equipe resolve antes. A OS original continua {situacaoDaOriginal} e você recebe um aviso quando o apoio terminar.
       </p>
       <FormularioApoio
         prefixo="ap"
@@ -41,7 +43,7 @@ export function CartaoApoio({ osId, numeroOrdem, tituloDaOs, local, equipes, ati
         descricaoInicial={`Apoio para liberar a ${referencia}.`}
         hoje={hoje}
         rotuloEnviar="Criar OS de apoio"
-        mensagemCriada="OS de apoio criada. A original continua pendente."
+        mensagemCriada={`OS de apoio criada. A original continua ${situacaoDaOriginal}.`}
         podeAbrirOs={(equipeId) => equipesDoSupervisor === null || equipesDoSupervisor.includes(equipeId)}
       />
     </div>

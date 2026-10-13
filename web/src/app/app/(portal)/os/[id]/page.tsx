@@ -7,8 +7,10 @@ import { DadosSapCard } from "@/components/app/detalhe/DadosSapCard";
 import { HistoricoAprs } from "@/components/app/detalhe/HistoricoAprs";
 import { InstrucoesCard } from "@/components/app/detalhe/InstrucoesCard";
 import { LocalCard } from "@/components/app/detalhe/LocalCard";
+import { Recolhivel } from "@/components/app/detalhe/Recolhivel";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
+import { DecisoesDaOs } from "@/components/web/alertas/DecisoesDaOs";
 import { AbasDaOs, abaDaConsulta } from "@/components/web/detalhe/AbasDaOs";
 import { AlertasDaOs } from "@/components/web/detalhe/AlertasDaOs";
 import { AprsDaOs } from "@/components/web/detalhe/AprsDaOs";
@@ -27,7 +29,7 @@ import { api, usuarioAtual } from "@/lib/api";
 import type { ModeloResumo } from "@/lib/apr";
 import { aprAprovadaDisponivel, execucaoAberta, type DetalheDaOs as DetalheDoCampo } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
-import { ehAdmin, ehSupervisor, equipesDoSupervisor } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor, equipesDoSupervisor, rotuloDoStatus, type Equipe } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Detalhe da OS" };
 
@@ -36,6 +38,7 @@ export const metadata: Metadata = { title: "Detalhe da OS" };
  * - Técnico: dados do SAP, local, instruções, APR exigida e as ações que o estado da OS permite (APR, execução).
  * - Admin: a visão de supervisão (abas Resumo, APRs e execuções, Histórico; alertas, PDF, ciência, baixa no SAP, local crítico, cancelar).
  * - Supervisor: a mesma visão de supervisão e, na lateral, as ações de campo (ele também é técnico e executa OS).
+ * Quem supervisiona a equipe da OS (e o admin) reprograma ou abre OS de apoio no Resumo, sem depender de um alerta.
  */
 export default async function DetalheOsPage({ params, searchParams }: PageProps<"/app/os/[id]">) {
   const { id } = await params;
@@ -121,6 +124,9 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
 
   // Dá a ciência quem supervisiona a equipe da OS e não participou dela (a `api` confere os dois).
   const supervisaEquipeDaOs = equipesDoSupervisor(usuario)?.includes(os.equipe.id) ?? false;
+  // Reprogramar e abrir OS de apoio: quem supervisiona a equipe da OS (ou o admin), enquanto ela não começou nem terminou.
+  const podeDecidir = (admin || supervisaEquipeDaOs) && (os.status === "liberada" || os.status === "pendente");
+  const equipes = podeDecidir && aba === "resumo" ? (await api<{ equipes: Equipe[] }>("/equipes", { consulta: { tamanho: 200 } })).equipes : [];
 
   return (
     <Screen>
@@ -146,6 +152,18 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           {aba === "resumo" && (
             <>
               <DadosSap os={os} />
+              {podeDecidir && (
+                <Recolhivel titulo="Reprogramar ou abrir OS de apoio" resumo={os.atrasada ? "OS atrasada" : rotuloDoStatus[os.status]} aberto={os.status === "pendente" || os.atrasada}>
+                  <p className="muted">
+                    {os.status === "pendente"
+                      ? "A OS está pendente (APR bloqueada, execução suspensa ou interrompida). A equipe pode fazer uma nova APR a qualquer momento; se não der para resolver no local, reprograme ou abra uma OS de apoio."
+                      : os.atrasada
+                        ? "A OS passou da data programada. Reprograme com justificativa ou, se outra equipe precisa resolver algo antes, abra uma OS de apoio."
+                        : "Quando a OS não puder ser feita como planejada, reprograme com justificativa ou abra uma OS de apoio para outra equipe resolver antes."}
+                  </p>
+                  <DecisoesDaOs os={os} usuario={usuario} equipes={equipes} comApoio />
+                </Recolhivel>
+              )}
               <AlertasDaOs alertas={alertas} reprogramacoes={reprogramacoes} />
             </>
           )}
