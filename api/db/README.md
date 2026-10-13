@@ -44,6 +44,7 @@ Geradas pelo `drizzle-kit`, aplicadas em ordem, uma única vez cada, e registrad
 
 | `0011_auditoria.sql` | a tabela `auditoria` (trilha de quem fez o quê nas telas de gestão), sem chave estrangeira, com índices por data, por entidade e por autor; gerada do schema |
 | `0012_auditoria_so_cresce.sql` | gatilho que recusa `UPDATE` e `DELETE` em `auditoria` (a trilha só cresce); SQL escrito à mão |
+| `0013_origem_pdf.sql` | `pdf` entra em `os.origem` e em `importacao.origem` (a OS lida do PDF impresso pelo SAP, na Importação de OS); só troca os dois `CHECK`, nenhuma linha muda; gerada do schema |
 
 O Painel não tem tabela própria: lê as acima.
 
@@ -111,7 +112,7 @@ O banco recusa o que é sempre inválido, em qualquer cliente. As regras que dep
 **No banco**
 - Valores permitidos de perfil, status, resultado, tipo de evento, tipo de alerta, etc. (`check`).
 - Unicidade: matrícula, centro de trabalho, número da ordem SAP, versão de modelo, resposta por item, assinatura por participante.
-- Origem da OS: `sap`, `planilha` ou `apoio`. Só a OS de apoio pode ficar sem número da ordem, e toda OS de apoio tem `os_origem_id` (e só ela): `origem = 'apoio'` se e somente se há `os_origem_id` (`os_apoio_ligada`).
+- Origem da OS: `sap`, `planilha`, `pdf` ou `apoio`. Só a OS de apoio pode ficar sem número da ordem, e toda OS de apoio tem `os_origem_id` (e só ela): `origem = 'apoio'` se e somente se há `os_origem_id` (`os_apoio_ligada`).
 - Exatamente um `responsavel` por APR, no máximo uma pausa aberta por execução, e uma APR amparando uma única execução (a cancelada não conta, porque cancelar por engano devolve a APR para uso).
 - Execução encerrada exige fim e descrição; interrompida exige fim e motivo; "NA" exige observação; reprogramação exige justificativa; usuário exige e-mail institucional único e em minúsculas (é o login); a matrícula é só identificação.
 - Toda medida preventiva pertence a um risco, e item de verificação não tem risco.
