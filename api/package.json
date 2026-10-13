@@ -15,7 +15,8 @@
     "db:gerar-seed": "node src/db/seed/gerar-modelos-apr.mjs",
     "admin:criar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/criar-admin.ts",
     "usuarios:migrar-emails": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/migrar-emails.ts",
-    "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts"
+    "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts",
+    "pdf:exemplo": "tsx scripts/gerar-pdf-os.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",
@@ -24,6 +25,7 @@
     "hono": "^4.13.13",
     "jose": "^6.2.12",
     "nodemailer": "^10.1.0",
+    "pdfjs-dist": "6.3.289",
     "pdfkit": "^0.20.2",
     "pg": "^8.23.1",
     "tsx": "^4.23.15",

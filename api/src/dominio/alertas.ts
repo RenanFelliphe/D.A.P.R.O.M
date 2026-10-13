@@ -57,7 +57,7 @@ async function destinatariosDaFalha(db: Db, usuarioId: string | null): Promise<s
  */
 export async function alertarFalhaDeImportacao(
   db: Db,
-  dados: { importacaoId: string; origem: "api" | "planilha"; usuarioId: string | null; detalhe: string; agora: Date },
+  dados: { importacaoId: string; origem: "api" | "planilha" | "pdf"; usuarioId: string | null; detalhe: string; agora: Date },
 ): Promise<void> {
   for (const destinatarioId of await destinatariosDaFalha(db, dados.usuarioId)) {
     const [aberto] = await db
@@ -73,7 +73,13 @@ export async function alertarFalhaDeImportacao(
 }
 
 /** Texto do alerta de falha: o método, o motivo e a garantia de que nenhuma OS mudou. */
-export function detalheDaFalha(o: { origem: "api" | "planilha"; arquivo?: string; motivo: string }): string {
-  const metodo = o.origem === "api" ? "A sincronização com a API do SAP falhou" : `A importação da planilha ${o.arquivo ? `"${o.arquivo}" ` : ""}falhou`;
+export function detalheDaFalha(o: { origem: "api" | "planilha" | "pdf"; arquivo?: string; motivo: string }): string {
+  const arquivo = o.arquivo ? `"${o.arquivo}" ` : "";
+  const metodo =
+    o.origem === "api"
+      ? "A sincronização com a API do SAP falhou"
+      : o.origem === "pdf"
+        ? `A importação do PDF da OS ${arquivo}falhou`
+        : `A importação da planilha ${arquivo}falhou`;
   return `${metodo}: ${o.motivo.replace(/\.$/, "")}. Nenhuma OS foi criada, alterada ou removida.`;
 }

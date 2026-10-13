@@ -6,7 +6,7 @@ import { codigoPostgres } from "../http/erros";
 import { criarAlertas } from "./alertas";
 
 /**
- * Processamento das ordens do SAP, o mesmo para a leitura pela API e para a planilha (Integração SAP, tabela de
+ * Processamento das ordens do SAP, o mesmo para a leitura pela API, a planilha e o PDF da OS (Integração SAP, tabela de
  * estados). Cada ordem é independente: uma ordem inválida vira linha ignorada, não derruba as outras. Quem chama passa a
  * transação da leitura inteira; cada ordem roda num ponto de salvamento próprio (transação aninhada), então um erro do
  * banco numa ordem desfaz só aquela ordem.
@@ -134,9 +134,12 @@ class Ignorada extends Error {
   }
 }
 
+/** De onde vêm as ordens: a leitura da API do SAP, a planilha exportada ou o PDF da OS impressa. */
+export type OrigemDasOrdens = "sap" | "planilha" | "pdf";
+
 interface Contexto {
   agora: Date;
-  origem: "sap" | "planilha";
+  origem: OrigemDasOrdens;
   equipes: Map<string, string | null>;
   locais: Map<string, string>;
   atividades: Map<string, { modeloAprCodigo: string | null } | null>;
@@ -300,7 +303,7 @@ async function criarOrdem(db: Db, ctx: Contexto, bruto: unknown): Promise<Result
     criadoPorSap: ordem.criado_por ?? null,
     statusSap: ordem.status_sap ?? null,
     solicitante: ordem.solicitante ?? null,
-    origem: ctx.origem === "planilha" ? "planilha" : "sap",
+    origem: ctx.origem,
   });
   return { tipo: "criada", ...(ativ.comModelo ? {} : { aviso: AVISO_SEM_MODELO }) };
 }
@@ -314,7 +317,10 @@ async function processarUma(db: Db, ctx: Contexto, bruto: unknown): Promise<Resu
   const [existente] = await db.select().from(os).where(eq(os.numeroOrdem, numero));
 
   if (existente) {
-    return statusLiberada(statusSap) ? atualizarOrdem(db, ctx, existente, bruto) : cancelarNoSap(db, ctx, existente, statusSap);
+    if (statusLiberada(statusSap)) return atualizarOrdem(db, ctx, existente, bruto);
+    // O PDF é a foto de quando a OS foi impressa (pode ser antiga): não cancela uma OS que o SAP pode ter liberado de novo.
+    if (ctx.origem === "pdf") throw new Ignorada(MOTIVO_STATUS_DIFERENTE);
+    return cancelarNoSap(db, ctx, existente, statusSap);
   }
   if (!statusLiberada(statusSap)) throw new Ignorada(MOTIVO_STATUS_DIFERENTE);
   return criarOrdem(db, ctx, bruto);
@@ -330,7 +336,7 @@ class Desfeita extends Error {
 export async function processarOrdens(
   db: Db,
   entradas: EntradaOrdem[],
-  opcoes: { origem: "sap" | "planilha"; agora: Date },
+  opcoes: { origem: OrigemDasOrdens; agora: Date },
 ): Promise<ResultadoProcessamento> {
   const ctx: Contexto = { agora: opcoes.agora, origem: opcoes.origem, equipes: new Map(), locais: new Map(), atividades: new Map() };
   const resultado: ResultadoProcessamento = { criadas: 0, atualizadas: 0, ignoradas: [], avisos: [] };

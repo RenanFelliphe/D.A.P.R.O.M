@@ -6,9 +6,12 @@ import { equipe, usuario } from "./usuarios";
 
 export const OS_TIPOS = ["corretiva", "preventiva"] as const;
 export const OS_STATUS = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada"] as const;
-/** A OS entra pela leitura do SAP ou pela planilha; só a de apoio nasce no sistema, ligada à OS que ela destrava. */
-export const OS_ORIGENS = ["sap", "planilha", "apoio"] as const;
-export const IMPORTACAO_ORIGENS = ["api", "planilha"] as const;
+/**
+ * A OS entra pela leitura do SAP (API), pela planilha exportada do SAP ou pelo PDF da OS impressa pelo SAP; só a de apoio
+ * nasce no sistema, ligada à OS que ela destrava.
+ */
+export const OS_ORIGENS = ["sap", "planilha", "pdf", "apoio"] as const;
+export const IMPORTACAO_ORIGENS = ["api", "planilha", "pdf"] as const;
 
 export type OsStatus = (typeof OS_STATUS)[number];
 
@@ -115,13 +118,13 @@ export const os = pgTable(
   ],
 ).enableRLS();
 
-/** Registro de cada leitura do SAP ou importação de planilha. */
+/** Registro de cada leitura do SAP e de cada arquivo importado (planilha ou PDF da OS). */
 export const importacao = pgTable(
   "importacao",
   {
     id: uuid().primaryKey().defaultRandom(),
     origem: text({ enum: IMPORTACAO_ORIGENS }).notNull(),
-    /** Caminho no bucket `importacoes`, só para planilha. */
+    /** Caminho no bucket `importacoes`, só nos arquivos (planilha ou PDF). */
     arquivo: text(),
     /** Nulo na leitura agendada. */
     usuarioId: uuid().references(() => usuario.id),

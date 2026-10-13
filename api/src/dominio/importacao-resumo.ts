@@ -86,7 +86,8 @@ export async function resumoDasImportacoes(db: Db, periodo: Periodo, agora: Date
     .from(importacao)
     .where(sql`${noPeriodo(primeira.inicio)} and ${importacao.ignoradas} > 0`);
 
-  // `api`/`planilha`: OS registradas por origem; `leituras`/`falhas`: leituras da API e as que terminaram com erro.
+  // `api`/`planilha`: OS registradas por método; `leituras`/`falhas`: leituras da API e as que terminaram com erro. O
+  // método "Importação (arquivo)" leva a chave `planilha` e soma os dois arquivos aceitos: a planilha e o PDF da OS.
   const serie = faixas.map((f) => ({ inicio: f.inicio, fim: f.fim, api: 0, planilha: 0, leituras: 0, falhas: 0 }));
   const porOrigem = { api: zeradas(), planilha: zeradas() };
   const doAnterior = zeradas();
@@ -97,12 +98,13 @@ export async function resumoDasImportacoes(db: Db, periodo: Periodo, agora: Date
     }
     const ponto = serie.find((f) => d >= f.inicio && d < f.fim);
     if (!ponto) continue;
-    ponto[origem] += contagens.criadas;
-    if (origem === "api") {
+    const metodo = origem === "api" ? "api" : "planilha";
+    ponto[metodo] += contagens.criadas;
+    if (metodo === "api") {
       ponto.leituras += contagens.registros;
       ponto.falhas += contagens.comErro;
     }
-    somarEm(porOrigem[origem], contagens);
+    somarEm(porOrigem[metodo], contagens);
   }
   const total = zeradas();
   somarEm(total, porOrigem.api);
