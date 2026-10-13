@@ -79,7 +79,7 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
 
   const [tecnico] = tecnicoId ? await db.select({ nome: usuario.nome, matricula: usuario.matricula }).from(usuario).where(eq(usuario.id, tecnicoId)) : [];
   const numero = base.os.numeroOrdem ?? "(OS de apoio)";
-  const link = `${deps.config.painelUrl}/os/${base.os.id}`;
+  const link = `${deps.config.painelUrl}/app/os/${base.os.id}`;
   const nomeTecnico = tecnico ? `${tecnico.nome} (${tecnico.matricula})` : "não identificado";
 
   const linhas: string[] = [

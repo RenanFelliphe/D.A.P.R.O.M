@@ -236,7 +236,7 @@ describe("E-mail de alerta de bloqueio", () => {
       "O local está sinalizado?",
       "Sem sinalização no local",
       ...fotos.map((f) => `https://storage.local/fotos/${f}?expira=${7 * 24 * 3600}`),
-      `http://painel.local/os/${o.osId}`,
+      `http://painel.local/app/os/${o.osId}`,
     ]) {
       assert.ok(m.texto.includes(esperado), `faltou "${esperado}" no texto`);
       assert.ok((m.html ?? "").includes(esperado.replace(/&/g, "&amp;")), `faltou "${esperado}" no html`);

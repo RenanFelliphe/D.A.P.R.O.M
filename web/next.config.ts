@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   // O mesmo vale para "Modelos de APR", que virou a seção APR (`?codigo=` é tratado na aba Modelos), e para os antigos
   // Dashboard e Diagnósticos, que viraram os dashboards geral, de OS e de APR de Indicadores e exportação.
   redirects: async () => [
+    // Link da OS nos e-mails de alerta e nas planilhas de baixa gerados antes da correção do endereço.
+    { source: "/os/:id([0-9a-fA-F-]{36})", destination: "/app/os/:id", permanent: false },
     { source: "/web/quadro", destination: "/app/lista", permanent: false },
     { source: "/web/os/quadro", destination: "/app/lista", permanent: false },
     { source: "/web/os/:id([0-9a-fA-F-]{36})", destination: "/app/os/:id", permanent: false },

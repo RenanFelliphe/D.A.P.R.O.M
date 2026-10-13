@@ -113,7 +113,7 @@ export async function exportarParaSap(db: Db, painelUrl: string, agora: Date): P
               .join(",")
           : null,
         descricao_atividade: e?.descricaoAtividade ?? null,
-        link_pdf: `${painelUrl}/os/${o.id}`,
+        link_pdf: `${painelUrl}/doc/os/${o.id}`,
         ciencia_supervisor: o.cienciaEm ? `${o.cienciaPorNome ?? ""} ${dataHoraBr(o.cienciaEm)}`.trim() : null,
       };
       if (o.numeroOrdem !== null) comNumero.push({ numero_ordem: o.numeroOrdem, ...comuns });

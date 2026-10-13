@@ -947,7 +947,7 @@ describe("Painel: exportação para o SAP", () => {
       numero_pessoas: 1,
       executantes: "M-A",
       descricao_atividade: "Leitura concluída",
-      link_pdf: `http://painel.local/os/${o.e2!.id}`,
+      link_pdf: `http://painel.local/doc/os/${o.e2!.id}`,
       ciencia_supervisor: null,
     });
     assert.deepEqual(enc.linhas[1], {
@@ -961,7 +961,7 @@ describe("Painel: exportação para o SAP", () => {
       numero_pessoas: 2,
       executantes: "M-A,M-B",
       descricao_atividade: "Retificador inspecionado",
-      link_pdf: `http://painel.local/os/${o.e1!.id}`,
+      link_pdf: `http://painel.local/doc/os/${o.e1!.id}`,
       ciencia_supervisor: "Sara Supervisora 14/10/2026 15:00",
     });
 
