@@ -687,7 +687,7 @@ describe("Painel: indicadores e histórico", () => {
     await criarOs(amb, { localId: l2.id, equipeId: equipeB, numero: "B2", status: "liberada", inicio: "2026-09-11" }); // sem justificativa
 
     // Execuções (setembro/2026, fuso de São Paulo).
-    exec.e1 = (await criarExecucao(amb, { osId: a1.id, modelo, executorId: tecA.id, inicio: h("2026-09-05T11:00:00Z"), fim: h("2026-09-05T15:00:00Z"), pausas: [{ inicio: h("2026-09-05T12:00:00Z"), fim: h("2026-09-05T13:00:00Z") }], descricao: "Calibração do manômetro" })).id;
+    exec.e1 = (await criarExecucao(amb, { osId: a1.id, modelo, executorId: tecA.id, inicio: h("2026-09-05T11:00:00Z"), fim: h("2026-09-05T15:00:00Z"), pausas: [{ inicio: h("2026-09-05T12:00:00Z"), fim: h("2026-09-05T13:00:00Z"), motivo: "almoco" }], descricao: "Calibração do manômetro" })).id;
     exec.e2 = (await criarExecucao(amb, { osId: a2.id, modelo, executorId: tecA2.id, inicio: h("2026-09-06T11:00:00Z"), fim: h("2026-09-06T13:00:00Z") })).id;
     exec.e3 = (await criarExecucao(amb, { osId: b1.id, modelo, executorId: tecB.id, inicio: h("2026-09-10T11:00:00Z"), fim: h("2026-09-10T12:00:00Z"), pausas: [{ inicio: h("2026-09-10T11:20:00Z"), fim: h("2026-09-10T11:35:00Z") }] })).id;
     // 01/10 02:30 UTC = 30/09 23:30 em São Paulo: ainda é setembro.
@@ -768,12 +768,47 @@ describe("Painel: indicadores e histórico", () => {
       assert.equal(c.tempo_liquido_medio_min, 116.3, "(180 + 120 + 120 + 45) / 4");
       assert.equal(c.pausa_media_min, 18.8, "(60 + 0 + 0 + 15) / 4");
       assert.equal(c.proporcao_pausa, 0.1389, "75 / 540");
+      assert.equal(c.tempo_total_medio_min, 135, "(240 + 120 + 60 + 120) / 4");
+      assert.equal(c.execucoes_com_pausa, 2);
+      assert.equal(c.pausas_por_execucao, 0.5);
+      // A pausa da Ana tem motivo (almoço); a da Bia, não.
+      assert.deepEqual(c.por_motivo, [
+        { motivo: "almoco", pausas: 1, minutos: 60 },
+        { motivo: "sem_motivo", pausas: 1, minutos: 15 },
+      ]);
+      assert.deepEqual(
+        c.os_com_mais_pausa.map((o: any) => [o.numero_ordem, o.executor, o.tempo_total_min, o.tempo_liquido_min, o.pausa_min, o.pausas, o.proporcao_pausa]),
+        [
+          ["A1", "Ana", 240, 180, 60, 1, 0.25],
+          ["B1", "Bia", 60, 45, 15, 1, 0.25],
+        ],
+      );
 
       assert.equal(c.por_equipe.length, 2);
       const alfa = c.por_equipe.find((e: any) => e.equipe_id === equipeA);
-      assert.deepEqual(alfa, { equipe_id: equipeA, equipe_nome: "Alfa", execucoes: 3, tempo_liquido_medio_min: 140, pausa_media_min: 20, proporcao_pausa: 0.125 });
+      assert.deepEqual(alfa, {
+        equipe_id: equipeA,
+        equipe_nome: "Alfa",
+        execucoes: 3,
+        tempo_total_medio_min: 160,
+        tempo_liquido_medio_min: 140,
+        pausa_media_min: 20,
+        proporcao_pausa: 0.125,
+        execucoes_com_pausa: 1,
+        pausas_por_execucao: 0.3,
+      });
       const beta = c.por_equipe.find((e: any) => e.equipe_id === equipeB);
-      assert.deepEqual(beta, { equipe_id: equipeB, equipe_nome: "Beta", execucoes: 1, tempo_liquido_medio_min: 45, pausa_media_min: 15, proporcao_pausa: 0.25 });
+      assert.deepEqual(beta, {
+        equipe_id: equipeB,
+        equipe_nome: "Beta",
+        execucoes: 1,
+        tempo_total_medio_min: 60,
+        tempo_liquido_medio_min: 45,
+        pausa_media_min: 15,
+        proporcao_pausa: 0.25,
+        execucoes_com_pausa: 1,
+        pausas_por_execucao: 1,
+      });
 
       assert.deepEqual(
         c.por_usuario.map((u: any) => [u.usuario_nome, u.execucoes, u.tempo_liquido_medio_min, u.pausa_media_min, u.proporcao_pausa]),
@@ -802,7 +837,19 @@ describe("Painel: indicadores e histórico", () => {
 
     it("sem Execuções no mês devolve nulos e listas vazias", async () => {
       const c = await amb.esperar(200, "GET", "/indicadores/tempo", { como: admin, consulta: { mes: "2026-01" } });
-      assert.deepEqual(c, { execucoes: 0, tempo_liquido_medio_min: null, pausa_media_min: null, proporcao_pausa: null, por_equipe: [], por_usuario: [] });
+      assert.deepEqual(c, {
+        execucoes: 0,
+        tempo_total_medio_min: null,
+        tempo_liquido_medio_min: null,
+        pausa_media_min: null,
+        proporcao_pausa: null,
+        execucoes_com_pausa: 0,
+        pausas_por_execucao: null,
+        por_equipe: [],
+        por_usuario: [],
+        por_motivo: [],
+        os_com_mais_pausa: [],
+      });
     });
 
     it("supervisor vê só a própria equipe; outra equipe é 403; técnico é 403", async () => {

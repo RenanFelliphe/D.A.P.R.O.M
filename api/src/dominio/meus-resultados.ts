@@ -20,7 +20,7 @@ export async function meusResultados(db: Db, eu: UsuarioAutenticado, f: { period
   const minhaExecucao = eq(execucao.executorId, eu.id);
   const [fechadas, tempo, aprs, interrompidas, locais] = await Promise.all([
     encerradas(db, minhaExecucao, p),
-    temposDeExecucao(db, eu, { inicio: p.inicio, fim: p.fim, usuarioId: eu.id }),
+    temposDeExecucao(db, eu, { inicio: p.inicio, fim: p.fim, usuarioId: eu.id, comExecutor: false }),
     contarAprs(db, eq(apr.preenchidaPor, eu.id), p),
     interrupcoes(db, minhaExecucao, p),
     db
@@ -41,7 +41,8 @@ export async function meusResultados(db: Db, eu: UsuarioAutenticado, f: { period
     ate: p.ate,
     encerradas: osEncerradas,
     serie,
-    tempo: { execucoes: tempo.execucoes, tempoLiquidoMedioMin: tempo.tempoLiquidoMedioMin, pausaMediaMin: tempo.pausaMediaMin, proporcaoPausa: tempo.proporcaoPausa },
+    // Só as próprias execuções: as quebras por equipe e por pessoa não dizem nada aqui.
+    tempo: (({ porEquipe: _e, porUsuario: _u, ...resto }) => resto)(tempo),
     aprs,
     interrupcoes: interrompidas,
     locais,

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 import { eq } from "drizzle-orm";
-import { apr, atividade, equipe, execucao, itemModeloApr, localInstalacao, modeloApr, os, reprogramacao } from "../src/db/schema";
+import { apr, atividade, equipe, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, reprogramacao } from "../src/db/schema";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /** "Agora" dos testes: 15/10/2026 12:00 em São Paulo (UTC-3); os 30 dias vão de 16/09 a 15/10. */
@@ -70,8 +70,9 @@ describe("Dashboards de Indicadores e exportação", () => {
     };
     const novaExecucao = async (osId: string, por: UsuarioDeTeste, inicio: string, fim: string | null, resultado: "encerrada" | "interrompida" | null) => {
       const aprId = await novaApr(osId, por, "aprovada", new Date(h(inicio).getTime() - 10 * 60_000).toISOString());
+      const id = randomUUID();
       await amb.db.insert(execucao).values({
-        id: randomUUID(),
+        id,
         osId,
         aprId,
         executorId: por.id,
@@ -82,12 +83,14 @@ describe("Dashboards de Indicadores e exportação", () => {
         descricaoAtividade: resultado === "encerrada" ? "Feito" : null,
         motivo: resultado === "interrompida" ? "Vazamento no local" : null,
       });
+      return id;
     };
 
     const o1 = await novaOs("o1", { equipeId: norte, tipo: "preventiva", status: "encerrada", inicio: "2026-10-05", local: critico!.id });
     await novaExecucao(o1, u.ana, "2026-10-10T12:00:00Z", "2026-10-10T14:00:00Z", "encerrada");
     const o2 = await novaOs("o2", { equipeId: norte, tipo: "corretiva", status: "encerrada", inicio: "2026-10-08", local: comum!.id, cienciaEm: AGORA, exportadaEm: AGORA });
-    await novaExecucao(o2, u.bruno, "2026-10-12T12:00:00Z", "2026-10-12T13:00:00Z", "encerrada");
+    const e2 = await novaExecucao(o2, u.bruno, "2026-10-12T12:00:00Z", "2026-10-12T13:00:00Z", "encerrada");
+    await amb.db.insert(execucaoPausa).values({ id: randomUUID(), execucaoId: e2, inicio: h("2026-10-12T12:20:00Z"), fim: h("2026-10-12T12:30:00Z"), motivo: "descanso" });
     await novaOs("o3", { equipeId: norte, tipo: "preventiva", status: "liberada", inicio: "2026-10-01", local: comum!.id });
     const o4 = await novaOs("o4", { equipeId: sul, tipo: "preventiva", status: "pendente", inicio: "2026-10-02", local: critico!.id });
     await novaApr(o4, u.carla, "bloqueada", "2026-10-03T12:00:00Z");
@@ -113,7 +116,7 @@ describe("Dashboards de Indicadores e exportação", () => {
       assert.deepEqual(r.encerradas, { total: 2, anterior: 1, corretivas: 1, preventivas: 1 });
       assert.deepEqual(r.preventivas, { encerradas: 1, atrasadas_justificadas: 1, atrasadas_sem_justificativa: 1 });
       assert.deepEqual(r.aprs, { total: 5, bloqueadas: 1, anterior: 1, bloqueadas_anterior: 0 });
-      assert.deepEqual(r.tempo, { execucoes: 2, tempo_liquido_medio_min: 90 });
+      assert.deepEqual(r.tempo, { execucoes: 2, tempo_liquido_medio_min: 85, pausa_media_min: 5, proporcao_pausa: 0.0556 });
       assert.equal(r.interrupcoes, 1);
       assert.deepEqual(r.pendencias, { a_exportar: 2, sem_ciencia: 2, execucoes_esquecidas: 1, atividades_sem_modelo: 1 });
     });
@@ -137,7 +140,31 @@ describe("Dashboards de Indicadores e exportação", () => {
       assert.equal(r.serie.length, 30);
       assert.deepEqual(r.serie.find((p: any) => p.inicio === "2026-10-10"), { inicio: "2026-10-10", fim: "2026-10-11", corretivas: 0, preventivas: 1 });
       assert.deepEqual(r.serie.find((p: any) => p.inicio === "2026-10-12"), { inicio: "2026-10-12", fim: "2026-10-13", corretivas: 1, preventivas: 0 });
-      assert.deepEqual(r.tempo, { execucoes: 2, tempo_liquido_medio_min: 90, pausa_media_min: 0, proporcao_pausa: 0 });
+      // o1 (Ana, 2h sem pausa) e o2 (Bruno, 1h com 10 min de descanso).
+      assert.deepEqual(r.tempo, {
+        execucoes: 2,
+        tempo_total_medio_min: 90,
+        tempo_liquido_medio_min: 85,
+        pausa_media_min: 5,
+        proporcao_pausa: 0.0556,
+        execucoes_com_pausa: 1,
+        pausas_por_execucao: 0.5,
+        por_motivo: [{ motivo: "descanso", pausas: 1, minutos: 10 }],
+        os_com_mais_pausa: [
+          {
+            os_id: ids.o2,
+            numero_ordem: "7000002",
+            titulo: "OS o2",
+            executor: "Bruno Norte",
+            fim: "2026-10-12T13:00:00.000Z",
+            tempo_total_min: 60,
+            tempo_liquido_min: 50,
+            pausa_min: 10,
+            pausas: 1,
+            proporcao_pausa: 0.1667,
+          },
+        ],
+      });
       assert.equal(r.interrupcoes.total, 1);
       assert.deepEqual(
         r.interrupcoes.recentes.map((i: any) => [i.os_id, i.motivo, i.executor]),
@@ -157,7 +184,17 @@ describe("Dashboards de Indicadores e exportação", () => {
   describe("GET /indicadores/equipes", () => {
     it("por equipe e por técnico, com o cadastro para o admin", async () => {
       const r = await pedir("/indicadores/equipes", u.admin!);
-      assert.deepEqual(r.totais, { equipes: 2, tecnicos_ativos: 5, tecnicos_com_execucao: 2, execucoes: 2, tempo_liquido_medio_min: 90 });
+      assert.deepEqual(r.totais, { equipes: 2, tecnicos_ativos: 5, tecnicos_com_execucao: 2, execucoes: 2, tempo_liquido_medio_min: 85 });
+      assert.deepEqual(r.tempo, {
+        execucoes: 2,
+        tempo_total_medio_min: 90,
+        tempo_liquido_medio_min: 85,
+        pausa_media_min: 5,
+        proporcao_pausa: 0.0556,
+        execucoes_com_pausa: 1,
+        pausas_por_execucao: 0.5,
+        por_motivo: [{ motivo: "descanso", pausas: 1, minutos: 10 }],
+      });
       assert.deepEqual(r.equipes, [
         {
           id: norte,
@@ -166,9 +203,12 @@ describe("Dashboards de Indicadores e exportação", () => {
           tecnicos: 3,
           preventivas: { encerradas: 1, atrasadas_justificadas: 0, atrasadas_sem_justificativa: 1 },
           execucoes: 2,
-          tempo_liquido_medio_min: 90,
-          pausa_media_min: 0,
-          proporcao_pausa: 0,
+          tempo_total_medio_min: 90,
+          tempo_liquido_medio_min: 85,
+          pausa_media_min: 5,
+          proporcao_pausa: 0.0556,
+          execucoes_com_pausa: 1,
+          pausas_por_execucao: 0.5,
           aprs: 2,
           aprs_bloqueadas: 0,
           interrompidas: 0,
@@ -180,9 +220,12 @@ describe("Dashboards de Indicadores e exportação", () => {
           tecnicos: 2,
           preventivas: { encerradas: 0, atrasadas_justificadas: 1, atrasadas_sem_justificativa: 0 },
           execucoes: 0,
+          tempo_total_medio_min: null,
           tempo_liquido_medio_min: null,
           pausa_media_min: null,
           proporcao_pausa: null,
+          execucoes_com_pausa: 0,
+          pausas_por_execucao: null,
           aprs: 3,
           aprs_bloqueadas: 1,
           interrompidas: 1,
@@ -192,7 +235,7 @@ describe("Dashboards de Indicadores e exportação", () => {
         r.tecnicos.map((t: any) => [t.nome, t.execucoes, t.tempo_liquido_medio_min, t.aprs, t.aprs_bloqueadas, t.interrompidas]),
         [
           ["Ana Norte", 1, 120, 1, 0, 0],
-          ["Bruno Norte", 1, 60, 1, 0, 0],
+          ["Bruno Norte", 1, 50, 1, 0, 0],
           ["Carla Sul", 0, null, 3, 1, 1],
           ["Davi Sul", 0, null, 0, 0, 0],
           ["Sandra Supervisora", 0, null, 0, 0, 0],
@@ -242,10 +285,15 @@ describe("Dashboards de Indicadores e exportação", () => {
       assert.equal(r.cadastro, null);
     });
 
-    it("OS: as interrupções recentes não dizem quem interrompeu", async () => {
+    it("OS: as interrupções recentes e as OS com mais pausa não dizem quem executou", async () => {
       const r = await pedir("/indicadores/os", u.carla!);
       assert.equal(r.interrupcoes.total, 1);
       assert.equal(r.interrupcoes.recentes[0].executor, null);
+      const norte = await pedir("/indicadores/os", u.ana!);
+      assert.deepEqual(
+        norte.tempo.os_com_mais_pausa.map((o: any) => [o.numero_ordem, o.pausa_min, o.executor]),
+        [["7000002", 10, null]],
+      );
     });
 
     it("não consulta outra equipe nem o dashboard do supervisor com nomes", async () => {

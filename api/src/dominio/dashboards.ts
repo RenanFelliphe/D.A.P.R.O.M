@@ -3,7 +3,7 @@ import type { Db } from "../db/conexao";
 import { apr, atividade, equipe, execucao, localInstalacao, os, PERFIS, reprogramacao, usuario, type Perfil } from "../db/schema";
 import { ehSupervisor, veTodasAsEquipes, type UsuarioAutenticado } from "../http/autenticacao";
 import { condicaoEscopo, diaNoFuso, noEscopo, todas } from "./painel-comum";
-import { situacaoDasPreventivas, temposDeExecucao } from "./painel-indicadores";
+import { situacaoDasPreventivas, temposDeExecucao, type MedidaDeTempo } from "./painel-indicadores";
 import { diaDoInstante, diaEntre, faixaDoDia, instanteEntre, resolverPeriodo, type Periodo } from "./periodo";
 
 /**
@@ -162,7 +162,7 @@ export async function dashboardGeral(db: Db, eu: UsuarioAutenticado, f: FiltroDo
     encerradas: { total: fechadas.total, anterior: fechadas.anterior, corretivas: fechadas.corretivas, preventivas: fechadas.preventivas },
     preventivas: { encerradas: preventivas.encerradas, atrasadasJustificadas: preventivas.atrasadasJustificadas, atrasadasSemJustificativa: preventivas.atrasadasSemJustificativa },
     aprs,
-    tempo: { execucoes: tempo.execucoes, tempoLiquidoMedioMin: tempo.tempoLiquidoMedioMin },
+    tempo: { execucoes: tempo.execucoes, tempoLiquidoMedioMin: tempo.tempoLiquidoMedioMin, pausaMediaMin: tempo.pausaMediaMin, proporcaoPausa: tempo.proporcaoPausa },
     interrupcoes: interrompidas.total,
     pendencias: aFazer,
   };
@@ -189,7 +189,7 @@ export async function dashboardDeOs(db: Db, eu: UsuarioAutenticado, f: FiltroDoD
       .from(os)
       .where(todas(diaEntre(os.dataInicioProg, p.inicio, p.fim), filtroOs)),
     situacaoDasPreventivas(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }, hoje),
-    temposDeExecucao(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }),
+    temposDeExecucao(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId, comExecutor: acompanhaAEquipe(eu) }),
     interrupcoes(db, filtroOs, p, acompanhaAEquipe(eu)),
     db.select({ total: contagem }).from(reprogramacao).innerJoin(os, eq(os.id, reprogramacao.osId)).where(todas(instanteEntre(reprogramacao.criadaEm, p.inicio, p.fim), filtroOs)),
     db
@@ -213,7 +213,7 @@ export async function dashboardDeOs(db: Db, eu: UsuarioAutenticado, f: FiltroDoD
     encerradas: osEncerradas,
     serie,
     preventivas: { encerradas: preventivas.encerradas, atrasadasJustificadas: preventivas.atrasadasJustificadas, atrasadasSemJustificativa: preventivas.atrasadasSemJustificativa },
-    tempo: { execucoes: tempo.execucoes, tempoLiquidoMedioMin: tempo.tempoLiquidoMedioMin, pausaMediaMin: tempo.pausaMediaMin, proporcaoPausa: tempo.proporcaoPausa },
+    tempo: semGrupos(tempo),
     interrupcoes: interrompidas,
     reprogramacoes: reprogramadas?.total ?? 0,
     locais,
@@ -221,6 +221,20 @@ export async function dashboardDeOs(db: Db, eu: UsuarioAutenticado, f: FiltroDoD
 }
 
 const mapaPor = <T extends Record<string, unknown>>(linhas: T[], chave: keyof T) => new Map(linhas.map((l) => [l[chave] as string, l]));
+
+/** O indicador de tempo sem as quebras por equipe e por técnico (que os dashboards entregam nas próprias linhas). */
+function semGrupos({ porEquipe: _e, porUsuario: _u, ...resto }: Awaited<ReturnType<typeof temposDeExecucao>>) {
+  return resto;
+}
+
+const SEM_MEDIDA: MedidaDeTempo = { execucoes: 0, tempoTotalMedioMin: null, tempoLiquidoMedioMin: null, pausaMediaMin: null, proporcaoPausa: null, execucoesComPausa: 0, pausasPorExecucao: null };
+
+/** As medidas de tempo de uma equipe ou técnico; quem não encerrou execução no período fica zerado. */
+function medidaOuVazia(t: MedidaDeTempo | undefined): MedidaDeTempo {
+  if (!t) return SEM_MEDIDA;
+  const { execucoes, tempoTotalMedioMin, tempoLiquidoMedioMin, pausaMediaMin, proporcaoPausa, execucoesComPausa, pausasPorExecucao } = t;
+  return { execucoes, tempoTotalMedioMin, tempoLiquidoMedioMin, pausaMediaMin, proporcaoPausa, execucoesComPausa, pausasPorExecucao };
+}
 
 /**
  * Dashboard de equipes e usuários: por equipe (técnicos ativos, preventivas, execuções e tempo, APRs e bloqueios,
@@ -281,10 +295,7 @@ export async function dashboardDeEquipes(db: Db, eu: UsuarioAutenticado, f: Filt
         atrasadasJustificadas: prev?.atrasadasJustificadas ?? 0,
         atrasadasSemJustificativa: prev?.atrasadasSemJustificativa ?? 0,
       },
-      execucoes: t?.execucoes ?? 0,
-      tempoLiquidoMedioMin: t?.tempoLiquidoMedioMin ?? null,
-      pausaMediaMin: t?.pausaMediaMin ?? null,
-      proporcaoPausa: t?.proporcaoPausa ?? null,
+      ...medidaOuVazia(t),
       aprs: aprsDaEquipe.get(e.id)?.aprs ?? 0,
       aprsBloqueadas: aprsDaEquipe.get(e.id)?.bloqueadas ?? 0,
       interrompidas: interrupcoesDaEquipe.get(e.id)?.total ?? 0,
@@ -312,10 +323,7 @@ export async function dashboardDeEquipes(db: Db, eu: UsuarioAutenticado, f: Filt
         matricula: u.matricula,
         ativo: u.ativo,
         equipeNome: u.equipeNome,
-        execucoes: t?.execucoes ?? 0,
-        tempoLiquidoMedioMin: t?.tempoLiquidoMedioMin ?? null,
-        pausaMediaMin: t?.pausaMediaMin ?? null,
-        proporcaoPausa: t?.proporcaoPausa ?? null,
+        ...medidaOuVazia(t),
         aprs: aprsDoTecnico.get(u.id)?.aprs ?? 0,
         aprsBloqueadas: aprsDoTecnico.get(u.id)?.bloqueadas ?? 0,
         interrompidas: interrupcoesDoTecnico.get(u.id)?.total ?? 0,
@@ -336,6 +344,8 @@ export async function dashboardDeEquipes(db: Db, eu: UsuarioAutenticado, f: Filt
       execucoes: tempo.execucoes,
       tempoLiquidoMedioMin: tempo.tempoLiquidoMedioMin,
     },
+    /** O tempo de execução do conjunto, com a pausa por motivo (a lista das OS com mais pausa fica no dashboard de OS). */
+    tempo: (({ osComMaisPausa: _os, ...resto }) => resto)(semGrupos(tempo)),
     equipes: linhasDeEquipe,
     tecnicos: pessoal ? tecnicos : [],
     cadastro: f.comCadastro ? await estadoDoCadastro(db, f.equipeId) : null,
