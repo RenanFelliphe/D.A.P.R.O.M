@@ -1,7 +1,7 @@
 /** Tipos das respostas de OS usadas nas telas do técnico (lista, detalhe e APR) e pequenas regras sobre elas. Chaves em snake_case, como a `api` devolve. */
 
 import type { BadgeTone } from "@/components/ui/Badge";
-import type { OsStatus, Paginacao } from "./tipos";
+import type { DocumentoDeEvidencia, OsStatus, Paginacao } from "./tipos";
 
 export interface LocalDaOs {
   id: string;
@@ -50,6 +50,8 @@ export interface ItemReprovadoDaApr {
   resposta: "sim" | "nao" | "na";
   observacao: string | null;
   fotos: { id: string; foto_path: string; capturada_em: string; latitude: number | null; longitude: number | null }[];
+  /** PDFs anexados ao item; ausente na API antiga. */
+  documentos?: DocumentoDeEvidencia[];
 }
 
 /** Uma APR do histórico da OS (`aprs[]` do `GET /os/{id}`). */

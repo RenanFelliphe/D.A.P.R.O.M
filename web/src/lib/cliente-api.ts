@@ -79,14 +79,22 @@ export async function comprimirFoto(arquivo: Blob): Promise<Blob> {
   }
 }
 
+/** Maior PDF que a `api` aceita como evidência. */
+export const LIMITE_PDF = 10 * 1024 * 1024;
+
+/** O arquivo escolhido é um PDF? Pelo tipo que o navegador declara ou, se ele não declarar, pela extensão. */
+export const pareceUmPdf = (arquivo: File) => arquivo.type === "application/pdf" || (!arquivo.type && /\.pdf$/i.test(arquivo.name));
+
 /**
- * Envia uma foto ou assinatura (`PUT /arquivos/{id}`) com um id gerado aqui e devolve o id, que os eventos referenciam
- * (`arquivo_id`). Fotos são comprimidas antes; reenviar o mesmo id e conteúdo não tem efeito.
+ * Envia uma foto, uma assinatura ou um PDF de evidência (`PUT /arquivos/{id}`) com um id gerado aqui e devolve o id, que
+ * os eventos referenciam (`arquivo_id`). Fotos são comprimidas antes; o PDF vai como está (a `api` confere o conteúdo e
+ * o limite de 10 MB). Reenviar o mesmo id e conteúdo não tem efeito.
  */
-export async function enviarArquivo(arquivo: Blob, tipo: "foto" | "assinatura", id: string = novoId()): Promise<string> {
+export async function enviarArquivo(arquivo: Blob, tipo: "foto" | "assinatura" | "pdf", id: string = novoId()): Promise<string> {
   const conteudo = tipo === "foto" ? await comprimirFoto(arquivo) : arquivo;
+  const nome = tipo === "foto" ? "foto.jpg" : tipo === "pdf" ? "documento.pdf" : "assinatura.png";
   const form = new FormData();
-  form.set("arquivo", new File([conteudo], tipo === "foto" ? "foto.jpg" : "assinatura.png", { type: conteudo.type || "image/png" }));
+  form.set("arquivo", new File([conteudo], nome, { type: tipo === "pdf" ? "application/pdf" : conteudo.type || "image/png" }));
   form.set("tipo", tipo);
   await lerResposta(await fetch(`/api/arquivos/${id}`, { method: "PUT", body: form }));
   return id;

@@ -1,10 +1,20 @@
 import { Badge } from "@/components/ui/Badge";
+import { DocumentosAnexados } from "@/components/ui/DocumentosAnexados";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
 import { hora } from "@/lib/formatar";
 import type { ItemReprovadoDaApr } from "@/lib/os-app";
 
-/** Card de um item reprovado, com a resposta, a observação e as fotos da evidência. */
+/** "observação, 2 fotos e 1 PDF": o que a evidência do item reprovado reuniu. */
+function resumoDaEvidencia(fotos: number, pdfs: number) {
+  const partes = ["observação"];
+  if (fotos > 0) partes.push(`${fotos} foto${fotos > 1 ? "s" : ""}`);
+  if (pdfs > 0) partes.push(`${pdfs} PDF${pdfs > 1 ? "s" : ""}`);
+  return partes.length === 1 ? partes[0] : `${partes.slice(0, -1).join(", ")} e ${partes.at(-1)}`;
+}
+
+/** Card de um item reprovado, com a resposta, a observação, as fotos e os PDFs da evidência. */
 export function ItemReprovadoCard({ item, numero }: { item: ItemReprovadoDaApr; numero: number }) {
+  const documentos = item.documentos ?? [];
   return (
     <div className="card stack g6">
       <span className="mono small">Item reprovado {numero}</span>
@@ -13,9 +23,7 @@ export function ItemReprovadoCard({ item, numero }: { item: ItemReprovadoDaApr; 
         <Badge tone="dark" style={{ background: "var(--blq)" }}>
           Resposta: {item.resposta === "sim" ? "Sim" : item.resposta === "nao" ? "Não" : "NA"}
         </Badge>
-        <span className="small">
-          {item.fotos.length > 0 ? `Evidência: observação e ${item.fotos.length} foto${item.fotos.length > 1 ? "s" : ""}` : "Evidência: observação"}
-        </span>
+        <span className="small">Evidência: {resumoDaEvidencia(item.fotos.length, documentos.length)}</span>
       </div>
       {item.observacao && (
         <p className="muted" style={{ fontSize: 13.5 }}>
@@ -40,6 +48,7 @@ export function ItemReprovadoCard({ item, numero }: { item: ItemReprovadoDaApr; 
           ))}
         </div>
       )}
+      <DocumentosAnexados documentos={documentos} />
     </div>
   );
 }

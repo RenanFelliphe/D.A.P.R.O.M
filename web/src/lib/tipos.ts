@@ -109,3 +109,13 @@ export function iniciaisDe(nome: string): string {
   const letras = partes.length > 1 ? partes[0]![0]! + partes[partes.length - 1]![0]! : partes[0]!.slice(0, 2);
   return letras.toUpperCase();
 }
+
+/** Documento em PDF de uma evidência (laudo, atestado, relatório), como a `api` devolve em `documentos`, ao lado de `fotos`. */
+export interface DocumentoDeEvidencia {
+  id: string;
+  /** Id para `GET /arquivos/{id}/url`. */
+  arquivo_path: string;
+  /** Nome do arquivo anexado; nulo quando o aparelho não informou. */
+  nome: string | null;
+  capturada_em: string;
+}

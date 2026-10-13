@@ -18,6 +18,7 @@ import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
 import {
   abrirRevisao,
+  adicionarDocumento,
   adicionarFoto,
   avancar,
   avisoAoDescartar,
@@ -27,6 +28,7 @@ import {
   montarAvaliacao,
   montarPayload,
   observar,
+  removerDocumento,
   removerFoto,
   resumoDe,
   responder,
@@ -35,6 +37,7 @@ import {
   voltarDaRevisao,
   type Avaliacao,
   type Colega,
+  type EvidenciaDoItem,
   type RascunhoApr,
   type Resposta,
 } from "@/lib/apr";
@@ -52,7 +55,7 @@ interface ChecklistScreenProps {
 /** Resposta de `POST /aprs/avaliar`. */
 interface RespostaDaAvaliacao {
   resultado: Avaliacao["resultado"];
-  reprovados: { item_id: string; texto: string; evidencia: "foto" | "texto" }[];
+  reprovados: { item_id: string; texto: string; evidencia: EvidenciaDoItem }[];
 }
 
 /** Texto para o usuário de qualquer falha ao enviar o evento. */
@@ -139,6 +142,11 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
     atualizar((atual) => adicionarFoto(atual, itemId, { id: novoId(), arquivoId: foto.arquivoId, capturadaEm: new Date().toISOString(), miniatura, ...(posicao ?? {}) }));
   }
 
+  function aoPdfEnviado(itemId: string, pdf: { arquivoId: string; nome: string }) {
+    // Como a foto, o PDF não muda as respostas.
+    atualizar((atual) => adicionarDocumento(atual, itemId, { id: novoId(), arquivoId: pdf.arquivoId, nome: pdf.nome, capturadaEm: new Date().toISOString() }));
+  }
+
   /**
    * "Concluir e validar": a `api` diz se a APR passa. Aprovada vai para as assinaturas; reprovada já fica registrada como
    * bloqueada (a OS fica pendente e o supervisor é avisado) e trava as respostas até a evidência ser enviada.
@@ -196,6 +204,8 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
               aoObservar={(itemId, texto) => atualizar((atual) => observar(atual, itemId, texto))}
               aoFotoEnviada={aoFotoEnviada}
               aoRemoverFoto={(itemId, fotoId) => atualizar((atual) => removerFoto(atual, itemId, fotoId))}
+              aoPdfEnviado={aoPdfEnviado}
+              aoRemoverPdf={(itemId, documentoId) => atualizar((atual) => removerDocumento(atual, itemId, documentoId))}
               aoErroDeFoto={setErro}
               aoRegistrar={registrarImpedimento}
               registrando={concluindo}

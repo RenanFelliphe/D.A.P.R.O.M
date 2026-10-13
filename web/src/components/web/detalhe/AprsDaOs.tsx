@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/Badge";
+import { DocumentosAnexados } from "@/components/ui/DocumentosAnexados";
 import { Icon } from "@/components/ui/Icon";
 import { Panel, TableWrap } from "@/components/web/Panel";
 import type { AprDaOs, RespostaApr } from "@/data/detalhe";
@@ -118,6 +119,7 @@ function AprCartao({ apr, numero, total }: { apr: AprDaOs; numero: number; total
             {item.observacao && <> — “{item.observacao}”</>}
           </span>
           <FotosDaEvidencia fotos={item.fotos} descricao="Evidência do item reprovado" />
+          <DocumentosAnexados documentos={item.documentos ?? []} />
         </div>
       ))}
 

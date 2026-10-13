@@ -1,3 +1,4 @@
+import { DocumentosAnexados } from "@/components/ui/DocumentosAnexados";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
 import { dataHora } from "@/lib/formatar";
 import type { AprDaOs, ExecucaoDaOs, FotoDaOs } from "./tipos";
@@ -24,7 +25,7 @@ function Fotos({ fotos }: { fotos: FotoDaOs[] }) {
   );
 }
 
-/** Uma APR bloqueada: quem preencheu, os itens reprovados com a observação do técnico e as fotos. */
+/** Uma APR bloqueada: quem preencheu, os itens reprovados com a observação do técnico, as fotos e os PDFs. */
 function AprBloqueada({ apr }: { apr: AprDaOs }) {
   const nomes = apr.participantes.map((p) => p.nome).join(", ");
   return (
@@ -53,6 +54,7 @@ function AprBloqueada({ apr }: { apr: AprDaOs }) {
             </div>
           )}
           <Fotos fotos={item.fotos} />
+          <DocumentosAnexados documentos={item.documentos ?? []} />
         </div>
       ))}
       {apr.observacao_geral && apr.observacao_geral !== "Sem observações" && (
@@ -67,7 +69,7 @@ function AprBloqueada({ apr }: { apr: AprDaOs }) {
   );
 }
 
-/** Uma execução interrompida por condição de risco: motivo e fotos. */
+/** Uma execução interrompida por condição de risco: motivo, fotos e PDFs. */
 function ExecucaoInterrompida({ execucao }: { execucao: ExecucaoDaOs }) {
   return (
     <div className="blockbox" style={{ flexDirection: "column" }}>
@@ -81,6 +83,7 @@ function ExecucaoInterrompida({ execucao }: { execucao: ExecucaoDaOs }) {
         <div style={{ fontSize: 14.5, fontWeight: 600 }}>{execucao.motivo ?? "Sem motivo registrado."}</div>
       </div>
       <Fotos fotos={execucao.fotos} />
+      <DocumentosAnexados documentos={execucao.documentos ?? []} />
     </div>
   );
 }

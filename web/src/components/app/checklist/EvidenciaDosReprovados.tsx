@@ -2,13 +2,16 @@ import { EvidenciaCard } from "@/components/app/checklist/EvidenciaCard";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
-import { reprovadosSemEvidencia, type FotoDoRascunho, type RascunhoApr } from "@/lib/apr";
+import { documentosDe, reprovadosSemEvidencia, type FotoDoRascunho, type RascunhoApr } from "@/lib/apr";
 
 interface EvidenciaDosReprovadosProps {
   rascunho: RascunhoApr;
   aoObservar: (itemId: string, texto: string) => void;
   aoFotoEnviada: (itemId: string, foto: { arquivoId: string; previa: string }) => void;
   aoRemoverFoto: (itemId: string, fotoId: string) => void;
+  aoPdfEnviado: (itemId: string, pdf: { arquivoId: string; nome: string }) => void;
+  aoRemoverPdf: (itemId: string, documentoId: string) => void;
+  /** Falha ao enviar uma foto ou um PDF. */
   aoErroDeFoto: (mensagem: string) => void;
   aoRegistrar: () => void;
   registrando: boolean;
@@ -20,7 +23,18 @@ interface EvidenciaDosReprovadosProps {
  * APR bloqueada já está registrada (a OS ficou pendente e o supervisor foi avisado); cada item reprovado pede a sua
  * evidência, que completa o registro. As respostas não mudam mais.
  */
-export function EvidenciaDosReprovados({ rascunho, aoObservar, aoFotoEnviada, aoRemoverFoto, aoErroDeFoto, aoRegistrar, registrando, erro }: EvidenciaDosReprovadosProps) {
+export function EvidenciaDosReprovados({
+  rascunho,
+  aoObservar,
+  aoFotoEnviada,
+  aoRemoverFoto,
+  aoPdfEnviado,
+  aoRemoverPdf,
+  aoErroDeFoto,
+  aoRegistrar,
+  registrando,
+  erro,
+}: EvidenciaDosReprovadosProps) {
   const reprovados = rascunho.avaliacao?.reprovados ?? [];
   const varios = reprovados.length > 1;
   const faltando = reprovadosSemEvidencia(rascunho);
@@ -36,8 +50,8 @@ export function EvidenciaDosReprovados({ rascunho, aoObservar, aoFotoEnviada, ao
           <h2>{varios ? `${reprovados.length} itens reprovaram` : "Um item reprovou"}</h2>
           <p>
             A atividade está impedida: a APR ficou registrada como bloqueada, a OS está pendente e o supervisor foi avisado. Para cada item
-            abaixo, registre o motivo{reprovados.some((x) => x.evidencia === "foto") ? " e anexe a foto" : ""}. As respostas não podem mais ser
-            alteradas.
+            abaixo, registre o motivo{reprovados.some((x) => x.evidencia !== "texto") ? " e anexe o que ele pede (foto ou PDF)" : ""}. As respostas não
+            podem mais ser alteradas.
           </p>
         </div>
       </div>
@@ -48,9 +62,12 @@ export function EvidenciaDosReprovados({ rascunho, aoObservar, aoFotoEnviada, ao
           item={item}
           observacao={rascunho.respostas[item.itemId]?.observacao ?? ""}
           fotos={fotosDe(item.itemId)}
+          documentos={documentosDe(rascunho, item.itemId)}
           aoObservar={(texto) => aoObservar(item.itemId, texto)}
           aoFotoEnviada={(foto) => aoFotoEnviada(item.itemId, foto)}
           aoRemoverFoto={(fotoId) => aoRemoverFoto(item.itemId, fotoId)}
+          aoPdfEnviado={(pdf) => aoPdfEnviado(item.itemId, pdf)}
+          aoRemoverPdf={(documentoId) => aoRemoverPdf(item.itemId, documentoId)}
           aoErroDeFoto={aoErroDeFoto}
         />
       ))}

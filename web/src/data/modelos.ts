@@ -5,7 +5,8 @@ import type { OsStatus } from "@/lib/tipos";
 
 export type RespostaBloqueante = "sim" | "nao";
 export type TipoItem = "eliminatorio" | "alerta";
-export type EvidenciaItem = "foto" | "texto";
+/** O que o item reprovado exige além da observação: foto, PDF (laudo, certificado) ou só o texto. */
+export type EvidenciaItem = "foto" | "texto" | "pdf";
 export type SecaoItem = "verificacao" | "medida_preventiva";
 
 /** Resumo de uma versão (`GET /modelos-apr` e `GET /modelos-apr/{codigo}`). */
@@ -174,6 +175,7 @@ export const rotuloResposta: Record<RespostaBloqueante, string> = {
 export const rotuloEvidencia: Record<EvidenciaItem, string> = {
   foto: "Foto",
   texto: "Texto",
+  pdf: "PDF",
 };
 
 export const rotuloSecao: Record<SecaoItem, string> = {

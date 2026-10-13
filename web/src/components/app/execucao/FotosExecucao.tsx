@@ -2,7 +2,9 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { AdicionarFoto } from "@/components/ui/AdicionarFoto";
+import { AnexarPdf } from "@/components/ui/AnexarPdf";
 import { Req } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
 import { hora } from "@/lib/formatar";
 import { novoId } from "@/lib/cliente-api";
 
@@ -24,6 +26,18 @@ export const comoEvidencia = (f: FotoDaExecucao) => ({
   capturada_em: f.capturadaEm,
   ...(f.latitude !== undefined && f.longitude !== undefined ? { latitude: f.latitude, longitude: f.longitude } : {}),
 });
+
+/** PDF já enviado (`PUT /arquivos/{id}` com `tipo=pdf`), pronto para virar uma evidência do evento: um laudo, um relatório. */
+export interface PdfDaExecucao {
+  /** Id da evidência. */
+  id: string;
+  arquivoId: string;
+  nome: string;
+  capturadaEm: string;
+}
+
+/** PDF no formato do payload dos eventos de execução. */
+export const pdfComoEvidencia = (d: PdfDaExecucao) => ({ id: d.id, arquivo_id: d.arquivoId, tipo: "pdf" as const, nome: d.nome, capturada_em: d.capturadaEm });
 
 /** Posição do aparelho, se o usuário permitir; segue sem ela se negado, indisponível ou demorada. */
 function posicaoAtual(): Promise<{ latitude: number; longitude: number } | null> {
@@ -91,6 +105,67 @@ export function FotosExecucao({ fotos, onChange, maximo = 10, desabilitado }: Fo
         ))}
         {fotos.length < maximo && <AdicionarFoto onEnviada={anexar} onErro={setErro} desabilitado={desabilitado} />}
       </div>
+      {erro && (
+        <span className="small" role="alert" style={{ color: "var(--blq)" }}>
+          {erro}
+        </span>
+      )}
+    </div>
+  );
+}
+
+interface PdfsExecucaoProps {
+  documentos: PdfDaExecucao[];
+  onChange: Dispatch<SetStateAction<PdfDaExecucao[]>>;
+  /** Máximo de PDFs (a `api` aceita 5 por execução). */
+  maximo?: number;
+  desabilitado?: boolean;
+}
+
+/** Documentos em PDF anexados à execução, além das fotos (opcionais): laudo, relatório de medição, termo do cliente. */
+export function PdfsExecucao({ documentos, onChange, maximo = 5, desabilitado }: PdfsExecucaoProps) {
+  const [erro, setErro] = useState<string | null>(null);
+
+  function anexar({ arquivoId, nome }: { arquivoId: string; nome: string }) {
+    setErro(null);
+    onChange((anteriores) => [...anteriores, { id: novoId(), arquivoId, nome, capturadaEm: new Date().toISOString() }]);
+  }
+
+  return (
+    <div className="field">
+      <div className="row between">
+        <label>
+          Documentos em PDF <span className="muted">· opcional, até {maximo}</span>
+        </label>
+        <span className="small">{documentos.length === 1 ? "1 documento" : `${documentos.length} documentos`}</span>
+      </div>
+      {documentos.length > 0 && (
+        <ul className="doc-lista">
+          {documentos.map((d) => (
+            <li key={d.id} className="doc-item">
+              <Icon name="file" size={16} />
+              <span className="doc-nome" title={d.nome}>
+                {d.nome}
+              </span>
+              <button
+                type="button"
+                className="btn btn-line btn-sm"
+                aria-label={`Remover o PDF ${d.nome}`}
+                disabled={desabilitado}
+                onClick={() => onChange((anteriores) => anteriores.filter((x) => x.id !== d.id))}
+                style={{ height: 28, padding: "0 8px" }}
+              >
+                <Icon name="x" size={13} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {documentos.length < maximo && (
+        <div className="photo-grid">
+          <AnexarPdf onEnviado={anexar} onErro={setErro} desabilitado={desabilitado} rotulo={documentos.length > 0 ? "Outro PDF" : "Anexar PDF"} />
+        </div>
+      )}
       {erro && (
         <span className="small" role="alert" style={{ color: "var(--blq)" }}>
           {erro}

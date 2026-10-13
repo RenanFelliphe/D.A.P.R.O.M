@@ -29,11 +29,17 @@ export interface ItemDoModelo {
   permite_na: boolean;
 }
 
+/**
+ * O que o item reprovado pede, além da observação: `foto` (ao menos uma), `pdf` (ao menos um documento, como um laudo
+ * ou certificado) ou `texto` (só a justificativa). Fotos e PDFs a mais são sempre aceitos.
+ */
+export type EvidenciaDoItem = "foto" | "texto" | "pdf";
+
 /** Item que reprovou, como a `api` o devolve em `POST /aprs/avaliar`, com a evidência que ele pede. */
 export interface ItemReprovado {
   itemId: string;
   texto: string;
-  evidencia: "foto" | "texto";
+  evidencia: EvidenciaDoItem;
 }
 
 /** Resposta de `POST /aprs/avaliar`: o resultado das respostas e, se bloqueada, o que reprovou. */
@@ -92,6 +98,16 @@ export interface FotoDoRascunho {
   miniatura?: string;
 }
 
+/** PDF já enviado (`PUT /arquivos/{id}` com `tipo=pdf`), anexado a um item reprovado. */
+export interface DocumentoDoRascunho {
+  /** Id da evidência (nasce no cliente). */
+  id: string;
+  arquivoId: string;
+  /** Nome do arquivo escolhido, para exibir e para a `api` guardar. */
+  nome: string;
+  capturadaEm: string;
+}
+
 export interface RespostaDoRascunho {
   resposta: Resposta;
   observacao: string;
@@ -112,6 +128,8 @@ export interface RascunhoApr {
   riscos: string[];
   respostas: Record<string, RespostaDoRascunho>;
   fotos: Record<string, FotoDoRascunho[]>;
+  /** PDFs por item reprovado. Ausente nos rascunhos gravados antes de existir a evidência em PDF. */
+  documentos?: Record<string, DocumentoDoRascunho[]>;
   observacaoGeral: string;
   /** Posição (base 0) na lista de perguntas. */
   indice: number;
@@ -142,10 +160,15 @@ export const totalDePerguntas = (modelo: ModeloDoRascunho, riscosMarcados: strin
 
 const vazio = (texto: string | undefined) => !texto || texto.trim() === "";
 
-/** Reprovado sem a evidência exigida: observação sempre; foto, salvo quando a evidência do item é só texto. */
+/** Os PDFs anexados a um item do rascunho. */
+export const documentosDe = (r: RascunhoApr, itemId: string): DocumentoDoRascunho[] => r.documentos?.[itemId] ?? [];
+
+/** Reprovado sem a evidência exigida: observação sempre; mais uma foto ou um PDF, conforme o item (o de texto, nada). */
 export function faltaEvidencia(r: RascunhoApr, reprovado: ItemReprovado): boolean {
   if (vazio(r.respostas[reprovado.itemId]?.observacao)) return true;
-  return reprovado.evidencia === "foto" && (r.fotos[reprovado.itemId]?.length ?? 0) === 0;
+  if (reprovado.evidencia === "foto") return (r.fotos[reprovado.itemId]?.length ?? 0) === 0;
+  if (reprovado.evidencia === "pdf") return documentosDe(r, reprovado.itemId).length === 0;
+  return false;
 }
 
 /** Itens que a `api` reprovou e ainda estão sem a evidência exigida. */
@@ -186,7 +209,7 @@ export const continuaNasAssinaturas = (r: RascunhoApr) => r.avaliacao?.resultado
 /** Pergunta antes de descartar o rascunho. A APR bloqueada já está registrada: descartar só abre mão da evidência. */
 export const avisoAoDescartar = (r: RascunhoApr) =>
   estaTravada(r)
-    ? "Esta APR já foi registrada como bloqueada e o supervisor foi avisado. Descartar o rascunho só deixa de anexar a evidência (observações e fotos). Descartar mesmo assim?"
+    ? "Esta APR já foi registrada como bloqueada e o supervisor foi avisado. Descartar o rascunho só deixa de anexar a evidência (observações, fotos e PDFs). Descartar mesmo assim?"
     : "Descartar esta APR em andamento? As respostas e as fotos deste rascunho serão perdidas.";
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -217,6 +240,14 @@ export function adicionarFoto(r: RascunhoApr, itemId: string, foto: FotoDoRascun
 
 export function removerFoto(r: RascunhoApr, itemId: string, fotoId: string): RascunhoApr {
   return { ...r, fotos: { ...r.fotos, [itemId]: (r.fotos[itemId] ?? []).filter((f) => f.id !== fotoId) } };
+}
+
+export function adicionarDocumento(r: RascunhoApr, itemId: string, documento: DocumentoDoRascunho): RascunhoApr {
+  return { ...r, documentos: { ...r.documentos, [itemId]: [...documentosDe(r, itemId), documento] } };
+}
+
+export function removerDocumento(r: RascunhoApr, itemId: string, documentoId: string): RascunhoApr {
+  return { ...r, documentos: { ...r.documentos, [itemId]: documentosDe(r, itemId).filter((d) => d.id !== documentoId) } };
 }
 
 /** Tira da APR quem não está presente (o técnico logado sempre fica); se saiu o responsável, o técnico logado assume. */
@@ -260,19 +291,20 @@ function dadosDaApr(r: RascunhoApr) {
 export const montarAvaliacao = (r: RascunhoApr) => ({ ...dadosDaApr({ ...r, avaliacao: null }), os_id: r.osId });
 
 /**
- * Payload exato do evento `apr_concluida`; o `os_id` vai no envelope. As fotos são só dos itens que a `api` reprovou
- * (`avaliacao`). Na APR bloqueada, que a `api` registrou ao validar, o evento leva a evidência dos reprovados.
+ * Payload exato do evento `apr_concluida`; o `os_id` vai no envelope. As fotos e os PDFs são só dos itens que a `api`
+ * reprovou (`avaliacao`). Na APR bloqueada, que a `api` registrou ao validar, o evento leva a evidência dos reprovados.
  */
 export function montarPayload(r: RascunhoApr) {
-  const evidencias = (r.avaliacao?.reprovados ?? []).flatMap((i) =>
-    (r.fotos[i.itemId] ?? []).map((f) => ({
+  const evidencias = (r.avaliacao?.reprovados ?? []).flatMap((i) => [
+    ...(r.fotos[i.itemId] ?? []).map((f) => ({
       id: f.id,
       arquivo_id: f.arquivoId,
       item_id: i.itemId,
       capturada_em: f.capturadaEm,
       ...(f.latitude !== undefined && f.longitude !== undefined ? { latitude: f.latitude, longitude: f.longitude } : {}),
     })),
-  );
+    ...documentosDe(r, i.itemId).map((d) => ({ id: d.id, arquivo_id: d.arquivoId, tipo: "pdf" as const, nome: d.nome, item_id: i.itemId, capturada_em: d.capturadaEm })),
+  ]);
   return { ...dadosDaApr(r), evidencias };
 }
 
@@ -301,6 +333,7 @@ export function novoRascunho(d: {
     riscos: d.riscos,
     respostas: {},
     fotos: {},
+    documentos: {},
     observacaoGeral: "",
     indice: 0,
     modo: "pergunta",

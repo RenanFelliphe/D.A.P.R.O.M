@@ -43,7 +43,7 @@ export interface LocalReg {
 export interface ItemRegDoModelo extends ItemDoModelo {
   resposta_bloqueante: "sim" | "nao" | null;
   tipo: "eliminatorio" | "alerta";
-  evidencia: "foto" | "texto";
+  evidencia: "foto" | "texto" | "pdf";
 }
 
 export interface ModeloReg extends Omit<ModeloCompleto, "itens"> {
@@ -100,7 +100,8 @@ export interface AprReg {
   participantes: { usuario_id: string; funcao: "responsavel" | "executor"; assinatura_path: string; assinada_em: string }[];
   riscos: string[];
   respostas: { item_id: string; resposta: "sim" | "nao" | "na"; observacao: string | null; respondida_em: string }[];
-  evidencias: { id: string; arquivo_id: string; item_id: string; capturada_em: string; latitude: number | null; longitude: number | null }[];
+  /** Fotos e PDFs dos itens reprovados; sem `tipo`, é foto (a massa inicial só tem fotos). */
+  evidencias: { id: string; arquivo_id: string; item_id: string; capturada_em: string; latitude: number | null; longitude: number | null; tipo?: "foto" | "pdf"; nome?: string | null }[];
 }
 
 export interface FotoReg {
@@ -109,6 +110,14 @@ export interface FotoReg {
   capturada_em: string;
   latitude: number | null;
   longitude: number | null;
+}
+
+/** PDF anexado à execução (laudo, relatório), na forma de `documentos` da `api`. */
+export interface DocumentoReg {
+  id: string;
+  arquivo_path: string;
+  nome: string | null;
+  capturada_em: string;
 }
 
 export interface ExecucaoReg {
@@ -126,6 +135,8 @@ export interface ExecucaoReg {
   pausas: { id: string; inicio: string; fim: string | null; motivo: "almoco" | "descanso" | "outro" | null }[];
   assinaturas: { usuario_id: string; assinatura_path: string; assinada_em: string }[];
   fotos: FotoReg[];
+  /** PDFs anexados ao encerramento ou à interrupção; ausente na massa inicial. */
+  documentos?: DocumentoReg[];
 }
 
 export interface AlertaReg {
@@ -141,7 +152,7 @@ export interface AlertaReg {
 
 export interface ArquivoReg {
   id: string;
-  tipo: "foto" | "assinatura";
+  tipo: "foto" | "assinatura" | "pdf";
   /** Tipo de mídia; `bytes` é `null` nos arquivos da massa inicial (a imagem é desenhada na hora a partir do `rotulo`). */
   mime: string;
   bytes: Uint8Array | null;

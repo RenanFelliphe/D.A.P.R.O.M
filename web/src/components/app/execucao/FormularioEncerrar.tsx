@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AssinaturasExecutantes } from "@/components/app/execucao/AssinaturasExecutantes";
-import { FotosExecucao, comoEvidencia, type FotoDaExecucao } from "@/components/app/execucao/FotosExecucao";
+import { FotosExecucao, PdfsExecucao, comoEvidencia, pdfComoEvidencia, type FotoDaExecucao, type PdfDaExecucao } from "@/components/app/execucao/FotosExecucao";
 import { Button } from "@/components/ui/Button";
 import { Field, Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
@@ -21,11 +21,12 @@ interface FormularioEncerrarProps {
   onCancelar: () => void;
 }
 
-/** Encerramento: descrição da atividade, de 1 a 10 fotos e a assinatura de todos os participantes da APR. */
+/** Encerramento: descrição da atividade, de 1 a 10 fotos (e até 5 PDFs, opcionais) e a assinatura de todos os participantes da APR. */
 export function FormularioEncerrar({ osId, execucaoId, participantes, usuarioId, assinaturaDoUsuario, onEncerrada, onCancelar }: FormularioEncerrarProps) {
   const { ocupado, erro, executar } = useAcao();
   const [descricao, setDescricao] = useState("");
   const [fotos, setFotos] = useState<FotoDaExecucao[]>([]);
+  const [pdfs, setPdfs] = useState<PdfDaExecucao[]>([]);
   const [minhaAssinatura, setMinhaAssinatura] = useState(assinaturaDoUsuario);
   /** usuário → instante em que confirmou a assinatura. */
   const [assinadas, setAssinadas] = useState<Record<string, string>>({});
@@ -54,7 +55,7 @@ export function FormularioEncerrar({ osId, execucaoId, participantes, usuarioId,
           execucao_id: execucaoId,
           fim: new Date().toISOString(),
           descricao_atividade: descricao.trim(),
-          evidencias: fotos.map(comoEvidencia),
+          evidencias: [...fotos.map(comoEvidencia), ...pdfs.map(pdfComoEvidencia)],
           assinaturas: participantes.map((p) => ({ usuario_id: p.usuario_id, assinada_em: assinadas[p.usuario_id] })),
         },
       });
@@ -77,6 +78,7 @@ export function FormularioEncerrar({ osId, execucaoId, participantes, usuarioId,
       </div>
       <div className="panel" data-treino="enc-fotos">
         <FotosExecucao fotos={fotos} onChange={setFotos} desabilitado={ocupado} />
+        <PdfsExecucao documentos={pdfs} onChange={setPdfs} desabilitado={ocupado} />
       </div>
       <div className="panel" data-treino="enc-assinaturas">
         <AssinaturasExecutantes

@@ -1,22 +1,36 @@
 import { AdicionarFoto } from "@/components/ui/AdicionarFoto";
+import { AnexarPdf } from "@/components/ui/AnexarPdf";
 import { Field, Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
-import type { FotoDoRascunho, ItemReprovado } from "@/lib/apr";
+import type { DocumentoDoRascunho, EvidenciaDoItem, FotoDoRascunho, ItemReprovado } from "@/lib/apr";
 
 interface EvidenciaCardProps {
   /** Item que a `api` reprovou ao validar a APR, com a evidência que ele pede. */
   item: ItemReprovado;
   observacao: string;
   fotos: FotoDoRascunho[];
+  documentos: DocumentoDoRascunho[];
   aoObservar: (texto: string) => void;
   aoFotoEnviada: (foto: { arquivoId: string; previa: string }) => void;
   aoRemoverFoto: (fotoId: string) => void;
+  aoPdfEnviado: (pdf: { arquivoId: string; nome: string }) => void;
+  aoRemoverPdf: (documentoId: string) => void;
+  /** Falha ao enviar uma foto ou um PDF. */
   aoErroDeFoto: (mensagem: string) => void;
 }
 
-/** Evidência de um item reprovado, pedida depois que a `api` validou a APR: observação e, se o item pede, foto. */
-export function EvidenciaCard({ item, observacao, fotos, aoObservar, aoFotoEnviada, aoRemoverFoto, aoErroDeFoto }: EvidenciaCardProps) {
-  const apenasTexto = item.evidencia === "texto";
+/** O que cada tipo de item pede, dito ao técnico depois da validação. */
+const INSTRUCAO: Record<EvidenciaDoItem, string> = {
+  foto: "Registre o motivo e anexe ao menos 1 foto. Se tiver um documento (laudo, certificado), anexe também o PDF.",
+  pdf: "Registre o motivo e anexe ao menos 1 documento em PDF (laudo, certificado, relatório). Fotos são opcionais.",
+  texto: "Justifique em texto. A foto e o PDF são opcionais: condição pessoal não se comprova com foto, e cada pessoa tem direito de recusa.",
+};
+
+/**
+ * Evidência de um item reprovado, pedida depois que a `api` validou a APR: observação e, conforme o item, ao menos uma
+ * foto ou um PDF. Os dois tipos de arquivo são sempre aceitos.
+ */
+export function EvidenciaCard({ item, observacao, fotos, documentos, aoObservar, aoFotoEnviada, aoRemoverFoto, aoPdfEnviado, aoRemoverPdf, aoErroDeFoto }: EvidenciaCardProps) {
 
   return (
     <section className="evid" aria-label="Evidência do item reprovado" data-treino="ck-evidencia" data-treino-item={item.itemId}>
@@ -25,11 +39,7 @@ export function EvidenciaCard({ item, observacao, fotos, aoObservar, aoFotoEnvia
         <strong style={{ fontSize: 14 }}>Item reprovado · evidência obrigatória</strong>
       </div>
       <p style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35 }}>{item.texto}</p>
-      <p className="muted">
-        {apenasTexto
-          ? "Justifique em texto. A foto é opcional: condição pessoal não se comprova com foto, e cada pessoa tem direito de recusa."
-          : "Registre o motivo e anexe ao menos 1 foto."}
-      </p>
+      <p className="muted">{INSTRUCAO[item.evidencia] ?? INSTRUCAO.foto}</p>
       <Field
         label={
           <>
@@ -43,7 +53,7 @@ export function EvidenciaCard({ item, observacao, fotos, aoObservar, aoFotoEnvia
       <Field
         label={
           <>
-            Fotos {apenasTexto ? <span className="muted">· opcional</span> : <Req>· ao menos 1</Req>}
+            Fotos {item.evidencia === "foto" ? <Req>· ao menos 1</Req> : <span className="muted">· opcional</span>}
           </>
         }
       >
@@ -68,6 +78,32 @@ export function EvidenciaCard({ item, observacao, fotos, aoObservar, aoFotoEnvia
             </div>
           ))}
           <AdicionarFoto onEnviada={aoFotoEnviada} onErro={aoErroDeFoto} rotulo={fotos.length > 0 ? "Outra foto" : "Adicionar foto"} />
+        </div>
+      </Field>
+      <Field
+        label={
+          <>
+            Documentos em PDF {item.evidencia === "pdf" ? <Req>· ao menos 1</Req> : <span className="muted">· opcional</span>}
+          </>
+        }
+      >
+        {documentos.length > 0 && (
+          <ul className="doc-lista" style={{ marginBottom: 10 }}>
+            {documentos.map((d) => (
+              <li key={d.id} className="doc-item">
+                <Icon name="file" size={16} />
+                <span className="doc-nome" title={d.nome}>
+                  {d.nome}
+                </span>
+                <button type="button" className="btn btn-line btn-sm" aria-label={`Remover o PDF ${d.nome}`} onClick={() => aoRemoverPdf(d.id)} style={{ height: 28, padding: "0 8px" }}>
+                  <Icon name="x" size={13} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="photo-grid">
+          <AnexarPdf onEnviado={aoPdfEnviado} onErro={aoErroDeFoto} rotulo={documentos.length > 0 ? "Outro PDF" : "Anexar PDF"} />
         </div>
       </Field>
     </section>

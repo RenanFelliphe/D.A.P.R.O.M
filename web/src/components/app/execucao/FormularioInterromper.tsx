@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { FotosExecucao, comoEvidencia, type FotoDaExecucao } from "@/components/app/execucao/FotosExecucao";
+import { FotosExecucao, PdfsExecucao, comoEvidencia, pdfComoEvidencia, type FotoDaExecucao, type PdfDaExecucao } from "@/components/app/execucao/FotosExecucao";
 import { Button } from "@/components/ui/Button";
 import { Field, Req } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
@@ -11,13 +11,14 @@ import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
 import { useAcao } from "./useAcao";
 
-/** Interrupção por risco: motivo e ao menos 1 foto; a OS fica pendente e o supervisor é avisado pela `api`. */
+/** Interrupção por risco: motivo e ao menos 1 foto (PDFs opcionais); a OS fica pendente e o supervisor é avisado pela `api`. */
 export function FormularioInterromper({ osId, execucaoId, onCancelar }: { osId: string; execucaoId: string; onCancelar: () => void }) {
   const router = useRouter();
   const exibirAviso = useToast();
   const { ocupado, erro, executar } = useAcao();
   const [motivo, setMotivo] = useState("");
   const [fotos, setFotos] = useState<FotoDaExecucao[]>([]);
+  const [pdfs, setPdfs] = useState<PdfDaExecucao[]>([]);
   const pronto = motivo.trim() !== "" && fotos.length > 0;
 
   const interromper = () =>
@@ -25,7 +26,7 @@ export function FormularioInterromper({ osId, execucaoId, onCancelar }: { osId: 
       await enviarEvento({
         tipo: "execucao_interrompida",
         os_id: osId,
-        payload: { execucao_id: execucaoId, fim: new Date().toISOString(), motivo: motivo.trim(), evidencias: fotos.map(comoEvidencia) },
+        payload: { execucao_id: execucaoId, fim: new Date().toISOString(), motivo: motivo.trim(), evidencias: [...fotos.map(comoEvidencia), ...pdfs.map(pdfComoEvidencia)] },
       });
       exibirAviso("Atividade interrompida — supervisor será avisado");
       router.push(rotas.app.lista);
@@ -50,6 +51,7 @@ export function FormularioInterromper({ osId, execucaoId, onCancelar }: { osId: 
       </div>
       <div className="panel">
         <FotosExecucao fotos={fotos} onChange={setFotos} desabilitado={ocupado} />
+        <PdfsExecucao documentos={pdfs} onChange={setPdfs} desabilitado={ocupado} />
       </div>
       {erro && (
         <Notice tone="blq" icon="alert">

@@ -663,3 +663,65 @@ table.tb {
 .recolhivel > summary .small {
   color: var(--ink4)
 }
+
+/* ===== Documentos em PDF anexados como evidência (laudo, atestado, relatório) ===== */
+
+.doc-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13.5px
+}
+
+.doc-item > svg {
+  flex: none;
+  color: var(--blq)
+}
+
+.doc-nome {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600
+}
+
+.doc-abrir {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer
+}
+
+.doc-abrir:hover {
+  text-decoration: underline
+}
+
+.doc-item .small {
+  flex: none;
+  color: var(--ink4)
+}

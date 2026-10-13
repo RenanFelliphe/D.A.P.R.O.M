@@ -187,6 +187,7 @@ function LinhaItem({ item, numero, total, verificacao, aoMudar, aoMover, aoRemov
               Evidência
               <select className="select" value={item.evidencia} onChange={(e) => aoMudar({ ...item, evidencia: e.target.value as EvidenciaItem })}>
                 <option value="foto">Foto</option>
+                <option value="pdf">PDF (documento)</option>
                 <option value="texto">Texto</option>
               </select>
             </label>

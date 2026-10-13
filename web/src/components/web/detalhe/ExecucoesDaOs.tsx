@@ -1,4 +1,5 @@
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { DocumentosAnexados } from "@/components/ui/DocumentosAnexados";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
 import { Panel } from "@/components/web/Panel";
 import type { ExecucaoDaOs } from "@/data/detalhe";
@@ -90,6 +91,7 @@ function ExecucaoCartao({ execucao: e, numero, total }: { execucao: ExecucaoDaOs
       )}
 
       <FotosDaEvidencia fotos={e.fotos} descricao="Foto da execução" />
+      <DocumentosAnexados documentos={e.documentos ?? []} />
 
       {e.assinaturas.length > 0 && (
         <div className="row g12 wrap">
@@ -112,7 +114,7 @@ function ExecucaoCartao({ execucao: e, numero, total }: { execucao: ExecucaoDaOs
   );
 }
 
-/** Execuções da OS, com pausas, tempo líquido, fotos e assinaturas. */
+/** Execuções da OS, com pausas, tempo líquido, fotos, PDFs e assinaturas. */
 export function ExecucoesDaOs({ execucoes }: { execucoes: ExecucaoDaOs[] }) {
   return (
     <Panel>
