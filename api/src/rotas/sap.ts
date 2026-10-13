@@ -1,16 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, ilike, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
-import { atividade, equipe, importacao, localInstalacao, os, OS_TIPOS, usuario } from "../db/schema";
+import { atividade, equipe, importacao, localInstalacao, os, OS_TIPOS, planoPreventiva, usuario } from "../db/schema";
 import { alertarFalhaDeImportacao, detalheDaFalha } from "../dominio/alertas";
 import { registrarAuditoria } from "../dominio/auditoria";
 import { processarOrdens } from "../dominio/importacao-ordens";
 import { lerOrdensDoPdf, type OsDoPdf } from "../dominio/importacao-pdf";
 import { lerPlanilha } from "../dominio/importacao-planilha";
 import { resumoDasImportacoes } from "../dominio/importacao-resumo";
+import { chaveDoPlano, conferirCiclosDaImportacao, descreverIntervalo, lerIntervalo } from "../dominio/preventivas";
 import { esquemaPeriodo } from "../dominio/periodo";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { podeSupervisionarEquipe } from "../http/autenticacao";
@@ -99,6 +100,24 @@ async function lerPdfDaOs(bytes: Uint8Array) {
   return { paginas: paginas.length, ...leitura };
 }
 
+/** Plano de preventiva da OS lida: o intervalo que o sistema já tem e o que o PDF trouxe (se trouxe). */
+async function preventivaDaOrdem(db: Db, ordem: OsDoPdf["ordem"]) {
+  const chave = ordem.tipo_ordem === "YBA2" ? chaveDoPlano(ordem.plano_manutencao, ordem.item_manutencao) : null;
+  if (!chave) return null;
+  const [p] = await db
+    .select({ id: planoPreventiva.id, quantidade: planoPreventiva.intervaloQuantidade, unidade: planoPreventiva.intervaloUnidade })
+    .from(planoPreventiva)
+    .where(and(eq(planoPreventiva.planoManutencao, chave.plano), chave.item === null ? isNull(planoPreventiva.itemManutencao) : eq(planoPreventiva.itemManutencao, chave.item)));
+  const atual = p?.quantidade && p.unidade ? { quantidade: p.quantidade, unidade: p.unidade } : null;
+  const lido = lerIntervalo(ordem.intervalo_ciclo) ?? null;
+  return {
+    planoId: p?.id ?? null,
+    intervaloAtual: atual,
+    intervaloAtualDescricao: atual ? descreverIntervalo(atual) : null,
+    intervaloLido: lido,
+  };
+}
+
 /** O que o sistema já sabe de cada OS lida: se ela já existe, a equipe do centro de trabalho e a atividade pelo título. */
 async function situacaoNoSistema(db: Db, lida: OsDoPdf) {
   const { ordem } = lida;
@@ -119,6 +138,7 @@ async function situacaoNoSistema(db: Db, lida: OsDoPdf) {
     existente: existente ?? null,
     equipe: daEquipe ?? null,
     atividade: achada ? { codigo: achada.codigo, comModelo: achada.modeloAprCodigo !== null } : null,
+    preventiva: await preventivaDaOrdem(db, ordem),
   };
 }
 
@@ -179,6 +199,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
         return processado;
       });
 
+      await conferirCiclosDaImportacao(deps.db, deps.agora(), resultado.planos);
       await registrarAuditoria(deps.db, eu, {
         entidade: "importacao",
         verbo: "planilha",
@@ -189,7 +210,14 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
       });
       return responder(
         c,
-        { importacaoId, criadas: resultado.criadas, atualizadas: resultado.atualizadas, ignoradas: resultado.ignoradas, avisos: resultado.avisos },
+        {
+          importacaoId,
+          criadas: resultado.criadas,
+          atualizadas: resultado.atualizadas,
+          ignoradas: resultado.ignoradas,
+          avisos: resultado.avisos,
+          planosSemIntervalo: resultado.planosSemIntervalo,
+        },
         201,
       );
     } catch (erro) {
@@ -271,6 +299,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
         return processado;
       });
 
+      await conferirCiclosDaImportacao(deps.db, deps.agora(), resultado.planos);
       await registrarAuditoria(deps.db, eu, {
         entidade: "importacao",
         verbo: "pdf",
@@ -281,7 +310,14 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
       });
       return responder(
         c,
-        { importacaoId, criadas: resultado.criadas, atualizadas: resultado.atualizadas, ignoradas: resultado.ignoradas, avisos: resultado.avisos },
+        {
+          importacaoId,
+          criadas: resultado.criadas,
+          atualizadas: resultado.atualizadas,
+          ignoradas: resultado.ignoradas,
+          avisos: resultado.avisos,
+          planosSemIntervalo: resultado.planosSemIntervalo,
+        },
         201,
       );
     } catch (erro) {

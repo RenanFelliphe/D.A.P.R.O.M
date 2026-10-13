@@ -74,6 +74,16 @@ describe("Dados de demonstração", () => {
     assert.ok(Object.values(quadro.contagem_por_status as Record<string, number>).filter((n) => n > 0).length === 5);
   });
 
+  it("o ciclo das preventivas tem planos em cada situação e os alertas de ciclo", async () => {
+    const eu = await amb.criarUsuario({ perfil: "admin" });
+    const r = await amb.esperar(200, "GET", "/preventivas", { como: eu });
+    for (const s of ["vencido", "proximo", "em_dia", "aguardando_execucao", "sem_intervalo"]) assert.ok(r.contagem[s] > 0, `sem plano ${s}: ${JSON.stringify(r.contagem)}`);
+    const retificador = r.planos.find((p: { plano_manutencao: string }) => p.plano_manutencao === "10573");
+    assert.equal(retificador.total_ciclos, 2);
+    const tipos = (await amb.sql<{ tipo: string }>("select distinct tipo from alerta where plano_preventiva_id is not null")).map((t) => t.tipo).sort();
+    assert.deepEqual(tipos, ["preventiva_proxima", "preventiva_vencida"]);
+  });
+
   it("rodar de novo não duplica nada", async () => {
     const antes = (await amb.sql<{ n: number }>("select count(*)::int n from os"))[0]!.n;
     const de_novo = await popularDemo(amb.deps);

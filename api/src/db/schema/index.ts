@@ -4,6 +4,7 @@ export * from "./usuarios";
 export * from "./modelos-apr";
 export * from "./catalogo";
 export * from "./sap";
+export * from "./preventivas";
 export * from "./apr";
 export * from "./execucao";
 export * from "./eventos";

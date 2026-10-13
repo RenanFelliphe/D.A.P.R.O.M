@@ -23,6 +23,8 @@ export interface OsDoPdf {
   equipamento?: string;
   plano?: string;
   item?: string;
+  /** "Periodicidade" do plano, como o SAP imprime (vazia nos exemplos). */
+  periodicidade?: string;
   nota?: string;
   /** `dd/mm/aaaa`. */
   inicio: string;
@@ -81,7 +83,7 @@ function paginaDaOrdem(doc: Doc, os: OsDoPdf, total: number) {
   y = celulas(doc, y + 8, [["Equipamento", os.equipamento ?? "", 0.62], ["Fabricante", "", 0.38]]);
   y = celulas(doc, y, [["Nº peça fabric.", "", 0.34], ["Denomin.Tipo", "", 0.28], ["Nº de serie", "", 0.38]]);
   if (os.plano) {
-    y = celulas(doc, y + 8, [["Plano de Manutenção", os.plano, 0.37], ["Item de Manutenção", os.item ?? "", 0.31], ["Periodicidade", "", 0.32]]);
+    y = celulas(doc, y + 8, [["Plano de Manutenção", os.plano, 0.37], ["Item de Manutenção", os.item ?? "", 0.31], ["Periodicidade", os.periodicidade ?? "", 0.32]]);
     y = celulas(doc, y, [["Tipo", "PM-Ordem de manutenção", 0.37], ["Dt.Enc.Ult.Ord Plan", "15/11/2025", 0.63]]);
   }
   y = celulas(doc, y + 8, [["Nota", os.nota ?? "", 0.34], ["Criado por", "", 0.33], ["Tipo de Nota", "", 0.33]]);

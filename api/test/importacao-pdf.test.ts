@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { after, before, describe, it } from "node:test";
 import { and, eq } from "drizzle-orm";
 import PDFDocument from "pdfkit";
-import { alerta, atividade, auditoria, importacao, localInstalacao, os } from "../src/db/schema";
+import { alerta, atividade, auditoria, importacao, localInstalacao, os, planoPreventiva } from "../src/db/schema";
 import { dataDoPdf, lerOrdensDoPdf } from "../src/dominio/importacao-pdf";
 import { lerTextoDoPdf } from "../src/servicos/pdf-texto";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
@@ -54,6 +54,7 @@ describe("Importação por PDF: leitura da OS impressa pelo SAP", () => {
       criada_em: "2025-12-02",
       plano_manutencao: "10573",
       item_manutencao: "10603",
+      intervalo_ciclo: null,
     });
     assert.deepEqual(preventiva!.faltando, []);
     assert.deepEqual(preventiva!.observacoes, ["Tipo da ordem deduzido do tipo de atividade (Z02-Manutenção Preventiva)."]);
@@ -163,6 +164,24 @@ describe("Importação por PDF: POST /importacoes/pdf/leitura e POST /importacoe
     assert.deepEqual(corretiva.faltando, []);
     assert.equal(await osDe("4019821"), undefined);
     assert.equal((await amb.db.select({ id: importacao.id }).from(importacao)).length, antes);
+  });
+
+  it("a leitura da preventiva mostra o intervalo impresso e o que o plano já tem; o registro grava o conferido", async () => {
+    const pdf = await gerarPdfDeOs([{ ...PREVENTIVA_4019821, numero: "4019830", periodicidade: "3 MES" }]);
+    const { corpo } = await ler(pdf);
+    const [lida] = corpo.ordens;
+    assert.equal(lida.ordem.intervalo_ciclo, "3 MES");
+    assert.deepEqual(lida.preventiva, { plano_id: null, intervalo_atual: null, intervalo_atual_descricao: null, intervalo_lido: { quantidade: 3, unidade: "mes" } });
+    // Quem confere troca para semestral.
+    const r = await registrar(pdf, [{ ...lida.ordem, intervalo_ciclo: { quantidade: 1, unidade: "semestre" } }]);
+    assert.equal(r.status, 201, JSON.stringify(r.corpo));
+    assert.deepEqual(r.corpo.planos_sem_intervalo, []);
+    const [plano] = await amb.db.select().from(planoPreventiva).where(eq(planoPreventiva.planoManutencao, "10573"));
+    assert.deepEqual([plano!.intervaloQuantidade, plano!.intervaloUnidade], [1, "semestre"]);
+    const { corpo: denovo } = await ler(pdf);
+    assert.equal(denovo.ordens[0].preventiva.intervalo_atual_descricao, "semestral");
+    await amb.db.delete(planoPreventiva).where(eq(planoPreventiva.id, plano!.id));
+    await amb.db.delete(os).where(eq(os.numeroOrdem, "4019830"));
   });
 
   it("registra as OS conferidas com origem pdf, guarda o PDF e deixa o registro no histórico e na auditoria", async () => {

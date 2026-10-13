@@ -4,6 +4,7 @@ import type { Db } from "../db/conexao";
 import { atividade, equipe, execucao, localInstalacao, os, reprogramacao, alerta } from "../db/schema";
 import { codigoPostgres } from "../http/erros";
 import { criarAlertas } from "./alertas";
+import { chaveDoPlano, garantirPlano, lerIntervalo } from "./preventivas";
 
 /**
  * Processamento das ordens do SAP, o mesmo para a leitura pela API, a planilha e o PDF da OS (Integração SAP, tabela de
@@ -33,11 +34,24 @@ export interface AvisoOrdem {
   motivo: string;
 }
 
+/** Plano de preventiva que a importação tocou e que ainda está sem intervalo entre ciclos. */
+export interface PlanoSemIntervalo {
+  planoId: string;
+  planoManutencao: string;
+  itemManutencao: string | null;
+  titulo: string;
+  numeroOrdem: string;
+}
+
 export interface ResultadoProcessamento {
   criadas: number;
   atualizadas: number;
   ignoradas: DetalheIgnorada[];
   avisos: AvisoOrdem[];
+  /** Planos de preventiva que as ordens criaram ou atualizaram (para conferir os alertas do ciclo depois). */
+  planos: string[];
+  /** Desses, os que seguem sem intervalo: a tela de importação pede para defini-lo. */
+  planosSemIntervalo: PlanoSemIntervalo[];
 }
 
 export const MOTIVO_SEM_NUMERO = "Linha sem número de ordem";
@@ -45,6 +59,7 @@ export const MOTIVO_STATUS_DIFERENTE = "Status SAP diferente de liberada";
 export const MOTIVO_REPROGRAMADA = "Reprogramada no sistema";
 export const MOTIVO_SEM_EQUIPE = "Centro de trabalho sem equipe cadastrada";
 export const AVISO_SEM_MODELO = "Atividade sem modelo de APR";
+export const AVISO_INTERVALO_INVALIDO = "Intervalo entre ciclos não reconhecido (use, por exemplo, 30 dias, 3 meses ou trimestral); o plano ficou como estava";
 
 const TIPOS_DA_ORDEM = { YBA1: "corretiva", YBA2: "preventiva" } as const;
 
@@ -116,6 +131,11 @@ export const esquemaOrdem = z
     criada_em: dataBranda.optional(),
     plano_manutencao: textoOpcional,
     item_manutencao: textoOpcional,
+    /**
+     * Intervalo entre ciclos da preventiva: `{quantidade, unidade}` ou texto ("3 meses", "trimestral", "30 dias"). Opcional; só
+     * vale na preventiva com plano. Lido à parte (`lerIntervalo`): um valor que não dá para entender não recusa a ordem.
+     */
+    intervalo_ciclo: z.unknown().optional(),
   })
   .superRefine((o, ctx) => {
     if (o.data_fim_prog && o.data_fim_prog < o.data_inicio_prog) {
@@ -202,7 +222,25 @@ function validar(bruto: unknown): OrdemNormalizada {
   throw new Ignorada(`Ordem inválida: ${campo ? `${campo}: ` : ""}${primeira?.message ?? "formato inesperado"}`);
 }
 
-type Resultado = { tipo: "criada"; aviso?: string } | { tipo: "atualizada" };
+interface PlanoTocado {
+  id: string;
+  semIntervalo: boolean;
+  chave: { plano: string; item: string | null };
+  titulo: string;
+}
+type Resultado = ({ tipo: "criada"; aviso?: string } | { tipo: "atualizada" }) & { plano?: PlanoTocado; intervaloInvalido?: boolean };
+
+/**
+ * O plano da OS preventiva (criado na primeira OS dele) e, se a ordem trouxe, o intervalo entre ciclos. Um intervalo que não
+ * dá para entender não muda o plano e vira aviso.
+ */
+async function planoDaOrdem(db: Db, ctx: Contexto, tipo: string, plano: string | null, item: string | null, titulo: string, bruto: unknown) {
+  const chave = tipo === "preventiva" ? chaveDoPlano(plano, item) : null;
+  if (!chave) return {};
+  const intervalo = lerIntervalo((bruto as Record<string, unknown>).intervalo_ciclo);
+  const p = await garantirPlano(db, chave, intervalo ?? undefined, ctx.agora);
+  return { plano: { id: p.id, semIntervalo: p.semIntervalo, chave, titulo }, ...(intervalo === undefined ? { intervaloInvalido: true } : {}) };
+}
 
 async function cancelarNoSap(db: Db, ctx: Contexto, existente: typeof os.$inferSelect, statusSap: string | null): Promise<Resultado> {
   // OS já finalizada no app (encerrada ou cancelada): o SAP só a acompanha; status e execução ficam como estão.
@@ -271,7 +309,9 @@ async function atualizarOrdem(db: Db, ctx: Contexto, existente: typeof os.$infer
       ...(ativ?.codigo && { codigoAtividade: ativ.codigo }),
     })
     .where(eq(os.id, existente.id));
-  return { tipo: "atualizada" };
+  const plano = ordem.plano_manutencao === undefined ? existente.planoManutencao : ordem.plano_manutencao;
+  const item = ordem.item_manutencao === undefined ? existente.itemManutencao : ordem.item_manutencao;
+  return { tipo: "atualizada", ...(await planoDaOrdem(db, ctx, existente.tipo, plano, item, ordem.titulo, bruto)) };
 }
 
 async function criarOrdem(db: Db, ctx: Contexto, bruto: unknown): Promise<Resultado> {
@@ -305,7 +345,8 @@ async function criarOrdem(db: Db, ctx: Contexto, bruto: unknown): Promise<Result
     solicitante: ordem.solicitante ?? null,
     origem: ctx.origem,
   });
-  return { tipo: "criada", ...(ativ.comModelo ? {} : { aviso: AVISO_SEM_MODELO }) };
+  const plano = await planoDaOrdem(db, ctx, TIPOS_DA_ORDEM[ordem.tipo_ordem], ordem.plano_manutencao ?? null, ordem.item_manutencao ?? null, ordem.titulo, bruto);
+  return { tipo: "criada", ...(ativ.comModelo ? {} : { aviso: AVISO_SEM_MODELO }), ...plano };
 }
 
 async function processarUma(db: Db, ctx: Contexto, bruto: unknown): Promise<Resultado> {
@@ -339,7 +380,8 @@ export async function processarOrdens(
   opcoes: { origem: OrigemDasOrdens; agora: Date },
 ): Promise<ResultadoProcessamento> {
   const ctx: Contexto = { agora: opcoes.agora, origem: opcoes.origem, equipes: new Map(), locais: new Map(), atividades: new Map() };
-  const resultado: ResultadoProcessamento = { criadas: 0, atualizadas: 0, ignoradas: [], avisos: [] };
+  const resultado: ResultadoProcessamento = { criadas: 0, atualizadas: 0, ignoradas: [], avisos: [], planos: [], planosSemIntervalo: [] };
+  const semIntervalo = new Map<string, PlanoSemIntervalo>();
 
   for (const [indice, entrada] of entradas.entries()) {
     const numero = entrada.ordem && typeof entrada.ordem === "object" ? textoSimples((entrada.ordem as Record<string, unknown>).numero_ordem) : null;
@@ -361,6 +403,19 @@ export async function processarOrdens(
         resultado.criadas++;
         if (r.aviso) resultado.avisos.push({ ...identificacao(), numero_ordem: numero!, motivo: r.aviso });
       } else resultado.atualizadas++;
+      if (r.intervaloInvalido) resultado.avisos.push({ ...identificacao(), numero_ordem: numero!, motivo: AVISO_INTERVALO_INVALIDO });
+      if (r.plano) {
+        if (!resultado.planos.includes(r.plano.id)) resultado.planos.push(r.plano.id);
+        if (r.plano.semIntervalo) {
+          semIntervalo.set(r.plano.id, {
+            planoId: r.plano.id,
+            planoManutencao: r.plano.chave.plano,
+            itemManutencao: r.plano.chave.item,
+            titulo: r.plano.titulo,
+            numeroOrdem: numero!,
+          });
+        } else semIntervalo.delete(r.plano.id);
+      }
     } catch (erro) {
       // O ponto de salvamento foi desfeito: o que a ordem deixou em cache (local ou atividade novos) já não existe.
       ctx.locais.clear();
@@ -375,5 +430,6 @@ export async function processarOrdens(
       }
     }
   }
+  resultado.planosSemIntervalo = [...semIntervalo.values()];
   return resultado;
 }

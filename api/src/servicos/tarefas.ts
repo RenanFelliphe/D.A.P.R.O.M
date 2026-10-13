@@ -4,6 +4,7 @@ import type { Deps } from "../deps";
 import { enfileirarTarefa } from "./fila";
 import { manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
 import { manipularLeituraSap } from "./leitura-sap";
+import { verificarCiclos } from "../dominio/preventivas";
 
 type Tarefa = typeof tarefa.$inferSelect;
 type Manipulador = (deps: Deps, tarefa: { id: string; referenciaId: string | null }) => Promise<void>;
@@ -21,6 +22,8 @@ export const ESPERAS_MIN = [1, 5, 15, 15] as const;
 /** Uma tarefa `em_andamento` há mais que isto é de um processo que caiu: volta para `pendente`. */
 export const LIMITE_EM_ANDAMENTO_MIN = 10;
 const INTERVALO_EXECUTOR_MS = 5_000;
+/** De quanto em quanto tempo o ciclo das preventivas é conferido (os alertas são por dia: uma hora basta). */
+export const INTERVALO_CICLOS_MIN = 60;
 
 const minutos = (n: number) => n * 60_000;
 
@@ -113,13 +116,15 @@ export async function agendarLeituraSap(deps: Deps): Promise<boolean> {
 
 /**
  * Liga o executor no processo da `api`: a cada ~5 s recupera as tarefas presas, agenda a leitura do SAP (quando
- * `SAP_API_URL` está configurada, a cada `SAP_LEITURA_INTERVALO_MIN` minutos) e executa as tarefas vencidas, sem que
+ * `SAP_API_URL` está configurada, a cada `SAP_LEITURA_INTERVALO_MIN` minutos), confere o ciclo das preventivas (ao subir e a
+ * cada `INTERVALO_CICLOS_MIN` minutos, criando os alertas de ciclo próximo e vencido) e executa as tarefas vencidas, sem que
  * duas rodadas se sobreponham. Devolve a função que o encerra.
  */
 export function iniciarTarefas(deps: Deps): () => void {
   let rodando = false;
   let parado = false;
   let ultimoAgendamento = 0;
+  let ultimaConferenciaDeCiclos = 0;
 
   async function rodada() {
     if (rodando || parado) return;
@@ -130,6 +135,10 @@ export function iniciarTarefas(deps: Deps): () => void {
       if (deps.config.sapApiUrl && agora - ultimoAgendamento >= minutos(deps.config.sapLeituraIntervaloMin)) {
         await agendarLeituraSap(deps);
         ultimoAgendamento = agora;
+      }
+      if (agora - ultimaConferenciaDeCiclos >= minutos(INTERVALO_CICLOS_MIN)) {
+        ultimaConferenciaDeCiclos = agora;
+        await verificarCiclos(deps.db, deps.agora());
       }
       await executarTarefasPendentes(deps);
     } catch (erro) {

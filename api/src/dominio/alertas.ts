@@ -21,14 +21,18 @@ export async function destinatariosDaEquipe(db: Db, equipeId: string): Promise<{
 
 /**
  * Cria um `alerta` para cada destinatário da equipe. Só `bloqueio` vai também por e-mail (tarefa `email_alerta`), e só
- * para quem tem e-mail (Impedimento, item 2). Quem chama passa a própria transação. Devolve os ids criados.
+ * para quem tem e-mail (Impedimento, item 2). Os do ciclo das preventivas levam também o plano (`planoPreventivaId`). Quem
+ * chama passa a própria transação. Devolve os ids criados.
  */
-export async function criarAlertas(db: Db, dados: { tipo: AlertaTipo; osId: string; equipeId: string; detalhe: string }): Promise<string[]> {
+export async function criarAlertas(
+  db: Db,
+  dados: { tipo: AlertaTipo; osId: string; equipeId: string; detalhe: string; planoPreventivaId?: string },
+): Promise<string[]> {
   const ids: string[] = [];
   for (const d of await destinatariosDaEquipe(db, dados.equipeId)) {
     const [criado] = await db
       .insert(alerta)
-      .values({ tipo: dados.tipo, osId: dados.osId, destinatarioId: d.id, detalhe: dados.detalhe })
+      .values({ tipo: dados.tipo, osId: dados.osId, planoPreventivaId: dados.planoPreventivaId ?? null, destinatarioId: d.id, detalhe: dados.detalhe })
       .returning({ id: alerta.id });
     ids.push(criado!.id);
     if (dados.tipo === "bloqueio" && d.email) await enfileirarTarefa(db, "email_alerta", criado!.id);

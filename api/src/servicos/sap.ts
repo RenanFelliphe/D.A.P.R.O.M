@@ -25,6 +25,8 @@ export interface OrdemSap {
   criada_em?: string | null;
   plano_manutencao?: string | null;
   item_manutencao?: string | null;
+  /** Intervalo entre ciclos do plano da preventiva ("3 MON", "trimestral" ou `{quantidade, unidade}`); opcional. */
+  intervalo_ciclo?: string | { quantidade: number; unidade: string } | null;
 }
 
 export interface PaginaDeOrdens {

@@ -5,13 +5,18 @@ import { emailDoNome, gerarSenhaInicial } from "../../dominio/usuarios";
 import { processarEventos } from "../../dominio/eventos";
 import type { UsuarioAutenticado } from "../../http/autenticacao";
 import { enfileirarTarefa } from "../../servicos/fila";
-import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, reprogramacao, riscoModeloApr, usuario, type Perfil } from "../schema";
+import { verificarCiclos, type Intervalo } from "../../dominio/preventivas";
+import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
+import { popularCatalogoDemo } from "./catalogo-demo";
+import { documentoDemo } from "./documento-demo";
 import { assinaturaDemo, fotoDemo } from "./imagens-demo";
 
 /**
- * Dados fictícios para demonstração: usuários e equipes, locais, e OS em todos os estados do fluxo (liberadas, em
- * execução, pendentes por APR bloqueada, suspensão ou interrupção, encerradas com e sem ciência, canceladas,
- * reprogramadas, de apoio). APRs, execuções, alertas e tarefas de PDF passam pelas mesmas regras da `api`
+ * Dados fictícios para demonstração: usuários e equipes, locais, o catálogo de serviço (materiais de alguns serviços) e
+ * OS em todos os estados do fluxo (liberadas, em execução, pendentes por APR bloqueada, suspensão ou interrupção,
+ * encerradas com e sem ciência, canceladas, reprogramadas, de apoio), com fotos e alguns documentos em PDF, e o ciclo das
+ * preventivas (cada uma no próprio plano de manutenção, com intervalos que deixam ciclos em dia, próximos, vencidos, aguardando
+ * execução e sem intervalo). APRs, execuções, alertas e tarefas de PDF passam pelas mesmas regras da `api`
  * (`processarEventos`), com a hora de cada evento no passado, então o resultado é o que as telas mostrariam depois de
  * semanas de uso. Tudo é inventado; nunca rode com dados reais.
  */
@@ -148,6 +153,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const apr03 = await carregarModelo("APR 03");
   const atividadePara = async (modelo: string) => (await db.select({ codigo: atividade.codigo }).from(atividade).where(eq(atividade.modeloAprCodigo, modelo)).limit(1))[0]?.codigo ?? null;
   const ativ = { 1: await atividadePara("APR 01"), 2: await atividadePara("APR 02"), 3: await atividadePara("APR 03") };
+  await popularCatalogoDemo(db, Object.values(ativ));
 
   // ---------- arquivos --------------------------------------------------------------------------------------------
   let contadorFotos = 0;
@@ -155,6 +161,17 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     const id = randomUUID();
     await deps.armazenamento.gravar("fotos", id, fotoDemo(contadorFotos++), "image/png");
     return id;
+  };
+  /** Documento em PDF anexado como evidência: devolve o item de `evidencias` do evento. */
+  interface DocumentoDemo {
+    nome: string;
+    titulo: string;
+    linhas: string[];
+  }
+  const documento = async (d: DocumentoDemo, quando: Date, itemId?: string) => {
+    const id = randomUUID();
+    await deps.armazenamento.gravar("documentos", id, documentoDemo(d.titulo, d.linhas), "application/pdf");
+    return { id, tipo: "pdf", nome: d.nome, ...(itemId ? { item_id: itemId } : {}), capturada_em: quando.toISOString() };
   };
 
   // ---------- OS -------------------------------------------------------------------------------------------------
@@ -173,10 +190,22 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     solicitante?: string | null;
     origem?: "sap" | "planilha" | "apoio";
     apoioDe?: string;
+    /** Plano da preventiva (sem ele, um plano próprio) e o intervalo entre ciclos (sem ele, o plano fica sem intervalo). */
+    ciclo?: { plano?: string; item?: string; intervalo?: Intervalo; base?: CicloBase };
   }
+  /** Os planos das preventivas criadas: gravados no fim, com o intervalo de cada um. */
+  const ciclos = new Map<string, { plano: string; item: string; intervalo?: Intervalo; base?: CicloBase }>();
+  let proximoPlano = 10_800;
   const criarOs = async (d: DadosOs) => {
     const tipo = d.tipo ?? "corretiva";
     const apoio = d.origem === "apoio";
+    let ciclo: { plano: string; item: string } | null = null;
+    if (tipo === "preventiva" && !apoio) {
+      const plano = d.ciclo?.plano ?? String(proximoPlano++);
+      const item = d.ciclo?.item ?? String(Number(plano) + 200);
+      ciclo = { plano, item };
+      ciclos.set(`${plano}/${item}`, { ...ciclos.get(`${plano}/${item}`), ...d.ciclo, plano, item });
+    }
     const [o] = await db
       .insert(os)
       .values({
@@ -190,8 +219,8 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
         equipamento: d.equipamento ?? null,
         localInstalacaoId: d.local,
         equipeId: d.equipe ?? equipes.SERV_ESP!,
-        planoManutencao: tipo === "preventiva" && !apoio ? "10573" : null,
-        itemManutencao: tipo === "preventiva" && !apoio ? "10603" : null,
+        planoManutencao: ciclo?.plano ?? null,
+        itemManutencao: ciclo?.item ?? null,
         prioridade: d.prioridade ?? "Médio",
         dataInicioProg: dia(d.inicio),
         dataFimProg: d.fim === undefined ? null : dia(d.fim),
@@ -243,7 +272,12 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
         ? "Odor de gás no local; detector indicou concentração acima do limite."
         : "Condição encontrada fora do padrão; a atividade não pode começar até a correção.";
 
-  const aprPayload = async (m: ModeloCarregado, participantes: UsuarioAutenticado[], quando: Date, opcoes: { riscos?: number; avisoNoAlerta?: boolean; falhar?: Item[]; observacao?: string } = {}) => {
+  const aprPayload = async (
+    m: ModeloCarregado,
+    participantes: UsuarioAutenticado[],
+    quando: Date,
+    opcoes: { riscos?: number; avisoNoAlerta?: boolean; falhar?: Item[]; observacao?: string; documentoNoPrimeiro?: DocumentoDemo } = {},
+  ) => {
     const marcados = m.riscos.slice(0, opcoes.riscos ?? 0);
     const falhar = opcoes.falhar ?? [];
     const evidencias: Record<string, unknown>[] = [];
@@ -251,6 +285,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
       const n = 1 + (contadorFotos % 2);
       for (let k = 0; k < n; k++) evidencias.push({ id: await foto(), item_id: item.id, capturada_em: quando.toISOString(), latitude: -20.31 + k * 0.0003, longitude: -40.29 });
     }
+    if (opcoes.documentoNoPrimeiro && falhar[0]) evidencias.push(await documento(opcoes.documentoNoPrimeiro, quando, falhar[0].id));
     return {
       id: randomUUID(),
       modelo_apr_id: m.id,
@@ -276,6 +311,8 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     duracaoMin?: number;
     pausa?: [number, number]; // minutos depois do início: começa e termina
     fotos?: number;
+    /** PDFs anexados ao encerramento, além das fotos. */
+    documentos?: DocumentoDemo[];
     descricao?: string;
     resultado?: "encerrada" | "suspensa" | "interrompida" | "aberta" | "pausada";
     motivo?: string;
@@ -296,6 +333,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     if (resultado === "encerrada") {
       const evidencias: Record<string, unknown>[] = [];
       for (let k = 0; k < (o.fotos ?? 2); k++) evidencias.push({ id: await foto(), capturada_em: t(dur - 20 + k).toISOString(), latitude: -20.31 + k * 0.0004, longitude: -40.29 - k * 0.0002 });
+      for (const d of o.documentos ?? []) evidencias.push(await documento(d, t(dur - 5)));
       await enviar(u, "execucao_encerrada", osId, {
         execucao_id: exId,
         fim: fim.toISOString(),
@@ -323,10 +361,19 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const duplaI = [tec3, tec4];
 
   // ================= ENCERRADAS (históricas, para indicadores, histórico e PDF) =====================================
+  // 0. o ciclo anterior do retificador (mensal), 48 dias atrás: o histórico do plano mostra dois ciclos
+  let id = await criarOs({ tipo: "preventiva", titulo: "1.2 - Inspeção Funcional de Retificador", equipamento: "Retificador de proteção catódica RTF-03", local: L.erp, prioridade: "Alto", inicio: 49, fim: 47, atividade: ativ[3], ciclo: { plano: "10573", item: "10603", intervalo: { quantidade: 1, unidade: "mes" } } });
+  let apr = await aprovar(tec1, id, apr03, dupla, em(48, 8, 5), { riscos: 3 });
+  await executar(tec1, id, apr, dupla, { inicio: em(48, 8, 20), duracaoMin: 185, fotos: 2, descricao: "Inspeção funcional do ciclo anterior: tensões dentro da faixa e bornes reapertados." });
+  await darCiencia(id, sup1, em(47, 9, 0));
+
   // 1. preventiva, retificador, 18 dias atrás: APR 03 com riscos e medidas; ciência dada
-  let id = await criarOs({ tipo: "preventiva", titulo: "1.2 - Inspeção Funcional de Retificador", equipamento: "Retificador de proteção catódica RTF-03", local: L.erp, prioridade: "Alto", inicio: 19, fim: 18, atividade: ativ[3] });
-  let apr = await aprovar(tec1, id, apr03, dupla, em(18, 8, 5), { riscos: 3, avisoNoAlerta: true, observacao: "Acesso pela portaria lateral; EPI completo conferido." });
-  await executar(tec1, id, apr, dupla, { inicio: em(18, 8, 20), duracaoMin: 200, pausa: [90, 105], fotos: 3, descricao: "Inspeção funcional concluída: tensões de entrada e saída dentro da faixa, fusíveis e DPS íntegros, bornes reapertados.", inspecao: { horimetro: 18420, tensao_entrada_vac: 221, tensao_saida_vcc: 24.6 } });
+  id = await criarOs({ tipo: "preventiva", titulo: "1.2 - Inspeção Funcional de Retificador", equipamento: "Retificador de proteção catódica RTF-03", local: L.erp, prioridade: "Alto", inicio: 19, fim: 18, atividade: ativ[3], ciclo: { plano: "10573", item: "10603", intervalo: { quantidade: 1, unidade: "mes" } } });
+  apr = await aprovar(tec1, id, apr03, dupla, em(18, 8, 5), { riscos: 3, avisoNoAlerta: true, observacao: "Acesso pela portaria lateral; EPI completo conferido." });
+  await executar(tec1, id, apr, dupla, { inicio: em(18, 8, 20), duracaoMin: 200, pausa: [90, 105], fotos: 3, descricao: "Inspeção funcional concluída: tensões de entrada e saída dentro da faixa, fusíveis e DPS íntegros, bornes reapertados.",
+    inspecao: { horimetro: 18420, tensao_entrada_vac: 221, tensao_saida_vcc: 24.6 },
+    documentos: [{ nome: "relatorio-medicao-RTF-03.pdf", titulo: "Relatório de medição - Retificador RTF-03", linhas: ["Tensão de entrada: 221 Vac", "Tensão de saída: 24,6 Vcc", "Tensão de shunt: 48 mV", "Horímetro: 18.420 h", "Resultado: dentro da faixa de operação."] }],
+  });
   await darCiencia(id, sup1, em(17, 9, 30));
 
   // 2. corretiva, caixa de válvula, 14 dias atrás, ciência dada
@@ -336,7 +383,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   await darCiencia(id, sup1, em(13, 10, 0));
 
   // 3. preventiva, válvulas, 9 dias atrás, sem ciência (aguarda o supervisor)
-  id = await criarOs({ tipo: "preventiva", titulo: "Teste, manutenção e válvulas", equipamento: "Válvula de bloqueio VB-12", local: L.gua, prioridade: "Médio", inicio: 10, fim: 9, atividade: ativ[2] });
+  id = await criarOs({ tipo: "preventiva", titulo: "Teste, manutenção e válvulas", equipamento: "Válvula de bloqueio VB-12", local: L.gua, prioridade: "Médio", inicio: 10, fim: 9, atividade: ativ[2], ciclo: { intervalo: { quantidade: 1, unidade: "semana" } } });
   apr = await aprovar(tec1, id, apr02, trio, em(9, 8, 0), { riscos: 2 });
   await executar(tec1, id, apr, trio, { inicio: em(9, 8, 15), duracaoMin: 240, pausa: [120, 150], fotos: 2 });
 
@@ -346,17 +393,20 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   await executar(tec5, id, apr, dupla2, { inicio: em(6, 13, 25), duracaoMin: 95, fotos: 2, descricao: "Manômetro substituído e calibrado; leitura conferida com padrão." });
 
   // 5. preventiva, ERS Suzano (cliente crítico), 3 dias atrás, sem ciência
-  id = await criarOs({ tipo: "preventiva", titulo: "Lavagem de Estação", equipamento: "Estação redutora ERS-02", local: L.ers, prioridade: "Alto", inicio: 4, fim: 3, atividade: ativ[1] });
+  id = await criarOs({ tipo: "preventiva", titulo: "Lavagem de Estação", equipamento: "Estação redutora ERS-02", local: L.ers, prioridade: "Alto", inicio: 4, fim: 3, atividade: ativ[1], ciclo: { intervalo: { quantidade: 10, unidade: "dia" } } });
   apr = await aprovar(tec1, id, apr01, dupla, em(3, 8, 30), { riscos: 1 });
   await executar(tec1, id, apr, dupla, { inicio: em(3, 8, 45), duracaoMin: 170, pausa: [100, 115], fotos: 3 });
 
   // ================= PENDENTES =====================================================================================
   // 6. APR bloqueada (vazamento): duas fotos, alerta ao supervisor não lido; retomada ainda não feita
   id = await criarOs({ titulo: "Reparo de vazamento em ramal", equipamento: "Ramal RM-204", local: L.sul, prioridade: "Muito alto", inicio: 2, fim: 1, atividade: ativ[1] });
-  await aprovar(tec2, id, apr01, [tec2, tec5], em(2, 9, 5), { falhar: primeiroEliminatorio(apr01, 2) });
+  await aprovar(tec2, id, apr01, [tec2, tec5], em(2, 9, 5), {
+    falhar: primeiroEliminatorio(apr01, 2),
+    documentoNoPrimeiro: { nome: "registro-detector-gas.pdf", titulo: "Registro do detector de gases", linhas: ["Equipamento: detector portátil de 4 gases", "Leitura no ramal RM-204: 18% do LIE", "Limite para liberar a atividade: 10% do LIE", "Conclusão: atividade não liberada."] },
+  });
 
   // 7. APR bloqueada por condição pessoal (justificativa em texto, sem foto) — alerta lido
-  id = await criarOs({ tipo: "preventiva", titulo: "Calibração de PSV", equipamento: "PSV-0312", local: L.pr, prioridade: "Alto", inicio: 2, fim: 1, atividade: ativ[3] });
+  id = await criarOs({ tipo: "preventiva", titulo: "Calibração de PSV", equipamento: "PSV-0312", local: L.pr, prioridade: "Alto", inicio: 2, fim: 1, atividade: ativ[3], ciclo: { intervalo: { quantidade: 1, unidade: "semestre" } } });
   const textual = itemDeTexto(apr03);
   await aprovar(tec1, id, apr03, dupla, em(2, 8, 20), { falhar: textual ? [textual] : primeiroEliminatorio(apr03, 1) });
 
@@ -381,12 +431,12 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
 
   // ================= EM EXECUÇÃO AGORA ==============================================================================
   // 11. em andamento (tec1 + tec2), iniciada há ~75 min
-  id = await criarOs({ tipo: "preventiva", titulo: "Tratamento em corrosão e pintura", equipamento: "Tubulação TB-09", local: L.vv, prioridade: "Médio", inicio: 0, fim: -1, atividade: ativ[2] });
+  id = await criarOs({ tipo: "preventiva", titulo: "Tratamento em corrosão e pintura", equipamento: "Tubulação TB-09", local: L.vv, prioridade: "Médio", inicio: 0, fim: -1, atividade: ativ[2], ciclo: { intervalo: { quantidade: 1, unidade: "ano" } } });
   apr = await aprovar(tec1, id, apr02, dupla, minutosAtras(95), { riscos: 2 });
   await executar(tec1, id, apr, dupla, { inicio: minutosAtras(80), resultado: "aberta", duracaoMin: 0 });
 
   // 12. em pausa (almoço) neste momento (instrumentação)
-  id = await criarOs({ tipo: "preventiva", titulo: "Medição: calibração de transmissor de pressão", equipamento: "Transmissor PT-101", local: L.cari, equipe: equipes.INSTRUM, prioridade: "Médio", inicio: 0, fim: 0 });
+  id = await criarOs({ tipo: "preventiva", titulo: "Medição: calibração de transmissor de pressão", equipamento: "Transmissor PT-101", local: L.cari, equipe: equipes.INSTRUM, prioridade: "Médio", inicio: 0, fim: 0, ciclo: { intervalo: { quantidade: 1, unidade: "trimestre" }, base: "programacao" } });
   apr = await aprovar(tec3, id, apr01, duplaI, minutosAtras(130));
   await executar(tec3, id, apr, duplaI, { inicio: minutosAtras(115), resultado: "pausada", pausa: [60, 90], duracaoMin: 0 });
 
@@ -394,18 +444,18 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   // atrasada sem justificativa, atrasada com reprogramação (justificada), no prazo, futuras, críticas e de outras equipes
   // `inicio` e `fim` são "dias atrás" (negativo = no futuro); o fim nunca é anterior ao início.
   const liberadas: DadosOs[] = [
-    { titulo: "Inspeção funcional de odorizador", tipo: "preventiva", equipamento: "Odorizador OD-01", local: L.erp, prioridade: "Alto", inicio: 5, fim: 4, atividade: ativ[3] }, // será reprogramada
-    { titulo: "Lavagem de estação (atrasada)", tipo: "preventiva", equipamento: "Estação ERP-02", local: L.erp, prioridade: "Médio", inicio: 8, fim: 7, atividade: ativ[1] }, // atrasada sem justificativa
+    { titulo: "Inspeção funcional de odorizador", tipo: "preventiva", equipamento: "Odorizador OD-01", local: L.erp, prioridade: "Alto", inicio: 5, fim: 4, atividade: ativ[3], ciclo: { intervalo: { quantidade: 1, unidade: "mes" }, base: "programacao" } }, // será reprogramada
+    { titulo: "Lavagem de estação (atrasada)", tipo: "preventiva", equipamento: "Estação ERP-02", local: L.erp, prioridade: "Médio", inicio: 8, fim: 7, atividade: ativ[1], ciclo: { intervalo: { quantidade: 2, unidade: "semana" }, base: "programacao" } }, // atrasada sem justificativa
     { titulo: "Substituição de lacres em medidores", equipamento: "Medidor G25", local: L.gua, prioridade: "Baixo", inicio: 0, fim: -1 },
     { titulo: "Teste de estanqueidade em estação", tipo: "preventiva", equipamento: "Estação ERS-05", local: L.ers, prioridade: "Alto", inicio: -1, fim: -2, atividade: ativ[2] },
     { titulo: "Limpeza de filtro separador", tipo: "preventiva", equipamento: "Filtro separador FS-01", local: L.pr, prioridade: "Médio", inicio: -2, fim: -3, atividade: ativ[1] },
-    { titulo: "Manutenção de válvulas em ponto de recebimento", tipo: "preventiva", equipamento: "Válvula VB-21", local: L.pr, prioridade: "Muito alto", inicio: -3, fim: -4, atividade: ativ[2] },
-    { titulo: "Inspeção de rede de distribuição", tipo: "preventiva", equipamento: "Rede RD-118", local: L.lin, prioridade: "Baixo", inicio: -6, fim: -8, atividade: ativ[3] },
+    { titulo: "Manutenção de válvulas em ponto de recebimento", tipo: "preventiva", equipamento: "Válvula VB-21", local: L.pr, prioridade: "Muito alto", inicio: -3, fim: -4, atividade: ativ[2], ciclo: { intervalo: { quantidade: 1, unidade: "bimestre" }, base: "programacao" } },
+    { titulo: "Inspeção de rede de distribuição", tipo: "preventiva", equipamento: "Rede RD-118", local: L.lin, prioridade: "Baixo", inicio: -6, fim: -8, atividade: ativ[3], ciclo: { intervalo: { quantidade: 1, unidade: "semestre" }, base: "programacao" } },
     { titulo: "Verificação de vazamento reportado por cliente", equipamento: "Ramal residencial", local: L.sul, prioridade: "Muito alto", inicio: 0, fim: 0, solicitante: "Cliente: Condomínio Jardins" },
     { titulo: "Corretiva urgente: odor de gás em quadra residencial", equipamento: "Rede RD-077", local: L.vv, prioridade: "Muito alto", inicio: 0, fim: 0, solicitante: "Corpo de Bombeiros" },
-    { titulo: "Calibração de manômetros da estação", tipo: "preventiva", equipamento: "Manômetros MN-04/05/06", local: L.vit, equipe: equipes.INSTRUM, prioridade: "Médio", inicio: 2, fim: 1 },
+    { titulo: "Calibração de manômetros da estação", tipo: "preventiva", equipamento: "Manômetros MN-04/05/06", local: L.vit, equipe: equipes.INSTRUM, prioridade: "Médio", inicio: 2, fim: 1, ciclo: { intervalo: { quantidade: 1, unidade: "quinzena" }, base: "programacao" } },
     { titulo: "Troca de transmissor de temperatura", equipamento: "Transmissor TT-22", local: L.cari, equipe: equipes.INSTRUM, prioridade: "Alto", inicio: -1, fim: -2 },
-    { titulo: "Coleta e análise de amostra de gás", tipo: "preventiva", equipamento: "Cromatógrafo CG-01", local: L.sul, equipe: equipes.LAB_QUI, prioridade: "Médio", inicio: -2, fim: -3 },
+    { titulo: "Coleta e análise de amostra de gás", tipo: "preventiva", equipamento: "Cromatógrafo CG-01", local: L.sul, equipe: equipes.LAB_QUI, prioridade: "Médio", inicio: -2, fim: -3, ciclo: { intervalo: { quantidade: 1, unidade: "mes" } } },
   ];
   const idsLiberadas: string[] = [];
   for (const d of liberadas) idsLiberadas.push(await criarOs(d));
@@ -418,6 +468,22 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   // ================= APOIO CANCELADO ================================================================================
   const cancelada = await criarOs({ titulo: "Apoio aberto em duplicidade", local: L.erp, equipe: equipes.INSTRUM, prioridade: "Baixo", inicio: 4, fim: 4, apoioDe: idOriginal, origem: "apoio" });
   await db.update(os).set({ status: "cancelada", canceladaEm: minutosAtras(60 * 24 * 3), canceladaPor: adm.id, justificativaCancelamento: "Apoio aberto em duplicidade; o primeiro segue em andamento." }).where(eq(os.id, cancelada));
+
+  // ================= CICLO DAS PREVENTIVAS ===========================================================================
+  // Um plano por preventiva; "Teste de estanqueidade" e "Limpeza de filtro separador" ficam sem intervalo, para o admin definir.
+  for (const c of ciclos.values()) {
+    await db
+      .insert(planoPreventiva)
+      .values({
+        planoManutencao: c.plano,
+        itemManutencao: c.item,
+        intervaloQuantidade: c.intervalo?.quantidade ?? null,
+        intervaloUnidade: c.intervalo?.unidade ?? null,
+        contarAPartir: c.base ?? "execucao",
+      })
+      .onConflictDoNothing();
+  }
+  await verificarCiclos(db, real);
 
   // ================= ALERTAS: parte já lida =========================================================================
   const lidos = await db.select({ id: alerta.id }).from(alerta).orderBy(alerta.criadoEm);

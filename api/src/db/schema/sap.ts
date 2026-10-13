@@ -112,6 +112,8 @@ export const os = pgTable(
     index("os_equipamento_idx").on(t.equipamento),
     index("os_data_inicio_idx").on(t.dataInicioProg),
     index("os_atividade_idx").on(t.codigoAtividade),
+    // As OS de cada ciclo das preventivas: as do mesmo plano e item.
+    index("os_plano_idx").on(t.planoManutencao, t.itemManutencao).where(sql`${t.planoManutencao} is not null`),
     index("os_origem_idx").on(t.osOrigemId).where(sql`${t.osOrigemId} is not null`),
     // Fila de exportação para o SAP: encerradas ainda não exportadas.
     index("os_a_exportar_idx").on(t.id).where(sql`${t.status} = 'encerrada' and ${t.exportadaSapEm} is null`),

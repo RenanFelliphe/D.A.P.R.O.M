@@ -91,6 +91,7 @@ export function rotasSapSimulado(deps: Deps) {
       criada_em: corpo.criada_em ?? deps.agora().toISOString(),
       plano_manutencao: corpo.plano_manutencao ?? null,
       item_manutencao: corpo.item_manutencao ?? null,
+      ...(corpo.intervalo_ciclo != null && { intervalo_ciclo: corpo.intervalo_ciclo as OrdemSap["intervalo_ciclo"] }),
     };
     ordens.set(ordem.numero_ordem, { ordem, alteradaEm: deps.agora() });
     return c.json(ordem, 201);

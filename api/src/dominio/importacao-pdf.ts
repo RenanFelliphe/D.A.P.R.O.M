@@ -20,6 +20,7 @@ import type { PaginaDeTexto } from "../servicos/pdf-texto";
  *   equipamento               Equipamento
  *   plano_manutencao          Plano de Manutenção
  *   item_manutencao           Item de Manutenção
+ *   intervalo_ciclo           Periodicidade (o intervalo entre ciclos da preventiva, quando o SAP o imprime)
  *   numero_nota               Nota
  *   data_inicio_prog *        Data de inicio programada
  *   data_fim_prog             Data fim programada
@@ -59,6 +60,8 @@ export interface OrdemLidaDoPdf {
   criada_em: string | null;
   plano_manutencao: string | null;
   item_manutencao: string | null;
+  /** A periodicidade impressa ("3 MES", "Trimestral"), como texto; a conferência mostra o intervalo entendido. */
+  intervalo_ciclo: string | null;
 }
 
 export const CAMPOS_OBRIGATORIOS = ["tipo_ordem", "titulo", "centro_trabalho", "local_instalacao", "data_inicio_prog"] as const;
@@ -323,6 +326,7 @@ function lerUmaOs(paginas: PaginaDeTexto[], numero: string): OsDoPdf {
     criada_em: dataDoPdf(campo("criada_em")),
     plano_manutencao: campo("plano_manutencao"),
     item_manutencao: campo("item_manutencao"),
+    intervalo_ciclo: campo("periodicidade"),
   };
   const faltando = CAMPOS_OBRIGATORIOS.filter((c) => (c === "local_instalacao" ? !ordem.local_instalacao.codigo : !ordem[c]));
   return { paginas: paginas.map((p) => p.numero), ordem, faltando, observacoes };

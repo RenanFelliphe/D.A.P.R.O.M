@@ -9,7 +9,9 @@ PostgreSQL (Supabase na hospedagem, Postgres comum no desenvolvimento). O schema
 | `plataforma.ts` | `tarefa`, `auditoria` |
 | `usuarios.ts` | `equipe`, `usuario` |
 | `modelos-apr.ts` | `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade` |
+| `catalogo.ts` | `material`, `atividade_material` (catálogo de serviço: o que cada atividade usa) |
 | `sap.ts` | `local_instalacao`, `os`, `importacao` |
+| `preventivas.ts` | `plano_preventiva` (ciclo das preventivas: o intervalo entre ciclos de cada plano + item de manutenção) |
 | `apr.ts` | `apr`, `apr_participante`, `apr_risco`, `apr_resposta` |
 | `execucao.ts` | `execucao`, `execucao_pausa`, `execucao_assinatura`, `evidencia` |
 | `eventos.ts` | `evento_campo` |
@@ -45,6 +47,8 @@ Geradas pelo `drizzle-kit`, aplicadas em ordem, uma única vez cada, e registrad
 | `0011_auditoria.sql` | a tabela `auditoria` (trilha de quem fez o quê nas telas de gestão), sem chave estrangeira, com índices por data, por entidade e por autor; gerada do schema |
 | `0012_auditoria_so_cresce.sql` | gatilho que recusa `UPDATE` e `DELETE` em `auditoria` (a trilha só cresce); SQL escrito à mão |
 | `0013_origem_pdf.sql` | `pdf` entra em `os.origem` e em `importacao.origem` (a OS lida do PDF impresso pelo SAP, na Importação de OS); só troca os dois `CHECK`, nenhuma linha muda; gerada do schema |
+| `0015_preventivas_ciclos.sql` | ciclo das preventivas: `plano_preventiva` (com RLS ligado e `UNIQUE NULLS NOT DISTINCT` em plano + item), `alerta.plano_preventiva_id` com os tipos `preventiva_proxima` e `preventiva_vencida` (o `CHECK` `alerta_plano_so_na_preventiva` liga os dois), o índice `os_plano_idx` e `plano_preventiva` em `auditoria.entidade`; gerada do schema, com a carga dos planos das OS preventivas que já existiam (sem intervalo) escrita à mão |
+| `0014_catalogo_e_evidencia_pdf.sql` | catálogo de serviço (`material` e `atividade_material`, com RLS ligado), evidência em PDF (`evidencia.tipo` `foto` \| `pdf`, com padrão `foto` para as linhas que já existem, e `evidencia.nome_arquivo`, só no PDF), `pdf` em `item_modelo_apr.evidencia` e `material` em `auditoria.entidade`; só acrescenta, nenhuma linha muda de valor; gerada do schema |
 
 O Painel não tem tabela própria: lê as acima.
 

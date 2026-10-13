@@ -49,7 +49,8 @@
     "criado_por": "IP1020251202",
     "criada_em": "2026-10-01T06:00:00-03:00",
     "plano_manutencao": "10573",
-    "item_manutencao": "10603"
+    "item_manutencao": "10603",
+    "intervalo_ciclo": "3 MES"
   },
   {
     "numero_ordem": "4031187",
@@ -75,7 +76,8 @@
     "criado_por": "HDUARTE",
     "criada_em": "2026-10-01T08:30:00-03:00",
     "plano_manutencao": "10574",
-    "item_manutencao": "10610"
+    "item_manutencao": "10610",
+    "intervalo_ciclo": "semestral"
   },
   {
     "numero_ordem": "4031192",
@@ -127,7 +129,8 @@
     "criado_por": "IP1020251202",
     "criada_em": "2026-10-02T06:00:00-03:00",
     "plano_manutencao": "10580",
-    "item_manutencao": "10622"
+    "item_manutencao": "10622",
+    "intervalo_ciclo": "mensal"
   },
   {
     "numero_ordem": "4031210",
@@ -179,7 +182,8 @@
     "criado_por": "IP1020251202",
     "criada_em": "2026-10-03T06:00:00-03:00",
     "plano_manutencao": "10581",
-    "item_manutencao": "10630"
+    "item_manutencao": "10630",
+    "intervalo_ciclo": "1 ano"
   },
   {
     "numero_ordem": "4031222",
@@ -231,7 +235,8 @@
     "criado_por": "IP1020251202",
     "criada_em": "2026-10-04T06:00:00-03:00",
     "plano_manutencao": "10590",
-    "item_manutencao": "10640"
+    "item_manutencao": "10640",
+    "intervalo_ciclo": "6 meses"
   },
   {
     "numero_ordem": "4031236",
@@ -283,6 +288,7 @@
     "criado_por": "IP1020251202",
     "criada_em": "2026-10-05T06:00:00-03:00",
     "plano_manutencao": "10594",
-    "item_manutencao": "10651"
+    "item_manutencao": "10651",
+    "intervalo_ciclo": "trimestral"
   }
 ]

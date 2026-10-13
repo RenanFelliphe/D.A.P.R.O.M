@@ -14,6 +14,7 @@ import { rotasMe } from "./rotas/me";
 import { rotasModelosApr } from "./rotas/modelos-apr";
 import { rotasPainel } from "./rotas/painel";
 import { rotasPdf } from "./rotas/pdf";
+import { rotasPreventivas } from "./rotas/preventivas";
 import { rotasSap } from "./rotas/sap";
 import { rotasSapSimulado } from "./rotas/sap-simulado";
 import { rotasSaude } from "./rotas/saude";
@@ -44,6 +45,7 @@ export function criarApp(deps: Deps) {
   app.route("/", rotasEventos(deps, auth));
   app.route("/", rotasImpedimento(deps, auth));
   app.route("/", rotasPainel(deps, auth));
+  app.route("/", rotasPreventivas(deps, auth));
   app.route("/", rotasPdf(deps, auth));
   app.route("/", rotasAuditoria(deps, auth));
   if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps));

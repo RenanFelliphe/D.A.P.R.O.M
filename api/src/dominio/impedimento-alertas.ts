@@ -23,6 +23,7 @@ const colunas = {
   equipeId: os.equipeId,
   importacaoId: alerta.importacaoId,
   importacaoOrigem: importacao.origem,
+  planoPreventivaId: alerta.planoPreventivaId,
   detalhe: alerta.detalhe,
   emailEnviadoEm: alerta.emailEnviadoEm,
   lidoEm: alerta.lidoEm,

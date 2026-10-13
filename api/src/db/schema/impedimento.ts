@@ -1,15 +1,25 @@
 import { sql } from "drizzle-orm";
 import { check, date, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
+import { planoPreventiva } from "./preventivas";
 import { importacao, os } from "./sap";
 import { equipe, usuario } from "./usuarios";
 
-export const ALERTA_TIPOS = ["bloqueio", "conflito_planejamento", "execucao_duplicada", "apoio_encerrado", "falha_importacao"] as const;
+export const ALERTA_TIPOS = [
+  "bloqueio",
+  "conflito_planejamento",
+  "execucao_duplicada",
+  "apoio_encerrado",
+  "falha_importacao",
+  "preventiva_proxima",
+  "preventiva_vencida",
+] as const;
 export type AlertaTipo = (typeof ALERTA_TIPOS)[number];
 
 /**
  * Aviso no sino do painel. Os alertas de OS (impedimento, conflito, execução duplicada, apoio encerrado) apontam para a OS;
- * a falha de importação (sincronização ou planilha) aponta para o registro da importação que falhou, e não tem OS.
+ * a falha de importação (sincronização ou planilha) aponta para o registro da importação que falhou, e não tem OS. Os do ciclo
+ * das preventivas (próximo ou vencido) apontam para o plano e para a última OS dele.
  */
 export const alerta = pgTable(
   "alerta",
@@ -20,6 +30,8 @@ export const alerta = pgTable(
     osId: uuid().references(() => os.id),
     /** Só na falha de importação. */
     importacaoId: uuid().references(() => importacao.id),
+    /** Só nos alertas do ciclo das preventivas (`preventiva_proxima`, `preventiva_vencida`). */
+    planoPreventivaId: uuid().references(() => planoPreventiva.id),
     /** Alerta de OS: supervisor da equipe; sem supervisor, um alerta por administrador ativo. Falha de importação: ver `dominio/alertas.ts`. */
     destinatarioId: uuid()
       .notNull()
@@ -35,9 +47,14 @@ export const alerta = pgTable(
       "alerta_alvo",
       sql`(${t.tipo} = 'falha_importacao' and ${t.importacaoId} is not null and ${t.osId} is null) or (${t.tipo} <> 'falha_importacao' and ${t.osId} is not null and ${t.importacaoId} is null)`,
     ),
+    check(
+      "alerta_plano_so_na_preventiva",
+      sql`(${t.tipo} in ('preventiva_proxima', 'preventiva_vencida')) = (${t.planoPreventivaId} is not null)`,
+    ),
     index("alerta_destinatario_idx").on(t.destinatarioId, t.criadoEm.desc()),
     index("alerta_nao_lidos_idx").on(t.destinatarioId).where(sql`${t.lidoEm} is null`),
     index("alerta_os_idx").on(t.osId),
+    index("alerta_plano_idx").on(t.planoPreventivaId).where(sql`${t.planoPreventivaId} is not null`),
   ],
 ).enableRLS();
 

@@ -82,6 +82,16 @@ await recusa("OS do SAP ligada a uma OS de origem", `insert into os (numero_orde
 await recusa("origem manual não existe mais", `insert into os (numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('4031189','corretiva','8.7.1','x','${id(30)}','${id(1)}','2026-10-14','manual')`);
 await deve("OS sem atividade mapeada",`insert into os (id,numero_ordem,tipo,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('${id(42)}','4023470','corretiva','DCV Desobstrução de caixa de valvula','${id(30)}','${id(1)}','2026-05-15','sap')`);
 await deve("OS preventiva com plano e item", `insert into os (id,numero_ordem,tipo,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem,plano_manutencao,item_manutencao,data_ordem,criado_por_sap,status_sap) values ('${id(43)}','4019821','preventiva','1.2 - Inspeção Funcional de Retificador','${id(30)}','${id(1)}','2026-01-12','sap','10573','10603','2025-12-02','IP1020251202','LIB CAPC NOAP SCDM')`);
+// catálogo de serviço
+await deve("material", `insert into material (id,codigo,descricao,unidade,categoria) values ('${id(110)}','10002345','Luva de vaqueta','par','epi')`);
+await recusa("código de material repetido", `insert into material (codigo,descricao,unidade) values ('10002345','Outra','un')`);
+await recusa("categoria de material inválida", `insert into material (descricao,unidade,categoria) values ('X','un','consumivel')`);
+await recusa("material sem descrição", `insert into material (descricao,unidade) values ('  ','un')`);
+await deve("material na lista do serviço", `insert into atividade_material (atividade_codigo,material_id,quantidade,ordem) values ('8.7.1','${id(110)}',2,1)`);
+await recusa("material repetido no serviço", `insert into atividade_material (atividade_codigo,material_id,ordem) values ('8.7.1','${id(110)}',2)`);
+await recusa("quantidade zero", `update atividade_material set quantidade=0 where material_id='${id(110)}'`);
+await recusa("serviço inexistente", `insert into atividade_material (atividade_codigo,material_id,ordem) values ('9.9.9','${id(110)}',1)`);
+await recusa("excluir material em uso", `delete from material where id='${id(110)}'`);
 await recusa("atividade inexistente", `insert into os (numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('1','corretiva','9.9.9','x','${id(30)}','${id(1)}','2026-10-13','sap')`);
 await recusa("status inválido", `update os set status='aberta' where id='${id(40)}'`);
 await recusa("fim antes do início", `update os set data_fim_prog='2026-10-01' where id='${id(40)}'`);
@@ -125,6 +135,10 @@ await recusa("foto sem dono", `insert into evidencia (id,foto_path,capturada_em)
 await recusa("item sem APR", `insert into evidencia (id,execucao_id,item_id,foto_path,capturada_em) values ('${id(84)}','${id(60)}','${id(21)}','g.jpg',now())`);
 await recusa("GPS pela metade", `insert into evidencia (id,execucao_id,foto_path,capturada_em,latitude) values ('${id(85)}','${id(60)}','g.jpg',now(),-20)`);
 await recusa("latitude fora da faixa", `insert into evidencia (id,execucao_id,foto_path,capturada_em,latitude,longitude) values ('${id(86)}','${id(60)}','g.jpg',now(),95,0)`);
+await deve("PDF da execução, com o nome", `insert into evidencia (id,execucao_id,tipo,foto_path,nome_arquivo,capturada_em) values ('${id(87)}','${id(60)}','pdf','laudo-id','laudo.pdf',now())`);
+await deve("PDF do item respondido", `insert into evidencia (id,apr_id,item_id,tipo,foto_path,capturada_em) values ('${id(88)}','${id(50)}','${id(21)}','pdf','atestado-id',now())`);
+await recusa("tipo de evidência inválido", `insert into evidencia (id,execucao_id,tipo,foto_path,capturada_em) values ('${id(89)}','${id(60)}','video','v.mp4',now())`);
+await recusa("nome de arquivo na foto", `insert into evidencia (id,execucao_id,foto_path,nome_arquivo,capturada_em) values ('${id(89)}','${id(60)}','f2.jpg','foto.jpg',now())`);
 await deve("assinatura da execução", `insert into execucao_assinatura values ('${id(60)}','${id(10)}','a.png',now())`);
 await recusa("assinatura repetida", `insert into execucao_assinatura values ('${id(60)}','${id(10)}','a.png',now())`);
 await deve("encerrar completa", `update execucao set resultado='encerrada', fim='2026-10-13 11:18', descricao_atividade='Drenagem concluída' where id='${id(60)}'`);
@@ -149,6 +163,19 @@ await deve("alerta de falha de importação", `insert into alerta (tipo,importac
 await recusa("falha de importação sem a importação", `insert into alerta (tipo,destinatario_id,detalhe) values ('falha_importacao','${id(12)}','d')`);
 await recusa("falha de importação ligada a uma OS", `insert into alerta (tipo,os_id,importacao_id,destinatario_id,detalhe) values ('falha_importacao','${id(40)}','${id(95)}','${id(12)}','d')`);
 await recusa("alerta de OS ligado a uma importação", `insert into alerta (tipo,os_id,importacao_id,destinatario_id,detalhe) values ('bloqueio','${id(40)}','${id(95)}','${id(12)}','d')`);
+// ciclo das preventivas
+await deve("plano de preventiva sem intervalo", `insert into plano_preventiva (id,plano_manutencao,item_manutencao) values ('${id(96)}','10573','10603')`);
+await recusa("mesmo plano e item duas vezes", `insert into plano_preventiva (plano_manutencao,item_manutencao) values ('10573','10603')`);
+await deve("plano sem item", `insert into plano_preventiva (plano_manutencao) values ('10574')`);
+await recusa("mesmo plano sem item duas vezes", `insert into plano_preventiva (plano_manutencao) values ('10574')`);
+await deve("intervalo de 3 meses", `update plano_preventiva set intervalo_quantidade=3, intervalo_unidade='mes' where id='${id(96)}'`);
+await recusa("intervalo sem unidade", `update plano_preventiva set intervalo_unidade=null where id='${id(96)}'`);
+await recusa("unidade inválida", `update plano_preventiva set intervalo_unidade='decada' where id='${id(96)}'`);
+await recusa("intervalo zero", `update plano_preventiva set intervalo_quantidade=0 where id='${id(96)}'`);
+await recusa("plano em branco", `insert into plano_preventiva (plano_manutencao) values ('  ')`);
+await deve("alerta de ciclo vencido", `insert into alerta (tipo,os_id,plano_preventiva_id,destinatario_id,detalhe) values ('preventiva_vencida','${id(40)}','${id(96)}','${id(12)}','O ciclo venceu')`);
+await recusa("alerta de ciclo sem o plano", `insert into alerta (tipo,os_id,destinatario_id,detalhe) values ('preventiva_proxima','${id(40)}','${id(12)}','d')`);
+await recusa("alerta de OS ligado a um plano", `insert into alerta (tipo,os_id,plano_preventiva_id,destinatario_id,detalhe) values ('bloqueio','${id(40)}','${id(96)}','${id(12)}','d')`);
 await deve("reprogramação", `insert into reprogramacao (os_id,usuario_id,data_anterior,data_nova,justificativa) values ('${id(40)}','${id(12)}','2026-10-13','2026-10-16','Aguardar drenagem')`);
 await recusa("reprogramar sem justificativa", `insert into reprogramacao (os_id,usuario_id,data_anterior,data_nova,justificativa) values ('${id(40)}','${id(12)}','2026-10-13','2026-10-16','   ')`);
 await deve("tarefa", `insert into tarefa (tipo,referencia_id) values ('pdf_os','${id(40)}')`);

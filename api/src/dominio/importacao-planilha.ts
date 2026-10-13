@@ -33,6 +33,8 @@ import type { EntradaOrdem } from "./importacao-ordens";
  *   criada_em             data da ordem | emitida em | criada em | data de criacao
  *   plano_manutencao      plano de manutencao | plano
  *   item_manutencao       item de manutencao | item
+ *   intervalo_ciclo       intervalo | intervalo entre ciclos | periodicidade | ciclo | frequencia   ("3 meses", "30 dias",
+ *                         "trimestral"; só vale na preventiva com plano, e um valor que não dá para entender vira aviso)
  *
  * (* = coluna obrigatória; sem alguma delas a importação inteira é recusada com 422). A coluna de status é opcional:
  * sem ela, todas as linhas valem como liberadas (`LIB`), porque a planilha exportada traz as ordens a executar; com ela,
@@ -70,6 +72,10 @@ const CAMPOS = {
   criada_em: { rotulo: "Data da ordem", cabecalhos: ["data da ordem", "emitida em", "criada em", "data de criacao"] },
   plano_manutencao: { rotulo: "Plano de manutenção", cabecalhos: ["plano de manutencao", "plano"] },
   item_manutencao: { rotulo: "Item de manutenção", cabecalhos: ["item de manutencao", "item"] },
+  intervalo_ciclo: {
+    rotulo: "Intervalo entre ciclos",
+    cabecalhos: ["intervalo", "intervalo entre ciclos", "intervalo do ciclo", "periodicidade", "ciclo", "frequencia", "periodo do ciclo"],
+  },
 } satisfies Record<string, { rotulo: string; obrigatoria?: boolean; cabecalhos: string[] }>;
 
 type Campo = keyof typeof CAMPOS;
@@ -221,6 +227,8 @@ export async function lerPlanilha(bytes: Uint8Array): Promise<PlanilhaLida> {
       criada_em: dataDe("criada_em"),
       plano_manutencao: opcional("plano_manutencao"),
       item_manutencao: opcional("item_manutencao"),
+      // Célula vazia não apaga o intervalo já definido: só o que veio preenchido muda o plano.
+      intervalo_ciclo: texto("intervalo_ciclo") ?? undefined,
     };
     entradas.push({ linha: n, ordem });
   }

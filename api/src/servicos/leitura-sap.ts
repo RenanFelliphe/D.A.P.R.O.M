@@ -4,6 +4,7 @@ import { importacao, tarefa } from "../db/schema";
 import type { Deps } from "../deps";
 import { alertarFalhaDeImportacao, detalheDaFalha } from "../dominio/alertas";
 import { processarOrdens, type AvisoOrdem, type DetalheIgnorada } from "../dominio/importacao-ordens";
+import { conferirCiclosDaImportacao } from "../dominio/preventivas";
 
 const TAMANHO_DA_PAGINA = 200;
 /** Trava contra uma API que nunca termina de paginar. */
@@ -113,7 +114,7 @@ export async function executarLeitura(deps: Deps, opcoes: { importacaoId?: strin
   }
 
   try {
-    return await deps.db.transaction(async (tx) => {
+    const resultado = await deps.db.transaction(async (tx) => {
       const r = await processarOrdens(tx as unknown as Db, ordens.map((ordem) => ({ ordem })), { origem: "sap", agora: inicio });
       const contagens = { criadas: r.criadas, atualizadas: r.atualizadas, ignoradas: r.ignoradas.length, detalheIgnoradas: r.ignoradas, erro: null };
       let importacaoId = opcoes.importacaoId;
@@ -123,8 +124,11 @@ export async function executarLeitura(deps: Deps, opcoes: { importacaoId?: strin
         const [criada] = await tx.insert(importacao).values({ origem: "api", usuarioId, criadaEm: inicio, ...contagens }).returning({ id: importacao.id });
         importacaoId = criada!.id;
       }
-      return { importacaoId, criadas: r.criadas, atualizadas: r.atualizadas, ignoradas: r.ignoradas, avisos: r.avisos, erro: null };
+      return { importacaoId, criadas: r.criadas, atualizadas: r.atualizadas, ignoradas: r.ignoradas, avisos: r.avisos, erro: null, planos: r.planos };
     });
+    const { planos, ...leitura } = resultado;
+    await conferirCiclosDaImportacao(deps.db, deps.agora(), planos);
+    return leitura;
   } catch (erro) {
     console.error("Falha ao processar a leitura do SAP", erro);
     return falha(`Falha ao gravar as ordens: ${mensagemDe(erro)}`);
