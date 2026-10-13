@@ -6,6 +6,7 @@ import { duracao } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 import { CabecalhoDoBloco, comparacao, Medidor, plural, porcentagem, Secao } from "./blocos";
 import { COR_EM_DIA, MARCADOR_DO_STATUS } from "./cores";
+import { fracao } from "./TempoDeExecucao";
 
 interface ItemDeAtencao {
   icone: IconName;
@@ -135,7 +136,11 @@ export function DashboardGeral({ dados, rotuloAnterior, alertasNaoLidos, verExpo
             label="Tempo líquido médio"
             marker={<Icon name="clock" size={13} style={{ color: "var(--ink3)" }} />}
             value={t.tempo_liquido_medio_min === null ? "—" : duracao(t.tempo_liquido_medio_min)}
-            sub={t.execucoes === 0 ? "nenhuma execução encerrada" : plural(t.execucoes, "execução encerrada", "execuções encerradas")}
+            sub={
+              t.execucoes === 0
+                ? "nenhuma execução encerrada"
+                : `${plural(t.execucoes, "execução encerrada", "execuções encerradas")} · pausa média ${duracao(t.pausa_media_min)} (${fracao(t.proporcao_pausa)})`
+            }
           />
           <Kpi
             label="Interrupções por risco"

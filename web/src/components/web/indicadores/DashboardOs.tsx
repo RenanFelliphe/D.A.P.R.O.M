@@ -5,13 +5,14 @@ import { Kpi, Panel } from "@/components/web/Panel";
 import type { ResumoDasImportacoes } from "@/components/web/importacao/tipos";
 import type { DashboardOs as Dados } from "@/data/dashboards";
 import type { OsDoQuadro } from "@/data/quadro";
-import { dataHora, duracao } from "@/lib/formatar";
+import { dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 import { CabecalhoDoBloco, comparacao, plural, porcentagem, Secao } from "./blocos";
 import { COR_AVISO, COR_CORRETIVA, COR_CRITICA, COR_EM_DIA, COR_PREVENTIVA, COR_UNICA, MARCADOR_DO_STATUS } from "./cores";
 import { EntradaDeOs } from "./EntradaDeOs";
 import { ExportacaoSap } from "./ExportacaoSap";
 import { GraficoColunas, type SerieDoGrafico } from "./GraficoColunas";
+import { OsComMaisPausaNoPeriodo, PausasPorMotivo, TempoDoPeriodo } from "./TempoDeExecucao";
 
 export const nomeDaUnidade = { dia: "dia", semana: "semana", mes: "mês" } as const;
 
@@ -56,36 +57,6 @@ function PreventivasDoPeriodo({ preventivas }: { preventivas: Dados["preventivas
         ))}
       </ul>
       )}
-    </Panel>
-  );
-}
-
-/** Tempo médio das execuções encerradas no período (iniciadas nele): líquido, pausa e a parte do tempo em pausa. */
-export function TempoDoPeriodo({ tempo, rodape }: { tempo: Dados["tempo"]; rodape?: string }) {
-  const dados = [
-    { rotulo: "Tempo líquido médio", valor: duracao(tempo.tempo_liquido_medio_min) },
-    { rotulo: "Pausa média", valor: duracao(tempo.pausa_media_min) },
-    { rotulo: "Pausa no total", valor: tempo.proporcao_pausa === null ? "—" : `${Math.round(tempo.proporcao_pausa * 100)}%` },
-  ];
-  return (
-    <Panel>
-      <CabecalhoDoBloco
-        titulo="Tempo de execução"
-        descricao={
-          tempo.execucoes === 0
-            ? "Nenhuma execução encerrada no período"
-            : `Média de ${plural(tempo.execucoes, "execução encerrada", "execuções encerradas")}; o líquido não conta as pausas`
-        }
-      />
-      <dl className="dl">
-        {dados.map((d) => (
-          <div key={d.rotulo}>
-            <dt>{d.rotulo}</dt>
-            <dd style={{ fontSize: 18, fontWeight: 600 }}>{d.valor}</dd>
-          </div>
-        ))}
-      </dl>
-      {rodape && <span className="small">{rodape}</span>}
     </Panel>
   );
 }
@@ -222,6 +193,10 @@ export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao, porTec
         <div className="two eq">
           <PreventivasDoPeriodo preventivas={dados.preventivas} />
           <TempoDoPeriodo tempo={dados.tempo} rodape={porTecnico ? "Por equipe e por técnico no dashboard de equipes e usuários." : "Da equipe toda, sem separar por pessoa."} />
+        </div>
+        <div className="two eq">
+          <PausasPorMotivo motivos={dados.tempo.por_motivo} />
+          <OsComMaisPausaNoPeriodo lista={dados.tempo.os_com_mais_pausa} />
         </div>
         <div className="two eq">
           <Interrupcoes interrupcoes={dados.interrupcoes} />

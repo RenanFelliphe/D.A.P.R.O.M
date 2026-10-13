@@ -21,6 +21,14 @@ export const COR_UNICA = "#0F5C78";
 export const COR_CORRETIVA = "#6250D6";
 export const COR_PREVENTIVA = "#E87BA4";
 
+/**
+ * Tempo de execução (barras empilhadas por equipe e por técnico, no dashboard de equipes): azul e laranja, slots 1 e 2 da
+ * paleta categórica, validados juntos no fundo branco (ΔE 24,7 na protanopia, os dois acima de 3:1). Nessa página nenhuma
+ * outra entidade usa essas cores; no dashboard de OS elas são da entrada de OS, então lá o tempo não leva barra de duas cores.
+ */
+export const COR_TEMPO_LIQUIDO = "#2A78D6";
+export const COR_PAUSA = "#EB6834";
+
 /** Bolinha do status da OS nos indicadores (as mesmas do quadro). */
 export const MARCADOR_DO_STATUS = {
   liberada: "#1C5CAB",

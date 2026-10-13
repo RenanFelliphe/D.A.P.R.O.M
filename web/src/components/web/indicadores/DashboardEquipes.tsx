@@ -9,9 +9,7 @@ import { rotas } from "@/lib/rotas";
 import { rotuloDoPerfil, type Perfil } from "@/lib/tipos";
 import { BarrasSituacao } from "./BarrasSituacao";
 import { CabecalhoDoBloco, plural, porcentagem, Secao } from "./blocos";
-
-/** `0.1234` → `12%`; sem medida, "—". */
-const fracao = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)}%`);
+import { KpisDoTempo, PausasPorMotivo, TempoPorGrupo } from "./TempoDeExecucao";
 /** "3 (1 bloqueada)" ou só o número. */
 const comBloqueadas = (aprs: number, bloqueadas: number) => (bloqueadas > 0 ? `${aprs} (${plural(bloqueadas, "bloqueada", "bloqueadas")})` : String(aprs));
 
@@ -94,7 +92,6 @@ function TabelaDeEquipes({ equipes, acompanha }: { equipes: Dados["equipes"]; ac
                 <th className="r">Preventivas em dia</th>
                 <th className="r">Atrasadas sem justificativa</th>
                 <th className="r">Execuções</th>
-                <th className="r">Tempo líquido médio</th>
                 <th className="r">APRs</th>
                 <th className="r">Interrupções</th>
               </tr>
@@ -114,7 +111,6 @@ function TabelaDeEquipes({ equipes, acompanha }: { equipes: Dados["equipes"]; ac
                       {e.preventivas.atrasadas_sem_justificativa}
                     </td>
                     <td className="r">{e.execucoes}</td>
-                    <td className="r">{duracao(e.tempo_liquido_medio_min)}</td>
                     <td className="r">{comBloqueadas(e.aprs, e.aprs_bloqueadas)}</td>
                     <td className="r">{e.interrompidas}</td>
                   </tr>
@@ -133,7 +129,7 @@ function TabelaDeTecnicos({ tecnicos }: { tecnicos: Dados["tecnicos"] }) {
     <Panel>
       <CabecalhoDoBloco
         titulo="Técnicos"
-        descricao="Os técnicos ativos das equipes e quem trabalhou nas OS delas no período; o tempo é das execuções que cada um encerrou"
+        descricao="Os técnicos ativos das equipes e quem trabalhou nas OS delas no período; o tempo de cada um fica em Tempo de execução"
       />
       {tecnicos.length === 0 ? (
         <p className="muted">Nenhum técnico nas equipes da seleção.</p>
@@ -146,8 +142,6 @@ function TabelaDeTecnicos({ tecnicos }: { tecnicos: Dados["tecnicos"] }) {
                 <th>Técnico</th>
                 <th>Equipe</th>
                 <th className="r">Execuções encerradas</th>
-                <th className="r">Tempo líquido médio</th>
-                <th className="r">Pausa no total</th>
                 <th className="r">APRs preenchidas</th>
                 <th className="r">Interrupções</th>
               </tr>
@@ -165,8 +159,6 @@ function TabelaDeTecnicos({ tecnicos }: { tecnicos: Dados["tecnicos"] }) {
                   </th>
                   <td>{t.equipe_nome ?? <span className="muted">sem equipe</span>}</td>
                   <td className="r">{t.execucoes}</td>
-                  <td className="r">{duracao(t.tempo_liquido_medio_min)}</td>
-                  <td className="r">{fracao(t.proporcao_pausa)}</td>
                   <td className="r">{comBloqueadas(t.aprs, t.aprs_bloqueadas)}</td>
                   <td className="r">{t.interrompidas}</td>
                 </tr>
@@ -255,6 +247,30 @@ export function DashboardEquipes({ dados, acompanha }: { dados: Dados; acompanha
       </Secao>
       <SituacaoPorEquipe equipes={dados.equipes} />
       <TabelaDeEquipes equipes={dados.equipes} acompanha={acompanha} />
+      <Secao
+        id="equipes-tempo-t"
+        titulo="Tempo de execução"
+        descricao="Execuções encerradas iniciadas no período: o tempo total vai do início ao fim; a pausa soma as pausas registradas no app; o líquido é a diferença."
+      >
+        <KpisDoTempo tempo={dados.tempo} />
+        <div className="two eq">
+          <TempoPorGrupo
+            titulo={acompanha ? "Tempo por equipe" : "Tempo da equipe"}
+            descricao="Tempo médio por execução, nas OS de cada equipe"
+            coluna="Equipe"
+            linhas={dados.equipes.map((e) => ({ ...e, href: rotas.app.equipe(e.id) }))}
+          />
+          <PausasPorMotivo motivos={dados.tempo.por_motivo} />
+        </div>
+        {acompanha && (
+          <TempoPorGrupo
+            titulo="Tempo por técnico"
+            descricao="Tempo médio das execuções que cada técnico encerrou"
+            coluna="Técnico"
+            linhas={dados.tecnicos.map((t) => ({ ...t, href: rotas.app.perfilDe(t.id), detalhe: t.equipe_nome }))}
+          />
+        )}
+      </Secao>
       {acompanha && <TabelaDeTecnicos tecnicos={dados.tecnicos} />}
       {dados.cadastro && <Cadastro cadastro={dados.cadastro} />}
     </>

@@ -4,8 +4,9 @@ import type { DashboardMeus as Dados } from "@/data/dashboards";
 import { duracao } from "@/lib/formatar";
 import { CabecalhoDoBloco, comparacao, Medidor, plural, porcentagem, Secao } from "./blocos";
 import { COR_EM_DIA } from "./cores";
-import { Interrupcoes, Locais, nomeDaUnidade, SERIES_POR_TIPO, TempoDoPeriodo } from "./DashboardOs";
+import { Interrupcoes, Locais, nomeDaUnidade, SERIES_POR_TIPO } from "./DashboardOs";
 import { GraficoColunas } from "./GraficoColunas";
+import { fracao, OsComMaisPausaNoPeriodo, PausasPorMotivo, TempoDoPeriodo } from "./TempoDeExecucao";
 
 /**
  * Meus resultados: o dashboard da própria pessoa (técnico e supervisor). Só o que ela fez no período: as OS que encerrou, as
@@ -31,7 +32,7 @@ export function DashboardMeus({ dados, rotuloAnterior }: { dados: Dados; rotuloA
           label="Tempo líquido médio"
           marker={<Icon name="clock" size={13} style={{ color: "var(--ink3)" }} />}
           value={t.tempo_liquido_medio_min === null ? "—" : duracao(t.tempo_liquido_medio_min)}
-          sub={t.execucoes === 0 ? "nenhuma execução encerrada" : plural(t.execucoes, "execução encerrada", "execuções encerradas")}
+          sub={t.execucoes === 0 ? "nenhuma execução encerrada" : `${plural(t.execucoes, "execução encerrada", "execuções encerradas")} · ${fracao(t.proporcao_pausa)} em pausa`}
         />
         <Kpi
           label="Interrupções por risco"
@@ -67,6 +68,10 @@ export function DashboardMeus({ dados, rotuloAnterior }: { dados: Dados; rotuloA
             />
           </ul>
         </Panel>
+      </div>
+      <div className="two eq">
+        <PausasPorMotivo motivos={t.por_motivo} />
+        <OsComMaisPausaNoPeriodo lista={t.os_com_mais_pausa} descricao="Suas execuções encerradas com mais tempo em pausa" />
       </div>
       <div className="two eq">
         {/* O nome seria o da própria pessoa: não se repete. */}
