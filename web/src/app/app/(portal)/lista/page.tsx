@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AtualizacaoAutomatica } from "@/components/ui/AtualizacaoAutomatica";
 import { Screen } from "@/components/ui/Screen";
 import { CabecalhoSecaoOs } from "@/components/web/os/CabecalhoSecaoOs";
 import { PaginaQuadro } from "@/components/web/quadro/PaginaQuadro";
@@ -9,7 +10,7 @@ export const metadata: Metadata = { title: "Quadro de OS" };
 
 /**
  * Quadro de OS: um endereço só para admin, supervisor e técnico (a `api` entrega a cada um o que ele enxerga). Admin e
- * supervisor ficam na seção Ordem de Serviço, com as abas; o técnico vê o título "OS da equipe".
+ * supervisor ficam na seção Ordem de Serviço, com as abas; o técnico vê o título "OS da equipe". Atualiza sozinho.
  */
 export default async function ListaPage({ searchParams }: PageProps<"/app/lista">) {
   const { usuario } = await usuarioAtual();
@@ -18,6 +19,7 @@ export default async function ListaPage({ searchParams }: PageProps<"/app/lista"
     <Screen>
       {gestao ? <CabecalhoSecaoOs /> : <h1>OS da equipe</h1>}
       <PaginaQuadro searchParams={searchParams} />
+      <AtualizacaoAutomatica />
     </Screen>
   );
 }

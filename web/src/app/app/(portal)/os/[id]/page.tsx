@@ -8,6 +8,7 @@ import { HistoricoAprs } from "@/components/app/detalhe/HistoricoAprs";
 import { InstrucoesCard } from "@/components/app/detalhe/InstrucoesCard";
 import { LocalCard } from "@/components/app/detalhe/LocalCard";
 import { Recolhivel } from "@/components/app/detalhe/Recolhivel";
+import { AtualizacaoAutomatica } from "@/components/ui/AtualizacaoAutomatica";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
 import { DecisoesDaOs } from "@/components/web/alertas/DecisoesDaOs";
@@ -38,7 +39,8 @@ export const metadata: Metadata = { title: "Detalhe da OS" };
  * - Técnico: dados do SAP, local, instruções, APR exigida e as ações que o estado da OS permite (APR, execução).
  * - Admin: a visão de supervisão (abas Resumo, APRs e execuções, Histórico; alertas, PDF, ciência, baixa no SAP, local crítico, cancelar).
  * - Supervisor: a mesma visão de supervisão e, na lateral, as ações de campo (ele também é técnico e executa OS).
- * Quem supervisiona a equipe da OS (e o admin) reprograma ou abre OS de apoio no Resumo, sem depender de um alerta.
+ * Quem supervisiona a equipe da OS (e o admin) reprograma ou abre OS de apoio no Resumo, sem depender de um alerta. A tela
+ * atualiza sozinha.
  */
 export default async function DetalheOsPage({ params, searchParams }: PageProps<"/app/os/[id]">) {
   const { id } = await params;
@@ -105,6 +107,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           }
           lateral={painelDeCampo}
         />
+        <AtualizacaoAutomatica />
       </Screen>
     );
   }
@@ -196,6 +199,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           <BaixaSap os={os} podeExportar={admin} />
         </aside>
       </div>
+      <AtualizacaoAutomatica />
     </Screen>
   );
 }
