@@ -1,6 +1,7 @@
 import "server-only";
 
 import { api, apiOuNulo } from "@/lib/api";
+import { pedemAtencao, type ListaDePreventivas } from "@/lib/preventivas";
 import { ehAdmin, ehSupervisor, type Equipe, type OsStatus, type Paginacao, type Usuario } from "@/lib/tipos";
 
 /** OS como a `api` a devolve em `GET /os` (quadro). */
@@ -99,6 +100,19 @@ export async function totalDeAlertasNaoLidos(usuario: Pick<Usuario, "perfil" | "
   if (!ehAdmin(usuario) && !ehSupervisor(usuario)) return 0;
   const r = await apiOuNulo<{ total: number }>("/alertas", { consulta: { lido: false, tamanho: 1 } });
   return r?.total ?? 0;
+}
+
+/**
+ * Quantos planos de preventiva pedem atenção (ciclo vencido ou próximo do vencimento), para o selo do botão "OS
+ * preventivas" do quadro. Uma falha aqui não derruba o quadro: o selo some.
+ */
+export async function preventivasEmAtencao(equipeId?: string): Promise<number> {
+  try {
+    const r = await api<ListaDePreventivas>("/preventivas", { consulta: { equipe_id: equipeId } });
+    return pedemAtencao(r.contagem);
+  } catch {
+    return 0;
+  }
 }
 
 export async function listarEquipes(): Promise<Equipe[]> {

@@ -8,12 +8,14 @@ import { FiltrosQuadro } from "@/components/web/quadro/FiltrosQuadro";
 import { OrdemDoQuadro } from "@/components/web/quadro/OrdemDoQuadro";
 import { KpisQuadro } from "@/components/web/quadro/KpisQuadro";
 import { Paginas } from "@/components/web/quadro/Paginas";
+import { BotaoPreventivas } from "@/components/web/preventivas/BotaoPreventivas";
 import { rotas } from "@/lib/rotas";
 import {
   carregarQuadro,
   listarEquipes,
   mesesDoSeletor,
   osPorNumeroExato,
+  preventivasEmAtencao,
   rotuloDoMes,
   totalDeAlertasNaoLidos,
   type FiltrosDoQuadro,
@@ -63,7 +65,10 @@ function hrefDoQuadro(base: string, f: FiltrosDoQuadro, mudar: Partial<Record<ke
  * Admin e supervisor ganham a faixa de alertas e a situação de ciência e PDF nos cartões; só o admin escolhe a equipe.
  */
 export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const filtros = lerFiltros(await searchParams);
+  const parametros = await searchParams;
+  const filtros = lerFiltros(parametros);
+  // `?preventivas=1` abre a janela das preventivas (o atalho do alerta de ciclo).
+  const abrirPreventivas = parametros.preventivas === "1";
   const { usuario, equipe } = await usuarioAtual();
   const rota = { quadro: rotas.app.lista, os: rotas.app.os };
 
@@ -77,11 +82,13 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
   const supervisor = supervisa(usuario);
   // Admin e supervisor acompanham as OS (alertas, ciência e PDF); o técnico comum só executa.
   const gestao = admin || supervisor;
-  const [quadro, equipes, alertas] = await Promise.all([
+  const [quadro, equipes, alertas, preventivas] = await Promise.all([
     carregarQuadro(filtros),
     // Só o admin escolhe a equipe; os demais enxergam apenas as próprias.
     admin ? listarEquipes() : Promise.resolve(null),
     gestao ? totalDeAlertasNaoLidos(usuario) : Promise.resolve(0),
+    // A janela das preventivas é de quem planeja: admin e supervisor.
+    gestao ? preventivasEmAtencao(filtros.equipe_id) : Promise.resolve(0),
   ]);
 
   const nomeDaEquipe = admin ? equipes?.find((e) => e.id === filtros.equipe_id)?.nome : supervisor ? nomesDasEquipesDoSupervisor(usuario) : equipe?.nome;
@@ -99,7 +106,10 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
         {subtitulo}
       </span>
       <KpisQuadro contagem={quadro.contagem} periodo={filtros.periodo ? periodo : "todas as datas"} />
-      <OrdemDoQuadro atual={filtros.ordem ?? "prioridade"} hrefDa={(ordem) => hrefDoQuadro(rota.quadro, filtros, { ordem: ordem === "prioridade" ? undefined : ordem, pagina: undefined })} />
+      <div className="row between wrap g8" style={{ alignItems: "center" }}>
+        <OrdemDoQuadro atual={filtros.ordem ?? "prioridade"} hrefDa={(ordem) => hrefDoQuadro(rota.quadro, filtros, { ordem: ordem === "prioridade" ? undefined : ordem, pagina: undefined })} />
+        {gestao && <BotaoPreventivas atencao={preventivas} equipeId={filtros.equipe_id} abrirAoCarregar={abrirPreventivas} />}
+      </div>
       {gestao && <FaixaAlertas total={alertas} />}
       <FiltrosRecolhiveis filtrado={filtrado}>
         <FiltrosQuadro acao={rota.quadro} equipes={equipes} meses={meses} valores={filtros} manter={{ ordem: filtros.ordem, status: filtros.status }} filtrado={filtrado} />

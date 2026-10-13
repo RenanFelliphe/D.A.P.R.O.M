@@ -10,6 +10,8 @@ const rotuloDoAlerta: Record<string, string> = {
   conflito_planejamento: "Conflito de planejamento",
   apoio_encerrado: "OS de apoio encerrada",
   execucao_duplicada: "Execução duplicada",
+  preventiva_proxima: "Preventiva: ciclo próximo",
+  preventiva_vencida: "Preventiva: ciclo vencido",
 };
 
 /** Alertas gerados para esta OS (com o destinatário) e as reprogramações feitas nela. */

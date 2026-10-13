@@ -4,9 +4,11 @@ export const entidadesDaAuditoria = [
   { valor: "equipe", rotulo: "Equipe" },
   { valor: "modelo_apr", rotulo: "Modelo de APR" },
   { valor: "atividade", rotulo: "Atividade" },
+  { valor: "material", rotulo: "Material do catálogo" },
   { valor: "os", rotulo: "Ordem de serviço" },
   { valor: "importacao", rotulo: "Importação" },
   { valor: "exportacao", rotulo: "Exportação" },
+  { valor: "plano_preventiva", rotulo: "Ciclo de preventiva" },
 ] as const;
 
 export type EntidadeDaAuditoria = (typeof entidadesDaAuditoria)[number]["valor"];
@@ -57,4 +59,12 @@ export const rotuloDoCampo: Record<string, string> = {
   os_exportadas: "OS exportadas",
   os_origem_id: "OS de origem",
   data_inicio_prog: "Início programado",
+  materiais: "Materiais",
+  unidade: "Unidade",
+  categoria: "Categoria",
+  codigo: "Código no SAP",
+  intervalo: "Intervalo entre ciclos",
+  base_do_ciclo: "Contado a partir de",
+  antecedencia_dias: "Antecedência do aviso (dias)",
+  observacao: "Observação",
 };

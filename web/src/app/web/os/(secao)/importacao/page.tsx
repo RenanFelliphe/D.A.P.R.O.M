@@ -6,6 +6,7 @@ import { ImportacoesAnteriores } from "@/components/web/importacao/ImportacoesAn
 import type { Importacao, Sincronizacao } from "@/components/web/importacao/tipos";
 import { AcessoRestrito } from "@/components/web/os/AcessoRestrito";
 import { veImportacao } from "@/components/web/os/secao";
+import { PainelPreventivas } from "@/components/web/preventivas/PainelPreventivas";
 import { api, usuarioAtual } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
 import { ehAdmin, type Paginacao } from "@/lib/tipos";
@@ -14,7 +15,10 @@ export const metadata: Metadata = { title: "Importação de OS" };
 
 const TAMANHO_DO_HISTORICO = 20;
 
-/** Aba Importação: só os métodos de entrada de OS, as colunas lidas da planilha e o histórico (os gráficos ficam no dashboard de OS, em Dashboard). */
+/**
+ * Aba Importação: os métodos de entrada de OS, o intervalo das preventivas que entraram sem ele, as colunas lidas da
+ * planilha e o histórico (os gráficos ficam no dashboard de OS, em Dashboard).
+ */
 export default async function ImportacaoPage({ searchParams }: PageProps<"/web/os/importacao">) {
   const { usuario } = await usuarioAtual();
   if (!veImportacao(usuario)) return <AcessoRestrito />;
@@ -47,6 +51,25 @@ export default async function ImportacaoPage({ searchParams }: PageProps<"/web/o
           intervaloMin={sincronizacao.intervalo_min}
           ehAdmin={ehAdmin(usuario)}
         />
+      </section>
+
+      <section className="stack g12" aria-labelledby="preventivas-t">
+        <div className="row between wrap g8" style={{ alignItems: "flex-end" }}>
+          <div className="stack" style={{ gap: 2, maxWidth: 820 }}>
+            <h2 id="preventivas-t" className="secao-t">
+              Intervalo das preventivas
+            </h2>
+            <span className="muted">
+              As OS preventivas entram com o plano de manutenção do SAP; o intervalo entre ciclos vem da coluna Intervalo (ou Periodicidade) da planilha, da
+              Periodicidade do PDF ou é definido aqui. Com ele, o sistema conta o tempo até o próximo ciclo e avisa quando ele se aproxima ou vence: nenhuma OS é
+              criada.
+            </span>
+          </div>
+          <Link href={rotas.app.preventivas} style={{ fontSize: 14, fontWeight: 600 }}>
+            Ver todas as preventivas
+          </Link>
+        </div>
+        <PainelPreventivas fixa="sem_intervalo" vazio="Todas as preventivas importadas já têm o intervalo entre ciclos definido." />
       </section>
 
       <section className="stack g12" aria-labelledby="colunas-t">

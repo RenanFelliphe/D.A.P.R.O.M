@@ -12,6 +12,7 @@ const opcionais = [
   "Fim programado",
   "Status do sistema (precisa conter LIB)",
   "Solicitante, plano e item de manutenção",
+  "Intervalo entre ciclos da preventiva (Intervalo ou Periodicidade: 3 meses, 30 dias, trimestral)",
 ];
 
 function Lista({ itens, icone }: { itens: string[]; icone: "check" | "plus" }) {
@@ -36,6 +37,7 @@ const rotulosDoPdf = [
   "Local de Instalação e Endereço",
   "Data de inicio programada e Data fim programada",
   "Equipamento, Prioridade, Nota, Plano e Item de manutenção",
+  "Periodicidade (o intervalo entre ciclos da preventiva, conferido na tela)",
   "Status do sistema, Criado por e Data da Ordem",
   "O texto longo, depois da tabela de operações",
 ];

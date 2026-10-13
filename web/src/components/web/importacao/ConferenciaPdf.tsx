@@ -8,7 +8,9 @@ import { Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/web/Panel";
+import { CampoIntervalo } from "@/components/web/preventivas/CampoIntervalo";
 import { enviarFormulario, ErroCliente } from "@/lib/cliente-api";
+import { descreverIntervalo, type Intervalo } from "@/lib/preventivas";
 import { rotas } from "@/lib/rotas";
 import { rotuloDoStatus } from "@/lib/tipos";
 import type { CampoObrigatorioDoPdf, LeituraDoPdf, OrdemDoPdf, OsLidaDoPdf, ResultadoDaImportacao } from "./tipos";
@@ -40,6 +42,14 @@ function pendencias(o: OrdemDoPdf): string[] {
   const lista = faltam.length > 0 ? [`Preencha: ${faltam.map((c) => NOME_DO_CAMPO[c]).join(", ")}`] : [];
   if (o.data_inicio_prog && o.data_fim_prog && o.data_fim_prog < o.data_inicio_prog) lista.push("O fim programado é anterior ao início");
   return lista;
+}
+
+/**
+ * O intervalo entre ciclos que a conferência começa mostrando: o que o PDF trouxe na Periodicidade ou, sem ele, o que o
+ * plano já tem no sistema. Fora da preventiva com plano, o campo não existe e nada vai para o plano.
+ */
+function intervaloInicial(lida: OsLidaDoPdf): Intervalo | null {
+  return lida.preventiva ? (lida.preventiva.intervalo_lido ?? lida.preventiva.intervalo_atual) : null;
 }
 
 /** Campo em branco vira `null` (como o que não veio no PDF). */
@@ -96,6 +106,17 @@ function CartaoDaOs({ lida, ordem, marcada, podeCadastrarEquipe, aoMudar, aoMarc
   const atividadeMudou = (ordem.codigo_atividade ?? "") !== (lida.ordem.codigo_atividade ?? "");
   const problemas = marcada ? pendencias(ordem) : [];
   const statusSemLib = !/\bLIB\b/i.test(ordem.status_sap ?? "");
+  // O intervalo entre ciclos só vale na preventiva com plano de manutenção.
+  const comCiclo = ordem.tipo_ordem === "YBA2" && Boolean(ordem.plano_manutencao?.trim());
+  const intervalo = ordem.intervalo_ciclo !== null && typeof ordem.intervalo_ciclo === "object" ? ordem.intervalo_ciclo : null;
+  const periodicidadeImpressa = typeof lida.ordem.intervalo_ciclo === "string" ? lida.ordem.intervalo_ciclo : null;
+  const dicaDoIntervalo = lida.preventiva?.intervalo_atual_descricao
+    ? `O plano já tem: ${lida.preventiva.intervalo_atual_descricao}. Mudar aqui troca o intervalo do plano.`
+    : lida.preventiva?.intervalo_lido
+      ? `Lido da Periodicidade do PDF (${periodicidadeImpressa}).`
+      : periodicidadeImpressa
+        ? `A Periodicidade impressa ("${periodicidadeImpressa}") não foi entendida: preencha.`
+        : "Opcional. Sem ele, o sistema não conta o tempo até o próximo ciclo nem avisa quando ele vence.";
   // A equipe só sai do centro de trabalho quando a OS é nova: a que já existe mantém a equipe que tem.
   const semEquipe = !lida.existente && !lida.equipe && !centroMudou;
   const atencao = semEquipe || statusSemLib;
@@ -214,6 +235,11 @@ function CartaoDaOs({ lida, ordem, marcada, podeCadastrarEquipe, aoMudar, aoMarc
         <Campo id={id("equipamento")} rotulo="Equipamento">
           {entrada("equipamento")}
         </Campo>
+        {comCiclo && (
+          <Campo id={id("intervalo_ciclo")} rotulo="Intervalo entre ciclos (preventiva)" dica={intervalo ? `Preventiva ${descreverIntervalo(intervalo)}. ${dicaDoIntervalo}` : dicaDoIntervalo}>
+            <CampoIntervalo id={id("intervalo_ciclo")} valor={intervalo} aoMudar={(v) => aoMudar({ ...ordem, intervalo_ciclo: v })} desabilitado={!marcada} />
+          </Campo>
+        )}
         <Campo id={id("status_sap")} rotulo="Status do sistema (SAP)" dica="Precisa ter LIB para a OS entrar.">
           {entrada("status_sap")}
         </Campo>
@@ -285,7 +311,7 @@ function CartaoDaOs({ lida, ordem, marcada, podeCadastrarEquipe, aoMudar, aoMarc
  * o que faltou e escolhe quais OS registrar; o registro reenvia o PDF, que a `api` lê de novo para conferir os números.
  */
 export function ConferenciaPdf({ arquivo, url, leitura, podeCadastrarEquipe, aoDescartar, aoRegistrar, aoFalhar }: ConferenciaPdfProps) {
-  const [ordens, setOrdens] = useState(() => leitura.ordens.map((o) => o.ordem));
+  const [ordens, setOrdens] = useState<OrdemDoPdf[]>(() => leitura.ordens.map((o) => ({ ...o.ordem, intervalo_ciclo: intervaloInicial(o) })));
   const [marcadas, setMarcadas] = useState(() => leitura.ordens.map(() => true));
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);

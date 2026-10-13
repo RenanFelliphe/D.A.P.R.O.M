@@ -6,6 +6,7 @@ import type { ResumoDasImportacoes } from "@/components/web/importacao/tipos";
 import type { DashboardOs as Dados } from "@/data/dashboards";
 import type { OsDoQuadro } from "@/data/quadro";
 import { dataHora } from "@/lib/formatar";
+import { aparenciaDaSituacao, type ContagemDosCiclos } from "@/lib/preventivas";
 import { rotas } from "@/lib/rotas";
 import { CabecalhoDoBloco, comparacao, plural, porcentagem, Secao } from "./blocos";
 import { COR_AVISO, COR_CORRETIVA, COR_CRITICA, COR_EM_DIA, COR_PREVENTIVA, COR_UNICA, MARCADOR_DO_STATUS } from "./cores";
@@ -56,6 +57,54 @@ function PreventivasDoPeriodo({ preventivas }: { preventivas: Dados["preventivas
           </li>
         ))}
       </ul>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * O ciclo das preventivas agora (não depende do período): quantos planos venceram sem OS nova, vencem dentro da
+ * antecedência, aguardam a execução da OS do ciclo ou estão em dia, e quantos ainda não têm intervalo.
+ */
+function CiclosDasPreventivas({ ciclos, comAtalho }: { ciclos: ContagemDosCiclos; comAtalho: boolean }) {
+  const situacoes = ["vencido", "proximo", "aguardando_execucao", "em_dia"] as const;
+  const subtitulos = {
+    vencido: "venceram sem OS nova do plano",
+    proximo: "vencem dentro da antecedência",
+    aguardando_execucao: "OS do ciclo ainda não executada",
+    em_dia: "próximo ciclo longe do vencimento",
+  };
+  return (
+    <Panel>
+      <CabecalhoDoBloco
+        titulo={
+          <span className="row g8">
+            <Icon name="clock" size={16} style={{ color: "var(--ink3)" }} />
+            Ciclo das preventivas
+          </span>
+        }
+        descricao={
+          ciclos.total === 0
+            ? "Nenhuma preventiva com plano de manutenção"
+            : `${plural(ciclos.total, "plano de manutenção", "planos de manutenção")}${ciclos.sem_intervalo > 0 ? ` · ${ciclos.sem_intervalo} sem intervalo definido` : ""}${ciclos.pausado > 0 ? ` · ${ciclos.pausado} pausados` : ""}`
+        }
+      />
+      <div className="kpis k4">
+        {situacoes.map((s) => (
+          <Kpi
+            key={s}
+            label={aparenciaDaSituacao[s].rotulo}
+            marker={<i style={{ background: aparenciaDaSituacao[s].cor }}></i>}
+            value={ciclos[s]}
+            sub={subtitulos[s]}
+            subStyle={(s === "vencido" || s === "proximo") && ciclos[s] > 0 ? { color: aparenciaDaSituacao[s].cor, fontWeight: 500 } : undefined}
+          />
+        ))}
+      </div>
+      {comAtalho && ciclos.total > 0 && (
+        <Link href={rotas.app.preventivas} style={{ fontSize: 14, fontWeight: 600 }}>
+          Abrir as OS preventivas
+        </Link>
       )}
     </Panel>
   );
@@ -133,13 +182,15 @@ interface DashboardOsProps {
   exportacao: { total: number; os: OsDoQuadro[] } | null;
   /** Admin e supervisor: a nota do tempo aponta para o detalhe por técnico, que o técnico comum não tem. */
   porTecnico: boolean;
+  /** O ciclo das preventivas agora (`GET /preventivas`); nulo se não carregou. */
+  ciclos?: ContagemDosCiclos | null;
 }
 
 /**
  * Dashboard de OS: a carteira de agora, as programadas e encerradas no período (por tipo e por faixa), as preventivas,
  * o tempo, as interrupções por risco e os locais; para o admin, a entrada de OS e a baixa no SAP.
  */
-export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao, porTecnico }: DashboardOsProps) {
+export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao, porTecnico, ciclos }: DashboardOsProps) {
   const { carteira: c, programadas: prog, encerradas: e } = dados;
   const unidade = nomeDaUnidade[dados.agrupamento];
   const pontos = dados.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { corretivas: p.corretivas, preventivas: p.preventivas } }));
@@ -164,6 +215,7 @@ export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao, porTec
             sub={`${plural(c.criticas, "aberta", "abertas")} em local crítico${c.apoio_abertas > 0 ? ` · ${c.apoio_abertas} de apoio` : ""}`}
           />
         </div>
+        {ciclos && <CiclosDasPreventivas ciclos={ciclos} comAtalho={porTecnico} />}
       </Secao>
 
       <Secao id="os-periodo-t" titulo="No período" descricao="Programadas pela data de início; encerradas pelo fim da execução.">

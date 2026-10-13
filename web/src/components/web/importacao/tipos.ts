@@ -3,7 +3,9 @@
  * `POST /importacoes/pdf` (PDF da OS) e `GET /importacoes/resumo`.
  */
 
+import type { PlanoSemIntervalo } from "@/components/web/preventivas/IntervalosDoResultado";
 import { dataDoDia } from "@/lib/formatar";
+import type { Intervalo } from "@/lib/preventivas";
 import type { OsStatus } from "@/lib/tipos";
 
 export interface LinhaIgnorada {
@@ -42,6 +44,8 @@ export interface ResultadoDaImportacao {
   atualizadas: number;
   ignoradas: LinhaIgnorada[];
   avisos: AvisoDaOrdem[];
+  /** Preventivas que entraram com plano de manutenção, mas cujo plano segue sem intervalo entre ciclos. */
+  planos_sem_intervalo?: PlanoSemIntervalo[];
 }
 
 /** Uma OS no formato do contrato do SAP, como o PDF a trouxe e a conferência a deixou; `null` no que não veio. */
@@ -65,6 +69,8 @@ export interface OrdemDoPdf {
   criada_em: string | null;
   plano_manutencao: string | null;
   item_manutencao: string | null;
+  /** A "Periodicidade" impressa (texto) ou o intervalo conferido na tela, que vai para o plano da preventiva. */
+  intervalo_ciclo: string | Intervalo | null;
 }
 
 export type CampoObrigatorioDoPdf = "tipo_ordem" | "titulo" | "centro_trabalho" | "local_instalacao" | "data_inicio_prog";
@@ -82,6 +88,8 @@ export interface OsLidaDoPdf {
   equipe: { id: string; nome: string } | null;
   /** A atividade cadastrada que casou com o título. */
   atividade: { codigo: string; com_modelo: boolean } | null;
+  /** Preventiva com plano: o intervalo que o plano já tem no sistema e o que o PDF trouxe (`null` na corretiva ou sem plano). */
+  preventiva: { plano_id: string | null; intervalo_atual: Intervalo | null; intervalo_atual_descricao: string | null; intervalo_lido: Intervalo | null } | null;
 }
 
 /** `POST /importacoes/pdf/leitura`. */

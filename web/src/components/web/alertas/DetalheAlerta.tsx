@@ -9,9 +9,10 @@ import { rotas } from "@/lib/rotas";
 import { rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
 import { DecisoesDaOs } from "./DecisoesDaOs";
 import { CausaDoBloqueio } from "./DetalheBloqueio";
+import { DetalheCicloPreventiva } from "./DetalheCicloPreventiva";
 import { DetalheFalhaImportacao } from "./DetalheFalhaImportacao";
 import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
-import { ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
+import { ehDeCiclo, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
 
 interface DetalheAlertaProps {
   alerta: Alerta;
@@ -28,6 +29,8 @@ interface DetalheAlertaProps {
 export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }: DetalheAlertaProps) {
   // A falha de importação não tem OS: detalhe próprio.
   if (alerta.tipo === "falha_importacao" || !alerta.os_id) return <DetalheFalhaImportacao alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
+  // O do ciclo das preventivas fala do plano, não de uma decisão sobre a OS.
+  if (ehDeCiclo(alerta)) return <DetalheCicloPreventiva alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   const osId = alerta.os_id;
   const bloqueio = alerta.tipo === "bloqueio";
   const podeAgir = perfilAgeSobreAlertas(usuario);

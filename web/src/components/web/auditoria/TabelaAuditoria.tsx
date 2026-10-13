@@ -26,6 +26,13 @@ function enderecoDoAlvo(r: RegistroDeAuditoria): string | null {
       return r.acao.includes("local_critico") ? null : rotas.app.os(r.entidade_id);
     case "modelo_apr":
       return rotas.web.modelo(r.entidade_id);
+    case "material":
+      return r.alvo ? `${rotas.app.catalogoMateriais}?busca=${encodeURIComponent(r.alvo)}` : rotas.app.catalogoMateriais;
+    case "atividade":
+      // A troca da lista de materiais leva ao serviço no catálogo; as demais ações da atividade não têm tela própria.
+      return r.acao === "atividade.materiais" ? `${rotas.app.catalogo}?busca=${encodeURIComponent(r.entidade_id)}` : null;
+    case "plano_preventiva":
+      return rotas.app.preventivas;
     default:
       return null;
   }

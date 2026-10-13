@@ -7,6 +7,7 @@ import { DadosSapCard } from "@/components/app/detalhe/DadosSapCard";
 import { HistoricoAprs } from "@/components/app/detalhe/HistoricoAprs";
 import { InstrucoesCard } from "@/components/app/detalhe/InstrucoesCard";
 import { LocalCard } from "@/components/app/detalhe/LocalCard";
+import { MateriaisCard } from "@/components/app/detalhe/MateriaisCard";
 import { Recolhivel } from "@/components/app/detalhe/Recolhivel";
 import { AtualizacaoAutomatica } from "@/components/ui/AtualizacaoAutomatica";
 import { Notice } from "@/components/ui/Notice";
@@ -25,6 +26,7 @@ import { DocumentoOs } from "@/components/web/detalhe/DocumentoOs";
 import { ExecucoesDaOs } from "@/components/web/detalhe/ExecucoesDaOs";
 import { HistoricoDoLocal } from "@/components/web/detalhe/HistoricoDoLocal";
 import { LinhaDoTempo } from "@/components/web/detalhe/LinhaDoTempo";
+import { CicloDaOs } from "@/components/web/preventivas/CicloDaOs";
 import { carregarDetalhe, carregarHistorico } from "@/data/detalhe";
 import { api, usuarioAtual } from "@/lib/api";
 import type { ModeloResumo } from "@/lib/apr";
@@ -36,7 +38,8 @@ export const metadata: Metadata = { title: "Detalhe da OS" };
 
 /**
  * Detalhe da OS: um endereço só para admin, supervisor e técnico; a estrutura muda por perfil.
- * - Técnico: dados do SAP, local, instruções, APR exigida e as ações que o estado da OS permite (APR, execução).
+ * - Técnico: dados do SAP, o ciclo da preventiva, local, instruções, materiais do catálogo, APR exigida e as ações que o estado
+ *   da OS permite (APR, execução).
  * - Admin: a visão de supervisão (abas Resumo, APRs e execuções, Histórico; alertas, PDF, ciência, baixa no SAP, local crítico, cancelar).
  * - Supervisor: a mesma visão de supervisão e, na lateral, as ações de campo (ele também é técnico e executa OS).
  * Quem supervisiona a equipe da OS (e o admin) reprograma ou abre OS de apoio no Resumo, sem depender de um alerta. A tela
@@ -49,7 +52,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   const [{ usuario }, detalhe] = await Promise.all([usuarioAtual(), carregarDetalhe(id)]);
   // OS que não existe ou é de outra equipe: a `api` responde 404.
   if (!detalhe) notFound();
-  const { os, aprs, execucoes, alertas, reprogramacoes, linha_do_tempo } = detalhe;
+  const { os, servico, aprs, execucoes, alertas, reprogramacoes, linha_do_tempo } = detalhe;
 
   const admin = ehAdmin(usuario);
   const gestao = admin || ehSupervisor(usuario);
@@ -101,7 +104,9 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
             <>
               <LocalCard local={campo.os.local_instalacao} />
               <DadosSapCard os={campo.os} />
+              <CicloDaOs osId={os.id} preventiva={os.tipo === "preventiva"} gestao={false} estilo="card" />
               <InstrucoesCard descricao={os.descricao} titulo={os.titulo} />
+              <MateriaisCard servico={servico ?? null} />
               <HistoricoAprs aprs={campo.aprs} execucoes={campo.execucoes} osId={os.id} />
             </>
           }
@@ -155,6 +160,8 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           {aba === "resumo" && (
             <>
               <DadosSap os={os} />
+              <CicloDaOs osId={os.id} preventiva={os.tipo === "preventiva"} gestao estilo="panel" />
+              <MateriaisCard servico={servico ?? null} />
               {podeDecidir && (
                 <Recolhivel titulo="Reprogramar ou abrir OS de apoio" resumo={os.atrasada ? "OS atrasada" : rotuloDoStatus[os.status]} aberto={os.status === "pendente" || os.atrasada}>
                   <p className="muted">

@@ -1,4 +1,5 @@
 import { Panel, TableWrap } from "@/components/web/Panel";
+import { IntervalosDoResultado } from "@/components/web/preventivas/IntervalosDoResultado";
 import { ArquivoProcessado } from "./ArquivoProcessado";
 import { LinhasIgnoradas } from "./LinhasIgnoradas";
 import type { ResultadoDaImportacao } from "./tipos";
@@ -11,7 +12,10 @@ interface ResultadoArquivoProps {
   podeCadastrarEquipe: boolean;
 }
 
-/** O que a importação do arquivo fez: criadas, atualizadas e ignoradas, os avisos e o que ficou de fora. */
+/**
+ * O que a importação do arquivo fez: criadas, atualizadas e ignoradas, os avisos, as preventivas que ficaram sem intervalo
+ * entre ciclos (com o campo para defini-lo) e o que ficou de fora.
+ */
 export function ResultadoArquivo({ nome, formato, dados, podeCadastrarEquipe }: ResultadoArquivoProps) {
   const comLinha = dados.avisos.some((a) => a.linha !== undefined);
   return (
@@ -50,6 +54,7 @@ export function ResultadoArquivo({ nome, formato, dados, podeCadastrarEquipe }: 
           </TableWrap>
         </Panel>
       )}
+      <IntervalosDoResultado planos={dados.planos_sem_intervalo ?? []} />
       {dados.ignoradas.length > 0 && <LinhasIgnoradas ignoradas={dados.ignoradas} podeCadastrarEquipe={podeCadastrarEquipe} titulo={formato === "pdf" ? "OS ignoradas" : "Linhas ignoradas"} />}
     </>
   );
