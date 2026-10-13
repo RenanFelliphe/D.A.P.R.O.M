@@ -303,6 +303,12 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
         assert.deepEqual(daB.filter((id) => meus.includes(id)), [aSupB.id, aAdmin.id]);
         assert.ok(!daB.includes(aSupNovo.id));
       }
+      // Cada alerta diz de quem é: o painel só marca como lido o alerta de quem o abre.
+      const lista = (await amb.esperar(200, "GET", "/alertas", { como: admin, consulta: { equipe_id: equipeB } })).alertas;
+      const doSupB = lista.find((a: any) => a.id === aSupB.id);
+      assert.equal(doSupB.destinatario_id, supervisorB.id);
+      assert.equal(doSupB.destinatario_nome, (await amb.sql<{ nome: string }>("select nome from usuario where id = $1", [supervisorB.id]))[0]!.nome);
+      assert.equal(lista.find((a: any) => a.id === aAdmin.id).destinatario_id, admin.id);
     });
 
     it("equipe_id filtra também para o supervisor (equipe atual da OS)", async () => {

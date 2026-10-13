@@ -1,6 +1,6 @@
 import { and, desc, eq, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { alerta, importacao, os, type AlertaTipo } from "../db/schema";
+import { alerta, importacao, os, usuario, type AlertaTipo } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { naoEncontrado } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
@@ -8,10 +8,15 @@ import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 /** O admin enxerga os alertas de todos os destinatários; o supervisor, só os seus. */
 const veTodosOsAlertas = (u: UsuarioAutenticado) => u.perfil === "admin";
 
-/** A OS (alertas de OS) ou a importação (falha de importação): o que não se aplica vem nulo. */
+/**
+ * A OS (alertas de OS) ou a importação (falha de importação): o que não se aplica vem nulo. O destinatário diz de quem é
+ * o `lido_em`: o admin vê os alertas de todos, mas abrir o de outra pessoa não o marca como lido por ela.
+ */
 const colunas = {
   id: alerta.id,
   tipo: alerta.tipo,
+  destinatarioId: alerta.destinatarioId,
+  destinatarioNome: usuario.nome,
   osId: alerta.osId,
   numeroOrdem: os.numeroOrdem,
   titulo: os.titulo,
@@ -42,6 +47,7 @@ export async function listarAlertas(db: Db, eu: UsuarioAutenticado, filtros: Pag
     .from(alerta)
     .leftJoin(os, eq(os.id, alerta.osId))
     .leftJoin(importacao, eq(importacao.id, alerta.importacaoId))
+    .leftJoin(usuario, eq(usuario.id, alerta.destinatarioId))
     .where(onde)
     .orderBy(desc(alerta.criadoEm), desc(alerta.id))
     .limit(limit)

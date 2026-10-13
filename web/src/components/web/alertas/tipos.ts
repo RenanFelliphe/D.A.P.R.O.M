@@ -7,6 +7,9 @@ export type TipoDeAlerta = "bloqueio" | "conflito_planejamento" | "execucao_dupl
 export interface Alerta {
   id: string;
   tipo: TipoDeAlerta;
+  /** De quem é o alerta (e o `lido_em`): o admin vê os de todos, mas só marca como lidos os seus. */
+  destinatario_id: string;
+  destinatario_nome: string | null;
   /** A OS do alerta; nulos (os quatro) na falha de importação, que não tem OS. */
   os_id: string | null;
   numero_ordem: string | null;
@@ -53,8 +56,17 @@ export function referenciaDoAlerta(a: Alerta): { codigo: string | null; texto: s
   return { codigo: a.numero_ordem ?? "OS de apoio", texto: a.titulo ?? "" };
 }
 
-/** Quem decide sobre a OS (reprogramar e abrir OS de apoio) e marca o alerta como lido: o supervisor (dele) e o admin. */
+/** Quem decide sobre a OS (reprogramar e abrir OS de apoio) e marca os próprios alertas como lidos: o supervisor e o admin. */
 export const perfilAgeSobreAlertas = (u: Pick<Usuario, "perfil" | "equipes_supervisionadas">) => ehSupervisor(u) || ehAdmin(u);
+
+/** O alerta é de quem o abre. Só então abrir o marca como lido: o admin vê os alertas de todos sem mexer no `lido_em` dos outros. */
+export const ehDoUsuario = (a: Pick<Alerta, "destinatario_id">, u: Pick<Usuario, "id">) => a.destinatario_id === u.id;
+
+/** "Não lido" ou "Lido", dizendo de quem quando o alerta é de outra pessoa. */
+export function rotuloDaLeitura(a: Pick<Alerta, "lido_em" | "destinatario_id" | "destinatario_nome">, u: Pick<Usuario, "id">) {
+  const estado = a.lido_em === null ? "Não lido" : "Lido";
+  return ehDoUsuario(a, u) || !a.destinatario_nome ? estado : `${estado} por ${a.destinatario_nome}`;
+}
 
 /** Parte do `GET /os/{id}` que o detalhe do alerta usa. */
 export interface DetalheDaOs {

@@ -8,7 +8,7 @@ import { dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 import type { Usuario } from "@/lib/tipos";
 import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
-import { metodoDaFalha, perfilAgeSobreAlertas, rotuloDoAlerta, type Alerta } from "./tipos";
+import { ehDoUsuario, metodoDaFalha, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta } from "./tipos";
 
 /**
  * Detalhe do alerta de falha de importação: o método, o motivo e o que fazer. Nenhuma OS mudou, então não há OS para
@@ -27,7 +27,7 @@ export function DetalheFalhaImportacao({ alerta, usuario, marcarAoAbrir }: { ale
               <Icon name="alert" size={13} />
               {rotuloDoAlerta(alerta)}
             </Badge>
-            <Badge tone="neu">{naoLido ? "Não lido" : "Lido"}</Badge>
+            <Badge tone="neu">{rotuloDaLeitura(alerta, usuario)}</Badge>
           </div>
           <h2 style={{ fontSize: 21, lineHeight: 1.25 }}>{metodoDaFalha(alerta.importacao_origem)}</h2>
         </div>
@@ -63,7 +63,7 @@ export function DetalheFalhaImportacao({ alerta, usuario, marcarAoAbrir }: { ale
         </div>
       )}
 
-      {podeAgir && naoLido && marcarAoAbrir && <MarcarLidoAoAbrir alertaId={alerta.id} />}
+      {podeAgir && naoLido && marcarAoAbrir && ehDoUsuario(alerta, usuario) && <MarcarLidoAoAbrir alertaId={alerta.id} />}
     </Panel>
   );
 }

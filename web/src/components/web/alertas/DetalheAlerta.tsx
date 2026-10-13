@@ -13,19 +13,19 @@ import { CartaoReprogramar } from "./CartaoReprogramar";
 import { CausaDoBloqueio } from "./DetalheBloqueio";
 import { DetalheFalhaImportacao } from "./DetalheFalhaImportacao";
 import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
-import { perfilAgeSobreAlertas, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
+import { ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
 
 interface DetalheAlertaProps {
   alerta: Alerta;
   usuario: Usuario;
   equipes: Equipe[];
-  /** Abrir o alerta o marca como lido (só para quem pode agir sobre alertas). */
+  /** Abrir o alerta o marca como lido (só para quem pode agir sobre alertas, e só o próprio alerta). */
   marcarAoAbrir: boolean;
 }
 
 /**
  * Painel de detalhe do alerta: a OS, o que aconteceu e, para o impedimento, o que causou e as decisões do supervisor ou
- * admin. Abrir o alerta o marca como lido, sem botão.
+ * admin. Abrir o próprio alerta o marca como lido, sem botão; o admin que abre o alerta de outra pessoa só o lê.
  */
 export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }: DetalheAlertaProps) {
   // A falha de importação não tem OS: detalhe próprio.
@@ -52,7 +52,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
               <Icon name={bloqueio ? "octagon" : "refresh"} size={13} />
               {rotuloDoAlerta(alerta)}
             </Badge>
-            <Badge tone="neu">{naoLido ? "Não lido" : "Lido"}</Badge>
+            <Badge tone="neu">{rotuloDaLeitura(alerta, usuario)}</Badge>
           </div>
           <h2 style={{ fontSize: 21, lineHeight: 1.25 }}>
             <span className="mono">{alerta.numero_ordem ? `OS ${alerta.numero_ordem}` : "OS de apoio"}</span> — {alerta.titulo}
@@ -144,7 +144,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
         </div>
       )}
 
-      {podeAgir && naoLido && marcarAoAbrir && <MarcarLidoAoAbrir alertaId={alerta.id} />}
+      {podeAgir && naoLido && marcarAoAbrir && ehDoUsuario(alerta, usuario) && <MarcarLidoAoAbrir alertaId={alerta.id} />}
     </Panel>
   );
 }

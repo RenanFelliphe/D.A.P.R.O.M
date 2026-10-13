@@ -58,7 +58,7 @@ export function AlertasScreen({ usuario, alertas, selecionado, alertaNaoEncontra
               {naoLidos} {naoLidos === 1 ? "não lido" : "não lidos"}
             </span>{" "}
             · avisos também enviados por e-mail
-            {leitura ? " · você vê os alertas de todos os destinatários" : ""}
+            {leitura ? " · você vê os alertas de todos os destinatários; abrir o de outra pessoa não o marca como lido" : ""}
           </span>
         </div>
         <FiltrosAlertas valores={filtros} equipes={ehSupervisor ? null : equipes} />
