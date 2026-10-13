@@ -2,6 +2,7 @@
 
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { avisoAoDescartar, continuaNasAssinaturas, estaTravada } from "@/lib/apr";
 import { rotas } from "@/lib/rotas";
 import { useRascunhoApr } from "@/state/rascunho-apr";
 
@@ -14,19 +15,26 @@ interface BotaoAprProps {
   jaAprovada: boolean;
 }
 
-/** "Nova APR" (ou "Continuar APR", se há rascunho neste navegador). Toda tentativa de APR começa do zero. */
+/**
+ * "Nova APR" (ou "Continuar APR", se há rascunho neste navegador). Toda tentativa de APR começa do zero. O rascunho
+ * aprovado continua nas assinaturas; o bloqueado (já registrado), na evidência dos itens reprovados.
+ */
 export function BotaoApr({ osId, usuarioId, pendente, jaAprovada }: BotaoAprProps) {
   const { rascunho, descartar } = useRascunhoApr(osId, usuarioId);
 
   if (rascunho) {
-    const aprovada = rascunho.concluidaEm !== null;
     return (
       <>
-        <LinkButton variant={jaAprovada ? "line" : "p"} block href={aprovada ? rotas.app.aprovada(osId) : rotas.app.checklist(osId)} data-treino="os-nova-apr">
+        <LinkButton
+          variant={jaAprovada ? "line" : "p"}
+          block
+          href={continuaNasAssinaturas(rascunho) ? rotas.app.aprovada(osId) : rotas.app.checklist(osId)}
+          data-treino="os-nova-apr"
+        >
           <Icon name="save" size={18} />
-          Continuar APR
+          {estaTravada(rascunho) ? "Registrar a evidência" : "Continuar APR"}
         </LinkButton>
-        <Button variant="ghost" sm block onClick={descartar}>
+        <Button variant="ghost" sm block onClick={() => window.confirm(avisoAoDescartar(rascunho)) && descartar()}>
           Descartar o rascunho
         </Button>
       </>

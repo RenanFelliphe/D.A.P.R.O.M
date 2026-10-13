@@ -143,11 +143,22 @@ export const execucaoAberta = (execucoes: ExecucaoDaOs[]) => execucoes.find((e) 
 
 /**
  * APR aprovada de hoje que ainda não amparou uma execução (as canceladas liberam a APR de novo): é a que permite
- * "Iniciar execução" sem refazer o checklist. `null` se não houver.
+ * "Iniciar execução" sem refazer o checklist. Com `participante`, só a APR de que ele participou (só os participantes
+ * iniciam a execução). `null` se não houver.
  */
-export function aprAprovadaDisponivel(aprs: AprDaOs[], execucoes: ExecucaoDaOs[]) {
+export function aprAprovadaDisponivel(aprs: AprDaOs[], execucoes: ExecucaoDaOs[], participante?: string) {
   const usadas = new Set(execucoes.filter((e) => e.resultado !== "cancelada").map((e) => e.apr_id));
-  return [...aprs].reverse().find((a) => a.resultado === "aprovada" && ehHoje(a.concluida_em) && !usadas.has(a.id)) ?? null;
+  return (
+    [...aprs]
+      .reverse()
+      .find(
+        (a) =>
+          a.resultado === "aprovada" &&
+          ehHoje(a.concluida_em) &&
+          !usadas.has(a.id) &&
+          (participante === undefined || a.participantes.some((p) => p.usuario_id === participante)),
+      ) ?? null
+  );
 }
 
 /** O número da OS como se mostra ("OS 4031187"); OS de apoio ainda não tem número. */

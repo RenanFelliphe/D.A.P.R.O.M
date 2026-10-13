@@ -31,7 +31,8 @@ export default async function AprovadaPage({ params }: PageProps<"/app/os/[id]/a
     assinatura_path,
   }));
 
-  const registrada = aprAprovadaDisponivel(aprs, execucoes);
+  // Só a APR de que o técnico participou: é ela que ele usa para iniciar a execução.
+  const registrada = aprAprovadaDisponivel(aprs, execucoes, usuario.id);
 
   return (
     <AprovadaScreen

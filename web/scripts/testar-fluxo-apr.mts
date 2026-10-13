@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- script de teste: as respostas da api são lidas como vêm */
 // Fluxo do técnico até a APR, ponta a ponta contra a api local (sem navegador): injeta as OS de teste no SAP simulado e as lê, monta o
-// rascunho com as mesmas funções que a tela usa (`src/lib/apr.ts`), valida as respostas (`POST /aprs/avaliar`), envia
-// `apr_concluida` aprovada e bloqueada (com foto) e confere resultado, status da OS e o alerta ao supervisor. O técnico
-// não recebe o que é eliminatório: o script usa o modelo do admin só para escolher que respostas dar.
+// rascunho com as mesmas funções que a tela usa (`src/lib/apr.ts`), valida a APR (`POST /aprs/avaliar`: a bloqueada já fica
+// registrada), envia `apr_concluida` (a aprovada inteira; da bloqueada, a evidência) e confere resultado, status da OS e o
+// alerta ao supervisor. O técnico não recebe o que é eliminatório: o script usa o modelo do admin só para escolher que
+// respostas dar.
 //
 //   cd api && node --import tsx ../web/scripts/testar-fluxo-apr.mts
 //
@@ -41,7 +42,8 @@ const ok = async (token: string | null, metodo: string, caminho: string, corpo?:
   assert.ok(r.status < 300, `${metodo} ${caminho} -> ${r.status} ${JSON.stringify(r.corpo)}`);
   return r.corpo;
 };
-const entrar = async (matricula: string, senha = "daprom123") => (await ok(null, "POST", "/auth/login", { matricula, senha })).access_token as string;
+/** Login pelo e-mail institucional (os usuários de `pnpm dev:local`: primeiro nome e último sobrenome, `@empresa.com.br`). */
+const entrar = async (email: string, senha = "daprom123") => (await ok(null, "POST", "/auth/login", { email, senha })).access_token as string;
 
 async function subir(token: string, id: string, tipo: "foto" | "assinatura") {
   const form = new FormData();
@@ -67,10 +69,14 @@ interface ItemDoAdmin {
 const classificacaoDe = async (codigo: string) =>
   new Map<string, ItemDoAdmin>(((await ok(admToken, "GET", `/modelos-apr/${encodeURIComponent(codigo)}/versoes/publicada`)).itens as ItemDoAdmin[]).map((i) => [i.id, i]));
 
-/** `POST /aprs/avaliar` com as respostas do rascunho: o rascunho volta com o que a `api` disse (aprovada ou bloqueada). */
+/**
+ * `POST /aprs/avaliar` com a APR do rascunho, como a tela faz: o rascunho volta concluído, com o que a `api` disse (aprovada
+ * ou bloqueada). A bloqueada já fica registrada.
+ */
 async function avaliar(token: string, r: RascunhoApr): Promise<RascunhoApr> {
-  const res = await ok(token, "POST", "/aprs/avaliar", montarAvaliacao(r));
-  return { ...r, avaliacao: { resultado: res.resultado, reprovados: res.reprovados.map((x: any) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })) } };
+  const concluidaEm = new Date().toISOString();
+  const res = await ok(token, "POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }));
+  return { ...r, concluidaEm, avaliacao: { resultado: res.resultado, reprovados: res.reprovados.map((x: any) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })) } };
 }
 
 /** Responde "tudo certo" (a resposta que não bloqueia) em todas as perguntas; `bloqueantes` troca a resposta de itens escolhidos. */
@@ -83,7 +89,12 @@ function responderTudo(r: RascunhoApr, classificacao: Map<string, ItemDoAdmin>, 
   return r;
 }
 
-const [tec1Token, tec2Token, sup1Token, admToken] = await Promise.all([entrar("tec1"), entrar("tec2"), entrar("sup1"), entrar("adm")]);
+const [tec1Token, tec2Token, sup1Token, admToken] = await Promise.all([
+  entrar("tiago.tecnico@empresa.com.br"),
+  entrar("tais.tecnica@empresa.com.br"),
+  entrar("sandra.supervisora@empresa.com.br"),
+  entrar("admin@empresa.com.br"),
+]);
 const eu = (await ok(tec1Token, "GET", "/me")).usuario;
 const equipeId: string = eu.equipe_id;
 const centroTrabalho: string = (await ok(tec1Token, "GET", "/me")).equipe.centro_trabalho;
@@ -145,10 +156,11 @@ assert.ok(publicados.length >= 8);
 {
   // participante sem assinatura cadastrada: a api recusa (e o técnico logado desenha na hora no caso dele)
   const matriculaNova = `semassin${Date.now() % 100000}`;
-  const novo = await ok(admToken, "POST", "/usuarios", { nome: "Teste Sem Assinatura", matricula: matriculaNova, perfil: "tecnico", equipe_id: equipeId, senha_inicial: "Provisoria#123" });
-  const provisorio = await entrar(matriculaNova, "Provisoria#123");
+  const emailNovo = `${matriculaNova}@empresa.com.br`;
+  const novo = await ok(admToken, "POST", "/usuarios", { nome: "Teste Sem Assinatura", matricula: matriculaNova, email: emailNovo, perfil: "tecnico", equipe_id: equipeId, senha_inicial: "Provisoria#123" });
+  const provisorio = await entrar(emailNovo, "Provisoria#123");
   await ok(provisorio, "POST", "/auth/trocar-senha", { senha_atual: "Provisoria#123", senha_nova: "Definitiva#123" });
-  const tokenNovo = await entrar(matriculaNova, "Definitiva#123");
+  const tokenNovo = await entrar(emailNovo, "Definitiva#123");
 
   const riscos = modeloA.riscos.slice(0, 2).map((r) => r.id);
   let r = novoRascunho({
@@ -175,20 +187,22 @@ assert.ok(publicados.length >= 8);
   const alerta = [...classeA.values()].find((i) => i.tipo === "alerta" && i.resposta_bloqueante !== null)!;
   r = responderTudo(r, classeA, new Set([alerta.id]));
   assert.ok(resumoDe(r).completo);
-  r = await avaliar(tec1Token, r);
-  assert.equal(r.avaliacao?.resultado, "aprovada");
-  assert.equal(r.avaliacao?.reprovados.length, 0);
 
-  // 2a. participante sem assinatura: rejeitado com assinatura_ausente
-  r = { ...r, concluidaEm: new Date().toISOString(), assinaturas: Object.fromEntries(r.participantes.map((p) => [p.usuarioId, new Date().toISOString()])) };
-  const recusado = await enviarEvento(tec1Token, osAprovada, montarPayload(r), r.eventoId);
-  assert.equal(recusado.rejeitados[0]?.codigo, "assinatura_ausente", JSON.stringify(recusado));
-  console.log("aprovada, sem assinatura de um participante ->", recusado.rejeitados[0]!.mensagem);
+  // 2a. participante sem assinatura: a validação recusa antes de dizer o resultado (a recusa não revela o que reprova)
+  const recusado = await chamar(tec1Token, "POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm: new Date().toISOString() }));
+  assert.equal(recusado.status, 422);
+  assert.equal(recusado.corpo.erro?.codigo, "assinatura_ausente", JSON.stringify(recusado.corpo));
+  console.log("validar com um participante sem assinatura ->", recusado.corpo.erro.mensagem);
 
-  // 2b. o participante desenha a assinatura (PUT /arquivos + PUT /me/assinatura) e o mesmo evento é reenviado
+  // 2b. o participante desenha a assinatura (PUT /arquivos + PUT /me/assinatura) e a APR é validada de novo
   const arquivoAssinatura = crypto.randomUUID();
   await subir(tokenNovo, arquivoAssinatura, "assinatura");
   await ok(tokenNovo, "PUT", "/me/assinatura", { arquivo_id: arquivoAssinatura });
+  r = await avaliar(tec1Token, r);
+  assert.equal(r.avaliacao?.resultado, "aprovada");
+  assert.equal(r.avaliacao?.reprovados.length, 0);
+  assert.equal((await ok(tec1Token, "GET", `/os/${osAprovada}`)).aprs.length, 0, "a aprovada só é registrada com as assinaturas confirmadas");
+  r = { ...r, assinaturas: Object.fromEntries(r.participantes.map((p) => [p.usuarioId, new Date().toISOString()])) };
   const registrada = await enviarEvento(tec1Token, osAprovada, montarPayload(r), r.eventoId);
   assert.equal(registrada.rejeitados.length + registrada.pendentes.length, 0, JSON.stringify(registrada));
   assert.equal(registrada.aprs[0]?.resultado, "aprovada");
@@ -230,31 +244,36 @@ assert.ok(publicados.length >= 8);
   const reprovar = [comFoto, ...(soTexto ? [soTexto] : [])];
   r = responderTudo(r, classe, new Set(reprovar.map((i) => i.id)));
   assert.ok(resumoDe(r).completo, "o checklist não pede evidência: só responde");
-  // validar: só agora a api diz o que reprovou e que evidência cada item pede
+  // validar: só agora a api diz o que reprovou e que evidência cada item pede; a APR bloqueada já fica registrada
+  r = { ...r, observacaoGeral: "Caixa de válvula alagada" };
   r = await avaliar(tec1Token, r);
   assert.equal(r.avaliacao?.resultado, "bloqueada");
   assert.deepEqual(r.avaliacao?.reprovados.map((x) => x.itemId).sort(), reprovar.map((i) => i.id).sort(), "todos os itens reprovados contam");
   assert.equal(r.avaliacao?.reprovados.find((x) => x.itemId === comFoto.id)?.evidencia, "foto");
   assert.ok(reprovadosSemEvidencia(r).length === reprovar.length, "sem observação nem foto: falta evidência em todos");
+  const naHora = await ok(tec1Token, "GET", `/os/${osBloqueada}`);
+  assert.equal(naHora.os.status, "pendente", "a OS fica pendente já na validação");
+  assert.deepEqual(naHora.aprs.map((a: any) => [a.id, a.resultado]), [[r.aprId, "bloqueada"]], "a APR bloqueada fica registrada na validação");
+  const alertasNaHora = (await ok(sup1Token, "GET", "/alertas?tamanho=200")).alertas.filter((a: any) => a.os_id === osBloqueada && a.tipo === "bloqueio");
+  assert.equal(alertasNaHora.length, 1, "a supervisora é avisada na hora");
+  console.log("bloqueada na validação: status da OS =", naHora.os.status, "· alerta à supervisora:", alertasNaHora[0].detalhe);
 
   // 3a. evidência faltando: a api recusa com "Falta evidência em N item(ns)"
-  const semEvidencia = await enviarEvento(tec1Token, osBloqueada, montarPayload({ ...r, concluidaEm: new Date().toISOString() }));
+  const semEvidencia = await enviarEvento(tec1Token, osBloqueada, montarPayload(r));
   assert.match(semEvidencia.rejeitados[0]?.mensagem ?? "", new RegExp(`Falta evidência em ${reprovar.length} item\\(ns\\)`), JSON.stringify(semEvidencia));
-  console.log("bloqueada sem evidência ->", semEvidencia.rejeitados[0]!.mensagem);
+  console.log("evidência faltando ->", semEvidencia.rejeitados[0]!.mensagem);
 
-  // 3b. observação (e foto, quando o item pede) em cada item reprovado; "NA" só onde o modelo permite
+  // 3b. observação (e foto, quando o item pede) em cada item reprovado
   const fotoId = crypto.randomUUID();
   await subir(tec1Token, fotoId, "foto");
   for (const item of reprovar) r = observar(r, item.id, `Motivo do teste: ${item.texto.slice(0, 40)}`);
   r = adicionarFoto(r, comFoto.id, { id: crypto.randomUUID(), arquivoId: fotoId, capturadaEm: new Date().toISOString(), latitude: -20.31, longitude: -40.29 });
   assert.equal(reprovadosSemEvidencia(r).length, 0, "evidência completa: pode registrar o impedimento");
-  r = { ...r, observacaoGeral: "Caixa de válvula alagada", concluidaEm: new Date().toISOString() };
 
   const resposta = await enviarEvento(tec1Token, osBloqueada, montarPayload(r), r.eventoId);
   assert.equal(resposta.rejeitados.length + resposta.pendentes.length, 0, JSON.stringify(resposta));
   assert.equal(resposta.aprs[0]?.resultado, "bloqueada");
-  assert.equal(resposta.os[0]?.status, "pendente", "a OS fica pendente");
-  assert.ok(resposta.alertas.length >= 1, "alerta ao supervisor");
+  assert.equal(resposta.os[0]?.status, "pendente", "a OS continua pendente");
 
   const det = await ok(tec1Token, "GET", `/os/${osBloqueada}`);
   assert.equal(det.os.status, "pendente");
@@ -268,14 +287,20 @@ assert.ok(publicados.length >= 8);
   assert.ok(url.url, "a foto da evidência abre depois que a APR a referencia");
 
   const alertas = (await ok(sup1Token, "GET", "/alertas?tamanho=200")).alertas.filter((a: any) => a.os_id === osBloqueada);
-  assert.ok(alertas.some((a: any) => a.tipo === "bloqueio"), `alerta ao supervisor: ${JSON.stringify(alertas)}`);
-  console.log("bloqueada: aprs[0].resultado =", det.aprs[0].resultado, "· status da OS =", det.os.status, "· alertas ao supervisor =", alertas.length);
+  assert.equal(alertas.filter((a: any) => a.tipo === "bloqueio").length, 1, `um alerta só ao supervisor: ${JSON.stringify(alertas)}`);
+  console.log("bloqueada com evidência: aprs[0].resultado =", det.aprs[0].resultado, "· status da OS =", det.os.status, "· alertas ao supervisor =", alertas.length);
 
-  // 3c. a OS pendente aceita uma APR nova (qualquer um da equipe: aqui tec2), sem nada aproveitado da anterior
+  // 3c. a mesma APR validada de novo (a resposta se perdeu) devolve o que ficou gravado, sem duplicar nada
+  const deNovo = await ok(tec1Token, "POST", "/aprs/avaliar", montarAvaliacao(r));
+  assert.equal(deNovo.resultado, "bloqueada");
+  assert.equal((await ok(tec1Token, "GET", `/os/${osBloqueada}`)).aprs.length, 1);
+
+  // 3d. a OS pendente aceita uma APR nova (qualquer um da equipe: aqui tec2), sem nada aproveitado da anterior; a
+  // bloqueada continua lá (descartar o rascunho e refazer não a apaga)
   const modeloNovo = doModeloCompleto(modelo);
   let nova = novoRascunho({ osId: osBloqueada, usuarioId: tec2.id, modelo: modeloNovo, participantes: [{ usuarioId: tec2.id, funcao: "responsavel" }], riscos: [] });
   assert.equal(Object.keys(nova.respostas).length, 0);
-  nova = { ...(await avaliar(tec2Token, responderTudo(nova, classe))), concluidaEm: new Date().toISOString(), assinaturas: { [tec2.id]: new Date().toISOString() } };
+  nova = { ...(await avaliar(tec2Token, responderTudo(nova, classe))), assinaturas: { [tec2.id]: new Date().toISOString() } };
   assert.equal(nova.avaliacao?.resultado, "aprovada");
   const retomada = await enviarEvento(tec2Token, osBloqueada, montarPayload(nova), nova.eventoId);
   assert.equal(retomada.aprs[0]?.resultado, "aprovada", JSON.stringify(retomada));
@@ -294,14 +319,14 @@ assert.ok(publicados.length >= 8);
   assert.ok(comNa, "há pergunta com NA entre as de verificação do APR 04");
   r = responder(r, comNa, "na");
   assert.ok(resumoDe(r).naSemObservacao.length === 1, "NA sem observação fica pendente na tela");
-  r = { ...(await avaliar(tec1Token, r)), concluidaEm: new Date().toISOString(), assinaturas: { [eu.id]: new Date().toISOString() } };
-  const recusada = await enviarEvento(tec1Token, osNa, montarPayload(r));
-  assert.equal(recusada.rejeitados[0]?.codigo, "observacao_obrigatoria", JSON.stringify(recusada));
+  const recusada = await chamar(tec1Token, "POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm: new Date().toISOString() }));
+  assert.equal(recusada.corpo.erro?.codigo, "observacao_obrigatoria", JSON.stringify(recusada.corpo));
   r = observar(r, comNa.id, "Não há válvula neste ponto");
   assert.equal(resumoDe(r).naSemObservacao.length, 0);
+  r = { ...(await avaliar(tec1Token, r)), assinaturas: { [eu.id]: new Date().toISOString() } };
   const aceita = await enviarEvento(tec1Token, osNa, montarPayload(r), r.eventoId);
   assert.equal(aceita.aprs[0]?.resultado, "aprovada", JSON.stringify(aceita));
-  console.log("NA sem observação ->", recusada.rejeitados[0]!.mensagem, "· com observação: aprs[0].resultado =", aceita.aprs[0]!.resultado);
+  console.log("NA sem observação ->", recusada.corpo.erro.mensagem, "· com observação: aprs[0].resultado =", aceita.aprs[0]!.resultado);
 }
 
 console.log("\nFluxo da APR ok.");

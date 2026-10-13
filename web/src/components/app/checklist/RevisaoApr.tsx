@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
@@ -13,13 +14,18 @@ interface RevisaoAprProps {
   aoValidar: () => void;
   validando: boolean;
   erro: string | null;
+  /** O que falta de assinatura dos participantes (`AssinaturasFaltando`). */
+  assinaturas: ReactNode;
+  /** Quantos participantes ainda estão sem assinatura no perfil: a validação espera por eles. */
+  semAssinatura: number;
 }
 
 /**
- * Revisão final antes de validar: o que falta e as observações gerais. A revisão não diz se a APR vai passar: isso só
- * se sabe ao validar, e quem diz é a `api`. O técnico não vê quais itens são eliminatórios.
+ * Revisão final antes de validar: o que falta (respostas, observações, assinaturas) e as observações gerais. A revisão
+ * não diz se a APR vai passar: isso só se sabe ao validar, e quem diz é a `api`. O técnico não vê quais itens são
+ * eliminatórios.
  */
-export function RevisaoApr({ rascunho, resumo, aoAbrir, aoVoltar, aoObservarGeral, aoValidar, validando, erro }: RevisaoAprProps) {
+export function RevisaoApr({ rascunho, resumo, aoAbrir, aoVoltar, aoObservarGeral, aoValidar, validando, erro, assinaturas, semAssinatura }: RevisaoAprProps) {
   const { perguntas, naSemObservacao, semResposta } = resumo;
   const indiceDe = (item: ItemDoModelo) => perguntas.indexOf(item);
 
@@ -28,7 +34,8 @@ export function RevisaoApr({ rascunho, resumo, aoAbrir, aoVoltar, aoObservarGera
       <div className="card stack g6" data-treino="ck-revisao">
         <h2 style={{ fontSize: 17, fontWeight: 600 }}>Revisão da APR</h2>
         <p className="muted">
-          {resumo.respondidas} de {perguntas.length} perguntas respondidas. Depois de validada, a APR não pode ser alterada.
+          {resumo.respondidas} de {perguntas.length} perguntas respondidas. Depois de validada, a APR não pode ser alterada; se reprovar,
+          ela já fica registrada.
         </p>
       </div>
 
@@ -86,6 +93,8 @@ export function RevisaoApr({ rascunho, resumo, aoAbrir, aoVoltar, aoObservarGera
         </Field>
       </div>
 
+      {assinaturas}
+
       {erro && (
         <Notice tone="blq" icon="alert">
           {erro}
@@ -96,14 +105,15 @@ export function RevisaoApr({ rascunho, resumo, aoAbrir, aoVoltar, aoObservarGera
         <Button variant="line" onClick={aoVoltar} disabled={validando}>
           Voltar
         </Button>
-        <Button variant="p" disabled={!resumo.completo || validando} onClick={aoValidar} data-treino="ck-concluir">
+        <Button variant="p" disabled={!resumo.completo || semAssinatura > 0 || validando} onClick={aoValidar} data-treino="ck-concluir">
           {validando ? "Validando…" : "Concluir e validar"}
         </Button>
       </div>
-      {!resumo.completo && (
+      {(!resumo.completo || semAssinatura > 0) && (
         <p className="small">
           {semResposta.length > 0 && `Faltam respostas em ${semResposta.length} ${semResposta.length > 1 ? "itens" : "item"}. `}
-          {naSemObservacao.length > 0 && `Falta observação em ${naSemObservacao.length} item(ns) com NA.`}
+          {naSemObservacao.length > 0 && `Falta observação em ${naSemObservacao.length} item(ns) com NA. `}
+          {semAssinatura > 0 && `Falta a assinatura de ${semAssinatura} ${semAssinatura > 1 ? "participantes" : "participante"}.`}
         </p>
       )}
     </>

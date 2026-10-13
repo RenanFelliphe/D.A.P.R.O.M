@@ -11,7 +11,7 @@
  */
 import type { Usuario } from "../lib/tipos";
 import { obterEstado } from "./armazem";
-import { diaDe, statusDerivado, type AlertaReg, type AprReg, type EstadoTreino, type ExecucaoReg, type ModeloReg, type OsReg, type UsuarioTreino } from "./dados";
+import { diaDe, statusDerivado, type AlertaReg, type AprReg, type EstadoTreino, type ExecucaoReg, type ItemRegDoModelo, type ModeloReg, type OsReg, type UsuarioTreino } from "./dados";
 import { idTreino } from "./ids";
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -512,6 +512,8 @@ interface Contexto {
   evento: EventoRecebido;
   agora: Date;
   saida: { alertas: string[]; aprs: { id: string; resultado: string }[]; osAfetadas: Set<string> };
+  /** A APR bloqueada é registrada na validação (`POST /aprs/avaliar`); a evidência dos reprovados chega depois. */
+  evidenciaDepois?: boolean;
 }
 
 // Leitura do payload (o que o `zod` da `api` valida).
@@ -581,12 +583,9 @@ function criarAlerta(ctx: Contexto, osId: string, tipo: string, detalhe: string)
   ctx.saida.alertas.push(id);
 }
 
-function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: unknown) {
-  const { e, eu } = ctx;
+/** O payload da APR (o que o `zod` da `api` valida). */
+function lerApr(bruto: unknown) {
   const p = obj(bruto);
-  const id = campoUuid(p, "id")!;
-  const osPayload = campoUuid(p, "os_id", false);
-  const modeloId = campoUuid(p, "modelo_apr_id")!;
   const participantes = campoLista(p, "participantes", true).map((bp, i) => {
     const x = obj(bp);
     const funcao = x.funcao;
@@ -594,40 +593,44 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
     return { usuario_id: campoUuid(x, "usuario_id")!, funcao: funcao as "responsavel" | "executor", assinada_em: campoInstante(x, "assinada_em", false) };
   });
   if (participantes.length === 0) invalidoNoPayload("participantes", "Informe ao menos um participante");
-  const riscos = campoLista(p, "riscos").map((r, i) => (typeof r === "string" && REGEX_UUID.test(r) ? r : invalidoNoPayload(`riscos.${i}`, "Identificador inválido")));
-  const respostas = campoLista(p, "respostas", true).map((br, i) => {
-    const x = obj(br);
-    const resposta = x.resposta;
-    if (typeof resposta !== "string" || !RESPOSTAS.includes(resposta)) invalidoNoPayload(`respostas.${i}.resposta`, "Valor inválido");
-    return { item_id: campoUuid(x, "item_id")!, resposta: resposta as "sim" | "nao" | "na", observacao: campoTexto(x, "observacao"), respondida_em: campoInstante(x, "respondida_em", false) };
-  });
-  const evidencias = lerEvidencias(p);
-  const observacaoGeral = campoTexto(p, "observacao_geral");
-  const concluidaEm = campoInstante(p, "concluida_em")!;
+  return {
+    id: campoUuid(p, "id")!,
+    osPayload: campoUuid(p, "os_id", false),
+    modeloId: campoUuid(p, "modelo_apr_id")!,
+    participantes,
+    riscos: campoLista(p, "riscos").map((r, i) => (typeof r === "string" && REGEX_UUID.test(r) ? r : invalidoNoPayload(`riscos.${i}`, "Identificador inválido"))),
+    respostas: campoLista(p, "respostas", true).map((br, i) => {
+      const x = obj(br);
+      const resposta = x.resposta;
+      if (typeof resposta !== "string" || !RESPOSTAS.includes(resposta)) invalidoNoPayload(`respostas.${i}.resposta`, "Valor inválido");
+      return { item_id: campoUuid(x, "item_id")!, resposta: resposta as "sim" | "nao" | "na", observacao: campoTexto(x, "observacao"), respondida_em: campoInstante(x, "respondida_em", false) };
+    }),
+    evidencias: lerEvidencias(p),
+    observacaoGeral: campoTexto(p, "observacao_geral"),
+    concluidaEm: campoInstante(p, "concluida_em")!,
+  };
+}
+type AprLida = ReturnType<typeof lerApr>;
 
-  const osId = osIdEnvelope ?? osPayload;
-  if (!osId) throw rejeitar("os_obrigatoria", "Informe a OS da APR");
-  if (osPayload && osPayload !== osId) throw rejeitar("os_divergente", "A OS do evento difere da OS do payload");
+const reprovou = (i: ItemRegDoModelo, resposta: string | undefined) => i.tipo === "eliminatorio" && i.resposta_bloqueante !== null && resposta === i.resposta_bloqueante;
 
-  const existente = e.aprs.find((a) => a.id === id);
-  if (existente) {
-    ctx.saida.aprs.push({ id: existente.id, resultado: existente.resultado });
-    ctx.saida.osAfetadas.add(existente.os_id);
-    return;
-  }
-
+/**
+ * Confere a APR contra a OS, a equipe e o modelo, sem gravar nada, e diz o que reprovou (`conferirApr` da `api`). Vale
+ * na validação e no registro, e tudo é conferido antes do resultado: a recusa nunca depende de a APR reprovar.
+ */
+function conferirApr(ctx: Contexto, osId: string, p: AprLida) {
+  const { e, eu } = ctx;
   const ordem = carregarOsDoUsuario(ctx, osId);
-  ctx.saida.osAfetadas.add(ordem.id);
   if (e.execucoes.some((x) => x.os_id === ordem.id && x.resultado === null)) throw rejeitar("os_em_execucao", "Esta OS já está em execução");
   if (ordem.status === "encerrada") throw rejeitar("os_encerrada", "Esta OS já foi encerrada");
 
-  const modelo = e.modelos.find((m) => m.id === modeloId);
+  const modelo = e.modelos.find((m) => m.id === p.modeloId);
   if (!modelo || !modelo.publicado_em) throw rejeitar("modelo_invalido", "Modelo de APR inexistente ou não publicado");
 
-  const ids = participantes.map((x) => x.usuario_id);
+  const ids = p.participantes.map((x) => x.usuario_id);
   if (!unico(ids)) throw rejeitar("participante_repetido", "Participante repetido");
   if (!ids.includes(eu.id)) throw rejeitar("participante_obrigatorio", "O técnico logado precisa ser participante da APR");
-  if (participantes.filter((x) => x.funcao === "responsavel").length !== 1) throw rejeitar("responsavel_obrigatorio", "A APR precisa de exatamente um responsável");
+  if (p.participantes.filter((x) => x.funcao === "responsavel").length !== 1) throw rejeitar("responsavel_obrigatorio", "A APR precisa de exatamente um responsável");
   const pessoas = ids.map((i) => usuarioDe(e, i));
   if (pessoas.some((x) => !x)) throw rejeitar("participante_invalido", "Participante não encontrado");
   for (const pessoa of pessoas as UsuarioTreino[]) {
@@ -636,12 +639,12 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
   }
 
   const idsDeRisco = new Set(modelo.riscos.map((r) => r.id));
-  if (!unico(riscos)) throw rejeitar("risco_repetido", "Risco marcado repetido");
-  if (riscos.some((r) => !idsDeRisco.has(r))) throw rejeitar("risco_invalido", "Risco que não pertence ao modelo da APR");
-  const marcados = new Set(riscos);
+  if (!unico(p.riscos)) throw rejeitar("risco_repetido", "Risco marcado repetido");
+  if (p.riscos.some((r) => !idsDeRisco.has(r))) throw rejeitar("risco_invalido", "Risco que não pertence ao modelo da APR");
+  const marcados = new Set(p.riscos);
 
-  const respostaPorItem = new Map<string, (typeof respostas)[number]>();
-  for (const r of respostas) {
+  const respostaPorItem = new Map<string, AprLida["respostas"][number]>();
+  for (const r of p.respostas) {
     const item = modelo.itens.find((i) => i.id === r.item_id);
     if (!item) throw rejeitar("item_invalido", "Resposta a um item que não pertence ao modelo da APR");
     if (respostaPorItem.has(r.item_id)) throw rejeitar("resposta_repetida", "Item respondido mais de uma vez");
@@ -654,34 +657,96 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
   const faltando = modelo.itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.risco_id!)) && !respostaPorItem.has(i.id));
   if (faltando.length > 0) throw rejeitar("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
 
-  // Item reprovado = eliminatório com a resposta bloqueante: exige observação e, se o item pede foto, ao menos uma.
-  const reprovados = modelo.itens.filter((i) => i.tipo === "eliminatorio" && respostaPorItem.get(i.id)?.resposta === i.resposta_bloqueante);
-  for (const ev of evidencias) {
+  const reprovados = modelo.itens.filter((i) => reprovou(i, respostaPorItem.get(i.id)?.resposta)).sort((a, b) => a.ordem - b.ordem);
+  return { ordem, modelo, respostaPorItem, reprovados };
+}
+
+/** Os itens que reprovaram uma APR já gravada, na ordem do modelo. */
+function reprovadosGravados(e: EstadoTreino, a: AprReg) {
+  const modelo = e.modelos.find((m) => m.id === a.modelo_apr_id)!;
+  return modelo.itens.filter((i) => reprovou(i, a.respostas.find((r) => r.item_id === i.id)?.resposta)).sort((x, y) => x.ordem - y.ordem);
+}
+
+/** A APR bloqueada na validação recebe a evidência dos reprovados; as respostas não mudam, e a completa não aceita mais nada. */
+function completarEvidencia(ctx: Contexto, a: AprReg, p: AprLida) {
+  const reprovados = reprovadosGravados(ctx.e, a);
+  const gravada = (i: ItemRegDoModelo) => a.respostas.find((r) => r.item_id === i.id)!;
+  const completo = (i: ItemRegDoModelo, observacao: string | null | undefined, fotoNova = false) =>
+    !vazio(observacao) && (i.evidencia !== "foto" || fotoNova || a.evidencias.some((ev) => ev.item_id === i.id));
+  if (reprovados.every((i) => completo(i, gravada(i).observacao))) return;
+
+  for (const ev of p.evidencias) {
+    if (!ev.item_id || !a.respostas.some((r) => r.item_id === ev.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
+  }
+  const enviada = new Map(p.respostas.map((r) => [r.item_id, r.observacao]));
+  const observacaoDe = (i: ItemRegDoModelo) => (vazio(gravada(i).observacao) ? enviada.get(i.id) : gravada(i).observacao);
+  const semEvidencia = reprovados.filter((i) => !completo(i, observacaoDe(i), p.evidencias.some((ev) => ev.item_id === i.id)));
+  if (semEvidencia.length > 0) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
+  for (const ev of p.evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
+
+  for (const i of reprovados) {
+    const texto = enviada.get(i.id);
+    if (vazio(gravada(i).observacao) && !vazio(texto)) gravada(i).observacao = texto!.trim();
+  }
+  for (const ev of p.evidencias) {
+    if (a.evidencias.some((x) => x.id === ev.id)) continue;
+    a.evidencias.push({ id: ev.id, arquivo_id: ev.arquivo_id ?? ev.id, item_id: ev.item_id!, capturada_em: ev.capturada_em.toISOString(), latitude: ev.latitude, longitude: ev.longitude });
+  }
+}
+
+function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: unknown) {
+  const { e, eu } = ctx;
+  const p = lerApr(bruto);
+
+  const osId = osIdEnvelope ?? p.osPayload;
+  if (!osId) throw rejeitar("os_obrigatoria", "Informe a OS da APR");
+  if (p.osPayload && p.osPayload !== osId) throw rejeitar("os_divergente", "A OS do evento difere da OS do payload");
+
+  // A mesma APR já gravada: as respostas não mudam; a bloqueada na validação recebe a evidência de quem a preencheu.
+  const existente = e.aprs.find((a) => a.id === p.id);
+  if (existente) {
+    if (existente.resultado === "bloqueada" && existente.preenchida_por === eu.id) completarEvidencia(ctx, existente, p);
+    ctx.saida.aprs.push({ id: existente.id, resultado: existente.resultado });
+    ctx.saida.osAfetadas.add(existente.os_id);
+    return;
+  }
+
+  const { ordem, modelo, respostaPorItem, reprovados } = conferirApr(ctx, osId, p);
+  ctx.saida.osAfetadas.add(ordem.id);
+
+  // Item reprovado: exige observação e, se o item pede foto, ao menos uma (na validação, a evidência chega depois).
+  for (const ev of p.evidencias) {
     if (!ev.item_id || !respostaPorItem.has(ev.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
   }
-  const semEvidencia = reprovados.filter((i) => vazio(respostaPorItem.get(i.id)!.observacao) || (i.evidencia === "foto" && !evidencias.some((ev) => ev.item_id === i.id)));
-  if (semEvidencia.length > 0) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
-  for (const ev of evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
+  const semEvidencia = reprovados.filter((i) => vazio(respostaPorItem.get(i.id)!.observacao) || (i.evidencia === "foto" && !p.evidencias.some((ev) => ev.item_id === i.id)));
+  if (semEvidencia.length > 0 && !ctx.evidenciaDepois) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
+  for (const ev of p.evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
 
   const resultado = reprovados.length > 0 ? "bloqueada" : "aprovada";
+  const concluidaEm = p.concluidaEm;
   const registro: AprReg = {
-    id,
+    id: p.id,
     os_id: ordem.id,
     modelo_apr_id: modelo.id,
     preenchida_por: eu.id,
     resultado,
-    observacao_geral: vazio(observacaoGeral) ? null : observacaoGeral!.trim(),
+    observacao_geral: vazio(p.observacaoGeral) ? null : p.observacaoGeral!.trim(),
     concluida_em: concluidaEm.toISOString(),
-    participantes: participantes.map((x) => ({ usuario_id: x.usuario_id, funcao: x.funcao, assinatura_path: usuarioDe(e, x.usuario_id)!.assinatura_path!, assinada_em: (x.assinada_em ?? concluidaEm).toISOString() })),
-    riscos,
-    respostas: respostas.map((r) => ({ item_id: r.item_id, resposta: r.resposta, observacao: vazio(r.observacao) ? null : r.observacao!.trim(), respondida_em: (r.respondida_em ?? concluidaEm).toISOString() })),
-    evidencias: evidencias.map((ev) => ({ id: ev.id, arquivo_id: ev.arquivo_id ?? ev.id, item_id: ev.item_id!, capturada_em: ev.capturada_em.toISOString(), latitude: ev.latitude, longitude: ev.longitude })),
+    participantes: p.participantes.map((x) => ({ usuario_id: x.usuario_id, funcao: x.funcao, assinatura_path: usuarioDe(e, x.usuario_id)!.assinatura_path!, assinada_em: (x.assinada_em ?? concluidaEm).toISOString() })),
+    riscos: p.riscos,
+    respostas: p.respostas.map((r) => ({ item_id: r.item_id, resposta: r.resposta, observacao: vazio(r.observacao) ? null : r.observacao!.trim(), respondida_em: (r.respondida_em ?? concluidaEm).toISOString() })),
+    evidencias: p.evidencias.map((ev) => ({ id: ev.id, arquivo_id: ev.arquivo_id ?? ev.id, item_id: ev.item_id!, capturada_em: ev.capturada_em.toISOString(), latitude: ev.latitude, longitude: ev.longitude })),
   };
   e.aprs.push(registro);
-  ctx.saida.aprs.push({ id, resultado });
+  ctx.saida.aprs.push({ id: p.id, resultado });
 
   if (resultado === "bloqueada") {
-    const detalhe = reprovados.map((i) => `${i.texto} — ${respostaPorItem.get(i.id)!.observacao?.trim()}`).join("; ");
+    const detalhe = reprovados
+      .map((i) => {
+        const observacao = respostaPorItem.get(i.id)!.observacao?.trim();
+        return observacao ? `${i.texto} — ${observacao}` : i.texto;
+      })
+      .join("; ");
     criarAlerta(ctx, ordem.id, "bloqueio", `APR bloqueada (${reprovados.length} item(ns) reprovado(s)): ${detalhe}`);
   }
 }
@@ -1196,30 +1261,53 @@ rota("GET", "/arquivos/:id/url", ({ e, params }) => {
 
 rota("POST", "/eventos", ({ e, eu, corpo, agora }) => ok(processarEventos(e, eu, corpo, agora)));
 
+/** A recusa da APR como erro HTTP, como a `api` faz em `POST /aprs/avaliar`. */
+function recusaDaAvaliacao(erro: Rejeicao) {
+  if (erro.codigo === "payload_invalido") return invalido("validacao", erro.message);
+  if (erro.codigo === "os_inexistente") return naoEncontrado("OS não encontrada");
+  if (erro.codigo === "os_em_execucao" || erro.codigo === "os_encerrada") return conflito(erro.codigo, erro.message);
+  return invalido(erro.codigo, erro.message);
+}
+
+const resultadoDaAvaliacao = (reprovados: ItemRegDoModelo[]) => ({
+  resultado: reprovados.length > 0 ? "bloqueada" : "aprovada",
+  reprovados: reprovados.map((i) => ({ item_id: i.id, texto: i.texto, evidencia: i.evidencia })),
+});
+
 /**
- * `POST /aprs/avaliar`: o resultado das respostas e, se bloqueada, os itens reprovados com a evidência de cada um. Não
- * grava nada. É a única hora em que o técnico fica sabendo quais itens são eliminatórios.
+ * `POST /aprs/avaliar`: confere a APR inteira (as regras do registro, antes do resultado) e diz se ela passa. É a única
+ * hora em que o técnico fica sabendo quais itens são eliminatórios. A aprovada não é gravada; a bloqueada vale na hora:
+ * fica registrada já aqui (OS pendente, alerta ao supervisor), e a evidência dos reprovados chega no `apr_concluida`.
  */
-rota("POST", "/aprs/avaliar", ({ e, corpo }) => {
-  const p = obj(corpo);
-  const modelo = e.modelos.find((m) => m.id === p.modelo_apr_id);
-  if (!modelo || !modelo.publicado_em) throw invalido("modelo_invalido", "Modelo de APR inexistente ou não publicado");
-  const riscos = Array.isArray(p.riscos) ? p.riscos.filter((r): r is string => typeof r === "string") : [];
-  const respostas = Array.isArray(p.respostas) ? p.respostas.map(obj) : [];
-  const respostaPorItem = new Map<string, string>();
-  for (const r of respostas) {
-    const itemId = typeof r.item_id === "string" ? r.item_id : "";
-    if (!modelo.itens.some((i) => i.id === itemId)) throw invalido("item_invalido", "Resposta a um item que não pertence ao modelo da APR");
-    respostaPorItem.set(itemId, String(r.resposta));
+rota("POST", "/aprs/avaliar", ({ e, eu, corpo, agora }) => {
+  const bruto = obj(corpo);
+  try {
+    const osId = campoUuid(bruto, "os_id")!;
+    const p = lerApr(bruto);
+    // A resposta anterior se perdeu e o técnico validou de novo: vale o que ficou gravado.
+    const existente = e.aprs.find((a) => a.id === p.id);
+    if (existente) {
+      if (existente.os_id !== osId || existente.preenchida_por !== eu.id) throw conflito("apr_existente", "Esta APR já foi registrada");
+      return ok(resultadoDaAvaliacao(reprovadosGravados(e, existente)));
+    }
+    const ctx: Contexto = {
+      e,
+      eu,
+      evento: { id: crypto.randomUUID(), tipo: "apr_concluida", os_id: osId, payload: bruto, ocorrido_em: agora },
+      agora,
+      saida: { alertas: [], aprs: [], osAfetadas: new Set() },
+      evidenciaDepois: true,
+    };
+    const { ordem, reprovados } = conferirApr(ctx, osId, p);
+    if (reprovados.length > 0) {
+      aplicarAprConcluida(ctx, osId, { ...bruto, evidencias: [] });
+      ordem.status = statusDerivado(e, ordem);
+    }
+    return ok(resultadoDaAvaliacao(reprovados));
+  } catch (erro) {
+    if (erro instanceof Rejeicao) throw recusaDaAvaliacao(erro);
+    throw erro;
   }
-  const marcados = new Set(riscos);
-  const faltando = modelo.itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.risco_id!)) && !respostaPorItem.has(i.id));
-  if (faltando.length > 0) throw invalido("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
-  const reprovados = modelo.itens
-    .filter((i) => i.tipo === "eliminatorio" && i.resposta_bloqueante !== null && respostaPorItem.get(i.id) === i.resposta_bloqueante)
-    .sort((a, b) => a.ordem - b.ordem)
-    .map((i) => ({ item_id: i.id, texto: i.texto, evidencia: i.evidencia }));
-  return ok({ resultado: reprovados.length > 0 ? "bloqueada" : "aprovada", reprovados });
 });
 
 // ---------------------------------------------------------------------------------------------------------------

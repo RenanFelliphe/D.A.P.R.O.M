@@ -9,7 +9,7 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
-import { montarPayload, resumoDe, type Colega, type RascunhoApr } from "@/lib/apr";
+import { estaTravada, montarPayload, resumoDe, retirarParticipante, type Colega, type RascunhoApr } from "@/lib/apr";
 import { enviarEvento, ErroCliente, ErroDeEvento } from "@/lib/cliente-api";
 import { dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
@@ -76,9 +76,15 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
       <Screen>
         {cabecalho}
         <div className="card stack g8">
-          <strong>{rascunho ? "Esta APR ainda não foi concluída." : "Não há APR aprovada aguardando assinaturas para esta OS."}</strong>
+          <strong>
+            {!rascunho ? "Não há APR aprovada aguardando assinaturas para esta OS." : estaTravada(rascunho) ? "Esta APR reprovou e já está registrada como bloqueada." : "Esta APR ainda não foi concluída."}
+          </strong>
           <span className="muted">
-            {rascunho ? "Termine o checklist e use “Concluir e validar” para chegar às assinaturas." : "Volte à OS para fazer uma APR nova ou ver as anteriores."}
+            {!rascunho
+              ? "Volte à OS para fazer uma APR nova ou ver as anteriores."
+              : estaTravada(rascunho)
+                ? "Falta anexar a evidência dos itens reprovados, no checklist."
+                : "Termine o checklist e use “Concluir e validar” para chegar às assinaturas."}
           </span>
           <div>
             <LinkButton variant="p" href={rascunho ? rotas.app.checklist(os.id) : rotas.app.os(os.id)}>
@@ -148,13 +154,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
   }
 
   function retirar(id: string) {
-    const r = pendente!;
-    const restantes = r.participantes.filter((p) => p.usuarioId !== id);
-    const semResponsavel = !restantes.some((p) => p.funcao === "responsavel");
-    const novo: RascunhoApr = {
-      ...r,
-      participantes: restantes.map((p) => (semResponsavel && p.usuarioId === usuarioId ? { ...p, funcao: "responsavel" as const } : p)),
-    };
+    const novo = retirarParticipante(pendente!, id);
     atualizar(() => novo);
     // Se quem sobrou já tinha confirmado, a APR está completa.
     if (novo.participantes.length > 0 && novo.participantes.every((p) => novo.assinaturas[p.usuarioId])) void registrar(novo);

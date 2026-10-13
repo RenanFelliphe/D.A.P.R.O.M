@@ -229,7 +229,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "bloqueio-evidencia",
     titulo: "Prove a reprovação",
     texto:
-      "Agora o sistema mostra o que reprovou e pede a prova de cada item: escreva o motivo na observação e anexe ao menos uma foto (no treino, qualquer imagem serve). As respostas não podem mais ser alteradas. Com a evidência pronta, toque em “Registrar impedimento”: uma APR bloqueada vale na hora.",
+      "Uma APR bloqueada vale na hora: ao validar, ela já ficou registrada, a OS ficou pendente e o supervisor foi avisado. Agora o sistema mostra o que reprovou e pede a prova de cada item: escreva o motivo na observação e anexe ao menos uma foto (no treino, qualquer imagem serve). As respostas não podem mais ser alteradas. Com a evidência pronta, toque em “Registrar impedimento”.",
     semAlvo: "Preencha a evidência dos itens reprovados e toque em “Registrar impedimento”.",
     tarefa: "Registre o impedimento.",
     alvo: "ck-evidencia",

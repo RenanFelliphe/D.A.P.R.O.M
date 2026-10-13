@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { PainelAcoes, Colunas } from "@/components/app/AppChrome";
+import { AssinaturasFaltando } from "@/components/app/checklist/AssinaturasFaltando";
 import { ChecklistCabecalho } from "@/components/app/checklist/ChecklistCabecalho";
 import { ObservacaoNaCard } from "@/components/app/checklist/EvidenciaCard";
 import { EvidenciaDosReprovados } from "@/components/app/checklist/EvidenciaDosReprovados";
@@ -19,6 +20,7 @@ import {
   abrirRevisao,
   adicionarFoto,
   avancar,
+  avisoAoDescartar,
   estaTravada,
   faltaObservacaoNa,
   irPara,
@@ -28,6 +30,7 @@ import {
   removerFoto,
   resumoDe,
   responder,
+  retirarParticipante,
   voltar,
   voltarDaRevisao,
   type Avaliacao,
@@ -62,8 +65,8 @@ function mensagemDeErro(erro: unknown) {
 /**
  * Checklist da APR: responde-se tudo, em qualquer ordem, e só se valida no fim. Todas as perguntas têm a mesma cara: o
  * técnico não sabe quais são eliminatórias. Ao validar, a `api` diz o resultado: aprovada segue para as assinaturas;
- * reprovada trava as respostas e pede a evidência dos itens que reprovaram. O rascunho vive no navegador até a APR ser
- * concluída.
+ * reprovada já fica registrada como bloqueada, trava as respostas e pede a evidência dos itens que reprovaram. O
+ * rascunho vive no navegador até a APR ser concluída (na bloqueada, até a evidência ser enviada).
  */
 export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps) {
   const roteador = useRouter();
@@ -119,7 +122,6 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
   const assinaturaDe = (c: Colega) => (c.id === usuarioId ? (minhaAssinatura ?? c.assinatura_path) : c.assinatura_path);
   const participantes = r.participantes.map((p) => colegas.find((c) => c.id === p.usuarioId)).filter((c): c is Colega => Boolean(c));
   const semAssinatura = participantes.filter((c) => !assinaturaDe(c));
-  const euSemAssinatura = semAssinatura.some((c) => c.id === usuarioId);
 
   function aoResponder(valor: Resposta) {
     if (!item) return;
@@ -137,14 +139,18 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
     atualizar((atual) => adicionarFoto(atual, itemId, { id: novoId(), arquivoId: foto.arquivoId, capturadaEm: new Date().toISOString(), miniatura, ...(posicao ?? {}) }));
   }
 
-  /** "Concluir e validar": a `api` diz se a APR passa. Aprovada vai para as assinaturas; reprovada trava as respostas. */
+  /**
+   * "Concluir e validar": a `api` diz se a APR passa. Aprovada vai para as assinaturas; reprovada já fica registrada como
+   * bloqueada (a OS fica pendente e o supervisor é avisado) e trava as respostas até a evidência ser enviada.
+   */
   async function validar() {
     setErro(null);
     setValidando(true);
     try {
-      const resultado = await chamar<RespostaDaAvaliacao>("POST", "/aprs/avaliar", montarAvaliacao(r));
+      const concluidaEm = new Date().toISOString();
+      const resultado = await chamar<RespostaDaAvaliacao>("POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }));
       const avaliacao: Avaliacao = { resultado: resultado.resultado, reprovados: resultado.reprovados.map((x) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })) };
-      atualizar((atual) => ({ ...atual, concluidaEm: new Date().toISOString(), assinaturas: {}, avaliacao }));
+      atualizar((atual) => ({ ...atual, concluidaEm, assinaturas: {}, avaliacao }));
       if (avaliacao.resultado === "aprovada") roteador.push(rotas.app.aprovada(os.id));
     } catch (e) {
       setErro(mensagemDeErro(e));
@@ -153,7 +159,7 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
     }
   }
 
-  /** Reprovada, com a evidência pronta: vale na hora (as assinaturas do papel não bloqueiam) e a OS fica pendente. */
+  /** Reprovada e já registrada: o evento da mesma APR leva a evidência dos itens que reprovaram. */
   async function registrarImpedimento() {
     setErro(null);
     setConcluindo(true);
@@ -169,7 +175,7 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
   }
 
   function descartarRascunho() {
-    if (window.confirm("Descartar esta APR em andamento? As respostas e as fotos deste rascunho serão perdidas.")) {
+    if (window.confirm(avisoAoDescartar(r))) {
       descartar();
       roteador.push(rotas.app.os(os.id));
     }
@@ -187,13 +193,10 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
           travada ? (
             <EvidenciaDosReprovados
               rascunho={r}
-              semAssinatura={semAssinatura}
-              euSemAssinatura={euSemAssinatura}
               aoObservar={(itemId, texto) => atualizar((atual) => observar(atual, itemId, texto))}
               aoFotoEnviada={aoFotoEnviada}
               aoRemoverFoto={(itemId, fotoId) => atualizar((atual) => removerFoto(atual, itemId, fotoId))}
               aoErroDeFoto={setErro}
-              aoAssinaturaSalva={setMinhaAssinatura}
               aoRegistrar={registrarImpedimento}
               registrando={concluindo}
               erro={erro}
@@ -208,6 +211,15 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
               aoValidar={validar}
               validando={validando}
               erro={erro}
+              semAssinatura={semAssinatura.length}
+              assinaturas={
+                <AssinaturasFaltando
+                  semAssinatura={semAssinatura}
+                  usuarioId={usuarioId}
+                  aoAssinaturaSalva={setMinhaAssinatura}
+                  aoRetirar={(id) => atualizar((atual) => retirarParticipante(atual, id))}
+                />
+              }
             />
           ) : (
             <>
@@ -242,7 +254,9 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
             <PainelAcoes>
               <div className="row g8 small" style={{ alignItems: "flex-start" }}>
                 <Icon name="save" size={16} style={{ marginTop: 2 }} />
-                Rascunho salvo neste navegador. Se a página fechar, você continua daqui; nada é enviado até concluir.
+                {travada
+                  ? "A APR já está registrada como bloqueada. A evidência fica salva neste navegador até você registrá-la."
+                  : "Rascunho salvo neste navegador. Se a página fechar, você continua daqui; nada é enviado até validar."}
               </div>
               <div className="stack g8">
                 {!revisando && !travada && (

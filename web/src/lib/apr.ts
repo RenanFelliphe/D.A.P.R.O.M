@@ -4,9 +4,11 @@
  *
  * O técnico não sabe quais itens são eliminatórios: o modelo que ele recebe não traz o tipo, a resposta que bloqueia
  * nem a evidência do item. Quem diz se a APR passa é a `api` (`POST /aprs/avaliar`), depois que tudo foi respondido;
- * só então aparecem os itens reprovados e a evidência que cada um pede. O resultado que vale é o que a `api` calcula
- * ao receber a APR.
+ * só então aparecem os itens reprovados e a evidência que cada um pede. A APR bloqueada já fica registrada nessa hora
+ * (descartar o rascunho não a apaga); a evidência dos reprovados vai depois, no evento da mesma APR.
  */
+
+import { novoUuid } from "./uuid";
 
 export type Resposta = "sim" | "nao" | "na";
 export type Funcao = "responsavel" | "executor";
@@ -175,15 +177,17 @@ export function resumoDe(r: RascunhoApr): ResumoDoRascunho {
   };
 }
 
-/** Corpo de `POST /aprs/avaliar`: só o que o modelo precisa para dizer se as respostas passam. */
-export const montarAvaliacao = (r: RascunhoApr) => ({
-  modelo_apr_id: r.modelo.id,
-  riscos: r.riscos,
-  respostas: perguntasDe(r.modelo, r.riscos).map((i) => ({ item_id: i.id, resposta: r.respostas[i.id]!.resposta })),
-});
-
-/** A `api` já reprovou esta APR: as respostas não mudam mais, só falta a evidência e o envio. */
+/** A `api` já reprovou (e registrou) esta APR: as respostas não mudam mais, só falta a evidência e o envio. */
 export const estaTravada = (r: RascunhoApr) => r.avaliacao?.resultado === "bloqueada";
+
+/** Onde o rascunho continua: a APR aprovada vai para as assinaturas; a em andamento e a bloqueada, para o checklist. */
+export const continuaNasAssinaturas = (r: RascunhoApr) => r.avaliacao?.resultado === "aprovada";
+
+/** Pergunta antes de descartar o rascunho. A APR bloqueada já está registrada: descartar só abre mão da evidência. */
+export const avisoAoDescartar = (r: RascunhoApr) =>
+  estaTravada(r)
+    ? "Esta APR já foi registrada como bloqueada e o supervisor foi avisado. Descartar o rascunho só deixa de anexar a evidência (observações e fotos). Descartar mesmo assim?"
+    : "Descartar esta APR em andamento? As respostas e as fotos deste rascunho serão perdidas.";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Alterações do rascunho (funções puras)
@@ -215,28 +219,21 @@ export function removerFoto(r: RascunhoApr, itemId: string, fotoId: string): Ras
   return { ...r, fotos: { ...r.fotos, [itemId]: (r.fotos[itemId] ?? []).filter((f) => f.id !== fotoId) } };
 }
 
+/** Tira da APR quem não está presente (o técnico logado sempre fica); se saiu o responsável, o técnico logado assume. */
+export function retirarParticipante(r: RascunhoApr, usuarioId: string): RascunhoApr {
+  if (usuarioId === r.usuarioId) return r;
+  const restantes = r.participantes.filter((p) => p.usuarioId !== usuarioId);
+  const semResponsavel = !restantes.some((p) => p.funcao === "responsavel");
+  return { ...r, participantes: restantes.map((p) => (semResponsavel && p.usuarioId === r.usuarioId ? { ...p, funcao: "responsavel" as const } : p)) };
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // Evento `apr_concluida`
 // ---------------------------------------------------------------------------------------------------------------
 
-/**
- * Payload exato do evento (`api/src/dominio/eventos-apr.ts`); o `os_id` vai no envelope. As fotos são só dos itens que
- * a `api` reprovou (`avaliacao`).
- */
-export function montarPayload(r: RascunhoApr) {
-  const perguntas = perguntasDe(r.modelo, r.riscos);
-  const concluidaEm = r.concluidaEm ?? new Date().toISOString();
+/** A APR do rascunho, sem as fotos, nos campos do evento (`api/src/dominio/eventos-apr.ts`). */
+function dadosDaApr(r: RascunhoApr) {
   const resultado = r.avaliacao?.resultado;
-  const evidencias = (r.avaliacao?.reprovados ?? [])
-    .flatMap((i) =>
-      (r.fotos[i.itemId] ?? []).map((f) => ({
-        id: f.id,
-        arquivo_id: f.arquivoId,
-        item_id: i.itemId,
-        capturada_em: f.capturadaEm,
-        ...(f.latitude !== undefined && f.longitude !== undefined ? { latitude: f.latitude, longitude: f.longitude } : {}),
-      })),
-    );
   return {
     id: r.aprId,
     modelo_apr_id: r.modelo.id,
@@ -247,14 +244,36 @@ export function montarPayload(r: RascunhoApr) {
       ...(resultado === "aprovada" ? { assinada_em: r.assinaturas[p.usuarioId] ?? new Date().toISOString() } : {}),
     })),
     riscos: r.riscos,
-    respostas: perguntas.map((i) => {
+    respostas: perguntasDe(r.modelo, r.riscos).map((i) => {
       const resp = r.respostas[i.id]!;
       return { item_id: i.id, resposta: resp.resposta, ...(vazio(resp.observacao) ? {} : { observacao: resp.observacao.trim() }), respondida_em: resp.respondidaEm };
     }),
-    evidencias,
     ...(vazio(r.observacaoGeral) ? {} : { observacao_geral: r.observacaoGeral.trim() }),
-    concluida_em: concluidaEm,
+    concluida_em: r.concluidaEm ?? new Date().toISOString(),
   };
+}
+
+/**
+ * Corpo de `POST /aprs/avaliar`: a APR inteira, menos as fotos (o técnico ainda não sabe o que reprovou). Se ela
+ * reprovar, é com isto que a `api` já a registra; `concluidaEm` é a hora da conclusão.
+ */
+export const montarAvaliacao = (r: RascunhoApr) => ({ ...dadosDaApr({ ...r, avaliacao: null }), os_id: r.osId });
+
+/**
+ * Payload exato do evento `apr_concluida`; o `os_id` vai no envelope. As fotos são só dos itens que a `api` reprovou
+ * (`avaliacao`). Na APR bloqueada, que a `api` registrou ao validar, o evento leva a evidência dos reprovados.
+ */
+export function montarPayload(r: RascunhoApr) {
+  const evidencias = (r.avaliacao?.reprovados ?? []).flatMap((i) =>
+    (r.fotos[i.itemId] ?? []).map((f) => ({
+      id: f.id,
+      arquivo_id: f.arquivoId,
+      item_id: i.itemId,
+      capturada_em: f.capturadaEm,
+      ...(f.latitude !== undefined && f.longitude !== undefined ? { latitude: f.latitude, longitude: f.longitude } : {}),
+    })),
+  );
+  return { ...dadosDaApr(r), evidencias };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -269,7 +288,7 @@ export function novoRascunho(d: {
   riscos: string[];
   id?: () => string;
 }): RascunhoApr {
-  const novoId = d.id ?? (() => crypto.randomUUID());
+  const novoId = d.id ?? novoUuid;
   return {
     versao: 1,
     osId: d.osId,

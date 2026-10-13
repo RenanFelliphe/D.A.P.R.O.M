@@ -11,12 +11,14 @@ interface AcoesDaOsProps {
   os: OsDetalhada;
   usuarioId: string;
   execucaoAberta: ExecucaoDaOs | null;
-  /** APR aprovada de hoje que ainda não amparou uma execução. */
+  /** APR aprovada de hoje, de que o técnico participou, que ainda não amparou uma execução. */
   aprDisponivel: AprDaOs | null;
+  /** A mesma APR disponível, de quem quer que seja: se o técnico não participou dela, ele não inicia a execução. */
+  aprDeOutros: AprDaOs | null;
 }
 
 /** Painel lateral do detalhe: o que o técnico pode fazer agora, conforme o estado da OS. */
-export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel }: AcoesDaOsProps) {
+export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel, aprDeOutros }: AcoesDaOsProps) {
   if (os.status === "em_execucao" || execucaoAberta) {
     const minha = execucaoAberta?.executor.id === usuarioId;
     return (
@@ -77,6 +79,13 @@ export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel }: Acoe
             Iniciar execução
           </LinkButton>
         </>
+      ) : aprDeOutros ? (
+        <Notice tone="info" icon="user">
+          <strong>
+            APR aprovada hoje às {hora(aprDeOutros.concluida_em)} por {aprDeOutros.preenchida_por.nome}.
+          </strong>{" "}
+          Só os participantes dela ({aprDeOutros.participantes.map((p) => p.nome).join(", ")}) iniciam a execução. Para executar, faça a sua APR.
+        </Notice>
       ) : (
         <div className="row g8 small">
           <Icon name="lock" size={16} />

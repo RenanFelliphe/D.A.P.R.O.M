@@ -12,7 +12,18 @@ import { SeletorModelo } from "@/components/app/nova-apr/SeletorModelo";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
-import { doModeloCompleto, novoRascunho, totalDePerguntas, type Colega, type Funcao, type ModeloCompleto, type ModeloResumo } from "@/lib/apr";
+import {
+  avisoAoDescartar,
+  continuaNasAssinaturas,
+  doModeloCompleto,
+  estaTravada,
+  novoRascunho,
+  totalDePerguntas,
+  type Colega,
+  type Funcao,
+  type ModeloCompleto,
+  type ModeloResumo,
+} from "@/lib/apr";
 import { rotas } from "@/lib/rotas";
 import { chamar, ErroCliente } from "@/lib/cliente-api";
 import { gravarRascunho, useRascunhoApr } from "@/state/rascunho-apr";
@@ -82,18 +93,27 @@ export function NovaAprScreen({ os, usuarioId, colegas, modeloDaAtividade, codig
   }
 
   if (rascunho) {
-    const aprovada = rascunho.concluidaEm !== null;
+    const bloqueada = estaTravada(rascunho);
     return (
       <div className="stack g12">
-        <Notice tone="info" icon="save">
-          <strong>Você tem uma APR em andamento nesta OS</strong> ({rascunho.modelo.codigo} v{rascunho.modelo.versao}). Continue de onde parou ou descarte o rascunho para
-          começar uma APR nova, sem nenhuma resposta aproveitada.
+        <Notice tone={bloqueada ? "blq" : "info"} icon={bloqueada ? "octagon" : "save"}>
+          {bloqueada ? (
+            <>
+              <strong>Sua APR desta OS reprovou e já está registrada como bloqueada</strong> ({rascunho.modelo.codigo} v{rascunho.modelo.versao}). Falta
+              anexar a evidência dos itens reprovados. Descartar o rascunho não apaga a APR bloqueada: a nova será outra APR.
+            </>
+          ) : (
+            <>
+              <strong>Você tem uma APR em andamento nesta OS</strong> ({rascunho.modelo.codigo} v{rascunho.modelo.versao}). Continue de onde parou ou descarte o
+              rascunho para começar uma APR nova, sem nenhuma resposta aproveitada.
+            </>
+          )}
         </Notice>
         <div className="row g8 wrap">
-          <LinkButton variant="p" href={aprovada ? rotas.app.aprovada(os.id) : rotas.app.checklist(os.id)}>
-            Continuar APR
+          <LinkButton variant="p" href={continuaNasAssinaturas(rascunho) ? rotas.app.aprovada(os.id) : rotas.app.checklist(os.id)}>
+            {bloqueada ? "Registrar a evidência" : "Continuar APR"}
           </LinkButton>
-          <Button variant="line" onClick={descartar}>
+          <Button variant="line" onClick={() => window.confirm(avisoAoDescartar(rascunho)) && descartar()}>
             Descartar e começar de novo
           </Button>
         </div>

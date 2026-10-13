@@ -63,7 +63,13 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   const painelDeCampo = executa && (
     <>
       <AprExigidaCard modelo={modelo} codigoDoModelo={codigoDoModelo} aprs={campo.aprs} status={os.status} />
-      <AcoesDaOs os={campo.os} usuarioId={usuario.id} execucaoAberta={aberta} aprDisponivel={aprAprovadaDisponivel(campo.aprs, campo.execucoes)} />
+      <AcoesDaOs
+        os={campo.os}
+        usuarioId={usuario.id}
+        execucaoAberta={aberta}
+        aprDisponivel={aprAprovadaDisponivel(campo.aprs, campo.execucoes, usuario.id)}
+        aprDeOutros={aprAprovadaDisponivel(campo.aprs, campo.execucoes)}
+      />
     </>
   );
 
