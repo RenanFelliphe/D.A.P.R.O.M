@@ -1,7 +1,8 @@
 import "server-only";
 
 import { api, apiOuNulo } from "@/lib/api";
-import type { OsStatus, Paginacao } from "@/lib/tipos";
+import type { ServicoDaOs } from "@/lib/catalogo";
+import type { DocumentoDeEvidencia, OsStatus, Paginacao } from "@/lib/tipos";
 
 export interface LocalDaOs {
   id: string;
@@ -113,6 +114,8 @@ export interface AprDaOs {
     tipo?: string;
     evidencia?: string | null;
     fotos: FotoDeEvidencia[];
+    /** PDFs anexados ao item (laudo, certificado, atestado). */
+    documentos: DocumentoDeEvidencia[];
   }[];
 }
 
@@ -132,6 +135,8 @@ export interface ExecucaoDaOs {
   pausas: { id: string; inicio: string; fim: string | null; motivo: string | null }[];
   assinaturas: { usuario_id: string; nome: string; matricula: string; assinatura_path: string | null; assinada_em: string }[];
   fotos: FotoDeEvidencia[];
+  /** PDFs anexados ao encerramento ou à interrupção. */
+  documentos: DocumentoDeEvidencia[];
 }
 
 export interface AlertaDaOs {
@@ -167,6 +172,8 @@ export interface EventoDaLinhaDoTempo {
 
 export interface DetalheDaOs {
   os: OsDetalhe;
+  /** O serviço do catálogo (a atividade da OS) com os materiais, ferramentas e EPIs; nulo quando a OS não tem atividade. */
+  servico: ServicoDaOs | null;
   aprs: AprDaOs[];
   execucoes: ExecucaoDaOs[];
   alertas: AlertaDaOs[];

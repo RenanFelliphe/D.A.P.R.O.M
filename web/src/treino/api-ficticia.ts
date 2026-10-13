@@ -6,11 +6,14 @@
  *
  * Simplificações (a `api` real faz mais): sem fila offline (`/sync/pull` não existe aqui), sem alertas por e-mail, sem
  * reprogramação nem cancelamento (são do supervisor e do admin e respondem `403`), a ciência e `/alertas` idem, a troca
- * de senha só confere os dois campos, o PDF da OS é um documento genérico de treino e as fotos enviadas ficam na memória
- * (até 2 MB cada). Qualquer endereço que o campo não usa responde `404 indisponivel_no_treino`.
+ * de senha só confere os dois campos, o PDF da OS é um documento genérico de treino e as fotos e os PDFs enviados ficam na
+ * memória (até 2 MB cada). O catálogo de serviço é fixo e só de leitura (`treino/catalogo.ts`). Qualquer endereço que o
+ * campo não usa responde `404 indisponivel_no_treino`.
  */
+import type { ServicoDoCatalogo } from "../lib/catalogo";
 import type { Usuario } from "../lib/tipos";
 import { obterEstado } from "./armazem";
+import { materiaisDoTreino, servicosDoTreino } from "./catalogo";
 import { diaDe, statusDerivado, type AlertaReg, type AprReg, type EstadoTreino, type ExecucaoReg, type ItemRegDoModelo, type ModeloReg, type OsReg, type UsuarioTreino } from "./dados";
 import { idTreino } from "./ids";
 
@@ -265,8 +268,11 @@ function aprsApi(e: EstadoTreino, osId: string) {
             resposta: r.resposta,
             observacao: r.observacao,
             fotos: a.evidencias
-              .filter((f) => f.item_id === r.item_id)
+              .filter((f) => f.item_id === r.item_id && f.tipo !== "pdf")
               .map((f) => ({ id: f.id, foto_path: f.arquivo_id, capturada_em: f.capturada_em, latitude: f.latitude, longitude: f.longitude })),
+            documentos: a.evidencias
+              .filter((f) => f.item_id === r.item_id && f.tipo === "pdf")
+              .map((f) => ({ id: f.id, arquivo_path: f.arquivo_id, nome: f.nome ?? null, capturada_em: f.capturada_em })),
           })),
       };
     });
@@ -300,6 +306,7 @@ function execucoesApi(e: EstadoTreino, osId: string) {
           })
           .sort((a, b) => a.nome.localeCompare(b.nome)),
         fotos: [...x.fotos].sort((a, b) => a.capturada_em.localeCompare(b.capturada_em)).map((f) => ({ ...f })),
+        documentos: [...(x.documentos ?? [])].sort((a, b) => a.capturada_em.localeCompare(b.capturada_em)).map((d) => ({ ...d })),
       };
     });
 }
@@ -344,12 +351,23 @@ function detalheDaOs(e: EstadoTreino, o: OsReg, agora: Date) {
       atrasada: atrasada(o, diaDe(agora)),
       eventos_com_relogio_suspeito: 0,
     },
+    servico: servicoDaOs(e, o),
     aprs,
     execucoes,
     alertas,
     reprogramacoes: [],
     linha_do_tempo: linhaDoTempo(aprs, execucoes, alertas),
   };
+}
+
+/** O catálogo de treino, com o modelo de APR que as OS de cada serviço usam. */
+const catalogoDe = (e: EstadoTreino): ServicoDoCatalogo[] => servicosDoTreino((codigo) => e.os.find((o) => o.codigo_atividade === codigo)?.modelo_apr_codigo ?? null);
+
+/** O serviço da OS no catálogo (`servico` do detalhe); nulo quando a OS não tem atividade. */
+function servicoDaOs(e: EstadoTreino, o: OsReg) {
+  if (!o.codigo_atividade) return null;
+  const s = catalogoDe(e).find((x) => x.codigo === o.codigo_atividade);
+  return s ? { codigo: s.codigo, descricao: s.descricao, materiais: s.materiais } : { codigo: o.codigo_atividade, descricao: o.tipo_atividade ?? o.codigo_atividade, materiais: [] };
 }
 
 function osPorId(e: EstadoTreino, id: string): OsReg {
@@ -394,10 +412,12 @@ function completoDoModelo(m: ModeloReg) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Arquivos (fotos e assinaturas) e PDF
+// Arquivos (fotos, assinaturas e PDFs de evidência) e PDF da OS
 // ---------------------------------------------------------------------------------------------------------------
 
-const LIMITE_ARQUIVO = { foto: 10 * 1024 * 1024, assinatura: 1024 * 1024 } as const;
+const LIMITE_ARQUIVO = { foto: 10 * 1024 * 1024, assinatura: 1024 * 1024, pdf: 10 * 1024 * 1024 } as const;
+/** A assinatura `%PDF-` no começo do arquivo, como a `api` confere. */
+const ehPdf = (bytes: Uint8Array) => new TextDecoder("latin1").decode(bytes.subarray(0, 1024)).includes("%PDF-");
 const LIMITE_GUARDADO = 2 * 1024 * 1024;
 
 const xml = (t: string) => t.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" })[c]!);
@@ -452,11 +472,14 @@ function pdfDaOs(e: EstadoTreino, o: OsReg): Uint8Array {
   ]);
 }
 
-/** Arquivo (foto ou assinatura) do treino do técnico, para o endereço `/api/treino/arquivos/{id}`; `null` se não existe. */
+/** Arquivo (foto, assinatura ou PDF) do treino do técnico, para o endereço `/api/treino/arquivos/{id}`; `null` se não existe. */
 export function arquivoDoTreino(usuario: Usuario, id: string): { tipo: string; bytes: Uint8Array } | null {
   const a = obterEstado(usuario).arquivos.get(id);
   if (!a) return null;
-  return a.bytes ? { tipo: a.mime, bytes: a.bytes } : { tipo: "image/svg+xml", bytes: desenharSvg(a.tipo, a.rotulo) };
+  if (a.bytes) return { tipo: a.mime, bytes: a.bytes };
+  // PDF grande demais para a memória do treino: um documento genérico no lugar.
+  if (a.tipo === "pdf") return { tipo: "application/pdf", bytes: gerarPdfTreino(["DOCUMENTO DE TREINAMENTO", "", a.rotulo]) };
+  return { tipo: "image/svg+xml", bytes: desenharSvg(a.tipo, a.rotulo) };
 }
 
 interface EnvioDeArquivo {
@@ -468,19 +491,22 @@ async function receberArquivo(e: EstadoTreino, id: string, corpo: unknown): Prom
   const envio = (corpo ?? {}) as EnvioDeArquivo;
   const arquivo = envio.arquivo;
   if (!arquivo || typeof arquivo.arrayBuffer !== "function") throw invalido("validacao", 'arquivo: envie o arquivo no campo multipart "arquivo"');
-  if (envio.tipo !== "foto" && envio.tipo !== "assinatura") throw invalido("validacao", 'tipo: use "foto" ou "assinatura"');
-  if (!(arquivo.type ?? "").startsWith("image/")) throw invalido("tipo_de_arquivo", "Envie uma imagem");
+  if (envio.tipo !== "foto" && envio.tipo !== "assinatura" && envio.tipo !== "pdf") throw invalido("validacao", 'tipo: use "foto", "assinatura" ou "pdf"');
+  const tipo = envio.tipo;
+  if (tipo !== "pdf" && !(arquivo.type ?? "").startsWith("image/")) throw invalido("tipo_de_arquivo", "Envie uma imagem");
   const bytes = new Uint8Array(await arquivo.arrayBuffer());
   if (bytes.length === 0) throw invalido("arquivo_vazio", "Arquivo vazio");
-  const limite = LIMITE_ARQUIVO[envio.tipo];
+  const limite = LIMITE_ARQUIVO[tipo];
   if (bytes.length > limite) throw new ErroTreino(413, "arquivo_grande", `Arquivo maior que ${limite / 1024 / 1024} MB`);
+  if (tipo === "pdf" && !ehPdf(bytes)) throw invalido("tipo_de_arquivo", "Envie um arquivo PDF");
   const existente = e.arquivos.get(id);
   if (existente) {
     const mesmo = existente.bytes && existente.bytes.length === bytes.length && existente.bytes.every((b, i) => b === bytes[i]);
     if (!mesmo) throw conflito("arquivo_diferente", "Já existe outro arquivo com este id");
   } else {
     // Imagens grandes demais para a memória do treino ficam só como metadados (a imagem é desenhada na hora).
-    e.arquivos.set(id, { id, tipo: envio.tipo, mime: arquivo.type!, bytes: bytes.length <= LIMITE_GUARDADO ? bytes : null, rotulo: envio.tipo === "foto" ? "Foto enviada" : "Assinatura enviada" });
+    const rotulo = tipo === "foto" ? "Foto enviada" : tipo === "pdf" ? "PDF enviado" : "Assinatura enviada";
+    e.arquivos.set(id, { id, tipo, mime: tipo === "pdf" ? "application/pdf" : arquivo.type!, bytes: bytes.length <= LIMITE_GUARDADO ? bytes : null, rotulo });
   }
   return ok({ id, caminho: id });
 }
@@ -495,6 +521,7 @@ const RESPOSTAS = ["sim", "nao", "na"];
 const FUNCOES = ["responsavel", "executor"];
 const MOTIVOS_PAUSA = ["almoco", "descanso", "outro"];
 const MAX_FOTOS = 10;
+const MAX_PDFS = 5;
 const MAX_EVENTOS = 500;
 const CANCELAR_ATE_MS = 10 * 60_000;
 
@@ -550,6 +577,10 @@ const campoLista = (o: Record<string, unknown>, c: string, obrigatorio = false):
 interface Evidencia {
   id: string;
   arquivo_id?: string;
+  /** `foto` (padrão) ou `pdf`. */
+  tipo: "foto" | "pdf";
+  /** Nome do PDF anexado; ignorado na foto. */
+  nome: string | null;
   item_id?: string;
   capturada_em: Date;
   latitude: number | null;
@@ -562,9 +593,47 @@ function lerEvidencias(o: Record<string, unknown>): Evidencia[] {
     const lon = x.longitude ?? null;
     if ((lat !== null && typeof lat !== "number") || (lon !== null && typeof lon !== "number")) invalidoNoPayload(`evidencias.${i}`, "Informe latitude e longitude numéricas");
     if ((lat === null) !== (lon === null)) invalidoNoPayload(`evidencias.${i}`, "Informe latitude e longitude juntas");
-    return { id: campoUuid(x, "id")!, arquivo_id: campoUuid(x, "arquivo_id", false), item_id: campoUuid(x, "item_id", false), capturada_em: campoInstante(x, "capturada_em")!, latitude: lat as number | null, longitude: lon as number | null };
+    const tipo = x.tipo ?? "foto";
+    if (tipo !== "foto" && tipo !== "pdf") invalidoNoPayload(`evidencias.${i}.tipo`, "Valor inválido");
+    const nome = campoTexto(x, "nome")?.trim().slice(0, 200) || null;
+    return {
+      id: campoUuid(x, "id")!,
+      arquivo_id: campoUuid(x, "arquivo_id", false),
+      tipo: tipo as "foto" | "pdf",
+      nome: tipo === "pdf" ? nome : null,
+      item_id: campoUuid(x, "item_id", false),
+      capturada_em: campoInstante(x, "capturada_em")!,
+      latitude: lat as number | null,
+      longitude: lon as number | null,
+    };
   });
 }
+
+/** A evidência gravada na APR (foto ou PDF de um item reprovado). */
+const evidenciaDaApr = (ev: Evidencia): AprReg["evidencias"][number] => ({
+  id: ev.id,
+  arquivo_id: ev.arquivo_id ?? ev.id,
+  item_id: ev.item_id!,
+  capturada_em: ev.capturada_em.toISOString(),
+  latitude: ev.latitude,
+  longitude: ev.longitude,
+  tipo: ev.tipo,
+  nome: ev.nome,
+});
+
+/** O item tem o arquivo que a evidência dele exige (foto ou PDF; o de texto, nenhum)? */
+const temOArquivoExigido = (i: ItemRegDoModelo, arquivos: { item_id?: string; tipo?: "foto" | "pdf" }[]) =>
+  i.evidencia === "texto" || arquivos.some((a) => a.item_id === i.id && (a.tipo ?? "foto") === i.evidencia);
+
+/** Fotos e PDFs da execução: ao menos uma foto é exigida por quem chama; aqui, só os limites. */
+function conferirArquivosDaExecucao(evidencias: Evidencia[]) {
+  if (evidencias.filter((ev) => ev.tipo === "foto").length > MAX_FOTOS) throw rejeitar("fotos_demais", `No máximo ${MAX_FOTOS} fotos por execução`);
+  if (evidencias.filter((ev) => ev.tipo === "pdf").length > MAX_PDFS) throw rejeitar("pdfs_demais", `No máximo ${MAX_PDFS} documentos em PDF por execução`);
+}
+const fotosDaExecucao = (evidencias: Evidencia[]) =>
+  evidencias.filter((ev) => ev.tipo === "foto").map((ev) => ({ id: ev.id, foto_path: ev.arquivo_id ?? ev.id, capturada_em: ev.capturada_em.toISOString(), latitude: ev.latitude, longitude: ev.longitude }));
+const documentosDaExecucao = (evidencias: Evidencia[]) =>
+  evidencias.filter((ev) => ev.tipo === "pdf").map((ev) => ({ id: ev.id, arquivo_path: ev.arquivo_id ?? ev.id, nome: ev.nome, capturada_em: ev.capturada_em.toISOString() }));
 
 function exigirArquivo(ctx: Contexto, id: string) {
   if (!ctx.e.arquivos.has(id)) throw adiar("arquivo_ausente", `O arquivo ${id} ainda não foi enviado`);
@@ -671,16 +740,15 @@ function reprovadosGravados(e: EstadoTreino, a: AprReg) {
 function completarEvidencia(ctx: Contexto, a: AprReg, p: AprLida) {
   const reprovados = reprovadosGravados(ctx.e, a);
   const gravada = (i: ItemRegDoModelo) => a.respostas.find((r) => r.item_id === i.id)!;
-  const completo = (i: ItemRegDoModelo, observacao: string | null | undefined, fotoNova = false) =>
-    !vazio(observacao) && (i.evidencia !== "foto" || fotoNova || a.evidencias.some((ev) => ev.item_id === i.id));
+  const completo = (i: ItemRegDoModelo, observacao: string | null | undefined, novas: Evidencia[] = []) => !vazio(observacao) && temOArquivoExigido(i, [...a.evidencias, ...novas]);
   if (reprovados.every((i) => completo(i, gravada(i).observacao))) return;
 
   for (const ev of p.evidencias) {
-    if (!ev.item_id || !a.respostas.some((r) => r.item_id === ev.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
+    if (!ev.item_id || !a.respostas.some((r) => r.item_id === ev.item_id)) throw rejeitar("evidencia_invalida", "Evidência ligada a um item que a APR não respondeu");
   }
   const enviada = new Map(p.respostas.map((r) => [r.item_id, r.observacao]));
   const observacaoDe = (i: ItemRegDoModelo) => (vazio(gravada(i).observacao) ? enviada.get(i.id) : gravada(i).observacao);
-  const semEvidencia = reprovados.filter((i) => !completo(i, observacaoDe(i), p.evidencias.some((ev) => ev.item_id === i.id)));
+  const semEvidencia = reprovados.filter((i) => !completo(i, observacaoDe(i), p.evidencias));
   if (semEvidencia.length > 0) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
   for (const ev of p.evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
 
@@ -690,7 +758,7 @@ function completarEvidencia(ctx: Contexto, a: AprReg, p: AprLida) {
   }
   for (const ev of p.evidencias) {
     if (a.evidencias.some((x) => x.id === ev.id)) continue;
-    a.evidencias.push({ id: ev.id, arquivo_id: ev.arquivo_id ?? ev.id, item_id: ev.item_id!, capturada_em: ev.capturada_em.toISOString(), latitude: ev.latitude, longitude: ev.longitude });
+    a.evidencias.push(evidenciaDaApr(ev));
   }
 }
 
@@ -714,11 +782,11 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
   const { ordem, modelo, respostaPorItem, reprovados } = conferirApr(ctx, osId, p);
   ctx.saida.osAfetadas.add(ordem.id);
 
-  // Item reprovado: exige observação e, se o item pede foto, ao menos uma (na validação, a evidência chega depois).
+  // Item reprovado: exige observação e, se o item pede foto ou PDF, ao menos um desse tipo (na validação, a evidência chega depois).
   for (const ev of p.evidencias) {
-    if (!ev.item_id || !respostaPorItem.has(ev.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
+    if (!ev.item_id || !respostaPorItem.has(ev.item_id)) throw rejeitar("evidencia_invalida", "Evidência ligada a um item que a APR não respondeu");
   }
-  const semEvidencia = reprovados.filter((i) => vazio(respostaPorItem.get(i.id)!.observacao) || (i.evidencia === "foto" && !p.evidencias.some((ev) => ev.item_id === i.id)));
+  const semEvidencia = reprovados.filter((i) => vazio(respostaPorItem.get(i.id)!.observacao) || !temOArquivoExigido(i, p.evidencias));
   if (semEvidencia.length > 0 && !ctx.evidenciaDepois) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
   for (const ev of p.evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
 
@@ -735,7 +803,7 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
     participantes: p.participantes.map((x) => ({ usuario_id: x.usuario_id, funcao: x.funcao, assinatura_path: usuarioDe(e, x.usuario_id)!.assinatura_path!, assinada_em: (x.assinada_em ?? concluidaEm).toISOString() })),
     riscos: p.riscos,
     respostas: p.respostas.map((r) => ({ item_id: r.item_id, resposta: r.resposta, observacao: vazio(r.observacao) ? null : r.observacao!.trim(), respondida_em: (r.respondida_em ?? concluidaEm).toISOString() })),
-    evidencias: p.evidencias.map((ev) => ({ id: ev.id, arquivo_id: ev.arquivo_id ?? ev.id, item_id: ev.item_id!, capturada_em: ev.capturada_em.toISOString(), latitude: ev.latitude, longitude: ev.longitude })),
+    evidencias: p.evidencias.map(evidenciaDaApr),
   };
   e.aprs.push(registro);
   ctx.saida.aprs.push({ id: p.id, resultado });
@@ -865,8 +933,8 @@ function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
   const participantes = apr.participantes.map((pp) => ({ usuarioId: pp.usuario_id, pessoa: usuarioDe(e, pp.usuario_id)! }));
   const assinaram = new Set(assinaturas.map((a) => a.usuario_id));
   const todosAssinaram = participantes.every((pp) => assinaram.has(pp.usuarioId)) && assinaturas.every((a) => participantes.some((pp) => pp.usuarioId === a.usuario_id));
-  if (vazio(descricao) || evidencias.length === 0 || !todosAssinaram) throw rejeitar("encerramento_incompleto", "Descrição, foto e assinaturas de todos são obrigatórias");
-  if (evidencias.length > MAX_FOTOS) throw rejeitar("fotos_demais", `No máximo ${MAX_FOTOS} fotos por execução`);
+  if (vazio(descricao) || !evidencias.some((ev) => ev.tipo === "foto") || !todosAssinaram) throw rejeitar("encerramento_incompleto", "Descrição, foto e assinaturas de todos são obrigatórias");
+  conferirArquivosDaExecucao(evidencias);
   const semAssinatura = participantes.find((pp) => !pp.pessoa.assinatura_path);
   if (semAssinatura) throw rejeitar("assinatura_ausente", `${semAssinatura.pessoa.nome} ainda não cadastrou a assinatura no perfil`);
   for (const ev of evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
@@ -877,7 +945,8 @@ function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
   x.descricao_atividade = descricao!.trim();
   x.dados_inspecao = obj(p).dados_inspecao ?? null;
   x.assinaturas = participantes.map((pp) => ({ usuario_id: pp.usuarioId, assinatura_path: pp.pessoa.assinatura_path!, assinada_em: (assinaturas.find((a) => a.usuario_id === pp.usuarioId)?.assinada_em ?? fim).toISOString() }));
-  x.fotos = evidencias.map((ev) => ({ id: ev.id, foto_path: ev.arquivo_id ?? ev.id, capturada_em: ev.capturada_em.toISOString(), latitude: ev.latitude, longitude: ev.longitude }));
+  x.fotos = fotosDaExecucao(evidencias);
+  x.documentos = documentosDaExecucao(evidencias);
 
   const ordem = e.os.find((o) => o.id === x.os_id)!;
   if (ordem.pdf_path === null) {
@@ -896,15 +965,17 @@ function aplicarExecucaoInterrompida(ctx: Contexto, bruto: unknown) {
   const x = execucaoDoUsuario(ctx, execucaoId, true);
   if (x.resultado === "interrompida") return;
   if (x.resultado !== null) throw rejeitar("execucao_finalizada", "A execução já foi finalizada");
-  if (vazio(motivo) || evidencias.length === 0) throw rejeitar("interrupcao_incompleta", "Motivo e ao menos uma foto são obrigatórios");
+  if (vazio(motivo) || !evidencias.some((ev) => ev.tipo === "foto")) throw rejeitar("interrupcao_incompleta", "Motivo e ao menos uma foto são obrigatórios");
   if (fim.toISOString() < x.inicio) throw rejeitar("fim_antes_do_inicio", "O fim é anterior ao início da execução");
+  conferirArquivosDaExecucao(evidencias);
   for (const ev of evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
 
   fecharPausaAberta(x, fim);
   x.fim = fim.toISOString();
   x.resultado = "interrompida";
   x.motivo = motivo!.trim();
-  x.fotos = evidencias.map((ev) => ({ id: ev.id, foto_path: ev.arquivo_id ?? ev.id, capturada_em: ev.capturada_em.toISOString(), latitude: ev.latitude, longitude: ev.longitude }));
+  x.fotos = fotosDaExecucao(evidencias);
+  x.documentos = documentosDaExecucao(evidencias);
   criarAlerta(ctx, x.os_id, "bloqueio", `Execução interrompida por risco: ${motivo!.trim()}`);
 }
 
@@ -1260,6 +1331,46 @@ rota("GET", "/arquivos/:id/url", ({ e, params }) => {
 });
 
 rota("POST", "/eventos", ({ e, eu, corpo, agora }) => ok(processarEventos(e, eu, corpo, agora)));
+
+// ---- Catálogo de serviço (só leitura) ----------------------------------------------------------------------------
+
+rota("GET", "/catalogo/servicos", ({ e, q }) => {
+  const pag = paginacao(q);
+  const semMateriais = booleano(q.sem_materiais, "sem_materiais");
+  if (q.material_id && !REGEX_UUID.test(q.material_id)) throw invalido("validacao", "material_id: Identificador inválido");
+  const todos = catalogoDe(e)
+    .filter((s) => !q.busca || contem([s.codigo, s.descricao], q.busca))
+    .filter((s) => !semMateriais || s.materiais.length === 0)
+    .filter((s) => !q.material_id || s.materiais.some((m) => m.material_id === q.material_id));
+  return ok({ servicos: todos.slice(pag.de, pag.de + pag.tamanho), ...meta(pag, todos.length) });
+});
+
+rota("GET", "/catalogo/servicos/:codigo", ({ e, params }) => {
+  const s = catalogoDe(e).find((x) => x.codigo === params.codigo);
+  if (!s) throw naoEncontrado("Serviço não encontrado");
+  return ok(s);
+});
+
+rota("GET", "/catalogo/materiais", ({ e, q }) => {
+  const pag = paginacao(q);
+  const ativo = booleano(q.ativo, "ativo");
+  if (q.categoria && !["material", "ferramenta", "epi"].includes(q.categoria)) throw invalido("validacao", "categoria: valor inválido");
+  const todos = materiaisDoTreino(e.criadoEm)
+    .filter((m) => !q.busca || contem([m.descricao, m.codigo], q.busca))
+    .filter((m) => !q.categoria || m.categoria === q.categoria)
+    .filter((m) => ativo === undefined || m.ativo === ativo)
+    .sort((a, b) => a.categoria.localeCompare(b.categoria) || a.descricao.localeCompare(b.descricao));
+  return ok({ materiais: todos.slice(pag.de, pag.de + pag.tamanho), ...meta(pag, todos.length) });
+});
+
+// No treino o técnico não edita o catálogo, como na `api` (só o admin).
+for (const metodo of ["POST", "PUT", "DELETE"]) {
+  for (const caminho of ["/catalogo/materiais", "/catalogo/materiais/:id", "/catalogo/servicos/:codigo"]) {
+    rota(metodo, caminho, () => {
+      throw proibido();
+    });
+  }
+}
 
 /** A recusa da APR como erro HTTP, como a `api` faz em `POST /aprs/avaliar`. */
 function recusaDaAvaliacao(erro: Rejeicao) {

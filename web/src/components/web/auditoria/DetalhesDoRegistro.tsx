@@ -3,6 +3,8 @@ import { rotuloDoCampo } from "@/data/auditoria";
 const texto = (valor: unknown): string => {
   if (valor === null || valor === undefined || valor === "") return "—";
   if (typeof valor === "boolean") return valor ? "sim" : "não";
+  // Listas (os materiais de um serviço, por exemplo) saem item a item.
+  if (Array.isArray(valor)) return valor.length === 0 ? "nenhum" : valor.map(texto).join("; ");
   if (typeof valor === "object") return JSON.stringify(valor);
   return String(valor);
 };

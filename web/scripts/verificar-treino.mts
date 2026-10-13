@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- script de teste: as respostas da API fictícia são lidas como vêm */
 // Percorre o Campo de treino (a API fictícia, sem servidor e sem navegador) do mesmo modo que as telas de campo:
-// lista as OS, abre a OS guiada, faz a APR aprovada, inicia e encerra a execução; depois abre a OS do bloqueio, responde
-// uma pergunta do jeito que reprova e confere o impedimento. O modelo que o técnico recebe não diz o que é eliminatório:
+// lista as OS, abre a OS guiada, faz a APR aprovada, inicia e encerra a execução (com foto e PDF); depois abre a OS do
+// bloqueio, responde uma pergunta do jeito que reprova e confere o impedimento. Por fim, o catálogo de serviço. O modelo que o técnico recebe não diz o que é eliminatório:
 // só `POST /aprs/avaliar` revela os itens reprovados. Usa as funções puras da tela (`src/lib/apr.ts`) para montar o evento.
 //
 //   cd api && node --import tsx ../web/scripts/verificar-treino.mts
@@ -43,6 +43,11 @@ async function enviar(...eventos: ReturnType<typeof evento>[]) {
 async function subirFoto(id: string = crypto.randomUUID()) {
   const arquivo = new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])], "foto.jpg", { type: "image/png" });
   await ler("PUT", `/arquivos/${id}`, { arquivo, tipo: "foto" });
+  return id;
+}
+async function subirPdf(id: string = crypto.randomUUID()) {
+  const arquivo = new File([new TextEncoder().encode("%PDF-1.4\n% laudo de treino\n%%EOF\n")], "laudo.pdf", { type: "application/pdf" });
+  await ler("PUT", `/arquivos/${id}`, { arquivo, tipo: "pdf" });
   return id;
 }
 async function subirAssinatura() {
@@ -156,6 +161,13 @@ assert.ok(arquivoDoTreino(eu, fotoId)!.bytes.length > 0);
 assert.ok(arquivoDoTreino(eu, me.usuario.assinatura_path)!.bytes.length > 0, "assinatura da massa inicial vira SVG");
 ok("fotos e assinatura: envio, URL e leitura");
 
+const pdfId = await subirPdf();
+assert.equal((await ler<any>("GET", `/arquivos/${pdfId}/url`)).url, `/api/treino/arquivos/${pdfId}`);
+assert.equal(arquivoDoTreino(eu, pdfId)!.tipo, "application/pdf");
+const falso = await chamar("PUT", `/arquivos/${crypto.randomUUID()}`, { arquivo: new File([new Uint8Array([137, 80, 78, 71])], "x.pdf", { type: "application/pdf" }), tipo: "pdf" });
+assert.equal((falso.corpo as any).erro.codigo, "tipo_de_arquivo");
+ok("PDF de evidência: envio, recusa do que não é PDF, URL e leitura");
+
 const encerrar = (extra: Record<string, unknown>) =>
   evento("execucao_encerrada", OS_GUIADA, {
     execucao_id: execId,
@@ -166,17 +178,22 @@ const encerrar = (extra: Record<string, unknown>) =>
     ...extra,
   });
 assert.equal((await enviar(encerrar({ evidencias: [] }))).rejeitados[0].codigo, "encerramento_incompleto");
+// O PDF acompanha a foto, mas não a substitui.
+const soPdf = [{ id: crypto.randomUUID(), arquivo_id: pdfId, tipo: "pdf", nome: "laudo.pdf", capturada_em: new Date().toISOString() }];
+assert.equal((await enviar(encerrar({ evidencias: soPdf }))).rejeitados[0].codigo, "encerramento_incompleto");
 assert.equal((await enviar(encerrar({ assinaturas: [{ usuario_id: eu.id }] }))).rejeitados[0].codigo, "encerramento_incompleto");
 assert.equal((await enviar(encerrar({ evidencias: [{ id: crypto.randomUUID(), arquivo_id: crypto.randomUUID(), capturada_em: new Date().toISOString() }] }))).pendentes[0].codigo, "arquivo_ausente");
-const encerrada = await enviar(encerrar({}));
+const encerrada = await enviar(encerrar({ evidencias: [{ id: crypto.randomUUID(), arquivo_id: fotoId, capturada_em: new Date().toISOString() }, ...soPdf] }));
 assert.equal(encerrada.rejeitados.length + encerrada.pendentes.length, 0, JSON.stringify(encerrada));
 assert.equal(encerrada.os[0].status, "encerrada");
-ok("execucao_encerrada: exige descrição, foto e assinaturas; OS encerrada");
+ok("execucao_encerrada: exige descrição, foto e assinaturas (o PDF é opcional); OS encerrada");
 
 const depois = await ler<any>("GET", `/os/${OS_GUIADA}`);
 assert.equal(depois.execucoes[0].resultado, "encerrada");
 assert.equal(depois.execucoes[0].pausas.length, 1);
 assert.equal(depois.execucoes[0].assinaturas.length, 2);
+assert.equal(depois.execucoes[0].fotos.length, 1);
+assert.deepEqual(depois.execucoes[0].documentos.map((d: any) => [d.arquivo_path, d.nome]), [[pdfId, "laudo.pdf"]]);
 const historico = await ler<any>("GET", "/me/historico");
 assert.ok(historico.execucoes.some((x: any) => x.os_id === OS_GUIADA), "histórico do técnico");
 const pdf = await chamar("GET", `/os/${OS_GUIADA}/pdf`);
@@ -271,6 +288,20 @@ assert.deepEqual(inexistente.corpo, { erro: { codigo: "nao_encontrado", mensagem
 assert.equal((await chamar("POST", `/os/${OS_GUIADA}/ciencia`)).status, 403);
 assert.equal((await chamar("GET", "/nada-disso")).status, 404);
 ok("equipe, perfil, busca exata e erros no formato padrão");
+
+// ---- Catálogo de serviço ---------------------------------------------------------------------------------------------
+const guiada = await ler<any>("GET", `/os/${OS_GUIADA}`);
+assert.ok(guiada.servico && guiada.servico.materiais.length > 0, "a OS guiada traz o serviço do catálogo com a lista");
+assert.ok(guiada.servico.materiais.some((m: any) => m.categoria === "epi"));
+const semLista = await ler<any>("GET", "/catalogo/servicos", undefined, { sem_materiais: "true" });
+assert.deepEqual(semLista.servicos.map((s: any) => s.codigo), ["COR-PODA"]);
+const epis = await ler<any>("GET", "/catalogo/materiais", undefined, { categoria: "epi" });
+assert.ok(epis.total > 0 && epis.materiais.every((m: any) => m.categoria === "epi" && m.servicos_total > 0));
+const usaLuva = await ler<any>("GET", "/catalogo/servicos", undefined, { material_id: epis.materiais.find((m: any) => m.descricao.startsWith("Luva")).id });
+assert.ok(usaLuva.total >= 3);
+assert.equal((await chamar("POST", "/catalogo/materiais", { descricao: "Novo", unidade: "un" })).status, 403);
+assert.equal((await chamar("PUT", `/catalogo/servicos/${guiada.servico.codigo}`, { materiais: [] })).status, 403);
+ok("catálogo de serviço: o serviço da OS com a lista, filtros e só leitura no treino");
 
 // ---- Reinício ------------------------------------------------------------------------------------------------------
 reiniciarTreino(eu.id);

@@ -14,6 +14,8 @@ export const rotas = {
     aguardando: "/app/aguardando",
     /** Quadro de OS (todos os perfis). */
     lista: "/app/lista",
+    /** Quadro com a janela "OS preventivas" aberta (intervalo entre ciclos de cada preventiva). */
+    preventivas: "/app/lista?preventivas=1",
     /** Detalhe da OS (todos os perfis). */
     os: (id: string) => `/app/os/${id}`,
     /** Nova APR da OS: participantes, riscos e modelo. */
@@ -43,6 +45,12 @@ export const rotas = {
     dashboardMeus: "/app/dashboard/meus",
     /** Equipes e usuários (admin), Minha equipe com cadastro (supervisor) ou Minha equipe só para consulta (técnico): um endereço só. */
     usuarios: "/app/usuarios",
+    /**
+     * Catálogo de serviço, o mesmo para todos os perfis (só o admin edita): os serviços com os materiais de cada um
+     * (`?busca=`, `?sem_materiais=true`, `?material_id=`) e o cadastro de materiais. `/app/catalogo` sozinho leva aos serviços.
+     */
+    catalogo: "/app/catalogo/servicos",
+    catalogoMateriais: "/app/catalogo/materiais",
     /** Campo de treino: entrada com a escolha Direcionado/Livre. */
     treino: "/app/treino",
     /** Liga o modo treino (cookie) e leva à lista; `?modo=direcionado|livre` guarda a escolha. */
