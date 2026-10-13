@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import type { Deps } from "../deps";
 import { processarEventos, esquemaEnvio } from "../dominio/eventos";
-import { avaliarApr, esquemaAvaliacaoApr } from "../dominio/eventos-apr";
+import { avaliarApr } from "../dominio/avaliacao-apr";
 import { montarSnapshot } from "../dominio/sync";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { proibido } from "../http/erros";
 import { responder } from "../http/resposta";
-import { lerCorpo } from "../http/validacao";
+import { lerCorpo, lerJson } from "../http/validacao";
 
 /**
  * `POST /eventos`: o canal único de escrita de campo, igual para web, app online e fila offline. Só o perfil
@@ -32,13 +32,14 @@ export function rotasEventos(deps: Deps, { autenticar }: Autenticacao) {
   });
 
   /**
-   * `POST /aprs/avaliar`: o resultado das respostas (`aprovada` ou `bloqueada`) e, se bloqueada, os itens reprovados com a
-   * evidência que cada um pede. Não grava nada. O modelo que o técnico recebe não diz o que é eliminatório; é aqui,
-   * depois de responder tudo, que ele fica sabendo.
+   * `POST /aprs/avaliar`: o resultado da APR (`aprovada` ou `bloqueada`) e, se bloqueada, os itens reprovados com a
+   * evidência que cada um pede. O modelo que o técnico recebe não diz o que é eliminatório; é aqui, depois de responder
+   * tudo, que ele fica sabendo, e por isso a APR bloqueada já fica registrada (ver `avaliarApr`).
    */
   r.post("/aprs/avaliar", autenticar(), async (c) => {
-    if (c.get("usuario").perfil !== "tecnico") throw proibido("Só o perfil técnico aplica APR e executa OS");
-    return responder(c, await avaliarApr(deps.db, await lerCorpo(c, esquemaAvaliacaoApr)));
+    const eu = c.get("usuario");
+    if (eu.perfil !== "tecnico") throw proibido("Só o perfil técnico aplica APR e executa OS");
+    return responder(c, await avaliarApr(deps, eu, await lerJson(c)));
   });
 
   /** Só do modo offline: baixa a cópia local da equipe. O `cursor` é opcional e, por ora, ignorado (snapshot completo). */

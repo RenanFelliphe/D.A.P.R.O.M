@@ -38,6 +38,11 @@ export interface Contexto {
   recebidoEm: Date;
   /** Chegou da fila offline (atraso maior que `ATRASO_OFFLINE_MS`). */
   offline: boolean;
+  /**
+   * A APR bloqueada é registrada na validação (`POST /aprs/avaliar`), antes de o técnico saber o que reprovou: a evidência
+   * dos itens reprovados chega depois, no `apr_concluida` da mesma APR.
+   */
+  evidenciaDepois?: boolean;
   saida: { alertas: string[]; aprs: { id: string; resultado: string }[]; osAfetadas: Set<string> };
 }
 

@@ -76,7 +76,12 @@ async function despachar(ctx: Contexto, e: EventoRecebido) {
  * `os.status` no servidor e cria alertas e tarefas. Um evento recusado desfaz a própria transação e não impede os
  * demais; o que for recusado ou pendente volta em `rejeitados` e `pendentes`.
  */
-export async function processarEventos(deps: Deps, usuario: UsuarioAutenticado, recebidos: EventoRecebido[]): Promise<ResultadoDoEnvio> {
+export async function processarEventos(
+  deps: Deps,
+  usuario: UsuarioAutenticado,
+  recebidos: EventoRecebido[],
+  opcoes: Pick<Contexto, "evidenciaDepois"> = {},
+): Promise<ResultadoDoEnvio> {
   const saida: ResultadoDoEnvio = { confirmados: [], alertas: [], aprs: [], os: [], rejeitados: [], pendentes: [] };
   const osAfetadas = new Set<string>();
   const ordenados = [...recebidos].sort((a, b) => a.ocorrido_em.getTime() - b.ocorrido_em.getTime());
@@ -115,6 +120,7 @@ export async function processarEventos(deps: Deps, usuario: UsuarioAutenticado, 
           evento: { id: e.id, tipo: e.tipo, osId: osDoEnvelope, ocorridoEm: e.ocorrido_em },
           recebidoEm,
           offline: recebidoEm.getTime() - e.ocorrido_em.getTime() > ATRASO_OFFLINE_MS,
+          ...opcoes,
           saida: parcial,
         };
         await despachar(ctx, e);

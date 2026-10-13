@@ -28,15 +28,18 @@ export function validar<T extends z.ZodType>(esquema: T, bruto: unknown): z.infe
   return r.data;
 }
 
-/** Corpo JSON validado; JSON malformado é `400`, campo inválido é `422`. */
-export async function lerCorpo<T extends z.ZodType>(c: Context, esquema: T): Promise<z.infer<T>> {
-  let bruto: unknown;
+/** Corpo JSON como veio, sem validar (quem chama valida); JSON malformado é `400`. */
+export async function lerJson(c: Context): Promise<unknown> {
   try {
-    bruto = await c.req.json();
+    return await c.req.json();
   } catch {
     throw new ErroApi(400, "json_invalido", "O corpo da requisição não é um JSON válido");
   }
-  return validar(esquema, bruto);
+}
+
+/** Corpo JSON validado; JSON malformado é `400`, campo inválido é `422`. */
+export async function lerCorpo<T extends z.ZodType>(c: Context, esquema: T): Promise<z.infer<T>> {
+  return validar(esquema, await lerJson(c));
 }
 
 export function lerConsulta<T extends z.ZodType>(c: Context, esquema: T): z.infer<T> {

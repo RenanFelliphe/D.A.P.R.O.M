@@ -438,27 +438,88 @@ describe("Eventos de campo: APR, execução e sync", () => {
     assert.ok(doAdmin.itens.some((i: any) => i.tipo === "eliminatorio"));
   });
 
-  it("POST /aprs/avaliar: diz aprovada ou bloqueada e quais itens reprovaram, sem gravar nada", async () => {
-    const o = await novaOs();
-    const corpo = (p: Awaited<ReturnType<typeof payloadApr>>) => ({ modelo_apr_id: p.modelo_apr_id, riscos: p.riscos, respostas: p.respostas.map(({ item_id, resposta }) => ({ item_id, resposta })) });
-    const aprsDaOs = async () => (await amb.sql<{ n: number }>("select count(*)::int as n from apr where os_id = $1", [o.id]))[0]!.n;
+  /** Corpo de `POST /aprs/avaliar`: a APR sem as fotos e sem a observação dos reprovados (o técnico ainda não sabe quais são). */
+  const corpoDaAvaliacao = (osId: string, p: Awaited<ReturnType<typeof payloadApr>>) => {
+    const { evidencias: _fotos, ...resto } = p;
+    return { ...resto, os_id: osId, respostas: p.respostas.map(({ item_id, resposta }) => ({ item_id, resposta })) };
+  };
 
-    const boa = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpo(await payloadApr(o.id)) });
+  it("POST /aprs/avaliar: a aprovada não é gravada; a bloqueada é registrada na hora, sem a evidência", async () => {
+    const o = await novaOs();
+    const aprsDaOs = async () => (await amb.sql<{ id: string; resultado: string }>("select id, resultado from apr where os_id = $1", [o.id]));
+    const alertasDaOs = async () => (await amb.sql<{ n: number }>("select count(*)::int as n from alerta where os_id = $1 and tipo = 'bloqueio'", [o.id]))[0]!.n;
+
+    const boa = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpoDaAvaliacao(o.id, await payloadApr(o.id)) });
     assert.deepEqual(boa, { resultado: "aprovada", reprovados: [] });
+    assert.deepEqual(await aprsDaOs(), [], "a aprovada só é registrada pelo apr_concluida");
 
     const ruim = await payloadApr(o.id, { bloquear: true });
     const reprovadoId = ruim.evidencias[0]!.item_id;
     const item = modelo.itens.find((i) => i.id === reprovadoId)!;
-    const mau = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpo(ruim) });
+    const mau = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpoDaAvaliacao(o.id, ruim) });
     assert.equal(mau.resultado, "bloqueada");
     assert.deepEqual(mau.reprovados, [{ item_id: item.id, texto: item.texto, evidencia: item.evidencia }]);
-    assert.equal(await aprsDaOs(), 0, "avaliar não registra APR");
+    assert.deepEqual(await aprsDaOs(), [{ id: ruim.id, resultado: "bloqueada" }], "a bloqueada vale na hora");
+    assert.equal(await statusDa(o.id), "pendente");
+    assert.equal(await alertasDaOs(), 1);
+    assert.equal((await amb.sql("select 1 from evento_campo where os_id = $1 and tipo = 'apr_concluida'", [o.id])).length, 1);
 
-    // Respostas incompletas, item de outro modelo, perfil errado e sem token.
-    assert.equal((await amb.req("POST", "/aprs/avaliar", { como: tecnico, json: corpo(await payloadApr(o.id, { incompleta: true })) })).status, 422);
-    assert.equal((await amb.req("POST", "/aprs/avaliar", { como: tecnico, json: { ...corpo(ruim), respostas: [{ item_id: randomUUID(), resposta: "sim" }] } })).status, 422);
-    assert.equal((await amb.req("POST", "/aprs/avaliar", { como: admin, json: corpo(ruim) })).status, 403);
-    assert.equal((await amb.req("POST", "/aprs/avaliar", { json: corpo(ruim) })).status, 401);
+    // Validar de novo a mesma APR (a resposta se perdeu) devolve o que ficou gravado, sem duplicar nada.
+    const deNovo = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpoDaAvaliacao(o.id, ruim) });
+    assert.deepEqual(deNovo, mau);
+    assert.equal((await aprsDaOs()).length, 1);
+    assert.equal(await alertasDaOs(), 1);
+    // A mesma APR com outras respostas não revela nada: vale o que foi gravado; outra pessoa ou outra OS é conflito.
+    const trocada = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpoDaAvaliacao(o.id, { ...(await payloadApr(o.id)), id: ruim.id }) });
+    assert.deepEqual(trocada, mau);
+    assert.equal((await amb.req("POST", "/aprs/avaliar", { como: colega, json: corpoDaAvaliacao(o.id, ruim) })).status, 409);
+
+    // Descartar o rascunho e refazer a APR não apaga a bloqueada: a nova é outra APR.
+    const refeita = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpoDaAvaliacao(o.id, await payloadApr(o.id)) });
+    assert.equal(refeita.resultado, "aprovada");
+    assert.deepEqual(await aprsDaOs(), [{ id: ruim.id, resultado: "bloqueada" }]);
+
+    // A evidência chega depois, no apr_concluida da mesma APR; online, precisa vir inteira.
+    const semFoto = await enviar(tecnico, evento("apr_concluida", { ...ruim, evidencias: [] }, o.id));
+    assert.equal(semFoto.rejeitados[0].codigo, "evidencia_faltando");
+    const completa = await enviar(tecnico, evento("apr_concluida", ruim, o.id));
+    assert.deepEqual(completa.aprs, [{ id: ruim.id, resultado: "bloqueada" }]);
+    assert.equal(completa.rejeitados.length, 0);
+    const [resposta] = await amb.sql<{ observacao: string }>("select observacao from apr_resposta where apr_id = $1 and item_id = $2", [ruim.id, item.id]);
+    assert.equal(resposta!.observacao, "Vazamento de gás");
+    assert.equal((await amb.sql("select 1 from evidencia where apr_id = $1", [ruim.id])).length, 1);
+    // Completa, não aceita mais nada.
+    await enviar(tecnico, evento("apr_concluida", { ...ruim, evidencias: [{ id: await foto(), item_id: item.id, capturada_em: agora() }] }, o.id));
+    assert.equal((await amb.sql("select 1 from evidencia where apr_id = $1", [ruim.id])).length, 1);
+    assert.equal((await aprsDaOs()).length, 1);
+    assert.equal(await alertasDaOs(), 1);
+  });
+
+  it("POST /aprs/avaliar recusa pelas regras do registro, antes do resultado (a recusa não revela o que reprova)", async () => {
+    const o = await novaOs();
+    const semAssinatura = await amb.criarUsuario({ perfil: "tecnico", equipeId, comAssinatura: false });
+    const ruim = await payloadApr(o.id, { bloquear: true });
+    const recusa = async (json: object, status: number, codigo?: string) => {
+      const r = await amb.req("POST", "/aprs/avaliar", { como: tecnico, json });
+      assert.equal(r.status, status, JSON.stringify(r.corpo));
+      if (codigo) assert.equal(r.corpo.erro.codigo, codigo);
+    };
+    // Participante sem assinatura: recusada igual, aprovando ou bloqueando.
+    for (const p of [await payloadApr(o.id, { participantes: [tecnico, semAssinatura] }), await payloadApr(o.id, { bloquear: true, participantes: [tecnico, semAssinatura] })]) {
+      await recusa(corpoDaAvaliacao(o.id, p), 422, "assinatura_ausente");
+    }
+    await recusa(corpoDaAvaliacao(o.id, await payloadApr(o.id, { incompleta: true })), 422, "respostas_incompletas");
+    await recusa({ ...corpoDaAvaliacao(o.id, ruim), respostas: [{ item_id: randomUUID(), resposta: "sim" }] }, 422, "item_invalido");
+    await recusa({ ...corpoDaAvaliacao(o.id, ruim), os_id: undefined }, 422, "validacao");
+    // OS de outra equipe não existe para o técnico.
+    const outraEquipe = await amb.criarEquipe({});
+    const deOutra = await novaOs({ equipeId: outraEquipe.id });
+    await recusa(corpoDaAvaliacao(deOutra.id, ruim), 404);
+    assert.equal((await amb.sql("select 1 from apr where os_id = $1", [o.id])).length, 0);
+    assert.equal((await amb.sql("select 1 from alerta where os_id = $1", [o.id])).length, 0);
+
+    assert.equal((await amb.req("POST", "/aprs/avaliar", { como: admin, json: corpoDaAvaliacao(o.id, ruim) })).status, 403);
+    assert.equal((await amb.req("POST", "/aprs/avaliar", { json: corpoDaAvaliacao(o.id, ruim) })).status, 401);
   });
 
   it("evento que veio da fila offline sem a evidência dos reprovados é aceito: o aparelho não pôde perguntar", async () => {

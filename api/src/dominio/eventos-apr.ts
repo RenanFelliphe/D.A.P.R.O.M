@@ -1,8 +1,7 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
 import { APR_FUNCOES, APR_RESPOSTAS, APR_RESULTADOS, apr, aprParticipante, aprResposta, aprRisco, evidencia, execucao, itemModeloApr, modeloApr, riscoModeloApr, usuario } from "../db/schema";
-import { invalido } from "../http/erros";
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas } from "./alertas";
 import { avisarConflitoDePlanejamento, carregarOsDoUsuario, evidenciaPayload, exigirArquivo, lerPayload, rejeitar, type Contexto } from "./eventos-base";
@@ -24,6 +23,13 @@ const esquemaApr = z.object({
   /** Só conferido: o servidor recalcula o resultado. */
   resultado: z.enum(APR_RESULTADOS).optional(),
 });
+type PayloadApr = z.infer<typeof esquemaApr>;
+
+/**
+ * Corpo de `POST /aprs/avaliar`: a APR inteira, menos as fotos (o técnico ainda não sabe o que reprovou). Se reprovar, é
+ * com isto que a APR é registrada.
+ */
+export const esquemaAvaliacaoApr = esquemaApr.omit({ evidencias: true, resultado: true }).extend({ os_id: uuid });
 
 const vazio = (s: string | null | undefined) => !s || s.trim() === "";
 
@@ -31,64 +37,13 @@ const vazio = (s: string | null | undefined) => !s || s.trim() === "";
 const reprovou = (item: { tipo: string; respostaBloqueante: string | null }, resposta: string | undefined) =>
   item.tipo === "eliminatorio" && item.respostaBloqueante !== null && resposta === item.respostaBloqueante;
 
-export const esquemaAvaliacaoApr = z.object({
-  modelo_apr_id: uuid,
-  riscos: z.array(uuid).default([]),
-  respostas: z.array(z.object({ item_id: uuid, resposta: z.enum(APR_RESPOSTAS) })),
-});
-
 /**
- * Valida as respostas contra o modelo, sem gravar nada, e diz o que acontece: `aprovada` ou `bloqueada`, e, se bloqueada,
- * quais itens reprovaram e a evidência que cada um pede. É a única hora em que o técnico fica sabendo quais itens são
- * eliminatórios: o modelo que ele recebe não traz essa informação e o checklist não a mostra. Chamar o endpoint não
- * registra a APR; quem decide o resultado que vale é `aplicarAprConcluida`.
+ * Confere a APR contra a OS, a equipe e o modelo, sem gravar nada, e diz quais itens reprovaram, na ordem do modelo. As
+ * mesmas regras valem na validação (`POST /aprs/avaliar`) e no registro (`apr_concluida`), e todas são conferidas antes
+ * do resultado: o que recusa a APR nunca depende de ela reprovar, então a recusa não revela o que é eliminatório.
  */
-export async function avaliarApr(db: Db, bruto: z.infer<typeof esquemaAvaliacaoApr>) {
-  const [modelo] = await db.select().from(modeloApr).where(eq(modeloApr.id, bruto.modelo_apr_id));
-  if (!modelo || !modelo.publicadoEm) throw invalido("modelo_invalido", "Modelo de APR inexistente ou não publicado");
-
-  const riscosDoModelo = await db.select({ id: riscoModeloApr.id }).from(riscoModeloApr).where(eq(riscoModeloApr.modeloAprId, modelo.id));
-  const idsDeRisco = new Set(riscosDoModelo.map((r) => r.id));
-  if (bruto.riscos.some((r) => !idsDeRisco.has(r))) throw invalido("risco_invalido", "Risco que não pertence ao modelo da APR");
-  const marcados = new Set(bruto.riscos);
-
-  const itens = await db.select().from(itemModeloApr).where(eq(itemModeloApr.modeloAprId, modelo.id));
-  const itemPorId = new Map(itens.map((i) => [i.id, i]));
-  const respostaPorItem = new Map<string, string>();
-  for (const r of bruto.respostas) {
-    if (!itemPorId.has(r.item_id)) throw invalido("item_invalido", "Resposta a um item que não pertence ao modelo da APR");
-    respostaPorItem.set(r.item_id, r.resposta);
-  }
-  const faltando = itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.riscoId!)) && !respostaPorItem.has(i.id));
-  if (faltando.length > 0) throw invalido("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
-
-  const reprovados = itens
-    .filter((i) => respostaPorItem.has(i.id) && reprovou(i, respostaPorItem.get(i.id)))
-    .sort((a, b) => a.ordem - b.ordem)
-    .map((i) => ({ itemId: i.id, texto: i.texto, evidencia: i.evidencia }));
-  return { resultado: reprovados.length > 0 ? ("bloqueada" as const) : ("aprovada" as const), reprovados };
-}
-
-/**
- * `apr_concluida`: grava a APR inteira (participantes, riscos, respostas, fotos), recalcula o resultado a partir das
- * respostas e do modelo, e, se bloqueada, avisa o supervisor. O servidor não confia no `resultado` do aparelho.
- */
-export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: unknown) {
-  const p = lerPayload(esquemaApr, bruto);
-  const osId = osIdEnvelope ?? p.os_id;
-  if (!osId) throw rejeitar("os_obrigatoria", "Informe a OS da APR");
-  if (p.os_id && p.os_id !== osId) throw rejeitar("os_divergente", "A OS do evento difere da OS do payload");
-
-  // A mesma APR já gravada (evento reenviado com outro id): nada a fazer.
-  const [existente] = await ctx.tx.select({ id: apr.id, resultado: apr.resultado, osId: apr.osId }).from(apr).where(eq(apr.id, p.id));
-  if (existente) {
-    ctx.saida.aprs.push({ id: existente.id, resultado: existente.resultado });
-    ctx.saida.osAfetadas.add(existente.osId);
-    return;
-  }
-
+export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadApr, "evidencias" | "resultado">) {
   const { os: ordem, mudou } = await carregarOsDoUsuario(ctx, osId);
-  ctx.saida.osAfetadas.add(ordem.id);
 
   // Conflitos de estado: online recusam; vindo da fila offline, aplicam e viram alerta (Decisão-chave 2).
   const abertas = (await ctx.tx.select({ resultado: execucao.resultado, executorId: execucao.executorId }).from(execucao).where(eq(execucao.osId, ordem.id))).filter((e) => e.resultado === null);
@@ -120,7 +75,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
 
   const itens = await ctx.tx.select().from(itemModeloApr).where(eq(itemModeloApr.modeloAprId, modelo.id));
   const itemPorId = new Map(itens.map((i) => [i.id, i]));
-  const respostaPorItem = new Map<string, (typeof p.respostas)[number]>();
+  const respostaPorItem = new Map<string, PayloadApr["respostas"][number]>();
   for (const r of p.respostas) {
     const item = itemPorId.get(r.item_id);
     if (!item) throw rejeitar("item_invalido", "Resposta a um item que não pertence ao modelo da APR");
@@ -137,16 +92,102 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   const faltando = itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.riscoId!)) && !respostaPorItem.has(i.id));
   if (faltando.length > 0) throw rejeitar("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
 
+  const reprovados = itens.filter((i) => reprovou(i, respostaPorItem.get(i.id)?.resposta)).sort((a, b) => a.ordem - b.ordem);
+  return { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados };
+}
+
+/** Respostas gravadas de uma APR, com o item do modelo; `reprovado` diz se o item reprovou a APR. */
+async function respostasGravadas(db: Db, aprId: string) {
+  const linhas = await db
+    .select({
+      id: itemModeloApr.id,
+      texto: itemModeloApr.texto,
+      tipo: itemModeloApr.tipo,
+      respostaBloqueante: itemModeloApr.respostaBloqueante,
+      evidencia: itemModeloApr.evidencia,
+      ordem: itemModeloApr.ordem,
+      resposta: aprResposta.resposta,
+      observacao: aprResposta.observacao,
+    })
+    .from(aprResposta)
+    .innerJoin(itemModeloApr, eq(itemModeloApr.id, aprResposta.itemId))
+    .where(eq(aprResposta.aprId, aprId));
+  return linhas.sort((a, b) => a.ordem - b.ordem).map((l) => ({ ...l, reprovado: reprovou(l, l.resposta) }));
+}
+
+/** Os itens que reprovaram uma APR já gravada, na ordem do modelo. */
+export const reprovadosDaAprGravada = async (db: Db, aprId: string) => (await respostasGravadas(db, aprId)).filter((r) => r.reprovado);
+
+/**
+ * Completa a APR bloqueada na validação com a evidência dos itens reprovados: a observação de cada um e as fotos. As
+ * respostas não mudam, e a APR que já tem a evidência completa não aceita mais nada. Online, a evidência precisa vir
+ * inteira; da fila offline, vale o que chegou.
+ */
+async function completarEvidencia(ctx: Contexto, aprId: string, p: PayloadApr) {
+  const gravadas = await respostasGravadas(ctx.tx, aprId);
+  const reprovados = gravadas.filter((r) => r.reprovado);
+  const comFoto = new Set((await ctx.tx.select({ itemId: evidencia.itemId }).from(evidencia).where(eq(evidencia.aprId, aprId))).map((e) => e.itemId));
+  const completo = (r: (typeof reprovados)[number], observacao: string | null | undefined, fotoNova = false) =>
+    !vazio(observacao) && (r.evidencia !== "foto" || comFoto.has(r.id) || fotoNova);
+  if (reprovados.every((r) => completo(r, r.observacao))) return;
+
+  for (const e of p.evidencias) {
+    if (!e.item_id || !gravadas.some((r) => r.id === e.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
+  }
+  const observacaoEnviada = new Map(p.respostas.map((r) => [r.item_id, r.observacao]));
+  const observacaoDe = (r: (typeof reprovados)[number]) => (vazio(r.observacao) ? observacaoEnviada.get(r.id) : r.observacao);
+  const semEvidencia = reprovados.filter((r) => !completo(r, observacaoDe(r), p.evidencias.some((e) => e.item_id === r.id)));
+  if (semEvidencia.length > 0 && !ctx.offline) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
+  for (const e of p.evidencias) await exigirArquivo(ctx, "fotos", e.arquivo_id ?? e.id);
+
+  for (const r of reprovados) {
+    const texto = observacaoEnviada.get(r.id);
+    if (vazio(r.observacao) && !vazio(texto)) {
+      await ctx.tx.update(aprResposta).set({ observacao: texto!.trim() }).where(and(eq(aprResposta.aprId, aprId), eq(aprResposta.itemId, r.id)));
+    }
+  }
+  if (p.evidencias.length > 0) {
+    await ctx.tx
+      .insert(evidencia)
+      .values(p.evidencias.map((e) => ({ id: e.id, aprId, itemId: e.item_id!, fotoPath: e.arquivo_id ?? e.id, capturadaEm: e.capturada_em, latitude: e.latitude ?? null, longitude: e.longitude ?? null })))
+      .onConflictDoNothing();
+  }
+}
+
+/**
+ * `apr_concluida`: grava a APR inteira (participantes, riscos, respostas, fotos), recalcula o resultado a partir das
+ * respostas e do modelo, e, se bloqueada, avisa o supervisor. O servidor não confia no `resultado` do aparelho. Para a
+ * APR que já foi bloqueada na validação, só traz a evidência dos itens reprovados.
+ */
+export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: unknown) {
+  const p = lerPayload(esquemaApr, bruto);
+  const osId = osIdEnvelope ?? p.os_id;
+  if (!osId) throw rejeitar("os_obrigatoria", "Informe a OS da APR");
+  if (p.os_id && p.os_id !== osId) throw rejeitar("os_divergente", "A OS do evento difere da OS do payload");
+
+  // A mesma APR já gravada (evento reenviado com outro id, ou a APR bloqueada na validação): as respostas não mudam; a
+  // bloqueada recebe a evidência de quem a preencheu.
+  const [existente] = await ctx.tx.select({ id: apr.id, resultado: apr.resultado, osId: apr.osId, preenchidaPor: apr.preenchidaPor }).from(apr).where(eq(apr.id, p.id));
+  if (existente) {
+    if (existente.resultado === "bloqueada" && existente.preenchidaPor === ctx.usuario.id) await completarEvidencia(ctx, existente.id, p);
+    ctx.saida.aprs.push({ id: existente.id, resultado: existente.resultado });
+    ctx.saida.osAfetadas.add(existente.osId);
+    return;
+  }
+
+  const { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados } = await conferirApr(ctx, osId, p);
+  ctx.saida.osAfetadas.add(ordem.id);
+
   // Item reprovado: exige observação e, se o item pede foto, ao menos uma. O aparelho só conhece os reprovados depois de
-  // `POST /aprs/avaliar`; o que veio da fila offline não pôde perguntar, então a APR vale mesmo sem a evidência.
-  const reprovados = itens.filter((i) => reprovou(i, respostaPorItem.get(i.id)?.resposta));
+  // `POST /aprs/avaliar`, que já registra a APR bloqueada sem a evidência (ela chega depois); o que veio da fila offline
+  // não pôde perguntar, então a APR vale mesmo sem a evidência.
   for (const e of p.evidencias) {
     if (!e.item_id || !respostaPorItem.has(e.item_id)) throw rejeitar("evidencia_invalida", "Foto ligada a um item que a APR não respondeu");
   }
   const semEvidencia = reprovados.filter(
     (i) => vazio(respostaPorItem.get(i.id)!.observacao) || (i.evidencia === "foto" && !p.evidencias.some((e) => e.item_id === i.id)),
   );
-  if (semEvidencia.length > 0 && !ctx.offline) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
+  if (semEvidencia.length > 0 && !ctx.offline && !ctx.evidenciaDepois) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
   for (const e of p.evidencias) await exigirArquivo(ctx, "fotos", e.arquivo_id ?? e.id);
 
   const resultado = reprovados.length > 0 ? "bloqueada" : "aprovada";
