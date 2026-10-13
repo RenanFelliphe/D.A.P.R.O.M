@@ -15,15 +15,36 @@ export interface Tokens {
   expiraEm: string;
 }
 
-/** Cookies `httpOnly`: o JavaScript do navegador nunca vê os tokens. */
-export function opcoesDoCookie(expira?: Date) {
+/**
+ * Cookies `httpOnly`: o JavaScript do navegador nunca vê os tokens. `secure` acompanha o protocolo da requisição
+ * (`https`, de `chegouPorHttps`): o navegador recusa cookie `secure` vindo por HTTP, e o login aberto pelo IP da rede (um
+ * celular na demonstração) pararia de funcionar. Sem saber o protocolo, vale o ambiente; `COOKIE_SEGURO=true|false` força.
+ */
+export function opcoesDoCookie(expira?: Date, https?: boolean) {
+  const forcado = process.env.COOKIE_SEGURO;
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.COOKIE_SEGURO ? process.env.COOKIE_SEGURO === "true" : process.env.NODE_ENV === "production",
+    secure: forcado ? forcado === "true" : (https ?? process.env.NODE_ENV === "production"),
     path: "/",
     ...(expira ? { expires: expira } : {}),
   };
+}
+
+/** A requisição chegou por HTTPS: direto, ou atrás do proxy da hospedagem, que informa `x-forwarded-proto`. */
+export function chegouPorHttps(cabecalhos: Headers, url?: URL): boolean {
+  const protocolo = cabecalhos.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  return protocolo ? protocolo === "https" : url?.protocol === "https:";
+}
+
+/**
+ * Endereço para voltar depois do login (`?para=`, como o link do e-mail de alerta): só um caminho do próprio painel,
+ * nunca outro site, a raiz ou a própria tela de entrada. `null` quando não serve.
+ */
+export function destinoInterno(valor: unknown): string | null {
+  if (typeof valor !== "string" || !valor.startsWith("/") || valor.startsWith("//") || valor.startsWith("/\\")) return null;
+  if (valor === "/" || valor.startsWith("/app/entrar") || valor.startsWith("/api/")) return null;
+  return valor;
 }
 
 const TRINTA_DIAS_MS = 30 * 24 * 3600 * 1000;

@@ -1,5 +1,7 @@
 "use client";
 
+import { novoUuid } from "./uuid";
+
 /**
  * A `api` vista do navegador, por `/api/*` (o handler em `app/api/[...caminho]` junta o token do cookie `httpOnly`).
  * Para componentes de cliente: gravações (eventos, arquivos, edições) e consultas que dependem da interação.
@@ -15,7 +17,7 @@ export class ErroCliente extends Error {
   }
 }
 
-export const novoId = () => crypto.randomUUID();
+export const novoId = novoUuid;
 
 async function lerResposta(resposta: Response) {
   const texto = await resposta.text();

@@ -7,12 +7,16 @@ import { entrar, type EstadoDoFormulario } from "@/lib/acoes-sessao";
 
 const inicial: EstadoDoFormulario = {};
 
-/** Login pelo e-mail institucional e senha (o formulário chama a ação `entrar` no servidor). */
-export function FormularioEntrar() {
+/**
+ * Login pelo e-mail institucional e senha (o formulário chama a ação `entrar` no servidor). `para`: o endereço pedido
+ * antes do login, para onde a pessoa volta.
+ */
+export function FormularioEntrar({ para }: { para: string | null }) {
   const [estado, acao, pendente] = useActionState(entrar, inicial);
   return (
     <form className="stack g12" action={acao}>
       <h2>Entrar</h2>
+      {para && <input type="hidden" name="para" value={para} />}
       <Field label="E-mail institucional" htmlFor="email">
         <input className="input" id="email" name="email" type="email" autoComplete="username" defaultValue={estado.email} autoFocus={!estado.email} required placeholder="nome.sobrenome@empresa.com.br" />
       </Field>

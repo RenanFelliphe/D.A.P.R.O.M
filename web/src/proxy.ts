@@ -1,5 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { CABECALHO_ENDERECO, COOKIE_ACESSO, COOKIE_RENOVACAO, apiUrl, expiracaoDoJwt, opcoesDoCookie, validadeDaRenovacao } from "@/lib/sessao-comum";
+import {
+  CABECALHO_ENDERECO,
+  COOKIE_ACESSO,
+  COOKIE_RENOVACAO,
+  apiUrl,
+  chegouPorHttps,
+  destinoInterno,
+  expiracaoDoJwt,
+  opcoesDoCookie,
+  validadeDaRenovacao,
+} from "@/lib/sessao-comum";
 
 /** Renova o token quando falta menos que isto para vencer. */
 const MARGEM_MS = 60_000;
@@ -12,11 +22,19 @@ const comEndereco = (req: NextRequest, base: Headers = new Headers(req.headers))
   return base;
 };
 
+/** A tela de entrada, lembrando o endereço pedido (o link do e-mail de alerta, por exemplo) para voltar a ele depois do login. */
+function telaDeEntrada(req: NextRequest) {
+  const url = new URL(ENTRAR, req.url);
+  const pedido = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+  if (destinoInterno(pedido)) url.searchParams.set("para", pedido);
+  return url;
+}
+
 function semSessao(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const resposta = pathname.startsWith("/api/")
     ? NextResponse.json({ erro: { codigo: "nao_autenticado", mensagem: "Sessão inválida ou expirada" } }, { status: 401 })
-    : NextResponse.redirect(new URL(ENTRAR, req.url));
+    : NextResponse.redirect(telaDeEntrada(req));
   resposta.cookies.delete(COOKIE_ACESSO);
   resposta.cookies.delete(COOKIE_RENOVACAO);
   return resposta;
@@ -64,8 +82,9 @@ export async function proxy(req: NextRequest) {
     .filter((c) => c && !c.startsWith(`${COOKIE_ACESSO}=`) && !c.startsWith(`${COOKIE_RENOVACAO}=`));
   cabecalhos.set("cookie", [...outros, `${COOKIE_ACESSO}=${novos.accessToken}`, `${COOKIE_RENOVACAO}=${novos.refreshToken}`].join("; "));
   const resposta = NextResponse.next({ request: { headers: cabecalhos } });
-  resposta.cookies.set(COOKIE_ACESSO, novos.accessToken, opcoesDoCookie(new Date(novos.expiraEm)));
-  resposta.cookies.set(COOKIE_RENOVACAO, novos.refreshToken, opcoesDoCookie(validadeDaRenovacao()));
+  const https = chegouPorHttps(req.headers, req.nextUrl);
+  resposta.cookies.set(COOKIE_ACESSO, novos.accessToken, opcoesDoCookie(new Date(novos.expiraEm), https));
+  resposta.cookies.set(COOKIE_RENOVACAO, novos.refreshToken, opcoesDoCookie(validadeDaRenovacao(), https));
   return resposta;
 }
 

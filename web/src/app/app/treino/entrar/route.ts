@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { rotas } from "@/lib/rotas";
-import { COOKIE_ACESSO, apiUrl, opcoesDoCookie } from "@/lib/sessao-comum";
+import { COOKIE_ACESSO, apiUrl, chegouPorHttps, opcoesDoCookie } from "@/lib/sessao-comum";
 import { COOKIE_TREINO_ADIADO } from "@/lib/treino-comum";
 import { COOKIE_TREINO } from "@/lib/treino-modo";
 
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   destino.searchParams.set("treino", modo === "direcionado" || modo === "livre" ? modo : "escolher");
 
   const resposta = NextResponse.redirect(destino);
-  resposta.cookies.set(COOKIE_TREINO, "1", opcoesDoCookie());
+  resposta.cookies.set(COOKIE_TREINO, "1", opcoesDoCookie(undefined, chegouPorHttps(req.headers, req.nextUrl)));
   // Quem entra no treino não precisa das boas-vindas do sistema real ao voltar.
   resposta.cookies.set(COOKIE_TREINO_ADIADO, "1", { sameSite: "lax", path: "/" });
   return resposta;

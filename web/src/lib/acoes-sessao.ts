@@ -1,9 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ErroDaApi, api } from "./api";
-import { COOKIE_ACESSO, COOKIE_RENOVACAO, apiUrl, opcoesDoCookie, validadeDaRenovacao } from "./sessao-comum";
+import { COOKIE_ACESSO, COOKIE_RENOVACAO, apiUrl, chegouPorHttps, destinoInterno, opcoesDoCookie, validadeDaRenovacao } from "./sessao-comum";
 import { rotas } from "./rotas";
 import { inicioDoUsuario } from "./inicio";
 import { COOKIE_TREINO_ADIADO } from "./treino-comum";
@@ -42,10 +42,12 @@ export async function entrar(_anterior: EstadoDoFormulario, form: FormData): Pro
   }
 
   const jar = await cookies();
-  jar.set(COOKIE_ACESSO, dados.access_token, opcoesDoCookie(new Date(dados.expira_em)));
-  jar.set(COOKIE_RENOVACAO, dados.refresh_token, opcoesDoCookie(validadeDaRenovacao()));
-  // Todos passam pela raiz, que leva ao início do papel (o login não devolve as equipes).
-  redirect(dados.senha_provisoria ? rotas.app.trocarSenha : "/");
+  const https = chegouPorHttps(await headers());
+  jar.set(COOKIE_ACESSO, dados.access_token, opcoesDoCookie(new Date(dados.expira_em), https));
+  jar.set(COOKIE_RENOVACAO, dados.refresh_token, opcoesDoCookie(validadeDaRenovacao(), https));
+  // Volta ao endereço pedido antes do login (o link do e-mail de alerta); sem ele, a raiz leva ao início do papel (o
+  // login não devolve as equipes).
+  redirect(dados.senha_provisoria ? rotas.app.trocarSenha : (destinoInterno(form.get("para")) ?? "/"));
 }
 
 /** Troca da senha inicial (obrigatória no primeiro acesso) ou da senha atual. */
