@@ -570,7 +570,7 @@ Implantação: a migração `0016_gamificacao` cria as tabelas e traz as 13 tare
 | `lancamento_pontos.os_id` | uuid | sim | `os.id` | |
 | `lancamento_pontos.ocorrido_em` · `temporada` · `criado_em` | | não | `temporada.codigo` | a data define a temporada |
 | `lancamento_equipe.lancamento_id` · `equipe_id` | uuid | não | | PK composta: as equipes creditadas |
-| `patente.id` · `nome` · `pontos_necessarios` · `imagem_path` · `cor` · `descricao` · `ativa` | | | | `pontos_necessarios` único entre as ativas; `cor` `#RRGGBB` |
+| `patente.id` · `nome` · `pontos_necessarios` · `imagem_path` · `imagem_equipe_path` · `cor` · `descricao` · `ativa` | | | | `pontos_necessarios` único entre as ativas; `cor` `#RRGGBB`; `imagem_path` é a das pessoas e `imagem_equipe_path` a das equipes (as duas obrigatórias; só são iguais se o admin enviar a mesma imagem nos dois campos) |
 | `conquista.id` · `titulo` · `descricao` · `criterio` · `quantidade` · `patente_id` · `pontos` · `imagem_path` · `ativa` | | | `patente.id` | `patente_id` só nos critérios de patente; `pontos` = 0 nas de equipe (`CHECK`) |
 | `conquista_usuario.conquista_id` · `usuario_id` · `obtida_em` · `vista_em` | | | | PK composta; `vista_em` nulo = aviso pendente |
 | `conquista_equipe.conquista_id` · `equipe_id` · `obtida_em` | | | | PK composta |
@@ -584,11 +584,11 @@ A trilha de auditoria registra `patente`, `conquista` e `regra_pontuacao` (criar
 `GET /gamificacao/eu` → `200` a patente, a barra até a próxima, os pontos da temporada e gerais, a maior patente, as posições, as conquistas com o progresso e os avisos pendentes (técnico; o admin recebe `403`)
 `GET /gamificacao/extrato?temporada=` → `200` `{lancamentos[], pontos, pagina, tamanho, total}` (os da própria pessoa; `geral` soma todas)
 `GET /gamificacao/ranking?tipo=pessoas|equipes&temporada=<codigo>|geral` → `200` `{linhas[], temporada}`
-`GET /gamificacao/equipes/{id}` · `GET /gamificacao/usuarios/{id}` → `200` a equipe (soma, média, patente, posição, conquistas e os membros) · a pessoa (patente, maior patente e conquistas; `{anonimo: true}` para os outros quando ela está anônima)
+`GET /gamificacao/equipes/{id}` · `GET /gamificacao/usuarios/{id}` → `200` a equipe (soma, média, patente, maior patente, posição, conquistas e os membros; a imagem da patente é a das equipes) · a pessoa (patente, maior patente e conquistas; `{anonimo: true}` para os outros quando ela está anônima)
 `GET /gamificacao/temporadas` · `/regras` · `/patentes` · `/conquistas` → `200` (todos os perfis consultam; a de conquistas traz também a lista de critérios e as patentes para o formulário do admin)
 `POST /gamificacao/avisos/vistos` → `200`; `PUT /me/ranking-anonimo` `{anonimo}` → `200`; `GET /me` traz `ranking_anonimo` e `gamificacao` (patente, pontos da temporada e avisos pendentes)
 `POST /eventos`, `POST /os/{id}/ciencia`, `PUT /preventivas/{id}`, `PUT /me/assinatura` e `PUT /me/treinamento` devolvem também `pontos_ganhos` (e `ganhos[]`) para o aviso "+N pontos"
-Admin: `PATCH /gamificacao/regras/{codigo}` `{pontos?, ativa?}`; `POST /gamificacao/patentes` (multipart: os campos e a `imagem`), `PATCH|DELETE /gamificacao/patentes/{id}` e `PUT /gamificacao/patentes/{id}/imagem`; o mesmo conjunto em `/gamificacao/conquistas`
+Admin: `PATCH /gamificacao/regras/{codigo}` `{pontos?, ativa?}`; `POST /gamificacao/patentes` (multipart: os campos, a `imagem` das pessoas e a `imagem_equipe` das equipes), `PATCH|DELETE /gamificacao/patentes/{id}`, `PUT /gamificacao/patentes/{id}/imagem` e `PUT /gamificacao/patentes/{id}/imagem-equipe`; o mesmo conjunto em `/gamificacao/conquistas`
 
 Na web há a seção **Gamificação** (`/app/gamificacao`), a mesma para todos os perfis, com as abas Minha pontuação (de quem joga), Ranking, Conquistas, Patentes e Como pontuar; só o admin edita, ali mesmo. A barra superior mostra o selo da patente e os pontos da temporada, o perfil de uma pessoa e o de uma equipe ganham o bloco de gamificação, e as telas de APR, execução, ciência e ciclo das preventivas mostram o "+N pontos". No Campo de treino nada disso aparece (a `api` fictícia não pontua).
 

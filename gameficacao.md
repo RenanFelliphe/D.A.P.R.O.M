@@ -134,7 +134,7 @@ Exemplos (pontos de cada participante):
 
 - **Só valem na temporada** e zeram com ela. No geral aparece apenas a **maior patente já alcançada**.
 - **A patente da pessoa** é a de maior pontuação necessária que ela já atingiu na temporada. Abaixo da primeira, aparece "Sem patente"; com a carga inicial isso não acontece, porque Bronze começa em 0.
-- **A equipe usa a mesma tabela,** aplicada à média por membro ([seção 6](#6-equipe)).
+- **A equipe usa a mesma tabela,** aplicada à média por membro ([seção 6](#6-equipe)), e também guarda a **maior patente já alcançada**. Cada patente tem duas imagens: uma para as pessoas e outra para as equipes ([seção 3.2](#32-cadastro-admin)).
 - **Mudar uma patente** vale na hora para a temporada aberta. As temporadas fechadas guardam a patente gravada no fechamento.
 
 ### 3.2 Cadastro (admin)
@@ -143,7 +143,8 @@ Exemplos (pontos de cada participante):
 |---|---|---|
 | Nome | sim | único |
 | Pontuação necessária | sim | inteiro ≥ 0, único entre as ativas; define a ordem das patentes |
-| Imagem | sim | o admin envia; PNG, JPEG ou WebP, até 1 MB, quadrada (512 × 512 recomendado) |
+| Imagem das pessoas | sim | o admin envia; PNG, JPEG ou WebP, até 1 MB, quadrada (512 × 512 recomendado); aparece no ranking de pessoas, no perfil, na barra e na equipe (a linha de cada membro) |
+| Imagem das equipes | sim | outra imagem, enviada à parte, com as mesmas regras; aparece no ranking de equipes e no bloco da equipe. **Só é igual à das pessoas se o admin enviar a mesma imagem nos dois campos:** o sistema nunca reaproveita uma pela outra, e cada uma vira um arquivo próprio |
 | Cor | sim | hexadecimal; destaca o nome e a barra de progresso |
 | Descrição | não | texto livre |
 | Ativa | sim | a desativada deixa de ser atribuída, mas continua no histórico |
@@ -160,7 +161,7 @@ Excluir só vale para a patente que nunca foi gravada numa temporada fechada nem
 | Platina | 3.000 | ~11 semanas, perto do fim da temporada | `#9DB4C0` |
 | Diamante | 5.000 | só quem rende cerca de 40% acima da média | `#4FC3F7` |
 
-A carga traz uma imagem simples para cada metal, que o admin pode trocar.
+A carga traz duas imagens simples para cada metal, uma medalha para as pessoas e um brasão para as equipes, que o admin pode trocar.
 
 Como chegamos nos limites:
 
@@ -198,7 +199,7 @@ Como chegamos nos limites:
 | Pessoas — temporada | pontos da temporada | posição, nome, equipe, patente e pontos |
 | Pessoas — geral | pontos gerais | posição, nome, equipe, maior patente alcançada e pontos |
 | Equipes — temporada | média por membro | posição, equipe, patente, média, soma e número de pessoas |
-| Equipes — geral | média geral por membro | posição, equipe, média e soma |
+| Equipes — geral | média geral por membro | posição, equipe, maior patente alcançada, média, soma e número de pessoas |
 
 - **Temporadas fechadas** podem ser consultadas, com o ranking como ficou no fechamento.
 - **Empate:** fica na frente quem chegou primeiro àquela pontuação, ou seja, quem tem o último lançamento mais antigo.
@@ -216,7 +217,8 @@ Como chegamos nos limites:
 
 - **Pontos da equipe (soma):** tudo o que foi creditado a ela, que são os pontos dos membros enquanto eram membros e os do supervisor. O supervisor conta integralmente em cada equipe que supervisiona.
 - **Média por membro:** a soma dividida pelas pessoas da equipe, que são os técnicos ativos e liberados mais o supervisor, quando ele não é membro. A temporada aberta usa as pessoas de hoje; a fechada, o número gravado no fechamento.
-- **Patente da equipe:** a tabela de patentes aplicada à média. Os limites servem porque a média está na escala de uma pessoa.
+- **Patente da equipe:** a tabela de patentes aplicada à média. Os limites servem porque a média está na escala de uma pessoa. Tem a imagem das equipes da patente, e não a das pessoas.
+- **Maior patente da equipe:** a maior patente que a média por membro já alcançou, nas temporadas fechadas (a gravada no fechamento) e na aberta (calculada na hora), como a da pessoa. É o que o ranking geral de equipes mostra, ao lado do bloco da equipe. Equipe sem pontos mostra a primeira da escada.
 - **Ranking das equipes pela média,** para que a equipe maior não ganhe só por ser maior. A soma aparece ao lado.
 - **Equipe sem ninguém** fica fora do ranking.
 - **Conquistas próprias,** com critérios de equipe ([seção 7.3](#73-critérios-da-meta)). Elas não dão pontos.
@@ -343,7 +345,7 @@ A seção fica em `web/src/app/app/(portal)/gamificacao/(secao)/`, com o layout 
 | Minha pontuação | `/app/gamificacao/minha` | técnico (supervisor incluso) | a patente da temporada, com a imagem e a barra até a próxima; os pontos da temporada e os gerais; a maior patente; a posição na temporada e no geral; as últimas conquistas; o extrato, com filtro por temporada |
 | Ranking | `/app/gamificacao/ranking` | todos | Pessoas ou Equipes; temporada atual, geral ou uma temporada fechada (`?tipo=` e `?temporada=`); a própria linha em destaque; os anônimos como "Participante anônimo" |
 | Conquistas | `/app/gamificacao/conquistas` | todos | a galeria de pessoa e de equipe: as obtidas coloridas, com a data; as que faltam em cinza, com o progresso; a raridade e os pontos. **Admin:** nova, editar, trocar a imagem, desativar e excluir, numa janela |
-| Patentes | `/app/gamificacao/patentes` | todos | a escada das patentes, com a imagem e os pontos de cada uma, e "você está aqui". **Admin:** nova, editar, trocar a imagem, desativar e excluir |
+| Patentes | `/app/gamificacao/patentes` | todos | a escada das patentes, com as duas imagens (das pessoas e das equipes) e os pontos de cada uma, e "você está aqui". **Admin:** nova (com as duas imagens), editar, trocar cada imagem, desativar e excluir |
 | Como pontuar | `/app/gamificacao/pontos` | todos | as tarefas, os pontos e as regras de cada uma (a seção 2 em linguagem simples). **Admin:** muda o valor e ativa ou desativa a tarefa ali mesmo |
 
 Componentes novos, em `web/src/components/web/gamificacao/`:
@@ -371,7 +373,7 @@ Os caminhos são relativos a `web/src/`.
 | Barra superior | `components/shell/Casca.tsx`, `Barras.tsx` e `MenuUsuario.tsx` | o selo da patente com os pontos da temporada, que leva a "Minha pontuação" (técnico, fora do treino); "Minha pontuação" no menu do usuário; a Casca abre o `AvisoConquista` quando há aviso pendente |
 | Meu perfil | `app/app/(portal)/perfil/page.tsx` | a opção "Aparecer como anônimo no ranking" e o cartão da patente |
 | Perfil de outra pessoa | `components/perfil/PerfilUsuario.tsx` (`/app/perfil/[id]`) | a patente da temporada, a maior patente e as conquistas da pessoa; nada disso para os outros se ela estiver anônima |
-| Equipe e Minha equipe | `components/perfil/PerfilEquipe.tsx` (`/app/equipes/[id]` e `/app/usuarios`) | o bloco da equipe: soma, média, patente, posição e conquistas, e os pontos de cada membro na temporada, com os anônimos como anônimos |
+| Equipe e Minha equipe | `components/perfil/PerfilEquipe.tsx` (`/app/equipes/[id]` e `/app/usuarios`) | o bloco da equipe: soma, média, patente, maior patente, posição e conquistas, e os pontos de cada membro na temporada, com os anônimos como anônimos; a patente e a maior patente da equipe usam a imagem das equipes |
 | APR | `components/app/checklist/ChecklistScreen.tsx`, `components/app/aprovada/AprovadaScreen.tsx` e a tela de bloqueio | o "+N pontos" quando a APR completa é registrada: aprovada, ou bloqueada com a evidência |
 | Execução | `components/app/execucao/FormularioEncerrar.tsx`, `FormularioInterromper.tsx` e `ExecucaoEncerrada.tsx` | o "+N pontos" ao encerrar ou ao interromper por risco |
 | Ciência | `components/web/detalhe/BotaoCiencia.tsx` | o "+3 pontos" quando a ciência está no prazo |
@@ -425,7 +427,7 @@ Os cadastros (pontos, patentes e conquistas) ficam só na web.
 | `temporada` | `codigo` (PK, `2026-T4`), `nome`, `inicio`, `fim`, `fechada_em` | criada quando a primeira pontuação do trimestre chega |
 | `lancamento_pontos` | `id`, `usuario_id`, `regra`, `pontos`, `chave`, `os_id`, `ocorrido_em`, `temporada`, `criado_em` | único (`usuario_id`, `chave`); índice (`temporada`, `usuario_id`) |
 | `lancamento_equipe` | `lancamento_id`, `equipe_id` | PK composta; as equipes creditadas no momento |
-| `patente` | `id`, `nome`, `pontos_necessarios`, `imagem_path`, `cor`, `descricao`, `ativa`, `criada_em`, `atualizada_em` | `pontos_necessarios` único entre as ativas |
+| `patente` | `id`, `nome`, `pontos_necessarios`, `imagem_path`, `imagem_equipe_path`, `cor`, `descricao`, `ativa`, `criada_em`, `atualizada_em` | `pontos_necessarios` único entre as ativas; `imagem_path` é a das pessoas e `imagem_equipe_path` a das equipes (as duas obrigatórias) |
 | `conquista` | `id`, `titulo`, `descricao`, `criterio`, `quantidade`, `patente_id`, `pontos`, `imagem_path`, `ativa`, `criada_em`, `criada_por` | `patente_id` só nos critérios de patente; `pontos` = 0 nas de equipe |
 | `conquista_usuario` | `conquista_id`, `usuario_id`, `obtida_em`, `vista_em` | PK composta; `vista_em` nulo = aviso pendente |
 | `conquista_equipe` | `conquista_id`, `equipe_id`, `obtida_em` | PK composta |
@@ -445,7 +447,7 @@ Rotas (todas autenticadas; as de cadastro só para o admin):
 - `GET /gamificacao/eu` — a patente, os pontos da temporada e os gerais, a maior patente, a posição, as conquistas com o progresso e os avisos pendentes
 - `GET /gamificacao/extrato?temporada=` — os lançamentos da própria pessoa
 - `GET /gamificacao/ranking?tipo=pessoas|equipes&temporada=<codigo>|geral`
-- `GET /gamificacao/equipes/{id}` — a soma, a média, a patente, as conquistas e os membros
+- `GET /gamificacao/equipes/{id}` — a soma, a média, a patente, a maior patente, as conquistas e os membros
 - `GET /gamificacao/temporadas`
 - `GET /gamificacao/regras`, `GET /gamificacao/patentes` e `GET /gamificacao/conquistas` — para todos, que consultam as abas "Como pontuar", "Patentes" e "Conquistas"
 - `POST /gamificacao/avisos/vistos` — marca os avisos de conquista como vistos
@@ -453,7 +455,7 @@ Rotas (todas autenticadas; as de cadastro só para o admin):
 - As rotas que geram pontos (`POST /eventos`, `POST /os/{id}/ciencia`, `PUT /preventivas/{id}`, `PUT /me/assinatura` e `PUT /me/treinamento`) devolvem também `pontos_ganhos`, para o aviso "+N pontos"
 - Admin:
   - `PATCH /gamificacao/regras/{codigo}`;
-  - `POST /gamificacao/patentes`, `PATCH|DELETE /gamificacao/patentes/{id}` e `PUT /gamificacao/patentes/{id}/imagem`;
+  - `POST /gamificacao/patentes` (multipart: os campos, a `imagem` das pessoas e a `imagem_equipe` das equipes, as duas obrigatórias), `PATCH|DELETE /gamificacao/patentes/{id}`, `PUT /gamificacao/patentes/{id}/imagem` (a das pessoas) e `PUT /gamificacao/patentes/{id}/imagem-equipe` (a das equipes);
   - o mesmo conjunto em `/gamificacao/conquistas`.
 
 Ordem de implementação (cada etapa entra com os testes da `api`, `tsc` e `eslint`, e a auditoria de cada cadastro entra com ele):
@@ -515,3 +517,10 @@ Feita em 13/10/2026, nas quatro etapas da seção 10 de uma vez: a `api` (migra�
 - **Remover um usuário** apaga o extrato, as conquistas e os resultados de temporada dele na mesma transação; o que continua impedindo a remoção é o histórico de campo (APR, execução, alerta).
 - **O relógio é o da `api`:** um lançamento com data no futuro (relógio errado no aparelho) é trazido para agora, e o que chega com data de temporada fechada, ou já fora da tolerância, entra na temporada aberta.
 - **Campo de treino:** a `api` fictícia não pontua e responde `404` às rotas da gamificação; a barra não mostra o selo e nenhuma tela do treino depende dos pontos. Concluir o treino na `api` real pontua (10) e concede "Pronto para o campo".
+
+### Ajustes de 14/10/2026
+
+- **Maior patente da equipe** (faltava; só a da pessoa existia). É a maior entre as patentes gravadas no fechamento das temporadas (`temporada_equipe.patente_id`) e a da temporada aberta, calculada na hora com a média por membro de hoje; `dominio/ranking.ts` (`maioresPatentesDasEquipes`). No ranking geral de equipes a coluna "Patente" passa a ser "Maior patente" (antes vinha vazia), e `GET /gamificacao/equipes/{id}` traz `maior_patente`. Equipe sem ninguém fica fora; equipe sem pontos mostra a primeira da escada, como a pessoa que está começando. A temporada fechada continua mostrando a patente gravada no fechamento.
+- **Duas imagens por patente.** A patente da pessoa e a da equipe têm imagens diferentes: `patente.imagem_equipe_path`, obrigatória, ao lado de `imagem_path`. As duas só são iguais se o admin enviar a mesma imagem nos dois campos; mesmo assim, cada envio vira um arquivo próprio no bucket. Os selos já saem da `api` com o `imagem_url` do contexto (a das pessoas no ranking de pessoas, no perfil, na barra e nos membros da equipe; a das equipes no ranking de equipes e no bloco da equipe), então a web não escolhe qual usar. `GET /gamificacao/patentes` devolve as duas (`imagem_url` e `imagem_equipe_url`).
+- **Migração `0017_patente_imagem_da_equipe`** (a `0016` não foi alterada). A coluna nasce nula, as 5 patentes da carga ganham o brasão próprio (ids `a2000000-…`, desenhados em código como as medalhas, 192 × 192) e as demais, criadas pelo admin antes da migração, começam com a **mesma imagem das pessoas** (a `api` não tem outra para dar a elas); só então a coluna vira `NOT NULL`. O script é idempotente. Por isso a `api` só apaga o arquivo de uma imagem quando nenhuma patente mais o usa: nas patentes herdadas, trocar uma imagem não pode apagar a outra. As 33 imagens da carga (5 medalhas, 5 brasões e 23 troféus) são gravadas pela subida da `api` se faltarem.
+- **Cadastro:** `POST /gamificacao/patentes` pede `imagem` e `imagem_equipe` (as duas, e se uma falha a outra não fica gravada); trocar é `PUT .../imagem` (pessoas) e `PUT .../imagem-equipe` (equipes), cada uma sem mexer na outra; excluir a patente apaga as duas. A auditoria registra a troca como `patente.imagem`, dizendo no resumo de qual imagem foi. Na web, o formulário tem os dois campos e a escada de patentes mostra as duas imagens de cada degrau.
