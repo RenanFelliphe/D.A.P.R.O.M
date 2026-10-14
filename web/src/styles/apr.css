@@ -341,14 +341,37 @@
   min-height: 0
 }
 
-/* Escolha do modelo da APR: a janela com todos os modelos e o recomendado (pela leitura da OS) em destaque. */
+/* Escolha do modelo da APR: a janela com o recomendado (pela leitura da OS) em destaque no topo e os demais em duas colunas. */
 .dlg.dlg-modelos {
-  width: min(820px, calc(100vw - 32px))
+  width: min(960px, calc(100vw - 32px))
 }
 
 .modelos-apr {
   display: grid;
+  gap: 20px
+}
+
+.modelos-apr-grupo {
+  display: grid;
+  gap: 10px
+}
+
+.modelos-apr-grupo h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink)
+}
+
+.modelos-apr-grade {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px
+}
+
+@media (max-width: 560px) {
+  .modelos-apr-grade {
+    grid-template-columns: minmax(0, 1fr)
+  }
 }
 
 .modelo-opcao {
@@ -366,7 +389,7 @@
   border: 2px solid var(--brand)
 }
 
-.modelo-opcao h3 {
+.modelo-opcao h4 {
   font-size: 16px;
   font-weight: 600
 }
@@ -375,14 +398,6 @@
   font-size: 14px;
   line-height: 1.4;
   color: var(--ink2)
-}
-
-.modelo-opcao ul {
-  margin: 4px 0 0;
-  padding-left: 18px;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--ink3)
 }
 
 .modelo-opcao .achado {
@@ -397,7 +412,9 @@
   color: var(--ink)
 }
 
+/* Empurrado para o fim do card, para os botões ficarem alinhados na mesma linha da grade */
 .modelo-opcao-acoes {
   display: flex;
-  justify-content: flex-end
+  justify-content: flex-end;
+  margin-top: auto
 }

@@ -88,7 +88,7 @@ export const passosDoTreino: PassoDoTreino[] = [
   {
     id: "apr-escolha",
     titulo: "Escolha o modelo da APR",
-    texto: `A janela mostra todos os modelos de APR, cada um com os serviços que atende e exemplos. O sistema leu a OS e destacou a opção recomendada (aqui, o ${MODELO_GUIADO.codigo}), mas quem decide é você: confira se o modelo cobre o serviço e as condições do local e toque em “Selecionar”.`,
+    texto: `A janela mostra todos os modelos de APR, cada um com os serviços que atende. O sistema leu a OS e destacou a opção recomendada (aqui, o ${MODELO_GUIADO.codigo}), mas quem decide é você: confira se o modelo cobre o serviço e as condições do local e toque em “Selecionar”.`,
     semAlvo: "Se a janela fechou, toque em “Escolher o modelo” (ou em “Trocar modelo”) para abri-la de novo.",
     tarefa: "Selecione o modelo.",
     alvo: "apr-modelo-recomendado",
