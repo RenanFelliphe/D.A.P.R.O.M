@@ -3,6 +3,7 @@ import { criarApp } from "./app";
 import { lerConfig } from "./config";
 import { conectar, migrarComTrava } from "./db/conexao";
 import { carregarDadosIniciais } from "./db/seed/carregar";
+import { carregarOrdensDeExemplo } from "./db/seed/ordens-sap";
 import { preencherHistoricoDaGamificacao } from "./db/seed/gamificacao-historico";
 import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
@@ -23,6 +24,12 @@ async function main() {
   await migrarComTrava(pool);
   const carga = await carregarDadosIniciais(db);
   if (carga.modelosCarregados.length > 0) console.log(`Carga inicial: ${carga.modelosCarregados.join(", ")}`);
+
+  // O SAP simulado guarda as ordens no banco: com a tabela vazia, entram as de exemplo (as que a tela criar não são tocadas).
+  if (config.sapSimulado) {
+    const ordens = await carregarOrdensDeExemplo(db);
+    if (ordens > 0) console.log(`SAP simulado: ${ordens} ordens de exemplo`);
+  }
 
   // Implantação da gamificação: o extrato nasce do histórico já gravado (só enquanto o extrato está vazio, numa transação só:
   // se falhar nada é gravado, a `api` sobe mesmo assim e a próxima subida tenta de novo).

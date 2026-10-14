@@ -21,6 +21,7 @@ import { PASTA_MIGRACOES, type Db } from "./db/conexao";
 import { equipe, usuario, type Perfil } from "./db/schema";
 import { popularCatalogoDemo } from "./db/seed/catalogo-demo";
 import { carregarDadosIniciais } from "./db/seed/carregar";
+import { carregarOrdensDeExemplo } from "./db/seed/ordens-sap";
 import { carregarRegistroDosUsuarios } from "./db/seed/registro-rh";
 import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
 import type { Deps } from "./deps";
@@ -125,6 +126,9 @@ async function main() {
   await criar("tec3", "Tomás Técnico", "tecnico", "INSTRUM", { cargo: "Técnico em Instrumentação" });
   await db.update(equipe).set({ supervisorId: sup1 }).where(eq(equipe.id, equipes.SERV_ESP!));
   await db.update(equipe).set({ supervisorId: sup2 }).where(eq(equipe.id, equipes.INSTRUM!));
+
+  // O SAP simulado: as ordens de exemplo (o modo local recomeça igual a cada subida).
+  console.log(`SAP simulado: ${await carregarOrdensDeExemplo(db)} ordens de exemplo`);
 
   // O registro de funcionários simulado: um funcionário para cada usuário acima, mais uns 30 sem conta para demonstrar o cadastro.
   const registro = await carregarRegistroDosUsuarios(db, { aleatorios: 30 });

@@ -14,6 +14,7 @@ import type { Config } from "../src/config";
 import { PASTA_MIGRACOES, type Db } from "../src/db/conexao";
 import { equipe, usuario, type Perfil } from "../src/db/schema";
 import { carregarDadosIniciais } from "../src/db/seed/carregar";
+import { carregarOrdensDeExemplo } from "../src/db/seed/ordens-sap";
 import type { Deps } from "../src/deps";
 import { ArmazenamentoEmMemoria } from "../src/servicos/armazenamento";
 import { AuthEmMemoria } from "../src/servicos/auth";
@@ -103,9 +104,12 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   const cliente = new PGlite();
   const db = drizzle(cliente, { casing: "snake_case" }) as unknown as Db;
   await migrate(drizzle(cliente, { casing: "snake_case" }), { migrationsFolder: PASTA_MIGRACOES });
-  if (opcoes.comCarga) await carregarDadosIniciais(db);
-
   const relogio = { agora: opcoes.relogio ?? new Date() };
+  if (opcoes.comCarga) {
+    await carregarDadosIniciais(db);
+    // As ordens de exemplo do SAP simulado (as fixtures são de antes de 2026-10-12).
+    await carregarOrdensDeExemplo(db, relogio.agora);
+  }
   const auth = new AuthEmMemoria(SEGREDO_JWT, () => relogio.agora, opcoes.duracaoDoTokenSeg);
   const armazenamento = new ArmazenamentoEmMemoria();
   const email = new EmailEmMemoria();

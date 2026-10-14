@@ -1092,6 +1092,10 @@ describe("Integração SAP: simulador e cliente HTTP", () => {
   const base = "http://api.local/sap-simulado";
   const auth = { Authorization: `Bearer ${configDeTeste.sapApiToken}` };
 
+  let admin: UsuarioDeTeste;
+  /** A gestão do simulador (o que a tela `/simulador/ordens` usa): com o admin logado, não com o token do SAP. */
+  const gestao = (metodo: string, caminho: string, json?: unknown) => amb.req(metodo, `/sap-simulado/gestao${caminho}`, { como: admin, ...(json !== undefined ? { json } : {}) });
+
   const sim = (metodo: string, caminho: string, o: { json?: unknown; consulta?: Record<string, string | number>; token?: string | null } = {}) =>
     amb.req(metodo, `/sap-simulado${caminho}`, {
       ...(o.json !== undefined ? { json: o.json } : {}),
@@ -1104,16 +1108,18 @@ describe("Integração SAP: simulador e cliente HTTP", () => {
 
   before(async () => {
     // As fixtures são de antes de 2026-10-12; o relógio fixo faz o filtro `alteradas_desde` ser determinístico.
-    amb = await criarAmbiente({ comCarga: true, relogio: new Date("2026-10-12T12:00:00Z") });
+    amb = await criarAmbiente({ comCarga: true, relogio: new Date("2026-10-12T12:00:00Z"), duracaoDoTokenSeg: 24 * 3600 });
+    admin = await amb.criarUsuario({ perfil: "admin" });
   });
   after(() => amb.fechar());
 
-  it("exige o token do SAP, mas não login de usuário", async () => {
+  it("exige o token do SAP, mas não login de usuário; o contrato é só leitura (sem POST nem PATCH)", async () => {
     assert.equal((await sim("GET", "/ordens", { token: null })).status, 401);
     assert.equal((await sim("GET", "/ordens", { token: "errado" })).status, 401);
     assert.equal((await sim("GET", "/ordens/4023470", { token: "errado" })).status, 401);
     assert.equal((await sim("POST", "/ordens", { token: "errado", json: {} })).status, 401);
-    assert.equal((await sim("PATCH", "/ordens/4023470", { token: "errado", json: { status_sap: "ENCE" } })).status, 401);
+    assert.equal((await sim("POST", "/ordens", { json: ordem({ numero_ordem: "7999999" }) })).status, 404, "criar ordem não é do contrato: é da gestão");
+    assert.equal((await sim("PATCH", "/ordens/4023470", { json: { status_sap: "ENCE" } })).status, 404, "mudar o status também");
     assert.equal((await sim("GET", "/ordens")).status, 200);
     assert.equal((await amb.req("GET", "/sap-simulado/ordens", { cabecalhos: { Authorization: "Bearer" } })).status, 401);
   });
@@ -1150,16 +1156,16 @@ describe("Integração SAP: simulador e cliente HTTP", () => {
     assert.equal((await sim("GET", "/ordens", { consulta: { alteradas_desde: "ontem" } })).status, 422);
   });
 
-  it("POST injeta uma OS (201), recusa repetida (409) e inválida (422); alteradas_desde filtra pelo que mudou", async () => {
+  it("a gestão cria uma ordem (201), recusa repetida (409) e inválida (422); alteradas_desde filtra pelo que mudou", async () => {
     const nova = ordem({ numero_ordem: "7000001", status_sap: "LIB" });
-    const criada = await sim("POST", "/ordens", { json: nova });
+    const criada = await gestao("POST", "/ordens", nova);
     assert.equal(criada.status, 201);
-    assert.equal(criada.corpo.numero_ordem, "7000001");
-    assert.equal(criada.corpo.local_instalacao.codigo, "LOCAL/A");
+    assert.equal(criada.corpo.ordem.numero_ordem, "7000001");
+    assert.equal(criada.corpo.ordem.local_instalacao.codigo, "LOCAL/A");
     assert.equal((await sim("GET", "/ordens/7000001")).status, 200);
-    assert.equal((await sim("POST", "/ordens", { json: nova })).status, 409);
-    assert.equal((await sim("POST", "/ordens", { json: { ...nova, numero_ordem: "7000002", tipo_ordem: "XX" } })).status, 422);
-    assert.equal((await sim("POST", "/ordens", { json: { titulo: "sem nada" } })).status, 422);
+    assert.equal((await gestao("POST", "/ordens", nova)).status, 409);
+    assert.equal((await gestao("POST", "/ordens", { ...nova, numero_ordem: "7000002", tipo_ordem: "XX" })).status, 422);
+    assert.equal((await gestao("POST", "/ordens", { titulo: "sem nada" })).status, 422);
 
     // As fixtures são de antes de agora; só a OS injetada mudou depois de `desde`.
     const desde = new Date(amb.relogio.agora.getTime() - 60_000).toISOString();
@@ -1167,18 +1173,18 @@ describe("Integração SAP: simulador e cliente HTTP", () => {
     assert.deepEqual(alteradas, ["7000001"]);
   });
 
-  it("PATCH muda o status SAP (200), a ordem passa a contar como alterada, e a ordem inexistente é 404", async () => {
+  it("a gestão muda o status SAP (200), a ordem passa a contar como alterada, e a ordem inexistente é 404", async () => {
     amb.relogio.agora = new Date(amb.relogio.agora.getTime() + 3_600_000);
-    const mudou = await sim("PATCH", "/ordens/4023470", { json: { status_sap: "ENCE" } });
+    const mudou = await gestao("PATCH", "/ordens/4023470", { status_sap: "ENCE" });
     assert.equal(mudou.status, 200);
-    assert.equal(mudou.corpo.status_sap, "ENCE");
+    assert.equal(mudou.corpo.ordem.status_sap, "ENCE");
     assert.equal((await sim("GET", "/ordens/4023470")).corpo.status_sap, "ENCE");
     const desde = new Date(amb.relogio.agora.getTime() - 60_000).toISOString();
     assert.deepEqual((await sim("GET", "/ordens", { consulta: { alteradas_desde: desde } })).corpo.ordens.map((o: any) => o.numero_ordem), ["4023470"]);
-    assert.equal((await sim("PATCH", "/ordens/0000000", { json: { status_sap: "ENCE" } })).status, 404);
-    assert.equal((await sim("PATCH", "/ordens/4023470", { json: {} })).status, 422);
+    assert.equal((await gestao("PATCH", "/ordens/0000000", { status_sap: "ENCE" })).status, 404);
+    assert.equal((await gestao("PATCH", "/ordens/4023470", { numero_ordem: "9999999" })).status, 422, "o número da ordem não muda");
     // Devolve ao estado inicial para os próximos testes.
-    await sim("PATCH", "/ordens/4023470", { json: { status_sap: "LIB IMPR CAPC" } });
+    await gestao("PATCH", "/ordens/4023470", { status_sap: "LIB IMPR CAPC" });
   });
 
   it("ClienteSapHttp lê o simulador: lista com paginação, obtém uma ordem e devolve nulo para 404", async () => {
@@ -1267,7 +1273,7 @@ describe("Integração SAP: simulador e cliente HTTP", () => {
 
     // O SAP cancela a 4023470: a próxima leitura (só as alteradas) cancela a OS.
     amb.relogio.agora = new Date(amb.relogio.agora.getTime() + 7_200_000);
-    await sim("PATCH", "/ordens/4023470", { json: { status_sap: "ENCE" } });
+    await gestao("PATCH", "/ordens/4023470", { status_sap: "ENCE" });
     const r2 = await executarLeitura(deps);
     assert.deepEqual([r2.criadas, r2.atualizadas, r2.ignoradas.length], [0, 1, 0]);
     assert.equal((await amb.db.select().from(os).where(eq(os.numeroOrdem, "4023470")))[0]!.status, "cancelada");

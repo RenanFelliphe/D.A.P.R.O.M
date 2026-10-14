@@ -141,6 +141,13 @@
       "when": 1791987606562,
       "tag": "0019_rh_registro_de_funcionarios",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791991201271,
+      "tag": "0020_sap_simulador_ordens",
+      "breakpoints": true
     }
   ]
 }

@@ -11,3 +11,4 @@ export * from "./eventos";
 export * from "./impedimento";
 export * from "./gamificacao";
 export * from "./rh";
+export * from "./sap-simulado";

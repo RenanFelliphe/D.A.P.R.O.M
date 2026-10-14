@@ -9,6 +9,7 @@ import { enfileirarTarefa } from "../../servicos/fila";
 import { verificarCiclos, type Intervalo } from "../../dominio/preventivas";
 import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
 import { popularCatalogoDemo } from "./catalogo-demo";
+import { espelharOsDoSapNoSimulador } from "./ordens-sap";
 import { carregarRegistroDosUsuarios } from "./registro-rh";
 import { preencherHistoricoDaGamificacao } from "./gamificacao-historico";
 import { documentoDemo } from "./documento-demo";
@@ -527,6 +528,9 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(tabela)}${filtro}`);
     contagem[rotulo] = Number(((r as unknown as { rows: { n: number }[] }).rows ?? (r as unknown as { n: number }[]))[0]!.n);
   }
+  // O SAP simulado passa a ter as ordens das OS que a carga criou, para o SAP e o DAPROM concordarem desde o início.
+  if (deps.config.sapSimulado) contagem["ordens do SAP simulado"] = await espelharOsDoSapNoSimulador(db);
+
   return { jaPopulado: false, usuariosCriados: criados, contagem };
 }
 

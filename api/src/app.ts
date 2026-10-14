@@ -54,7 +54,7 @@ export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa 
   app.route("/", rotasAuditoria(deps, auth));
   app.route("/", rotasGamificacao(deps, auth));
   app.route("/", rotasRh(deps, auth));
-  if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps));
+  if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps, auth));
   if (deps.config.rhSimulado) app.route("/rh-simulado", rotasRhSimulado(deps, auth, opcoes.enviarAvisoRh ?? avisoPorHttp(deps)));
 
   return app;
