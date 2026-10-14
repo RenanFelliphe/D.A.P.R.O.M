@@ -450,7 +450,7 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const alertasDaOs = async () => (await amb.sql<{ n: number }>("select count(*)::int as n from alerta where os_id = $1 and tipo = 'bloqueio'", [o.id]))[0]!.n;
 
     const boa = await amb.esperar(200, "POST", "/aprs/avaliar", { como: tecnico, json: corpoDaAvaliacao(o.id, await payloadApr(o.id)) });
-    assert.deepEqual(boa, { resultado: "aprovada", reprovados: [] });
+    assert.deepEqual(boa, { resultado: "aprovada", reprovados: [], materiais_faltando: [] });
     assert.deepEqual(await aprsDaOs(), [], "a aprovada só é registrada pelo apr_concluida");
 
     const ruim = await payloadApr(o.id, { bloquear: true });

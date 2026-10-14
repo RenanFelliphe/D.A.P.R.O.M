@@ -4,6 +4,7 @@ import type { Db } from "../db/conexao";
 import { APR_FUNCOES, APR_RESPOSTAS, APR_RESULTADOS, apr, aprParticipante, aprResposta, aprRisco, evidencia, execucao, itemModeloApr, modeloApr, riscoModeloApr, usuario } from "../db/schema";
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas } from "./alertas";
+import { conferirMateriais, gravarMateriaisDaApr, materialDaApr, rotuloDoFaltando } from "./apr-materiais";
 import { arquivoExigido } from "./evidencias";
 import { pontuarApr } from "./pontuacao";
 import {
@@ -31,6 +32,11 @@ const esquemaApr = z.object({
   respostas: z.array(z.object({ item_id: uuid, resposta: z.enum(APR_RESPOSTAS), observacao: z.string().nullable().optional(), respondida_em: instanteIso.optional() })),
   /** Fotos e PDFs dos itens reprovados. */
   evidencias: z.array(evidenciaPayload).default([]),
+  /**
+   * A conferência dos materiais do serviço da OS: o que o técnico levou e, no item obrigatório, a foto que comprova. O
+   * obrigatório sem foto (ou que nem veio) bloqueia a APR.
+   */
+  materiais: z.array(materialDaApr).default([]),
   observacao_geral: z.string().nullable().optional(),
   concluida_em: instanteIso,
   /** Só conferido: o servidor recalcula o resultado. */
@@ -105,8 +111,11 @@ export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadAp
   const faltando = itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.riscoId!)) && !respostaPorItem.has(i.id));
   if (faltando.length > 0) throw rejeitar("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
 
+  // Os materiais do serviço: o obrigatório sem a foto do item bloqueia a APR, como um item reprovado.
+  const { linhas: materiais, faltando: materiaisFaltando } = await conferirMateriais(ctx, ordem.codigoAtividade, p.materiais);
+
   const reprovados = itens.filter((i) => reprovou(i, respostaPorItem.get(i.id)?.resposta)).sort((a, b) => a.ordem - b.ordem);
-  return { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados };
+  return { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados, materiais, materiaisFaltando };
 }
 
 /** Respostas gravadas de uma APR, com o item do modelo; `reprovado` diz se o item reprovou a APR. */
@@ -204,7 +213,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
     return;
   }
 
-  const { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados } = await conferirApr(ctx, osId, p);
+  const { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados, materiais, materiaisFaltando } = await conferirApr(ctx, osId, p);
   ctx.saida.osAfetadas.add(ordem.id);
 
   // Item reprovado: exige observação e, se o item pede foto ou PDF, ao menos um arquivo desse tipo. O aparelho só conhece
@@ -218,7 +227,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   if (semEvidencia.length > 0 && !ctx.offline && !ctx.evidenciaDepois) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
   await exigirArquivosDasEvidencias(ctx, p.evidencias);
 
-  const resultado = reprovados.length > 0 ? "bloqueada" : "aprovada";
+  const resultado = reprovados.length > 0 || materiaisFaltando.length > 0 ? "bloqueada" : "aprovada";
 
   await ctx.tx.insert(apr).values({
     id: p.id,
@@ -247,6 +256,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   if (p.evidencias.length > 0) {
     await ctx.tx.insert(evidencia).values(p.evidencias.map((e) => linhaDeEvidencia(e, { aprId: p.id, itemId: e.item_id! })));
   }
+  await gravarMateriaisDaApr(ctx.tx, p.id, materiais);
   ctx.saida.aprs.push({ id: p.id, resultado });
   // A aprovada pontua ao chegar com as assinaturas; a bloqueada, quando chega a evidência dos itens reprovados.
   ctx.saida.ganhos.push(
@@ -254,14 +264,17 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   );
 
   if (resultado === "bloqueada") {
-    const detalhe = reprovados
-      .map((i) => {
-        const observacao = respostaPorItem.get(i.id)!.observacao?.trim();
-        return observacao ? `${i.texto} — ${observacao}` : i.texto;
-      })
-      .join("; ");
+    const itens = reprovados.map((i) => {
+      const observacao = respostaPorItem.get(i.id)!.observacao?.trim();
+      return observacao ? `${i.texto} — ${observacao}` : i.texto;
+    });
+    const motivos = [
+      reprovados.length > 0 ? `${reprovados.length} item(ns) reprovado(s)` : null,
+      materiaisFaltando.length > 0 ? `${materiaisFaltando.length} material(is) obrigatório(s) sem comprovação` : null,
+    ].filter((m) => m !== null);
+    const detalhe = [...itens, ...materiaisFaltando.map(rotuloDoFaltando)].join("; ");
     ctx.saida.alertas.push(
-      ...(await criarAlertas(ctx.tx, { tipo: "bloqueio", osId: ordem.id, equipeId: ordem.equipeId, detalhe: `APR bloqueada (${reprovados.length} item(ns) reprovado(s)): ${detalhe}` })),
+      ...(await criarAlertas(ctx.tx, { tipo: "bloqueio", osId: ordem.id, equipeId: ordem.equipeId, detalhe: `APR bloqueada (${motivos.join(" e ")}): ${detalhe}` })),
     );
   }
   if (mudou) await avisarConflitoDePlanejamento(ctx, ordem, "a APR foi aplicada depois que o planejamento mudou (equipe ou data)");

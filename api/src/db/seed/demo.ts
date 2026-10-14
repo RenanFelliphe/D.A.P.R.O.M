@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNotNull, like, sql } from "drizzle-orm";
 import type { Deps } from "../../deps";
+import { materiaisDosServicos } from "../../dominio/catalogo";
 import { emailDoNome, gerarSenhaInicial } from "../../dominio/usuarios";
 import { processarEventos } from "../../dominio/eventos";
 import type { UsuarioAutenticado } from "../../http/autenticacao";
@@ -277,7 +278,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     m: ModeloCarregado,
     participantes: UsuarioAutenticado[],
     quando: Date,
-    opcoes: { riscos?: number; avisoNoAlerta?: boolean; falhar?: Item[]; observacao?: string; documentoNoPrimeiro?: DocumentoDemo } = {},
+    opcoes: { riscos?: number; avisoNoAlerta?: boolean; falhar?: Item[]; observacao?: string; documentoNoPrimeiro?: DocumentoDemo; semMaterial?: boolean } = {},
   ) => {
     const marcados = m.riscos.slice(0, opcoes.riscos ?? 0);
     const falhar = opcoes.falhar ?? [];
@@ -301,8 +302,23 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const primeiroEliminatorio = (m: ModeloCarregado, n = 1, aPartirDe = 0) => m.itens.filter((i) => i.secao === "verificacao" && i.tipo === "eliminatorio" && i.evidencia === "foto").slice(aPartirDe, aPartirDe + n);
   const itemDeTexto = (m: ModeloCarregado) => m.itens.find((i) => i.tipo === "eliminatorio" && i.evidencia === "texto");
 
+  /**
+   * A conferência dos materiais do serviço da OS: tudo levado, com a foto do item nos obrigatórios; `semMaterial` deixa de
+   * fora os obrigatórios (a APR é bloqueada).
+   */
+  const conferenciaDoServico = async (osId: string, quando: Date, semMaterial = false) => {
+    const [o] = await db.select({ codigo: os.codigoAtividade }).from(os).where(eq(os.id, osId));
+    const lista = o?.codigo ? ((await materiaisDosServicos(db, [o.codigo])).get(o.codigo) ?? []) : [];
+    const itens: Record<string, unknown>[] = [];
+    for (const m of lista) {
+      if (m.obrigatorio && semMaterial) itens.push({ material_id: m.materialId, levou: false });
+      else itens.push({ material_id: m.materialId, levou: true, ...(m.obrigatorio ? { foto: { arquivo_id: await foto(), capturada_em: quando.toISOString(), latitude: -20.31, longitude: -40.29 } } : {}) });
+    }
+    return itens;
+  };
+
   const aprovar = async (u: UsuarioAutenticado, osId: string, m: ModeloCarregado, equipeTec: UsuarioAutenticado[], quando: Date, opcoes: Parameters<typeof aprPayload>[3] = {}) => {
-    const p = await aprPayload(m, equipeTec, quando, opcoes);
+    const p = { ...(await aprPayload(m, equipeTec, quando, opcoes)), materiais: await conferenciaDoServico(osId, quando, opcoes.semMaterial) };
     await enviar(u, "apr_concluida", osId, p, quando);
     return p.id as string;
   };
@@ -405,6 +421,10 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     falhar: primeiroEliminatorio(apr01, 2),
     documentoNoPrimeiro: { nome: "registro-detector-gas.pdf", titulo: "Registro do detector de gases", linhas: ["Equipamento: detector portátil de 4 gases", "Leitura no ramal RM-204: 18% do LIE", "Limite para liberar a atividade: 10% do LIE", "Conclusão: atividade não liberada."] },
   });
+
+  // 6b. APR bloqueada por material: o detector de gases, obrigatório neste serviço, não foi comprovado; o alerta chega ao supervisor
+  id = await criarOs({ titulo: "Aferição de manômetro padrão", equipamento: "Manômetro MN-12", local: L.gua, equipe: equipes.INSTRUM, prioridade: "Alto", inicio: 2, fim: 1, atividade: "Medição" });
+  await aprovar(tec3, id, apr01, duplaI, em(2, 10, 30), { semMaterial: true });
 
   // 7. APR bloqueada por condição pessoal (justificativa em texto, sem foto) — alerta lido
   id = await criarOs({ tipo: "preventiva", titulo: "Calibração de PSV", equipamento: "PSV-0312", local: L.pr, prioridade: "Alto", inicio: 2, fim: 1, atividade: ativ[3], ciclo: { intervalo: { quantidade: 1, unidade: "semestre" } } });

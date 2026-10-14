@@ -5,6 +5,7 @@ import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
 import { validar } from "../http/validacao";
+import { materiaisFaltandoDaAprGravada, type MaterialFaltando } from "./apr-materiais";
 import { processarEventos } from "./eventos";
 import { conferirApr, esquemaAvaliacaoApr, reprovadosDaAprGravada } from "./eventos-apr";
 import { RejeicaoEvento, type Contexto } from "./eventos-base";
@@ -16,10 +17,14 @@ function comoErroHttp(codigo: string, mensagem: string) {
   return invalido(codigo, mensagem);
 }
 
-/** O que o técnico fica sabendo: o resultado e, se bloqueada, cada item reprovado com a evidência que ele pede. */
-const resultadoDe = (reprovados: { id: string; texto: string; evidencia: string }[]) => ({
-  resultado: reprovados.length > 0 ? ("bloqueada" as const) : ("aprovada" as const),
+/**
+ * O que o técnico fica sabendo: o resultado e, se bloqueada, cada item reprovado com a evidência que ele pede e cada
+ * material obrigatório que não ficou comprovado (a foto do item em mãos).
+ */
+const resultadoDe = (reprovados: { id: string; texto: string; evidencia: string }[], materiaisFaltando: MaterialFaltando[]) => ({
+  resultado: reprovados.length > 0 || materiaisFaltando.length > 0 ? ("bloqueada" as const) : ("aprovada" as const),
   reprovados: reprovados.map((i) => ({ itemId: i.id, texto: i.texto, evidencia: i.evidencia })),
+  materiaisFaltando: materiaisFaltando.map(({ materialId, descricao, levou }) => ({ materialId, descricao, levou })),
 });
 
 /**
@@ -28,7 +33,8 @@ const resultadoDe = (reprovados: { id: string; texto: string; evidencia: string 
  * - aprovada: nada é gravado; segue para as assinaturas e o evento `apr_concluida`;
  * - bloqueada: vale na hora. A APR é registrada já aqui, pelo canal dos eventos (OS pendente, alerta e e-mail ao
  *   supervisor), e a evidência dos itens reprovados chega depois, no `apr_concluida` da mesma APR. Descartar o rascunho e
- *   refazer a APR não apaga a bloqueada.
+ *   refazer a APR não apaga a bloqueada. Material obrigatório sem a foto do item também bloqueia, e aí não há evidência a
+ *   completar.
  */
 export async function avaliarApr(deps: Deps, usuario: UsuarioAutenticado, bruto: unknown) {
   const p = validar(esquemaAvaliacaoApr, bruto);
@@ -38,7 +44,7 @@ export async function avaliarApr(deps: Deps, usuario: UsuarioAutenticado, bruto:
   const [existente] = await deps.db.select({ osId: apr.osId, preenchidaPor: apr.preenchidaPor }).from(apr).where(eq(apr.id, p.id));
   if (existente) {
     if (existente.osId !== p.os_id || existente.preenchidaPor !== usuario.id) throw conflito("apr_existente", "Esta APR já foi registrada");
-    return resultadoDe(await reprovadosDaAprGravada(deps.db, p.id));
+    return resultadoDe(await reprovadosDaAprGravada(deps.db, p.id), await materiaisFaltandoDaAprGravada(deps.db, p.id));
   }
 
   const ctx: Contexto = {
@@ -51,13 +57,14 @@ export async function avaliarApr(deps: Deps, usuario: UsuarioAutenticado, bruto:
     saida: { alertas: [], aprs: [], osAfetadas: new Set(), ganhos: [] },
   };
   let reprovados: Awaited<ReturnType<typeof conferirApr>>["reprovados"];
+  let materiaisFaltando: MaterialFaltando[];
   try {
-    ({ reprovados } = await conferirApr(ctx, p.os_id, p));
+    ({ reprovados, materiaisFaltando } = await conferirApr(ctx, p.os_id, p));
   } catch (erro) {
     if (erro instanceof RejeicaoEvento) throw comoErroHttp(erro.codigo, erro.message);
     throw erro;
   }
-  if (reprovados.length === 0) return resultadoDe([]);
+  if (reprovados.length === 0 && materiaisFaltando.length === 0) return resultadoDe([], []);
 
   const envio = await processarEventos(
     deps,
@@ -67,5 +74,5 @@ export async function avaliarApr(deps: Deps, usuario: UsuarioAutenticado, bruto:
   );
   const recusa = envio.rejeitados[0] ?? envio.pendentes[0];
   if (recusa) throw comoErroHttp(recusa.codigo, recusa.mensagem);
-  return resultadoDe(reprovados);
+  return resultadoDe(reprovados, materiaisFaltando);
 }

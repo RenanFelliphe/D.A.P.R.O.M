@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Deps } from "../deps";
-import { apr, aprParticipante, evidencia, execucao, execucaoAssinatura, os, usuario } from "../db/schema";
+import { apr, aprMaterial, aprParticipante, evidencia, execucao, execucaoAssinatura, os, usuario } from "../db/schema";
 import { podeVerEquipe, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
 import { ErroApi, invalido, naoEncontrado, proibido } from "../http/erros";
 import { responder } from "../http/resposta";
@@ -45,6 +45,16 @@ async function localizar(deps: Deps, id: string): Promise<{ bucket: Bucket; equi
     .where(eq(evidencia.fotoPath, id))
     .limit(1);
   if (daApr) return { bucket: bucketDaEvidencia(daApr.tipo), equipeId: daApr.equipeId };
+
+  // Foto do material que o técnico comprovou ao fechar a APR: também pertence à APR.
+  const [doMaterial] = await deps.db
+    .select({ equipeId: os.equipeId })
+    .from(aprMaterial)
+    .innerJoin(apr, eq(apr.id, aprMaterial.aprId))
+    .innerJoin(os, eq(os.id, apr.osId))
+    .where(eq(aprMaterial.fotoPath, id))
+    .limit(1);
+  if (doMaterial) return { bucket: "fotos", equipeId: doMaterial.equipeId };
 
   const [doPerfil] = await deps.db.select({ equipeId: usuario.equipeId, donoId: usuario.id }).from(usuario).where(eq(usuario.assinaturaPath, id)).limit(1);
   if (doPerfil) return { bucket: "assinaturas", ...doPerfil };

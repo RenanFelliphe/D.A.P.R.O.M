@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
-import { check, index, pgTable, primaryKey, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, numeric, pgTable, primaryKey, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { material } from "./catalogo";
 import { emLista, instante } from "./comum";
 import { itemModeloApr, modeloApr, riscoModeloApr } from "./modelos-apr";
 import { os } from "./sap";
@@ -100,5 +101,38 @@ export const aprResposta = pgTable(
     check("apr_resposta_resposta_check", emLista(t.resposta, APR_RESPOSTAS)),
     check("apr_resposta_na_com_observacao", sql`${t.resposta} <> 'na' or nullif(btrim(${t.observacao}), '') is not null`),
     index("apr_resposta_item_idx").on(t.itemId),
+  ],
+).enableRLS();
+
+/**
+ * A conferência dos materiais do serviço, feita no fim do checklist: para cada item da lista da atividade da OS, se o
+ * técnico o levou e, no item obrigatório, a foto que comprova. `obrigatorio` guarda o que a lista dizia na hora da APR
+ * (o admin pode mudar a lista depois). O servidor decide: obrigatório sem foto, ou não levado, bloqueia a APR.
+ */
+export const aprMaterial = pgTable(
+  "apr_material",
+  {
+    aprId: uuid()
+      .notNull()
+      .references(() => apr.id),
+    materialId: uuid()
+      .notNull()
+      .references(() => material.id),
+    obrigatorio: boolean().notNull(),
+    levou: boolean().notNull(),
+    /** Id do arquivo da foto do item em mãos (bucket `fotos`). */
+    fotoPath: text(),
+    capturadaEm: instante(),
+    latitude: numeric({ precision: 9, scale: 6, mode: "number" }),
+    longitude: numeric({ precision: 9, scale: 6, mode: "number" }),
+  },
+  (t) => [
+    primaryKey({ name: "apr_material_pkey", columns: [t.aprId, t.materialId] }),
+    check("apr_material_foto_so_se_levou", sql`${t.levou} or ${t.fotoPath} is null`),
+    check("apr_material_foto_completa", sql`(${t.fotoPath} is null) = (${t.capturadaEm} is null)`),
+    check("apr_material_gps_completo", sql`(${t.latitude} is null) = (${t.longitude} is null)`),
+    check("apr_material_latitude_check", sql`${t.latitude} between -90 and 90`),
+    check("apr_material_longitude_check", sql`${t.longitude} between -180 and 180`),
+    index("apr_material_material_idx").on(t.materialId),
   ],
 ).enableRLS();

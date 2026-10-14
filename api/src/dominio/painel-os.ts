@@ -29,6 +29,7 @@ import { conflito, naoEncontrado, proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { enfileirarTarefa } from "../servicos/fila";
 import { buscaDeOs } from "./busca";
+import { materiaisDasAprs } from "./apr-materiais";
 import { servicoDaAtividade } from "./catalogo";
 import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
 import { ganhosDe } from "./lancamentos";
@@ -246,7 +247,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
   if (linhas.length === 0) return [];
   const ids = linhas.map((l) => l.id);
 
-  const [participantes, riscos, respostas, arquivos] = await Promise.all([
+  const [participantes, riscos, respostas, arquivos, conferidos] = await Promise.all([
     db
       .select({
         aprId: aprParticipante.aprId,
@@ -291,6 +292,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
       .from(evidencia)
       .where(inArray(evidencia.aprId, ids))
       .orderBy(asc(evidencia.capturadaEm), asc(evidencia.id)),
+    materiaisDasAprs(db, ids),
   ]);
 
   return linhas.map((l) => {
@@ -332,6 +334,8 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
         .map(({ aprId: _a, ...p }) => p),
       riscos: riscos.filter((r) => r.aprId === l.id).map(({ aprId: _a, ...r }) => r),
       respostas: completas,
+      /** A conferência dos materiais do serviço: o que foi levado e a foto do item (obrigatórios primeiro). */
+      materiais: conferidos.filter((m) => m.aprId === l.id).map(({ aprId: _a, ...m }) => m),
       itensReprovados: respostas
         .filter((r) => r.aprId === l.id && reprovado(r.tipo, r.resposta, r.respostaBloqueante))
         .map((r) => ({
