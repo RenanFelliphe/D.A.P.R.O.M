@@ -15,6 +15,7 @@
     "db:gerar-seed": "node src/db/seed/gerar-modelos-apr.mjs",
     "admin:criar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/criar-admin.ts",
     "usuarios:migrar-emails": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/migrar-emails.ts",
+    "rh:carga-inicial": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/carregar-registro-rh.ts",
     "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts",
     "pdf:exemplo": "tsx scripts/gerar-pdf-os.ts"
   },

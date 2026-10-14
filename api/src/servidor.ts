@@ -8,6 +8,7 @@ import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
 import { EmailEmMemoria, EmailSmtp } from "./servicos/email";
+import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
 
@@ -47,6 +48,7 @@ async function main() {
     armazenamento,
     email,
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
+    rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
     agora: () => new Date(),
   };
 

@@ -8,13 +8,25 @@ import { criarAmbiente, SENHA_PADRAO, type Ambiente, type UsuarioDeTeste } from 
 
 const NOME_DO_SUPERVISOR = "Sandra Supervisora";
 
-const corpoNovo = (n: number, extra: Record<string, unknown> = {}) => ({
-  nome: `Novato ${n}`,
-  matricula: `N${n}`,
-  email: `novato${n}@empresa.com.br`,
-  senha_inicial: "senha-inicial-1",
-  ...extra,
-});
+/** Onde o corpo novo registra o funcionário (o `POST /usuarios` só cadastra quem está no registro) e o centro de trabalho de cada equipe. */
+let registro: Ambiente | undefined;
+const centrosDasEquipes = new Map<string, string>();
+
+/**
+ * O corpo do cadastro (matrícula, e-mail e senha: nome e cargo vêm do registro) e, de passagem, o funcionário no registro em
+ * memória, do setor da `equipe_id` (sem equipe, de um setor que nenhuma equipe tem).
+ */
+const corpoNovo = (n: number, extra: Record<string, unknown> = {}) => {
+  const corpo: { matricula: string; email: string; senha_inicial: string } & Record<string, unknown> = {
+    matricula: `N${n}`,
+    email: `novato${n}@empresa.com.br`,
+    senha_inicial: "senha-inicial-1",
+    ...extra,
+  };
+  const centro = (typeof corpo.equipe_id === "string" && centrosDasEquipes.get(corpo.equipe_id)) || "SEM_EQUIPE";
+  registro!.registrarFuncionario({ matricula: corpo.matricula, email: corpo.email as string, nome: `Novato ${n}`, centro_trabalho: centro, setor: centro });
+  return corpo;
+};
 
 describe("Cadastro pelo supervisor e liberação de acesso", () => {
   let amb: Ambiente;
@@ -36,8 +48,13 @@ describe("Cadastro pelo supervisor e liberação de acesso", () => {
 
   before(async () => {
     amb = await criarAmbiente();
-    equipeId = (await amb.criarEquipe()).id;
-    outraEquipeId = (await amb.criarEquipe()).id;
+    registro = amb;
+    const equipe = await amb.criarEquipe();
+    const outraEquipe = await amb.criarEquipe();
+    equipeId = equipe.id;
+    outraEquipeId = outraEquipe.id;
+    centrosDasEquipes.set(equipeId, equipe.centroTrabalho);
+    centrosDasEquipes.set(outraEquipeId, outraEquipe.centroTrabalho);
     admin = await amb.criarUsuario({ perfil: "admin" });
     supervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId, supervisor: true, nome: NOME_DO_SUPERVISOR });
     outroSupervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId: outraEquipeId, supervisor: true });
@@ -47,7 +64,7 @@ describe("Cadastro pelo supervisor e liberação de acesso", () => {
   after(() => amb.fechar());
 
   describe("POST /usuarios", () => {
-    it("supervisor cadastra técnico na equipe dele: nasce pendente, com criado_por_id, e perfil forçado a técnico", async () => {
+    it("supervisor cadastra técnico na equipe do setor dele: nasce pendente, com criado_por_id, e perfil forçado a técnico", async () => {
       const { id } = await amb.esperar(201, "POST", "/usuarios", { como: supervisor, json: corpoNovo(1, { equipe_id: equipeId }) });
       const u = (await amb.esperar(200, "GET", `/usuarios/${id}`, { como: admin })).usuario;
       assert.equal(u.liberacao, "pendente");
@@ -59,15 +76,18 @@ describe("Cadastro pelo supervisor e liberação de acesso", () => {
       assert.ok(u.criado_em, "o cadastro grava a data");
       assert.equal(u.recusa_motivo, null);
       assert.equal(u.senha_provisoria, true);
+      // O nome veio do registro de funcionários.
+      assert.equal(u.nome, "Novato 1");
     });
 
-    it("aceita perfil tecnico explícito; recusa admin, equipe alheia, sem equipe e quem não supervisiona (403/422)", async () => {
+    it("aceita perfil tecnico explícito; recusa admin, setor de equipe alheia, setor sem equipe e quem não supervisiona (403)", async () => {
       await amb.esperar(201, "POST", "/usuarios", { como: supervisor, json: corpoNovo(2, { equipe_id: equipeId, perfil: "tecnico" }) });
       assert.equal((await amb.req("POST", "/usuarios", { como: supervisor, json: corpoNovo(3, { equipe_id: equipeId, perfil: "admin" }) })).status, 403);
       assert.equal((await amb.req("POST", "/usuarios", { como: supervisor, json: corpoNovo(4, { equipe_id: outraEquipeId }) })).status, 403);
       const semEquipe = await amb.req("POST", "/usuarios", { como: supervisor, json: corpoNovo(5) });
-      assert.equal(semEquipe.status, 422);
-      assert.equal(semEquipe.corpo.erro.codigo, "equipe_obrigatoria");
+      assert.equal(semEquipe.status, 403);
+      assert.equal(semEquipe.corpo.erro.codigo, "fora_da_supervisao");
+      assert.match(semEquipe.corpo.erro.mensagem, /setor SEM_EQUIPE, que você não supervisiona/);
       assert.equal((await amb.req("POST", "/usuarios", { como: tecnico, json: corpoNovo(6, { equipe_id: equipeId }) })).status, 403);
       assert.equal((await amb.req("POST", "/usuarios", { como: semEquipes, json: corpoNovo(7, { equipe_id: equipeId }) })).status, 403);
     });
@@ -293,26 +313,19 @@ describe("Cadastro pelo supervisor e liberação de acesso", () => {
       assert.ok(!comum.usuarios.some((u: any) => u.liberacao !== "liberado"));
     });
 
-    it("edita nome, cargo e registro só do pendente que ele criou; o resto é 403", async () => {
+    it("não edita ninguém, nem o pendente que cadastrou: nome, cargo e registro vêm do registro de funcionários", async () => {
       const meu = await cadastrar(50);
       const alheio = await cadastrar(51, outroSupervisor, outraEquipeId);
-      await amb.esperar(200, "PATCH", `/usuarios/${meu.id}`, { como: supervisor, json: { nome: "Nome Novo", cargo: "Técnico", registro_profissional: "ES-1/D" } });
-      const u = (await amb.esperar(200, "GET", `/usuarios/${meu.id}`, { como: admin })).usuario;
-      assert.equal(u.nome, "Nome Novo");
-      assert.equal(u.cargo, "Técnico");
-      assert.equal(u.registro_profissional, "ES-1/D");
-
-      for (const json of [{ email: "x@empresa.com.br" }, { perfil: "admin" }, { equipe_id: outraEquipeId }, { ativo: false }]) {
+      for (const json of [{ perfil: "tecnico" }, { equipe_id: outraEquipeId }, { ativo: false }, {}]) {
         assert.equal((await amb.req("PATCH", `/usuarios/${meu.id}`, { como: supervisor, json })).status, 403, JSON.stringify(json));
       }
-      assert.equal((await amb.req("PATCH", `/usuarios/${alheio.id}`, { como: supervisor, json: { nome: "X" } })).status, 403);
-      // um supervisor não edita quem o admin já cadastrou liberado, nem o liberado depois de pendente
+      assert.equal((await amb.req("PATCH", `/usuarios/${alheio.id}`, { como: supervisor, json: { perfil: "tecnico" } })).status, 403);
       const liberado = await cadastrar(52);
       await amb.esperar(200, "POST", `/usuarios/${liberado.id}/liberar`, { como: admin });
-      assert.equal((await amb.req("PATCH", `/usuarios/${liberado.id}`, { como: supervisor, json: { nome: "X" } })).status, 403);
-      assert.equal((await amb.req("PATCH", `/usuarios/${tecnico.id}`, { como: supervisor, json: { nome: "X" } })).status, 403);
+      assert.equal((await amb.req("PATCH", `/usuarios/${liberado.id}`, { como: supervisor, json: { perfil: "tecnico" } })).status, 403);
+      assert.equal((await amb.req("PATCH", `/usuarios/${tecnico.id}`, { como: supervisor, json: { perfil: "tecnico" } })).status, 403);
       // técnico comum não edita
-      assert.equal((await amb.req("PATCH", `/usuarios/${meu.id}`, { como: tecnico, json: { nome: "X" } })).status, 403);
+      assert.equal((await amb.req("PATCH", `/usuarios/${meu.id}`, { como: tecnico, json: { perfil: "tecnico" } })).status, 403);
     });
 
     it("não redefine a senha", async () => {
@@ -345,12 +358,14 @@ describe("Cadastro pelo supervisor e liberação de acesso", () => {
     });
 
     it("pendente de supervisor que deixou de supervisionar: o supervisor perde o acesso, o admin segue vendo", async () => {
-      const equipe3 = (await amb.criarEquipe()).id;
+      const criada3 = await amb.criarEquipe();
+      const equipe3 = criada3.id;
+      centrosDasEquipes.set(equipe3, criada3.centroTrabalho);
       const sup3 = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipe3, supervisor: true });
       const novo = await cadastrar(80, sup3, equipe3);
       await amb.sql("update equipe set supervisor_id = null where id = $1", [equipe3]);
       // o token de sup3 ainda vale, mas sem equipes ele deixa de ser supervisor
-      assert.equal((await amb.req("PATCH", `/usuarios/${novo.id}`, { como: sup3, json: { nome: "X" } })).status, 403);
+      assert.equal((await amb.req("PATCH", `/usuarios/${novo.id}`, { como: sup3, json: { perfil: "tecnico" } })).status, 403);
       assert.equal((await amb.req("DELETE", `/usuarios/${novo.id}`, { como: sup3 })).status, 403);
       await amb.esperar(200, "POST", `/usuarios/${novo.id}/liberar`, { como: admin });
     });

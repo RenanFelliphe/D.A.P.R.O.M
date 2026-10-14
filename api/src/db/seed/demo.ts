@@ -9,6 +9,7 @@ import { enfileirarTarefa } from "../../servicos/fila";
 import { verificarCiclos, type Intervalo } from "../../dominio/preventivas";
 import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
 import { popularCatalogoDemo } from "./catalogo-demo";
+import { carregarRegistroDosUsuarios } from "./registro-rh";
 import { preencherHistoricoDaGamificacao } from "./gamificacao-historico";
 import { documentoDemo } from "./documento-demo";
 import { assinaturaDemo, fotoDemo } from "./imagens-demo";
@@ -114,6 +115,9 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const adm = await garantir("adm", "Ana Administradora", "admin", null);
   await db.update(equipe).set({ supervisorId: sup1.id }).where(and(eq(equipe.id, equipes.SERV_ESP!), sql`${equipe.supervisorId} is null`));
   await db.update(equipe).set({ supervisorId: sup2.id }).where(and(eq(equipe.id, equipes.INSTRUM!), sql`${equipe.supervisorId} is null`));
+
+  // O registro de funcionários simulado ganha o funcionário de cada usuário (e uns 30 sem conta, para demonstrar o cadastro).
+  if (deps.config.rhSimulado) await carregarRegistroDosUsuarios(db, { aleatorios: 30, agora: real });
 
   // ---------- locais ---------------------------------------------------------------------------------------------
   const locaisDef: [string, string, string | null, boolean][] = [

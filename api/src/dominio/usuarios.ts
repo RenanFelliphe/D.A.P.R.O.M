@@ -31,6 +31,9 @@ export function usuarioParaApi(u: LinhaUsuario, opcoes: { semEmail?: boolean; cr
     criadoEm: u.criadoEm,
     liberadoEm: u.liberadoEm,
     recusaMotivo: u.recusaMotivo,
+    /** O que o registro de funcionários diz da pessoa (`ativo`, `afastado`, `desligado`, `fora_do_registro`); nulo até a primeira conferência. */
+    situacaoRegistro: u.situacaoRegistro,
+    registroConferidoEm: u.registroConferidoEm,
   };
 }
 

@@ -16,6 +16,12 @@ const esquema = z.object({
   SAP_API_TOKEN: z.string().default(""),
   SAP_SIMULADO: booleano,
   SAP_LEITURA_INTERVALO_MIN: z.coerce.number().int().positive().default(15),
+  RH_SIMULADO: booleano,
+  RH_API_URL: z.string().default(""),
+  RH_API_TOKEN: z.string().default(""),
+  RH_AVISO_TOKEN: z.string().default(""),
+  RH_AVISO_URL: z.string().default(""),
+  RH_LEITURA_HORA: z.coerce.number().int().min(0).max(23).default(3),
   SMTP_URL: z.string().default(""),
   EMAIL_REMETENTE: z.string().default("daprom@localhost"),
   PAINEL_URL: z.string().default("http://localhost:3000"),
@@ -32,6 +38,16 @@ export interface Config {
   sapApiToken: string;
   sapSimulado: boolean;
   sapLeituraIntervaloMin: number;
+  /** Registro de funcionários (RH): simulado na própria api ou a API real da empresa (`apifuncionarios.md`). */
+  rhSimulado: boolean;
+  rhApiUrl: string;
+  rhApiToken: string;
+  /** Token que o registro usa para avisar o DAPROM (`POST /rh/avisos`). */
+  rhAvisoToken: string;
+  /** Para onde o simulador manda os avisos; só o simulador usa. */
+  rhAvisoUrl: string;
+  /** Hora (de São Paulo) da leitura diária completa do registro. */
+  rhLeituraHora: number;
   smtpUrl: string;
   emailRemetente: string;
   painelUrl: string;
@@ -53,6 +69,13 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sapApiToken: e.SAP_API_TOKEN || (e.SAP_SIMULADO ? "token-de-desenvolvimento" : ""),
     sapSimulado: e.SAP_SIMULADO,
     sapLeituraIntervaloMin: e.SAP_LEITURA_INTERVALO_MIN,
+    // Mesmo esquema do SAP: com o simulador ligado, endereços e tokens têm padrão.
+    rhSimulado: e.RH_SIMULADO,
+    rhApiUrl: e.RH_API_URL.replace(/\/$/, "") || (e.RH_SIMULADO ? `http://127.0.0.1:${e.PORT}/rh-simulado` : ""),
+    rhApiToken: e.RH_API_TOKEN || (e.RH_SIMULADO ? "token-rh-de-desenvolvimento" : ""),
+    rhAvisoToken: e.RH_AVISO_TOKEN || (e.RH_SIMULADO ? "token-aviso-rh-de-desenvolvimento" : ""),
+    rhAvisoUrl: e.RH_AVISO_URL || (e.RH_SIMULADO ? `http://127.0.0.1:${e.PORT}/rh/avisos` : ""),
+    rhLeituraHora: e.RH_LEITURA_HORA,
     smtpUrl: e.SMTP_URL,
     emailRemetente: e.EMAIL_REMETENTE,
     painelUrl: e.PAINEL_URL.replace(/\/$/, ""),

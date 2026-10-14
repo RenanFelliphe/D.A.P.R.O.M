@@ -4,7 +4,8 @@ import { auditoria, os, type AuditoriaEntidade } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { algum, contem } from "./busca";
 
-type Ator = Pick<UsuarioAutenticado, "id" | "nome">;
+/** Quem agiu: uma pessoa, ou um sistema (`id` nulo), como o registro de funcionários. */
+export type Ator = { id: UsuarioAutenticado["id"] | null; nome: string };
 
 export interface EntradaDeAuditoria {
   entidade: AuditoriaEntidade;

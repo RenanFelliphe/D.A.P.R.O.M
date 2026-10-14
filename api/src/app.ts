@@ -16,17 +16,20 @@ import { rotasModelosApr } from "./rotas/modelos-apr";
 import { rotasPainel } from "./rotas/painel";
 import { rotasPdf } from "./rotas/pdf";
 import { rotasPreventivas } from "./rotas/preventivas";
+import { rotasRh } from "./rotas/rh";
+import { avisoPorHttp, rotasRhSimulado, type EnviarAvisoRh } from "./rotas/rh-simulado";
 import { rotasSap } from "./rotas/sap";
 import { rotasSapSimulado } from "./rotas/sap-simulado";
 import { rotasSaude } from "./rotas/saude";
 import { rotasUsuarios } from "./rotas/usuarios";
 
 /**
- * Monta a aplicação HTTP. Toda rota, menos `GET /saude`, `/auth/login`, `/auth/refresh` e o simulador do SAP, passa por
+ * Monta a aplicação HTTP. Toda rota, menos `GET /saude`, `/auth/login`, `/auth/refresh`, `POST /rh/avisos` (token do registro),
+ * o simulador do SAP e o contrato do simulador do RH, passa por
  * `autenticar()` (JWT do Supabase + usuário ativo) e, quando preciso, por `exigirPerfil(...)`: sem token é `401`, com
  * perfil sem permissão é `403`. Cada fatia da especificação é um módulo em `rotas/`.
  */
-export function criarApp(deps: Deps) {
+export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa o DAPROM; os testes trocam. */ enviarAvisoRh?: EnviarAvisoRh } = {}) {
   const auth = criarAutenticacao(deps);
   const app = new Hono();
 
@@ -50,7 +53,9 @@ export function criarApp(deps: Deps) {
   app.route("/", rotasPdf(deps, auth));
   app.route("/", rotasAuditoria(deps, auth));
   app.route("/", rotasGamificacao(deps, auth));
+  app.route("/", rotasRh(deps, auth));
   if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps));
+  if (deps.config.rhSimulado) app.route("/rh-simulado", rotasRhSimulado(deps, auth, opcoes.enviarAvisoRh ?? avisoPorHttp(deps)));
 
   return app;
 }

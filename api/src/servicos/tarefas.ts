@@ -6,6 +6,7 @@ import { manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
 import { manipularLeituraSap } from "./leitura-sap";
 import { fecharTemporadasVencidas } from "../dominio/fechamento-temporada";
 import { verificarCiclos } from "../dominio/preventivas";
+import { agendarLeituraDiariaRh, manipularConferenciaRh, manipularLeituraRh } from "../dominio/rh";
 
 type Tarefa = typeof tarefa.$inferSelect;
 type Manipulador = (deps: Deps, tarefa: { id: string; referenciaId: string | null }) => Promise<void>;
@@ -14,6 +15,8 @@ const MANIPULADORES: Record<string, Manipulador> = {
   pdf_os: manipularPdfOs,
   email_alerta: manipularEmailAlerta,
   leitura_sap: manipularLeituraSap,
+  leitura_rh: manipularLeituraRh,
+  conferencia_rh: manipularConferenciaRh,
 };
 
 /** Máximo de tentativas; a quinta falha deixa a tarefa em `falhou`. */
@@ -27,6 +30,8 @@ const INTERVALO_EXECUTOR_MS = 5_000;
 export const INTERVALO_CICLOS_MIN = 60;
 /** De quanto em quanto tempo as temporadas da gamificação que passaram da tolerância são fechadas. */
 export const INTERVALO_TEMPORADAS_MIN = 60;
+/** De quanto em quanto tempo se confere se já é hora da leitura diária do registro de funcionários (o índice único evita repetir). */
+export const INTERVALO_LEITURA_RH_MIN = 1;
 
 const minutos = (n: number) => n * 60_000;
 
@@ -119,7 +124,8 @@ export async function agendarLeituraSap(deps: Deps): Promise<boolean> {
 
 /**
  * Liga o executor no processo da `api`: a cada ~5 s recupera as tarefas presas, agenda a leitura do SAP (quando
- * `SAP_API_URL` está configurada, a cada `SAP_LEITURA_INTERVALO_MIN` minutos), confere o ciclo das preventivas (ao subir e a
+ * `SAP_API_URL` está configurada, a cada `SAP_LEITURA_INTERVALO_MIN` minutos), agenda a leitura diária do registro de funcionários
+ * (quando `RH_API_URL` está configurada, uma por dia a partir de `RH_LEITURA_HORA`), confere o ciclo das preventivas (ao subir e a
  * cada `INTERVALO_CICLOS_MIN` minutos, criando os alertas de ciclo próximo e vencido) e executa as tarefas vencidas, sem que
  * duas rodadas se sobreponham. Devolve a função que o encerra.
  */
@@ -129,6 +135,7 @@ export function iniciarTarefas(deps: Deps): () => void {
   let ultimoAgendamento = 0;
   let ultimaConferenciaDeCiclos = 0;
   let ultimoFechamentoDeTemporadas = 0;
+  let ultimaChecagemDaLeituraRh = 0;
 
   async function rodada() {
     if (rodando || parado) return;
@@ -139,6 +146,11 @@ export function iniciarTarefas(deps: Deps): () => void {
       if (deps.config.sapApiUrl && agora - ultimoAgendamento >= minutos(deps.config.sapLeituraIntervaloMin)) {
         await agendarLeituraSap(deps);
         ultimoAgendamento = agora;
+      }
+      if (deps.config.rhApiUrl && agora - ultimaChecagemDaLeituraRh >= minutos(INTERVALO_LEITURA_RH_MIN)) {
+        ultimaChecagemDaLeituraRh = agora;
+        // Como o fechamento das temporadas: uma falha aqui não impede as tarefas da rodada.
+        await agendarLeituraDiariaRh(deps).catch((erro) => console.error("Falha ao agendar a leitura diária do registro de funcionários:", erro));
       }
       if (agora - ultimaConferenciaDeCiclos >= minutos(INTERVALO_CICLOS_MIN)) {
         ultimaConferenciaDeCiclos = agora;

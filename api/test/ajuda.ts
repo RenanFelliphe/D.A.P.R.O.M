@@ -18,6 +18,7 @@ import type { Deps } from "../src/deps";
 import { ArmazenamentoEmMemoria } from "../src/servicos/armazenamento";
 import { AuthEmMemoria } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
+import { RegistroIndisponivel, type ClienteRh, type FuncionarioRh } from "../src/servicos/rh";
 import type { ClienteSap, OrdemSap } from "../src/servicos/sap";
 
 export const SEGREDO_JWT = "segredo-de-teste-com-mais-de-32-caracteres!!";
@@ -34,6 +35,12 @@ export const configDeTeste: Config = {
   sapApiToken: "token-sap",
   sapSimulado: true,
   sapLeituraIntervaloMin: 15,
+  rhSimulado: true,
+  rhApiUrl: "http://rh.local",
+  rhApiToken: "token-rh",
+  rhAvisoToken: "token-aviso-rh",
+  rhAvisoUrl: "http://api.local/rh/avisos",
+  rhLeituraHora: 3,
   smtpUrl: "",
   emailRemetente: "daprom@teste",
   painelUrl: "http://painel.local",
@@ -51,6 +58,25 @@ export class SapEmMemoria implements ClienteSap {
   }
   async obterOrdem(numero: string) {
     return this.ordens.find((x) => x.numero_ordem === numero) ?? null;
+  }
+}
+
+/** Registro de funcionários em memória: o que o teste coloca em `funcionarios` (pela matrícula) é o que o DAPROM enxerga. */
+export class RhEmMemoria implements ClienteRh {
+  funcionarios = new Map<string, FuncionarioRh>();
+  falhar = false;
+  /** Quantas consultas por matrícula foram feitas (o `POST /usuarios` consulta de novo, sem confiar na prévia). */
+  consultas = 0;
+  async obterFuncionario(matricula: string) {
+    if (this.falhar) throw new RegistroIndisponivel("RH fora do ar");
+    this.consultas++;
+    return this.funcionarios.get(matricula) ?? null;
+  }
+  async listarFuncionarios(o: { pagina: number; tamanho: number }) {
+    if (this.falhar) throw new RegistroIndisponivel("RH fora do ar");
+    const todos = [...this.funcionarios.values()].sort((a, b) => a.matricula.localeCompare(b.matricula));
+    const inicio = (o.pagina - 1) * o.tamanho;
+    return { funcionarios: todos.slice(inicio, inicio + o.tamanho), ...(inicio + o.tamanho < todos.length ? { proxima_pagina: o.pagina + 1 } : {}) };
   }
 }
 
@@ -84,10 +110,40 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   const armazenamento = new ArmazenamentoEmMemoria();
   const email = new EmailEmMemoria();
   const sap = new SapEmMemoria();
-  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, agora: () => relogio.agora };
-  const app = criarApp(deps);
+  const rh = new RhEmMemoria();
+  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, agora: () => relogio.agora };
+  // O aviso que o simulador do RH manda ao DAPROM: fica anotado em `avisosRh` e, com `rhSimulador.encaminhar`, chega de verdade em `POST /rh/avisos`.
+  const avisosRh: string[][] = [];
+  const rhSimulador = { encaminhar: false };
+  const app = criarApp(deps, {
+    enviarAvisoRh: async (matriculas) => {
+      avisosRh.push(matriculas);
+      if (!rhSimulador.encaminhar) return;
+      await app.request("http://api.local/rh/avisos", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${configDeTeste.rhAvisoToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ matriculas }),
+      });
+    },
+  });
 
   let contador = 0;
+
+  /** Põe um funcionário no registro em memória (por padrão ativo, do setor `SERV_ESP`, com o e-mail `<matrícula>@empresa.com.br`, o mesmo que `criarUsuario` usa). */
+  function registrarFuncionario(dados: Partial<FuncionarioRh> & { matricula: string }): FuncionarioRh {
+    const f: FuncionarioRh = {
+      nome: `Funcionário ${dados.matricula}`,
+      email: `${dados.matricula.toLowerCase()}@empresa.com.br`,
+      cargo: "Técnico em Gás",
+      centro_trabalho: "SERV_ESP",
+      setor: "Serviços Especiais",
+      registro_profissional: null,
+      situacao: "ativo",
+      ...dados,
+    };
+    rh.funcionarios.set(f.matricula, f);
+    return f;
+  }
 
   async function criarEquipe(dados: { nome?: string; centroTrabalho?: string; supervisorId?: string | null } = {}) {
     contador++;
@@ -148,7 +204,7 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
 
   const sql = async <T = Record<string, unknown>>(texto: string, params: unknown[] = []) => (await cliente.query<T>(texto, params)).rows;
 
-  return { db, deps, app, relogio, auth, armazenamento, email, sap, cliente, criarEquipe, criarUsuario, req, esperar, sql, fechar: () => cliente.close() };
+  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, sql, fechar: () => cliente.close() };
 }
 
 export type Ambiente = Awaited<ReturnType<typeof criarAmbiente>>;

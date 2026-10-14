@@ -26,17 +26,24 @@ describe("Plataforma, usuários e equipes", () => {
     assert.equal((await amb.req("GET", "/me", { cabecalhos: { Authorization: "Bearer lixo" } })).status, 401);
   });
 
-  it("recusa perfil sem permissão (403) e aceita o admin", async () => {
-    const corpo = { nome: "Maria Souza", matricula: "M900", email: "maria.souza@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" };
+  it("recusa perfil sem permissão (403) e aceita o admin, que cadastra quem está no registro de funcionários", async () => {
+    amb.registrarFuncionario({ matricula: "M900", nome: "Maria Souza", email: "maria.souza@empresa.com.br", cargo: "Eletricista" });
+    const corpo = { matricula: "M900", email: "maria.souza@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" };
     assert.equal((await amb.req("POST", "/usuarios", { como: tecnico, json: corpo })).status, 403);
     const criado = await amb.esperar(201, "POST", "/usuarios", { como: admin, json: corpo });
     assert.match(criado.id, /^[0-9a-f-]{36}$/);
+    // Nome e cargo vieram do registro, que o corpo nem informa.
+    const perfil = await amb.esperar(200, "GET", `/usuarios/${criado.id}`, { como: admin });
+    assert.equal(perfil.usuario.nome, "Maria Souza");
+    assert.equal(perfil.usuario.cargo, "Eletricista");
+    assert.equal(perfil.usuario.situacao_registro, "ativo");
   });
 
   it("matrícula repetida é 409, sem diferenciar maiúsculas", async () => {
+    amb.registrarFuncionario({ matricula: "m900", nome: "Outra Pessoa", email: "outra.pessoa@empresa.com.br" });
     const r = await amb.req("POST", "/usuarios", {
       como: admin,
-      json: { nome: "Outra Pessoa", matricula: "m900", email: "outra.pessoa@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
+      json: { matricula: "m900", email: "outra.pessoa@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
     });
     assert.equal(r.status, 409);
     assert.equal(r.corpo.erro.codigo, "matricula_duplicada");
@@ -44,22 +51,23 @@ describe("Plataforma, usuários e equipes", () => {
   });
 
   it("e-mail repetido é 409, sem diferenciar maiúsculas", async () => {
+    amb.registrarFuncionario({ matricula: "M901", nome: "Mariana Souza", email: "Maria.Souza@Empresa.com.br" });
     const r = await amb.req("POST", "/usuarios", {
       como: admin,
-      json: { nome: "Maria Souza", matricula: "M901", email: "Maria.Souza@Empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
+      json: { matricula: "M901", email: "Maria.Souza@Empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
     });
     assert.equal(r.status, 409);
     assert.equal(r.corpo.erro.codigo, "email_duplicado");
   });
 
   it("valida o corpo: o e-mail é obrigatório (inclusive do supervisor) e precisa ser um e-mail", async () => {
-    const semEmail = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", matricula: "S1", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
+    const semEmail = await amb.req("POST", "/usuarios", { como: admin, json: { matricula: "S1", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
     assert.equal(semEmail.status, 422);
     assert.equal(semEmail.corpo.erro.codigo, "validacao");
-    const ruim = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", matricula: "S2", email: "isto não é e-mail", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
+    const ruim = await amb.req("POST", "/usuarios", { como: admin, json: { matricula: "S2", email: "isto não é e-mail", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
     assert.equal(ruim.status, 422);
     assert.equal(ruim.corpo.erro.codigo, "validacao");
-    const semMatricula = await amb.req("POST", "/usuarios", { como: admin, json: { nome: "S", email: "s@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
+    const semMatricula = await amb.req("POST", "/usuarios", { como: admin, json: { email: "s@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" } });
     assert.equal(semMatricula.status, 422);
   });
 
@@ -97,17 +105,39 @@ describe("Plataforma, usuários e equipes", () => {
     assert.equal((await amb.req("POST", "/auth/login", { json: { email: tecnico.matricula, senha: SENHA_PADRAO } })).status, 422);
   });
 
-  it("PATCH /usuarios: trocar o e-mail muda o login, mantém a senha e recusa e-mail já usado", async () => {
+  it("PATCH /usuarios: nome, e-mail, cargo e registro profissional não se editam (vêm do registro de funcionários)", async () => {
     const alvo = await amb.criarUsuario({ perfil: "tecnico", equipeId });
-    const outro = await amb.criarUsuario({ perfil: "tecnico", equipeId });
+    for (const campo of [{ nome: "Outro Nome" }, { email: "outro@empresa.com.br" }, { cargo: "Chefe" }, { registro_profissional: "CREA 1" }]) {
+      const r = await amb.req("PATCH", `/usuarios/${alvo.id}`, { como: admin, json: campo });
+      assert.equal(r.status, 422, JSON.stringify(campo));
+      assert.equal(r.corpo.erro.codigo, "validacao");
+    }
+    await amb.esperar(200, "PATCH", `/usuarios/${alvo.id}`, { como: admin, json: { perfil: "tecnico", equipe_id: equipeId } });
+  });
+
+  it("POST /usuarios/{id}/atualizar-do-registro: copia os dados do registro; trocar o e-mail muda o login e mantém a senha; só o admin", async () => {
+    const alvo = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     const novo = `${alvo.matricula.toLowerCase()}.novo@empresa.com.br`;
-    const dup = await amb.req("PATCH", `/usuarios/${alvo.id}`, { como: admin, json: { email: outro.email.toUpperCase() } });
-    assert.equal(dup.status, 409);
-    assert.equal(dup.corpo.erro.codigo, "email_duplicado");
-    await amb.esperar(200, "PATCH", `/usuarios/${alvo.id}`, { como: admin, json: { email: novo } });
+    amb.registrarFuncionario({ matricula: alvo.matricula, nome: "Nome Atualizado", email: novo, cargo: "Eletricista", registro_profissional: "CREA ES-050003/D" });
+    assert.equal((await amb.req("POST", `/usuarios/${alvo.id}/atualizar-do-registro`, { como: tecnico })).status, 403);
+    assert.equal((await amb.req("POST", `/usuarios/${crypto.randomUUID()}/atualizar-do-registro`, { como: admin })).status, 404);
+
+    const r = await amb.esperar(200, "POST", `/usuarios/${alvo.id}/atualizar-do-registro`, { como: admin });
+    assert.equal(r.situacao_registro, "ativo");
+    assert.equal(r.atualizado, true);
+    assert.equal(r.desativado, false);
+    const { usuario } = await amb.esperar(200, "GET", `/usuarios/${alvo.id}`, { como: admin });
+    assert.equal(usuario.nome, "Nome Atualizado");
+    assert.equal(usuario.cargo, "Eletricista");
+    assert.equal(usuario.registro_profissional, "CREA ES-050003/D");
     assert.equal((await amb.req("POST", "/auth/login", { json: { email: alvo.email, senha: SENHA_PADRAO } })).status, 401);
     const login = await amb.esperar(200, "POST", "/auth/login", { json: { email: novo, senha: SENHA_PADRAO } });
     assert.equal(login.usuario.email, novo);
+
+    // Registro fora do ar: 503 e nada muda.
+    amb.rh.falhar = true;
+    assert.equal((await amb.req("POST", `/usuarios/${alvo.id}/atualizar-do-registro`, { como: admin })).status, 503);
+    amb.rh.falhar = false;
   });
 
   it("DELETE /usuarios: só o admin remove; some do banco e do login; não remove a si mesmo", async () => {
@@ -285,9 +315,11 @@ describe("Plataforma, usuários e equipes", () => {
     assert.equal((await amb.req("POST", "/auth/login", { json: { email: alvo.email, senha: SENHA_PADRAO } })).status, 401);
 
     assert.equal((await amb.req("PATCH", `/usuarios/${admin.id}`, { como: admin, json: { ativo: false } })).status, 422);
-    await amb.esperar(200, "PATCH", `/usuarios/${alvo.id}`, { como: admin, json: { ativo: true, nome: "Reativado" } });
+    // Reativar consulta o registro: só vale se a pessoa está ativa lá.
+    amb.registrarFuncionario({ matricula: alvo.matricula });
+    await amb.esperar(200, "PATCH", `/usuarios/${alvo.id}`, { como: admin, json: { ativo: true } });
     await amb.esperar(200, "GET", "/equipes", { como: alvo });
-    assert.equal((await amb.req("PATCH", `/usuarios/${crypto.randomUUID()}`, { como: admin, json: { nome: "x" } })).status, 404);
+    assert.equal((await amb.req("PATCH", `/usuarios/${crypto.randomUUID()}`, { como: admin, json: { perfil: "tecnico" } })).status, 404);
   });
 
   it("redefinir senha gera nova senha inicial e exige troca", async () => {

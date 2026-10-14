@@ -8,12 +8,16 @@ describe("Auditoria e ajustes do painel do admin", () => {
   let supervisor: UsuarioDeTeste;
   let tecnico: UsuarioDeTeste;
   let equipeId: string;
+  /** Centro de trabalho da equipe: o funcionário do registro precisa ser desse setor para o supervisor cadastrá-lo. */
+  let centro: string;
 
   const trilha = async (consulta: Record<string, string | number> = {}) => (await amb.esperar(200, "GET", "/auditoria", { como: admin, consulta })).registros as any[];
 
   before(async () => {
     amb = await criarAmbiente();
-    equipeId = (await amb.criarEquipe({ nome: "Elétrica" })).id;
+    const equipe = await amb.criarEquipe({ nome: "Elétrica" });
+    equipeId = equipe.id;
+    centro = equipe.centroTrabalho;
     admin = await amb.criarUsuario({ perfil: "admin", nome: "Ana Admin" });
     supervisor = await amb.criarUsuario({ perfil: "tecnico", equipeId, supervisor: true, nome: "Sandra Supervisora" });
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId });
@@ -29,11 +33,12 @@ describe("Auditoria e ajustes do painel do admin", () => {
     });
 
     it("registra cadastro, edição, desativação e redefinição de senha de usuário, com quem fez", async () => {
+      amb.registrarFuncionario({ matricula: "A100", nome: "Maria Souza", email: "maria.souza@empresa.com.br" });
       const { id } = await amb.esperar(201, "POST", "/usuarios", {
         como: admin,
-        json: { nome: "Maria Souza", matricula: "A100", email: "maria.souza@empresa.com.br", perfil: "tecnico", equipe_id: equipeId, senha_inicial: "senha-inicial-1" },
+        json: { matricula: "A100", email: "maria.souza@empresa.com.br", perfil: "tecnico", equipe_id: equipeId, senha_inicial: "senha-inicial-1" },
       });
-      await amb.esperar(200, "PATCH", `/usuarios/${id}`, { como: admin, json: { cargo: "Técnica em Elétrica" } });
+      await amb.esperar(200, "PATCH", `/usuarios/${id}`, { como: admin, json: { equipe_id: null } });
       await amb.esperar(200, "PATCH", `/usuarios/${id}`, { como: admin, json: { ativo: false } });
       await amb.esperar(200, "POST", `/usuarios/${id}/redefinir-senha`, { como: admin });
 
@@ -43,25 +48,27 @@ describe("Auditoria e ajustes do painel do admin", () => {
         ["usuario.criar", "usuario.editar", "usuario.desativar", "usuario.redefinir_senha"],
       );
       assert.ok(registros.every((r) => r.ator_id === admin.id && r.ator_nome === "Ana Admin" && r.alvo === "Maria Souza"));
-      assert.deepEqual(registros[1].detalhes, { cargo: { de: null, para: "Técnica em Elétrica" } });
+      assert.deepEqual(registros[1].detalhes, { equipe_id: { de: equipeId, para: null } });
       assert.match(registros[2].resumo, /Desativou o usuário Maria Souza/);
       assert.ok(!JSON.stringify(registros).includes("senha-inicial-1"), "a senha nunca vai para a trilha");
     });
 
     it("editar sem mudar nada não gera registro", async () => {
       const antes = (await trilha()).length;
-      await amb.esperar(200, "PATCH", `/usuarios/${tecnico.id}`, { como: admin, json: { nome: (await amb.sql<{ nome: string }>("select nome from usuario where id = $1", [tecnico.id]))[0]!.nome } });
+      await amb.esperar(200, "PATCH", `/usuarios/${tecnico.id}`, { como: admin, json: { perfil: "tecnico", equipe_id: equipeId } });
       assert.equal((await trilha()).length, antes);
     });
 
     it("o cadastro pelo supervisor e a liberação e a recusa pelo admin também ficam registrados", async () => {
-      const dois = async (n: number) =>
-        (
+      const dois = async (n: number) => {
+        amb.registrarFuncionario({ matricula: `N${n}`, nome: `Novato ${n}`, email: `novato${n}@empresa.com.br`, centro_trabalho: centro });
+        return (
           await amb.esperar(201, "POST", "/usuarios", {
             como: supervisor,
-            json: { nome: `Novato ${n}`, matricula: `N${n}`, email: `novato${n}@empresa.com.br`, equipe_id: equipeId, senha_inicial: "senha-inicial-1" },
+            json: { matricula: `N${n}`, email: `novato${n}@empresa.com.br`, senha_inicial: "senha-inicial-1" },
           })
         ).id as string;
+      };
       const liberado = await dois(1);
       const recusado = await dois(2);
       await amb.esperar(200, "POST", `/usuarios/${liberado}/liberar`, { como: admin });
@@ -113,9 +120,10 @@ describe("Auditoria e ajustes do painel do admin", () => {
     });
 
     it("sobrevive à remoção da conta de quem agiu e do alvo", async () => {
+      amb.registrarFuncionario({ matricula: "T1", nome: "Temporário", email: "temporario@empresa.com.br" });
       const { id } = await amb.esperar(201, "POST", "/usuarios", {
         como: admin,
-        json: { nome: "Temporário", matricula: "T1", email: "temporario@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
+        json: { matricula: "T1", email: "temporario@empresa.com.br", perfil: "tecnico", senha_inicial: "senha-inicial-1" },
       });
       await amb.esperar(200, "DELETE", `/usuarios/${id}`, { como: admin });
       const registros = await trilha({ entidade_id: id });
@@ -154,9 +162,10 @@ describe("Auditoria e ajustes do painel do admin", () => {
       const outraEquipe = (await amb.criarEquipe()).id;
       const alheio = await amb.criarUsuario({ perfil: "tecnico", equipeId: outraEquipe });
       const inativo = await amb.criarUsuario({ perfil: "tecnico", equipeId, ativo: false });
+      amb.registrarFuncionario({ matricula: "P1", nome: "Pendente Um", email: "pendente.um@empresa.com.br", centro_trabalho: centro });
       await amb.esperar(201, "POST", "/usuarios", {
         como: supervisor,
-        json: { nome: "Pendente Um", matricula: "P1", email: "pendente.um@empresa.com.br", equipe_id: equipeId, senha_inicial: "senha-inicial-1" },
+        json: { matricula: "P1", email: "pendente.um@empresa.com.br", senha_inicial: "senha-inicial-1" },
       });
 
       const todos = await amb.esperar(200, "GET", "/usuarios", { como: supervisor, consulta: { minha_supervisao: true, perfil: "tecnico", tamanho: 200 } });

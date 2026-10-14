@@ -14,6 +14,7 @@ import { popularDemo } from "../src/db/seed/demo";
 import { ArmazenamentoSupabase } from "../src/servicos/armazenamento";
 import { AuthSupabase } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
+import { ClienteRhHttp } from "../src/servicos/rh-http";
 import { ClienteSapHttp } from "../src/servicos/sap-http";
 
 const config = lerConfig();
@@ -26,6 +27,7 @@ try {
     armazenamento: new ArmazenamentoSupabase(config.supabaseUrl, config.supabaseServiceRoleKey),
     email: new EmailEmMemoria(),
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
+    rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
     agora: () => new Date(),
   });
   if (resultado.jaPopulado) {

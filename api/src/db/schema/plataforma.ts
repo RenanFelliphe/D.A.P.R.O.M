@@ -2,16 +2,16 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 
-export const TAREFA_TIPOS = ["pdf_os", "email_alerta", "leitura_sap"] as const;
+export const TAREFA_TIPOS = ["pdf_os", "email_alerta", "leitura_sap", "leitura_rh", "conferencia_rh"] as const;
 export const TAREFA_ESTADOS = ["pendente", "em_andamento", "concluida", "falhou"] as const;
 
-/** Tarefas em segundo plano: geração de PDF, e-mail de alerta e leitura do SAP. */
+/** Tarefas em segundo plano: geração de PDF, e-mail de alerta, leitura do SAP e as conferências com o registro de funcionários. */
 export const tarefa = pgTable(
   "tarefa",
   {
     id: uuid().primaryKey().defaultRandom(),
     tipo: text({ enum: TAREFA_TIPOS }).notNull(),
-    /** os.id, alerta.id ou nulo (leitura agendada). */
+    /** os.id, alerta.id, importacao.id, leitura_rh.id, usuario.id (conferencia_rh) ou nulo (leitura agendada do SAP). */
     referenciaId: uuid(),
     estado: text({ enum: TAREFA_ESTADOS }).notNull().default("pendente"),
     tentativas: integer().notNull().default(0),
@@ -31,7 +31,7 @@ export const tarefa = pgTable(
 ).enableRLS();
 
 /** O que a trilha de auditoria registra: cada entidade que o admin (ou o supervisor) cria, altera ou remove. */
-export const AUDITORIA_ENTIDADES = ["usuario", "equipe", "modelo_apr", "atividade", "material", "os", "importacao", "exportacao", "plano_preventiva", "patente", "conquista", "regra_pontuacao"] as const;
+export const AUDITORIA_ENTIDADES = ["usuario", "equipe", "modelo_apr", "atividade", "material", "os", "importacao", "exportacao", "plano_preventiva", "patente", "conquista", "regra_pontuacao", "rh"] as const;
 export type AuditoriaEntidade = (typeof AUDITORIA_ENTIDADES)[number];
 
 /**
@@ -44,8 +44,8 @@ export const auditoria = pgTable(
   {
     id: uuid().primaryKey().defaultRandom(),
     em: instante().notNull().defaultNow(),
-    /** `usuario.id` de quem agiu, sem chave estrangeira (a conta pode ser removida depois). */
-    atorId: uuid().notNull(),
+    /** `usuario.id` de quem agiu, sem chave estrangeira (a conta pode ser removida depois); nulo quando quem agiu foi um sistema (o registro de funcionários). */
+    atorId: uuid(),
     atorNome: text().notNull(),
     /** `entidade.verbo`, ex.: `usuario.criar`, `modelo_apr.publicar`. */
     acao: text().notNull(),

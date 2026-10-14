@@ -7,6 +7,7 @@ import { equipe, execucao, execucaoPausa, LIBERACOES, localInstalacao, os, PERFI
 import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeUsuarios, usuariosVisiveis } from "../dominio/busca";
 import { apagarGamificacaoDaPessoa } from "../dominio/lancamentos";
+import { aplicarConferencia, conferirParaCadastro, consultarFuncionario, exigirSetorSupervisionado } from "../dominio/rh";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
 import { equipeParaApi, gerarSenhaInicial, nomesDosCriadores, usuarioParaApi } from "../dominio/usuarios";
 import { ehSupervisor, equipesDoEscopo, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
@@ -19,8 +20,6 @@ import { senhaNova } from "./auth";
 /** Identificação definitiva da pessoa na empresa; não é o login (o login é o e-mail institucional). */
 const matricula = z.string().trim().min(1).max(40);
 
-const textoOpcional = z.string().trim().min(1).nullable().optional();
-
 async function exigirEquipe(deps: Deps, equipeId: string | null | undefined) {
   if (!equipeId) return;
   const [e] = await deps.db.select({ id: equipe.id }).from(equipe).where(eq(equipe.id, equipeId));
@@ -32,56 +31,67 @@ const pendenteDoSupervisor = (eu: UsuarioAutenticado, alvo: { liberacao: string;
   alvo.liberacao === "pendente" && alvo.criadoPorId === eu.id;
 
 /**
- * Cadastro de usuários (admin; o supervisor cadastra técnicos das suas equipes, que nascem pendentes até um admin
- * liberar) e a listagem de colegas de equipe (todos os perfis). O primeiro CRUD: os demais seguem esta convenção. */
+ * Cadastro de usuários a partir do registro de funcionários (admin; o supervisor cadastra técnicos das suas equipes, que
+ * nascem pendentes até um admin liberar) e a listagem de colegas de equipe (todos os perfis). O primeiro CRUD: os demais seguem
+ * esta convenção. */
 export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
+  /**
+   * Cadastra quem já está no registro de funcionários (`apifuncionarios.md`, seção 4). O corpo traz só a matrícula, o e-mail, o perfil
+   * e a equipe (o admin) e a senha inicial: nome, cargo e registro profissional vêm do registro, que a `api` consulta de novo aqui
+   * (não confia na prévia de `GET /rh/funcionarios/{matricula}`). Recusa matrícula fora do registro, e-mail que não é o dela e
+   * funcionário afastado ou desligado. O supervisor cadastra só técnicos de um setor cuja equipe ele supervisiona, na equipe do setor.
+   */
   r.post("/usuarios", autenticar(), exigirPerfil("admin", "supervisor"), async (c) => {
     const eu = c.get("usuario");
     const admin = eu.perfil === "admin";
     const dados = await lerCorpo(
       c,
       z.object({
-        nome: textoObrigatorio,
         matricula,
         email: emailInstitucional,
         perfil: z.enum(PERFIS).optional(),
         equipe_id: uuid.nullable().optional(),
-        cargo: textoOpcional,
-        registro_profissional: textoOpcional,
         senha_inicial: senhaNova,
       }),
     );
     if (admin && !dados.perfil) throw invalido("validacao", "Informe o perfil");
-    if (!admin) {
-      // Supervisor: só técnico, só numa equipe que ele supervisiona; a conta nasce pendente.
-      if (dados.perfil && dados.perfil !== "tecnico") throw proibido("O supervisor só cadastra técnicos");
-      if (!dados.equipe_id) throw invalido("equipe_obrigatoria", "Informe a equipe do técnico");
-      if (!eu.equipesSupervisionadas.includes(dados.equipe_id)) throw proibido("Você só cadastra técnicos nas equipes que supervisiona");
-    }
-    await exigirEquipe(deps, dados.equipe_id);
+    if (!admin && dados.perfil && dados.perfil !== "tecnico") throw proibido("O supervisor só cadastra técnicos");
+    // Equipe informada que não existe é erro de quem pediu, antes de consultar o registro.
+    if (admin) await exigirEquipe(deps, dados.equipe_id);
 
-    const [existente] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(sql`lower(${usuario.matricula})`, dados.matricula.toLowerCase()));
+    const { funcionario, equipeSugerida } = await conferirParaCadastro(deps, dados.matricula, dados.email);
+    // Supervisor: a equipe é a do setor do funcionário, e o setor tem de ser de uma equipe que ele supervisiona.
+    if (!admin) exigirSetorSupervisionado(eu, funcionario, equipeSugerida);
+    // Admin: sem `equipe_id` no corpo vale a equipe do setor; `null` cadastra sem equipe.
+    const equipeId = admin ? (dados.equipe_id !== undefined ? dados.equipe_id : (equipeSugerida?.id ?? null)) : equipeSugerida!.id;
+
+    const [existente] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(sql`lower(${usuario.matricula})`, funcionario.matricula.toLowerCase()));
     if (existente) throw conflito("matricula_duplicada", "Matrícula já cadastrada");
-    const [emailUsado] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, dados.email));
+    const email = funcionario.email.trim().toLowerCase();
+    const [emailUsado] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, email));
     if (emailUsado) throw conflito("email_duplicado", "E-mail já cadastrado");
 
-    const conta = await deps.auth.criarConta(dados.email, dados.senha_inicial);
+    const nome = funcionario.nome.trim();
+    const agora = deps.agora();
+    const conta = await deps.auth.criarConta(email, dados.senha_inicial);
     try {
       await deps.db.insert(usuario).values({
         id: conta.id,
-        nome: dados.nome,
-        matricula: dados.matricula,
-        email: dados.email,
-        cargo: dados.cargo ?? null,
-        registroProfissional: dados.registro_profissional ?? null,
+        nome,
+        matricula: funcionario.matricula,
+        email,
+        cargo: funcionario.cargo.trim() || null,
+        registroProfissional: funcionario.registro_profissional?.trim() || null,
         perfil: admin ? dados.perfil! : "tecnico",
-        equipeId: dados.equipe_id ?? null,
+        equipeId,
         senhaProvisoria: true,
         liberacao: admin ? "liberado" : "pendente",
         criadoPorId: eu.id,
-        criadoEm: new Date(deps.agora()),
+        criadoEm: new Date(agora),
+        situacaoRegistro: "ativo",
+        registroConferidoEm: agora,
       });
     } catch (erro) {
       await deps.auth.excluirConta(conta.id);
@@ -91,80 +101,68 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       entidade: "usuario",
       verbo: "criar",
       entidadeId: conta.id,
-      alvo: dados.nome,
-      resumo: admin ? `Cadastrou o usuário ${dados.nome} (${dados.perfil})` : `Cadastrou o técnico ${dados.nome}, que aguarda a liberação`,
-      detalhes: { matricula: dados.matricula, perfil: admin ? dados.perfil : "tecnico", equipe_id: dados.equipe_id ?? null },
+      alvo: nome,
+      resumo: admin ? `Cadastrou o usuário ${nome} (${dados.perfil})` : `Cadastrou o técnico ${nome}, que aguarda a liberação`,
+      detalhes: { matricula: funcionario.matricula, perfil: admin ? dados.perfil : "tecnico", equipe_id: equipeId },
     });
     return responder(c, { id: conta.id }, 201);
   });
 
+  /**
+   * O admin altera só o perfil, a equipe e se a conta está ativa: nome, e-mail, cargo e registro profissional vêm do registro de
+   * funcionários (`POST /usuarios/{id}/atualizar-do-registro`). Reativar (`ativo: true`) consulta o registro: desligado ou fora dele é
+   * `409 funcionario_desligado`, e afastado, `409 funcionario_afastado`. O supervisor não edita ninguém (só cancela o cadastro pendente).
+   */
   r.patch("/usuarios/:id", autenticar(), exigirPerfil("admin", "supervisor"), async (c) => {
     const id = lerId(c);
     const eu = c.get("usuario");
-    const admin = eu.perfil === "admin";
+    if (eu.perfil !== "admin") throw proibido("O supervisor não edita o cadastro: nome, cargo e registro vêm do registro de funcionários. Ele só cancela o cadastro pendente que fez");
     const dados = await lerCorpo(
       c,
-      z.object({
-        nome: textoObrigatorio.optional(),
-        email: emailInstitucional.optional(),
-        perfil: z.enum(PERFIS).optional(),
-        equipe_id: uuid.nullable().optional(),
-        cargo: textoOpcional,
-        registro_profissional: textoOpcional,
-        ativo: z.boolean().optional(),
-      }),
+      z
+        .object({
+          perfil: z.enum(PERFIS).optional(),
+          equipe_id: uuid.nullable().optional(),
+          ativo: z.boolean().optional(),
+        })
+        .strict(),
     );
     const [atual] = await deps.db.select().from(usuario).where(eq(usuario.id, id));
     if (!atual) throw naoEncontrado("Usuário não encontrado");
 
-    if (!admin) {
-      // Supervisor: só nome, cargo e registro profissional do pendente que ele cadastrou.
-      if (!pendenteDoSupervisor(eu, atual)) throw proibido("Você só edita o técnico que cadastrou e que ainda aguarda a liberação");
-      if (dados.email !== undefined || dados.perfil !== undefined || dados.equipe_id !== undefined || dados.ativo !== undefined) {
-        throw proibido("O supervisor só altera nome, cargo e registro profissional");
-      }
-    } else if (dados.ativo !== undefined && atual.liberacao !== "liberado") {
+    if (dados.ativo !== undefined && atual.liberacao !== "liberado") {
       throw conflito("usuario_nao_liberado", "Libere ou recuse o acesso (POST /usuarios/{id}/liberar ou /recusar) em vez de ativar ou desativar");
     }
-
     if (id === eu.id && (dados.ativo === false || (dados.perfil && dados.perfil !== "admin"))) {
       throw invalido("auto_alteracao", "Você não pode desativar nem rebaixar o próprio usuário");
     }
     await exigirEquipe(deps, dados.equipe_id);
 
-    // O e-mail é o login: a conta no serviço de acesso troca junto, e volta ao anterior se o banco recusar.
-    const trocaEmail = dados.email !== undefined && dados.email !== atual.email;
-    if (trocaEmail) {
-      const [emailUsado] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.email, dados.email!));
-      if (emailUsado) throw conflito("email_duplicado", "E-mail já cadastrado");
-      await deps.auth.atualizarEmail(id, dados.email!);
+    // Reativar só vale se o registro disser que a pessoa está ativa (quem sumiu de lá conta como desligada).
+    const reativando = dados.ativo === true && !atual.ativo;
+    if (reativando) {
+      const funcionario = await consultarFuncionario(deps, atual.matricula);
+      if (!funcionario || funcionario.situacao === "desligado") throw conflito("funcionario_desligado", "Este funcionário foi desligado no registro de funcionários e a conta não pode ser reativada");
+      if (funcionario.situacao === "afastado") throw conflito("funcionario_afastado", "Este funcionário está afastado no registro de funcionários e a conta não pode ser reativada agora");
     }
 
-    try {
-      await deps.db
-        .update(usuario)
-        .set({
-          ...(dados.nome !== undefined && { nome: dados.nome }),
-          ...(dados.email !== undefined && { email: dados.email }),
-          ...(dados.perfil !== undefined && { perfil: dados.perfil }),
-          ...(dados.equipe_id !== undefined && { equipeId: dados.equipe_id }),
-          ...(dados.cargo !== undefined && { cargo: dados.cargo }),
-          ...(dados.registro_profissional !== undefined && { registroProfissional: dados.registro_profissional }),
-          ...(dados.ativo !== undefined && { ativo: dados.ativo }),
-        })
-        .where(eq(usuario.id, id));
-    } catch (erro) {
-      if (trocaEmail) await deps.auth.atualizarEmail(id, atual.email).catch(() => {});
-      throw erro;
-    }
+    await deps.db
+      .update(usuario)
+      .set({
+        ...(dados.perfil !== undefined && { perfil: dados.perfil }),
+        ...(dados.equipe_id !== undefined && { equipeId: dados.equipe_id }),
+        ...(dados.ativo !== undefined && { ativo: dados.ativo }),
+        ...(reativando && { situacaoRegistro: "ativo" as const, registroConferidoEm: deps.agora() }),
+      })
+      .where(eq(usuario.id, id));
 
     // Desativar bloqueia a `api` na hora; o Supabase só é revogado depois que a fila offline pendente subir
     // (ver `POST /eventos`). Reativar desfaz uma revogação anterior.
-    if (dados.ativo === true && !atual.ativo) await deps.auth.restaurar(id);
+    if (reativando) await deps.auth.restaurar(id);
 
     const mudancas = diferencas(
-      { nome: atual.nome, email: atual.email, perfil: atual.perfil, equipe_id: atual.equipeId, cargo: atual.cargo, registro_profissional: atual.registroProfissional, ativo: atual.ativo },
-      { nome: dados.nome, email: dados.email, perfil: dados.perfil, equipe_id: dados.equipe_id, cargo: dados.cargo, registro_profissional: dados.registro_profissional, ativo: dados.ativo },
+      { perfil: atual.perfil, equipe_id: atual.equipeId, ativo: atual.ativo },
+      { perfil: dados.perfil, equipe_id: dados.equipe_id, ativo: dados.ativo },
     );
     if (Object.keys(mudancas).length > 0) {
       const soAtivo = Object.keys(mudancas).length === 1 && "ativo" in mudancas;
@@ -172,12 +170,27 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
         entidade: "usuario",
         verbo: soAtivo ? (dados.ativo ? "reativar" : "desativar") : "editar",
         entidadeId: id,
-        alvo: dados.nome ?? atual.nome,
+        alvo: atual.nome,
         resumo: soAtivo ? `${dados.ativo ? "Reativou" : "Desativou"} o usuário ${atual.nome}` : `Editou o usuário ${atual.nome} (${Object.keys(mudancas).join(", ")})`,
         detalhes: mudancas,
       });
     }
     return responder(c, {});
+  });
+
+  /**
+   * "Atualizar do registro" (só admin): copia do registro de funcionários o nome, o e-mail (que é o login), o cargo e o registro
+   * profissional, e grava a situação. Se o registro diz que a pessoa foi desligada, a conta é desativada (exceto o último admin
+   * ativo, que fica para uma pessoa decidir).
+   */
+  r.post("/usuarios/:id/atualizar-do-registro", autenticar(), exigirPerfil("admin"), async (c) => {
+    const id = lerId(c);
+    const eu = c.get("usuario");
+    const [alvo] = await deps.db.select().from(usuario).where(eq(usuario.id, id));
+    if (!alvo) throw naoEncontrado("Usuário não encontrado");
+    const funcionario = await consultarFuncionario(deps, alvo.matricula);
+    const resultado = await aplicarConferencia(deps, alvo, funcionario, eu);
+    return responder(c, { situacaoRegistro: resultado.situacao, atualizado: resultado.atualizado, desativado: resultado.desativado, recusado: resultado.recusado });
   });
 
   /**

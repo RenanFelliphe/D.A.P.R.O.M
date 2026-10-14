@@ -134,6 +134,13 @@
       "when": 1791973771232,
       "tag": "0018_apr_materiais",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791987606562,
+      "tag": "0019_rh_registro_de_funcionarios",
+      "breakpoints": true
     }
   ]
 }

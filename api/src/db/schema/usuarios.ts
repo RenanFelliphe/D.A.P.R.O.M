@@ -17,6 +17,10 @@ export type EstadoTreinamento = (typeof ESTADOS_TREINAMENTO)[number];
 export const LIBERACOES = ["liberado", "pendente", "recusado"] as const;
 export type Liberacao = (typeof LIBERACOES)[number];
 
+/** Situação da pessoa no registro de funcionários; `fora_do_registro` é a matrícula que sumiu de lá. */
+export const SITUACOES_REGISTRO = ["ativo", "afastado", "desligado", "fora_do_registro"] as const;
+export type SituacaoRegistro = (typeof SITUACOES_REGISTRO)[number];
+
 /** `equipe.supervisorId` e `usuario.equipeId` se referenciam; o Drizzle cria a segunda chave depois das duas tabelas. */
 export const equipe = pgTable(
   "equipe",
@@ -73,6 +77,9 @@ export const usuario = pgTable(
      */
     patenteAvisadaId: uuid(),
     patenteAvisadaTemporada: text(),
+    /** O que o registro de funcionários diz desta pessoa na última conferência; nulo até a primeira. */
+    situacaoRegistro: text({ enum: SITUACOES_REGISTRO }),
+    registroConferidoEm: instante(),
   },
   (t) => [
     check("usuario_perfil_check", emLista(t.perfil, PERFIS)),
@@ -80,6 +87,7 @@ export const usuario = pgTable(
     check("usuario_treinamento_estado_check", emLista(t.treinamentoEstado, ESTADOS_TREINAMENTO)),
     check("usuario_assinatura_completa", sql`(${t.assinaturaPath} is null) = (${t.assinaturaEm} is null)`),
     check("usuario_liberacao_check", emLista(t.liberacao, LIBERACOES)),
+    check("usuario_situacao_registro_check", emLista(t.situacaoRegistro, SITUACOES_REGISTRO)),
     index("usuario_liberacao_pendente_idx").on(t.liberacao).where(sql`${t.liberacao} = 'pendente'`),
     index("usuario_equipe_idx").on(t.equipeId).where(sql`${t.ativo}`),
     index("usuario_perfil_idx").on(t.perfil).where(sql`${t.ativo}`),

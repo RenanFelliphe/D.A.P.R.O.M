@@ -16,6 +16,8 @@ services:
       SAP_SIMULADO: ${SAP_SIMULADO:-true}
       SAP_API_URL: ${SAP_API_URL:-http://localhost:3333/sap-simulado}
       SAP_API_TOKEN: ${SAP_API_TOKEN:-token-de-desenvolvimento}
+      # O registro de funcionários (RH) também é simulado na própria api; endereço e tokens têm padrão.
+      RH_SIMULADO: ${RH_SIMULADO:-true}
       PAINEL_URL: ${PAINEL_URL:-http://localhost:3000}
     ports:
       - "3333:3333"

@@ -21,6 +21,7 @@ import { PASTA_MIGRACOES, type Db } from "./db/conexao";
 import { equipe, usuario, type Perfil } from "./db/schema";
 import { popularCatalogoDemo } from "./db/seed/catalogo-demo";
 import { carregarDadosIniciais } from "./db/seed/carregar";
+import { carregarRegistroDosUsuarios } from "./db/seed/registro-rh";
 import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
 import type { Deps } from "./deps";
 import { executarLeitura } from "./servicos/leitura-sap";
@@ -28,6 +29,7 @@ import { ArmazenamentoEmMemoria } from "./servicos/armazenamento";
 import { DOMINIO_DEMO, emailDoNome } from "./dominio/usuarios";
 import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
+import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
 
@@ -35,6 +37,8 @@ const PORTA = Number(process.env.PORT ?? 3333);
 const SENHA = "daprom123";
 const SEGREDO_JWT = "segredo-local-so-para-desenvolvimento-0123456789";
 const TOKEN_SAP = "token-de-desenvolvimento";
+const TOKEN_RH = "token-rh-de-desenvolvimento";
+const TOKEN_AVISO_RH = "token-aviso-rh-de-desenvolvimento";
 
 /** PNG de 1×1 pixel: serve de "assinatura" nos dados de exemplo. */
 const PNG = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
@@ -50,6 +54,12 @@ const config: Config = {
   sapApiToken: TOKEN_SAP,
   sapSimulado: true,
   sapLeituraIntervaloMin: 15,
+  rhSimulado: true,
+  rhApiUrl: `http://127.0.0.1:${PORTA}/rh-simulado`,
+  rhApiToken: TOKEN_RH,
+  rhAvisoToken: TOKEN_AVISO_RH,
+  rhAvisoUrl: `http://127.0.0.1:${PORTA}/rh/avisos`,
+  rhLeituraHora: 3,
   smtpUrl: "",
   emailRemetente: "daprom@localhost",
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
@@ -72,6 +82,7 @@ async function main() {
     armazenamento,
     email: new EmailEmMemoria(),
     sap: new ClienteSapHttp(config.sapApiUrl, TOKEN_SAP),
+    rh: new ClienteRhHttp(config.rhApiUrl, TOKEN_RH),
     agora: () => new Date(),
   };
 
@@ -114,6 +125,10 @@ async function main() {
   await criar("tec3", "Tomás Técnico", "tecnico", "INSTRUM", { cargo: "Técnico em Instrumentação" });
   await db.update(equipe).set({ supervisorId: sup1 }).where(eq(equipe.id, equipes.SERV_ESP!));
   await db.update(equipe).set({ supervisorId: sup2 }).where(eq(equipe.id, equipes.INSTRUM!));
+
+  // O registro de funcionários simulado: um funcionário para cada usuário acima, mais uns 30 sem conta para demonstrar o cadastro.
+  const registro = await carregarRegistroDosUsuarios(db, { aleatorios: 30 });
+  console.log(`Registro de funcionários simulado: ${registro.criados + registro.aleatorios} funcionários (${registro.aleatorios} sem conta)`);
 
   const parar = iniciarTarefas(deps);
   // As URLs "assinadas" do armazenamento em memória apontam para cá, para o navegador conseguir exibir fotos e assinaturas.
