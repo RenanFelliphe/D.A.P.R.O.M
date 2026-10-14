@@ -9,7 +9,7 @@
 - A `api` e a `web` cobrem o fluxo inteiro **online**: ler a OS → APR → executar → PDF, com painel, alertas, indicadores e auditoria.
 - O que falta das essenciais é o **app `mobile`** (Android), e com ele o **modo offline**. A especificação exige os dois no critério de sucesso da demo.
 - Das extras, as três ligadas ao fluxo já estavam prontas (OS de apoio, assinatura no perfil, equipe automática). As demais não tinham começado.
-- **Decisão de 13/10/2026:** antes do app, implementar três extras: a **evidência em PDF**, o **catálogo de serviço com os materiais** e o **intervalo entre ciclos das preventivas**. As três foram feitas no mesmo dia (seção 3). O próximo passo das essenciais continua sendo o app.
+- **Decisão de 13/10/2026:** antes do app, implementar duas extras: a **evidência em PDF** e o **catálogo de serviço com os materiais** (seção 3).
 
 ---
 
@@ -39,7 +39,7 @@ Validação registrada na entrega de 13/10: 366 testes da `api`, `tsc`, `eslint`
 | Funcionalidade | Situação |
 |---|---|
 | Validar a permissão de executar a OS depois da análise da APR | **Pronta** (`api` e web) |
-| Documentação comprobatória do obstáculo (imagem, PDF…) por item reprovado | **Pronta.** Era parcial (só foto ou texto); o PDF foi feito em 13/10/2026 (seção 3) |
+| Documentação comprobatória do obstáculo (imagem, PDF…) por item reprovado | Era **parcial**: só foto ou texto. O PDF entra nesta rodada (seção 3) |
 | Sincronização automática e manual dos dados offline | **Só na `api`.** Falta o cliente: o app com a fila local |
 | Token temporário guardado no aparelho para o login offline | **Não feito.** Depende do app |
 | Ler a equipe definida na OS (atribuição automática) | **Pronta.** A equipe sai do centro de trabalho da OS |
@@ -91,9 +91,9 @@ Ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e sugestões da R
 | Evidência em PDF, além de foto ou texto | DesignDoc (essenciais) | Não feita na análise (adiada na questão 46). **Implementada nesta rodada** (seção 3) |
 | Catálogo de serviço com os materiais | DesignDoc (prioridades) | Não feito na análise: os materiais chegavam só como texto na descrição da OS. **Implementado nesta rodada** (seção 3) |
 | Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Não feito.** A "Digitalização" da tela de importação só abre a câmera: não lê o texto nem grava |
-| Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | Não feito na análise: só existia o indicador mensal (preventivas encerradas e atrasadas, com ou sem justificativa). **Implementado nesta rodada** (seção 3.3) |
+| Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | **Não feito.** Só existe o indicador mensal (preventivas encerradas e atrasadas, com ou sem justificativa). O plano e o item de manutenção já ficam gravados na OS |
 | Chatbot de consulta | Iago, na Reunião 2 | **Não feito.** Os exemplos dele ("o que eu executei em maio", "tudo o que a equipe X executou em 2025") já se respondem por filtro, em "Meus resultados" e na exportação do dashboard de OS |
-| Gamificação | Time, na Reunião 2 | **Não feita.** Os rankings atuais são de itens reprovados e de locais, não de pessoas |
+| Gamificação | Time, na Reunião 2 | **Feita em 13/10/2026** (`api` e web): pontos por tarefa, patentes e ranking por temporada, conquistas e anonimato; as regras estão no [gameficacao.md](gameficacao.md) e o contrato na [especificação](base/.design/especificacao.md#gamificação). O app a recebe quando existir |
 | API de funcionários para cadastro rápido | DesignDoc (extras) | **Não feita.** As contas são criadas uma a uma, pelo admin ou pelo supervisor |
 
 ### 2.2 Vale a pena fazer antes do app?
@@ -113,8 +113,8 @@ O time decidiu, mesmo assim, implementar já as duas da seção 3.
 ### 2.3 Depois do app, as que valem
 
 - **Chatbot: a melhor escolha.** É a única pedida pelo cliente e roda sobre a web pronta. Antes, decidir quem fornece a IA: no protótipo, mandar dados fictícios a um serviço externo não tem problema, mas no piloto a empresa precisa aprovar (LGPD). O chatbot deve consultar pelas mesmas rotas da `api`, com o token de quem pergunta: herda as permissões, e o técnico não descobre por ele o que é eliminatório.
-- **Intervalo das preventivas:** feito em 13/10/2026 (seção 3.3). O risco que continua é a mudança nos códigos do plano: o plano novo começa sem histórico e sem intervalo, e aparece na Importação para definir.
-- **Gamificação: com cuidado.** Premiar a quantidade de OS empurra a equipe a apressar a APR, o contrário do que o sistema protege. Se entrar, deve premiar o cumprimento das regras (APR completa, evidências, ciência), não o volume.
+- **Intervalo das preventivas: em segundo lugar.** Os dados já existem (plano, item e datas de encerramento); caberia como seção do dashboard de OS. O risco é a mudança nos códigos do plano quebrar o agrupamento.
+- **Gamificação: feita em 13/10/2026, com o cuidado que a análise pedia.** Premiar a quantidade de OS empurraria a equipe a apressar a APR, o contrário do que o sistema protege. A regra central é que a segurança nunca custa pontos: APR bloqueada e execução interrompida por risco valem o mesmo que as outras, nenhuma regra olha a resposta de um item (o técnico continua sem saber o que é eliminatório) e a APR do mesmo serviço não soma de novo a cada tentativa.
 
 A ordem só se inverteria se a próxima apresentação aos mentores caísse antes de o app ter algo para mostrar: aí o chatbot seria a vitrine mais rápida.
 
@@ -129,41 +129,3 @@ A ordem só se inverteria se a próxima apresentação aos mentores caísse ante
 ### 3.2 Catálogo de serviço com os materiais
 
 **Estado:** em implementação.
-
-### 3.3 Intervalo entre ciclos das preventivas
-
-**Estado:** feito em 13/10/2026. Detalhes na [especificação](base/.design/especificacao.md#ciclo-das-preventivas); a pergunta ao Iago é a questão 66 dos [pontos a validar](base/.design/pontos-a-validar.md).
-
-**A regra:** o sistema **não cria OS preventiva** a cada ciclo. As OS continuam vindo do SAP; o sistema conta o tempo até o próximo ciclo de cada plano de manutenção (plano + item) e **avisa** quem planeja:
-
-- **ciclo próximo** (`preventiva_proxima`): quando o vencimento entra na antecedência do plano (7 dias por padrão);
-- **ciclo vencido** (`preventiva_vencida`): quando vence sem OS nova do plano.
-
-Cada alerta sai uma vez por vencimento, para o supervisor da equipe da última OS (sem supervisor, os admins), e aparece nas notificações com o detalhe do ciclo. A OS do ciclo seguinte que chega do SAP reinicia a contagem.
-
-**Intervalo:** `n` dias, semanas, quinzenas (15 dias), meses, bimestres, trimestres, semestres ou anos. O próximo ciclo conta do **encerramento** da última OS (padrão) ou da **data programada** dela (calendário fixo).
-
-**Onde aparece:**
-
-| Lugar | O que tem |
-|---|---|
-| Quadro de OS, botão **OS preventivas** (admin e supervisor) | janela com a contagem regressiva de cada preventiva ("Faltam 12 dias", "Vencido há 3 dias"), a barra do ciclo, os totais por situação (vencido, vence em breve, aguardando execução, em dia), a busca, o histórico de cada plano e a edição do ciclo. O botão mostra quantas pedem atenção |
-| Importação: coluna da planilha | `Intervalo` ou `Periodicidade` ("3 meses", "30 dias", "trimestral"); valor que não dá para entender vira aviso, e a OS entra |
-| Importação: conferência do PDF | campo "Intervalo entre ciclos" na preventiva com plano, preenchido pela Periodicidade impressa ou pelo que o plano já tem |
-| Importação: resultado e seção "Intervalo das preventivas" | as preventivas que entraram sem intervalo, com o campo para definir ali mesmo |
-| API do SAP (e o simulador) | campo opcional `intervalo_ciclo` na ordem |
-| Notificações | os dois alertas de ciclo, com a situação do plano agora e o atalho para a janela |
-| Detalhe da OS preventiva | cartão "Ciclo da preventiva": intervalo, próximo ciclo e, se a OS é de um ciclo anterior, qual é a última |
-| Dashboard de OS | bloco "Ciclo das preventivas" na carteira de agora |
-| Auditoria | quem definiu, mudou, pausou ou retomou o ciclo |
-
-**O que veio junto, para o ciclo ficar completo:**
-
-1. **Histórico do plano:** cada ciclo (OS) com a data programada, o vencimento que o ciclo anterior marcou, o encerramento e o atraso; o cumprimento (ciclos no prazo e com atraso) e o intervalo real médio contra o definido.
-2. **Próximas datas:** os 6 próximos ciclos projetados.
-3. **Pausa do ciclo:** sem contagem nem alertas (equipamento fora de operação, plano suspenso no SAP), com observação.
-4. **Antecedência por plano:** quantos dias antes o aviso sai.
-5. **Permissões:** todos veem o próprio escopo (a equipe da última OS); só o admin e o supervisor da equipe definem o ciclo.
-6. **Carga:** a migração cria os planos das OS preventivas que já existiam (sem intervalo); a demonstração traz planos em todas as situações e um plano com dois ciclos.
-
-**Validação:** 16 testes novos na `api` (cálculo, situações, alertas, edição, importação pela API, planilha e PDF, fuso do encerramento), o teste do schema e o da demonstração atualizados; `tsc`, `eslint` e `next build` da `web` sem erros.

@@ -320,7 +320,7 @@
 
 | # | Questão | Por quê |
 |---|---|---|
-| 45 | Catálogo de serviço, escaneamento de papéis antigos, intervalo das preventivas: entram no MVP? | **Adotado: ficam fora do MVP**, junto com o chatbot e a gamificação; o time escolhe depois quais ideias guardar para a apresentação final. **Exceções (13/10/2026):** o catálogo de serviço (questão 65) e o intervalo entre ciclos das preventivas (questão 66) foram feitos |
+| 45 | Catálogo de serviço, escaneamento de papéis antigos, intervalo das preventivas: entram no MVP? | **Adotado: ficam fora do MVP**, junto com o chatbot e a gamificação; o time escolhe depois quais ideias guardar para a apresentação final. **Exceções (13/10/2026):** o catálogo de serviço (questão 65), o intervalo entre ciclos das preventivas (questão 66) e a gamificação (pontos, patentes, ranking, conquistas e anonimato; ver [Gamificação](especificacao.md#gamificação)) foram feitos |
 | 51 | O encerramento da OS atualiza o status no SAP? (o Iago descreve o status mudando para encerrada, 25:27–25:43) | **Adotado: a baixa segue por planilha**, com as colunas da aba `Encerradas`; o Iago confirma se o SAP espera outra coisa |
 
 ## 7. Já decidido

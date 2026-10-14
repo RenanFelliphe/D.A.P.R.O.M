@@ -26,7 +26,7 @@ Volume: ~390 OS encerradas no mês passado, variando de ~200 a 409 por mês (Reu
 
 Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por arquivo (a planilha exportada ou o PDF da OS impresso pelo SAP); aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor da equipe; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP. Só há dois perfis, `tecnico` e `admin`; o supervisor é o técnico que a equipe aponta, não um perfil, e a Segurança do Trabalho não usa o sistema.
 
-Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Escaneamento de OS e APR antigas, chatbot de consulta e gamificação — ideias do time e sugestões dos mentores, depois do MVP (o catálogo de serviço, a evidência em PDF e o intervalo entre ciclos das preventivas, que também eram ideias para depois, foram feitos em 13/10/2026: ver [Catálogo de serviço](#catálogo-de-serviço), [Execução](#execução) e [Ciclo das preventivas](#ciclo-das-preventivas)). Baixa de material consumido na execução — o catálogo diz o que cada serviço prevê, não o que foi gasto. Substituir o BI ou o site Lovable — são de outra equipe. Cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin (pronto na API), e tela de treinamento no primeiro login (ver [Cadastro pelo supervisor, liberação e treinamento](#cadastro-pelo-supervisor-liberação-e-treinamento)). Importação de OS pelo supervisor foi adiada: fica só com o admin ([pontos-a-validar.md](pontos-a-validar.md), questão 63).
+Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Escaneamento de OS e APR antigas e chatbot de consulta — ideias do time e sugestões dos mentores, depois do MVP (o catálogo de serviço, a evidência em PDF, o intervalo entre ciclos das preventivas e a gamificação, que também eram ideias para depois, foram feitos em 13/10/2026: ver [Catálogo de serviço](#catálogo-de-serviço), [Execução](#execução), [Ciclo das preventivas](#ciclo-das-preventivas) e [Gamificação](#gamificação)). Baixa de material consumido na execução — o catálogo diz o que cada serviço prevê, não o que foi gasto. Substituir o BI ou o site Lovable — são de outra equipe. Cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin (pronto na API), e tela de treinamento no primeiro login (ver [Cadastro pelo supervisor, liberação e treinamento](#cadastro-pelo-supervisor-liberação-e-treinamento)). Importação de OS pelo supervisor foi adiada: fica só com o admin ([pontos-a-validar.md](pontos-a-validar.md), questão 63).
 
 Não muda: SAP (continua gerando, liberando e encerrando as ordens); site Lovable de controle; o conteúdo das APRs continua sendo da segurança do trabalho.
 
@@ -60,6 +60,7 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 | [Painel](#painel) | quadro, histórico, ciência, indicadores e planilha para o SAP | aberta — 3 suposições adotadas |
 | [Catálogo de serviço](#catálogo-de-serviço) | materiais, ferramentas e EPIs de cada serviço (atividade), mostrados no detalhe da OS | feita em 13/10/2026 — a lista real depende da ES Gás (questão 65) |
 | [Ciclo das preventivas](#ciclo-das-preventivas) | intervalo entre ciclos de cada plano de manutenção, contagem até o próximo ciclo e alertas de ciclo próximo e vencido (sem criar OS) | feita em 13/10/2026 — onde o SAP guarda o ciclo depende do Iago (questão 66) |
+| [Gamificação](#gamificação) | pontos por tarefa, patentes e ranking por temporada, conquistas e anonimato, calculados no servidor | feita em 13/10/2026 — os limites das patentes se revisam no fim da primeira temporada real |
 
 Ordem: Plataforma → Usuário e Equipe → Integração SAP → Modelo de APR (só a carga inicial) → Eventos (o envio online) → APR → Execução → Impedimento → Painel → Modelo de APR (editor) → Modo offline. O fluxo online de APR e execução é a base e vem primeiro; o contrato de eventos precisa existir antes das telas de campo, porque elas o usam. O modo offline (fila local, cópia da equipe e login sem sinal) entra por último e é o maior risco de prazo do recurso adicional: ele só reaproveita o contrato de eventos. O editor de modelos fica depois do painel porque a carga inicial já destrava a demo.
 
@@ -526,6 +527,76 @@ A trilha de auditoria registra `plano_preventiva.editar`, `plano_preventiva.paus
 2. Ciclo pelo plano + item — é o que a OS preventiva traz; se os códigos do plano mudarem (o Iago disse que o plano está em revisão), o plano novo começa sem histórico e sem intervalo, e aparece na Importação para definir.
 3. Pendente do ciclo anterior — a OS anterior não é fechada nem ligada à nova (questão 48); com `execucao`, o ciclo aguarda a execução dela, e com `programacao` segue o calendário.
 
+### Gamificação
+
+**Entrega** pontos por tarefa, patentes por temporada, ranking de pessoas e de equipes, conquistas (troféus) e a opção de ficar anônimo no ranking, tudo calculado só no servidor, na mesma transação que grava o que gerou os pontos; o valor das tarefas, as patentes e as conquistas são cadastros do admin. As regras discutidas, os valores e o raciocínio por trás deles estão em [gameficacao.md](../../gameficacao.md); aqui ficam o contrato e as decisões de implementação. **Status: feita em 13/10/2026 na `api` e na web; o app a recebe quando existir.**
+
+Regras do jogo: a segurança nunca custa pontos (APR bloqueada vale o mesmo que a aprovada, execução interrompida por risco vale o mesmo que a encerrada, com os mesmos bônus; nenhuma regra olha a resposta de um item da APR); só o servidor calcula, e reenviar um evento não pontua de novo; quem quiser fica anônimo no ranking; o admin ajusta as regras; o admin não joga (não pontua nem aparece no ranking).
+
+| Tarefa (`regra_pontuacao.codigo`) | Pontos | Quem ganha e quando |
+|---|---|---|
+| `apr_completa` | 10 | todo participante da APR: a aprovada, quando chega com as assinaturas; a bloqueada, quando chega a evidência completa dos itens reprovados (sem ela não pontua) |
+| `execucao_concluida` | 10 | todo participante da APR que amparou a execução, ao encerrar com as assinaturas ou ao interromper por risco; vale a primeira encerrada da OS |
+| `responsavel_apr` | 5 | o responsável pela APR, junto com a APR completa |
+| `preventiva_em_dia` | 5 | quem concluiu a execução na OS (inclusive quem interrompeu por risco), quando a preventiva é encerrada até a data limite (`data_fim_prog`, senão `data_inicio_prog`) ou depois dela com atraso justificado (a OS ficou pendente antes da data, ou foi reprogramada) |
+| `local_critico` | 5 | quem concluiu a execução (encerrada ou interrompida) numa OS de local crítico |
+| `resgate` | 5 | quem concluiu a execução de uma OS pendente por APR bloqueada ou execução interrompida de outras pessoas; quem participou de alguma tentativa anterior da OS não ganha, e a suspensão do fim do expediente não conta |
+| `apoio` | 5 | quem concluiu a execução de uma OS de apoio |
+| `tecnico_novo` | 5 | o responsável pela APR, quando outro participante tem a conta há menos de 60 dias |
+| `assinatura_cadastrada` · `treinamento_concluido` | 5 · 10 | o técnico, ao cadastrar a assinatura e ao concluir o Campo de treino (uma vez por conta) |
+| `ciencia_no_prazo` | 3 | o supervisor que dá a ciência até 72 h depois do encerramento (uma por OS) |
+| `intervalo_definido` | 3 | o supervisor que define o intervalo de um plano de preventiva que estava sem (uma por plano) |
+| `conquista_obtida` | da conquista | quem obtém uma conquista de pessoa (25, 50 ou 100 na carga inicial); sem valor próprio: desativar a tarefa desliga os pontos de todas |
+
+Cada pontuação é uma linha do extrato (`lancamento_pontos`) com uma chave única por pessoa (`apr:<os>`, `responsavel:<os>`, `execucao:<os>`, `preventiva:<os>`, `local_critico:<os>`, `resgate:<os>`, `apoio:<os>`, `tecnico_novo:<os>`, `assinatura`, `treinamento`, `ciencia:<os>`, `intervalo:<plano>`, `conquista:<id>`), então o limite de cada tarefa e a proteção contra reenvio são a mesma restrição (`on conflict do nothing`). O lançamento guarda os pontos do momento (mudar o valor de uma tarefa vale dali em diante), a data em que a tarefa aconteceu (a de um instante futuro, de um relógio errado, é trazida para agora) e as equipes creditadas: a da pessoa naquele momento e todas as que ela supervisiona. O que não pontua (sincronização offline, iniciar, pausar, suspender, cancelar, evidência a mais, bônus por bloquear, alertas lidos, reprogramar, ciência depois de 72 h, o formulário de inspeção, as ações do admin) está em [gameficacao.md](../../gameficacao.md#22-o-que-não-pontua).
+
+**Temporadas** são os trimestres do calendário no fuso de São Paulo (`2026-T4` = Primavera 2026: T1 Verão, T2 Outono, T3 Inverno, T4 Primavera); a linha nasce com a primeira pontuação do trimestre e é fechada quando passa a tolerância de 7 dias depois do último dia (o executor de tarefas confere de hora em hora). O fechamento grava os pontos, a patente e a posição de cada pessoa e de cada equipe (`temporada_usuario`, `temporada_equipe`, esta com `impecavel`: a equipe teve preventivas no trimestre e nenhuma atrasada sem justificativa) e confere as conquistas de temporada. O que chega depois com data de temporada fechada entra na aberta. Os pontos e a patente da temporada zeram; os pontos gerais, a maior patente e as conquistas ficam.
+
+**Patentes** (`patente`): a escada cadastrada pelo admin (nome único, pontuação necessária única entre as ativas, imagem quadrada PNG, JPEG ou WebP de até 1 MB, cor, descrição, ativa). A patente de uma pessoa é a de maior pontuação necessária que ela atingiu na temporada ("Sem patente" abaixo da primeira); a da equipe usa a mesma tabela aplicada à média por membro. A carga inicial traz Bronze (0), Prata (300), Ouro (1.500), Platina (3.000) e Diamante (5.000). Excluir só vale para a que nunca foi gravada numa temporada fechada nem é meta de uma conquista.
+
+**Ranking**: pessoas (temporada e geral) e equipes (temporada e geral, pela média por membro, com a soma ao lado); só técnicos ativos e liberados, supervisores inclusos; empate para quem tem o último lançamento mais antigo; a temporada fechada mostra o que foi gravado no fechamento. Quem está anônimo aparece como "Participante anônimo" (sem equipe nem link) para os outros; a própria pessoa e o admin veem o nome, e os outros também não veem a patente nem as conquistas no perfil dela. Todos os perfis veem os rankings; é a exceção à regra de que o técnico não vê desempenho por pessoa: só pontos e patente, nunca os indicadores.
+
+**Conquistas** (`conquista`, `conquista_usuario`, `conquista_equipe`): troféus permanentes de pessoa ou de equipe, conforme o critério da meta (17 critérios de pessoa — APRs completas, responsável pela APR, execuções, preventivas em dia, locais críticos, OS retomadas e de apoio, técnicos novos, locais diferentes, ciências, intervalos, treino, pontos gerais, pontos numa temporada, patente, posição e temporadas — e 7 critérios de equipe, cujas conquistas não dão pontos). Valem para o passado: ao criar, editar a meta ou reativar, o servidor confere todo mundo e quem já bateu a meta recebe na hora, com a data em que bateu (lida do extrato); quem já tem não perde; os pontos de uma conquista podem cumprir a meta de outra e a conferência repete até estabilizar. A carga inicial traz 17 conquistas de pessoa e 6 de equipe, cada uma com uma imagem simples. Na tela, as obtidas vêm coloridas, com a data, e as que faltam, em cinza, com a meta e o progresso; todas mostram a raridade (a fração dos técnicos ativos ou das equipes que a têm). Aviso "Conquista desbloqueada" e "Nova patente" na próxima vez que a pessoa abre a web.
+
+Implantação: a migração `0016_gamificacao` cria as tabelas e traz as 13 tarefas, as 5 patentes e as 23 conquistas (uma vez por banco: o que o admin apagar não volta); a primeira subida da `api` com ela preenche o extrato a partir do histórico (APRs, execuções, ciências, treinos, assinaturas e planos já gravados, com as mesmas regras, numa transação só), fecha as temporadas passadas e concede as conquistas (os pontos delas entram na temporada aberta); a subida também grava no bucket `gamificacao` as imagens da carga que ainda não estão lá.
+
+| Coluna | Tipo | Nulo | Referência | Nota |
+|---|---|---|---|---|
+| `regra_pontuacao.codigo` | text | não | | chave; as 13 tarefas são fixas no código |
+| `regra_pontuacao.pontos` · `ativa` | integer · boolean | não | | o admin muda só o valor (0 a 1.000) e o estado |
+| `temporada.codigo` | text | não | | `2026-T4`; `nome`, `inicio`, `fim` e `fechada_em` (nulo = aberta) |
+| `lancamento_pontos.id` | uuid | não | | único por (`usuario_id`, `chave`) |
+| `lancamento_pontos.usuario_id` · `regra` · `pontos` · `chave` | | não | `usuario.id`, `regra_pontuacao.codigo` | |
+| `lancamento_pontos.os_id` | uuid | sim | `os.id` | |
+| `lancamento_pontos.ocorrido_em` · `temporada` · `criado_em` | | não | `temporada.codigo` | a data define a temporada |
+| `lancamento_equipe.lancamento_id` · `equipe_id` | uuid | não | | PK composta: as equipes creditadas |
+| `patente.id` · `nome` · `pontos_necessarios` · `imagem_path` · `cor` · `descricao` · `ativa` | | | | `pontos_necessarios` único entre as ativas; `cor` `#RRGGBB` |
+| `conquista.id` · `titulo` · `descricao` · `criterio` · `quantidade` · `patente_id` · `pontos` · `imagem_path` · `ativa` | | | `patente.id` | `patente_id` só nos critérios de patente; `pontos` = 0 nas de equipe (`CHECK`) |
+| `conquista_usuario.conquista_id` · `usuario_id` · `obtida_em` · `vista_em` | | | | PK composta; `vista_em` nulo = aviso pendente |
+| `conquista_equipe.conquista_id` · `equipe_id` · `obtida_em` | | | | PK composta |
+| `temporada_usuario.temporada` · `usuario_id` · `pontos` · `patente_id` · `posicao` | | | | gravada no fechamento |
+| `temporada_equipe.temporada` · `equipe_id` · `pontos` · `membros` · `media` · `patente_id` · `posicao` · `impecavel` | | | | gravada no fechamento |
+| `usuario.ranking_anonimo` | boolean | não | | padrão `false` |
+| `usuario.patente_avisada_id` · `patente_avisada_temporada` | uuid · text | sim | | a última patente de que a pessoa foi avisada (sem chave estrangeira: excluir uma patente não pode travar) |
+
+A trilha de auditoria registra `patente`, `conquista` e `regra_pontuacao` (criar, editar, ativar, desativar, trocar a imagem e excluir).
+
+`GET /gamificacao/eu` → `200` a patente, a barra até a próxima, os pontos da temporada e gerais, a maior patente, as posições, as conquistas com o progresso e os avisos pendentes (técnico; o admin recebe `403`)
+`GET /gamificacao/extrato?temporada=` → `200` `{lancamentos[], pontos, pagina, tamanho, total}` (os da própria pessoa; `geral` soma todas)
+`GET /gamificacao/ranking?tipo=pessoas|equipes&temporada=<codigo>|geral` → `200` `{linhas[], temporada}`
+`GET /gamificacao/equipes/{id}` · `GET /gamificacao/usuarios/{id}` → `200` a equipe (soma, média, patente, posição, conquistas e os membros) · a pessoa (patente, maior patente e conquistas; `{anonimo: true}` para os outros quando ela está anônima)
+`GET /gamificacao/temporadas` · `/regras` · `/patentes` · `/conquistas` → `200` (todos os perfis consultam; a de conquistas traz também a lista de critérios e as patentes para o formulário do admin)
+`POST /gamificacao/avisos/vistos` → `200`; `PUT /me/ranking-anonimo` `{anonimo}` → `200`; `GET /me` traz `ranking_anonimo` e `gamificacao` (patente, pontos da temporada e avisos pendentes)
+`POST /eventos`, `POST /os/{id}/ciencia`, `PUT /preventivas/{id}`, `PUT /me/assinatura` e `PUT /me/treinamento` devolvem também `pontos_ganhos` (e `ganhos[]`) para o aviso "+N pontos"
+Admin: `PATCH /gamificacao/regras/{codigo}` `{pontos?, ativa?}`; `POST /gamificacao/patentes` (multipart: os campos e a `imagem`), `PATCH|DELETE /gamificacao/patentes/{id}` e `PUT /gamificacao/patentes/{id}/imagem`; o mesmo conjunto em `/gamificacao/conquistas`
+
+Na web há a seção **Gamificação** (`/app/gamificacao`), a mesma para todos os perfis, com as abas Minha pontuação (de quem joga), Ranking, Conquistas, Patentes e Como pontuar; só o admin edita, ali mesmo. A barra superior mostra o selo da patente e os pontos da temporada, o perfil de uma pessoa e o de uma equipe ganham o bloco de gamificação, e as telas de APR, execução, ciência e ciclo das preventivas mostram o "+N pontos". No Campo de treino nada disso aparece (a `api` fictícia não pontua).
+
+1. Pontos por tarefa e patentes — os valores e os limites são o ponto de partida do [gameficacao.md](../../gameficacao.md); revisar os limites das patentes no fim da primeira temporada real (a carga supõe cerca de 20 técnicos).
+2. Imagens da carga — são simples e geradas em código; o admin troca pelas definitivas.
+3. Formulário de inspeção — pode virar bônus quando a estrutura dele for definida (questão 57).
+4. Conquista de sincronização offline — precisa de uma marcação de origem no evento enviado pela fila, para quando o app existir.
+
 ### Eventos e modo offline
 
 **Entrega** o envio idempotente dos eventos de campo, que é o único caminho de escrita do sistema e funciona do mesmo jeito no app e na web, e, por cima dele, o modo offline de contingência: a cópia local dos dados da equipe e a fila de eventos do app. **Status: definida.** O contrato dos eventos é a decisão de difícil volta (ver Formato).
@@ -928,7 +999,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 41 | aparelhos do piloto definidos antes do piloto | time |
 | 43 e 54 | adaptador de leitura da API, com simulador no mesmo contrato e fixtures a partir do PDF de exemplo, trocadas pela planilha de 2025 quando chegar | Iago |
 | 44 | perfil com assinatura e as OS encerradas do próprio técnico (60 dias) | time |
-| 45 | escaneamento, chatbot e gamificação ficam fora do MVP; o catálogo de serviço e o intervalo entre ciclos das preventivas foram feitos em 13/10/2026 | time |
+| 45 | escaneamento e chatbot ficam fora do MVP; o catálogo de serviço, o intervalo entre ciclos das preventivas e a gamificação (pontos, patentes, ranking, conquistas e anonimato; ver [Gamificação](#gamificação)) foram feitos em 13/10/2026 | time |
 | 46 | evidência é foto, texto ou PDF, por item (o modelo diz o que é exigido); PDF a mais é sempre aceito e não substitui a foto exigida | time |
 | 65 | catálogo de serviço: a lista de cada serviço é cadastrada pelo admin; a carga fictícia só serve à demonstração | Iago |
 | 66 | ciclo das preventivas: o intervalo vem do campo Periodicidade (PDF), da coluna da planilha, de `intervalo_ciclo` na API ou é definido no sistema; o próximo ciclo conta do encerramento da última OS | Iago |

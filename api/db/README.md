@@ -16,6 +16,7 @@ PostgreSQL (Supabase na hospedagem, Postgres comum no desenvolvimento). O schema
 | `execucao.ts` | `execucao`, `execucao_pausa`, `execucao_assinatura`, `evidencia` |
 | `eventos.ts` | `evento_campo` |
 | `impedimento.ts` | `alerta`, `reprogramacao` |
+| `gamificacao.ts` | `regra_pontuacao`, `temporada`, `lancamento_pontos`, `lancamento_equipe`, `patente`, `conquista`, `conquista_usuario`, `conquista_equipe`, `temporada_usuario`, `temporada_equipe` (gamificação: o extrato de pontos, as temporadas, as patentes, as conquistas e o resultado gravado no fechamento de cada temporada); mais `usuario.ranking_anonimo`, `patente_avisada_id` e `patente_avisada_temporada` |
 | `seed/` | não é schema: a carga inicial dos modelos de APR e das atividades (ver [Carga inicial](#carga-inicial)) |
 
 ## Como trabalhar
@@ -48,6 +49,7 @@ Geradas pelo `drizzle-kit`, aplicadas em ordem, uma única vez cada, e registrad
 | `0012_auditoria_so_cresce.sql` | gatilho que recusa `UPDATE` e `DELETE` em `auditoria` (a trilha só cresce); SQL escrito à mão |
 | `0013_origem_pdf.sql` | `pdf` entra em `os.origem` e em `importacao.origem` (a OS lida do PDF impresso pelo SAP, na Importação de OS); só troca os dois `CHECK`, nenhuma linha muda; gerada do schema |
 | `0015_preventivas_ciclos.sql` | ciclo das preventivas: `plano_preventiva` (com RLS ligado e `UNIQUE NULLS NOT DISTINCT` em plano + item), `alerta.plano_preventiva_id` com os tipos `preventiva_proxima` e `preventiva_vencida` (o `CHECK` `alerta_plano_so_na_preventiva` liga os dois), o índice `os_plano_idx` e `plano_preventiva` em `auditoria.entidade`; gerada do schema, com a carga dos planos das OS preventivas que já existiam (sem intervalo) escrita à mão |
+| `0016_gamificacao.sql` | gamificação: as 10 tabelas novas (todas com RLS ligado), `usuario.ranking_anonimo` e as colunas da última patente avisada, `patente`, `conquista` e `regra_pontuacao` em `auditoria.entidade`, e a carga inicial (as 13 tarefas com os valores do [`gameficacao.md`](../../gameficacao.md), as 5 patentes e as 23 conquistas, com ids fixos: entram uma vez por banco; as imagens são gravadas pela subida da `api`); gerada do schema, com a carga escrita à mão (o teste `gamificacao-cadastros` confere que ela é igual a `src/db/seed/gamificacao-dados.ts`) |
 | `0014_catalogo_e_evidencia_pdf.sql` | catálogo de serviço (`material` e `atividade_material`, com RLS ligado), evidência em PDF (`evidencia.tipo` `foto` \| `pdf`, com padrão `foto` para as linhas que já existem, e `evidencia.nome_arquivo`, só no PDF), `pdf` em `item_modelo_apr.evidencia` e `material` em `auditoria.entidade`; só acrescenta, nenhuma linha muda de valor; gerada do schema |
 
 O Painel não tem tabela própria: lê as acima.
