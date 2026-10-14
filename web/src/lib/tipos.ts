@@ -1,5 +1,7 @@
 /** Tipos das respostas da `api` que várias telas usam (os demais ficam junto da tela que os consome). Chaves em snake_case, como a `api` devolve. */
 
+import type { ResumoDaBarra } from "@/lib/gamificacao";
+
 /** Só técnico e administrador. Supervisor não é perfil: é quem a equipe aponta (`equipes_supervisionadas` de `GET /me`) e sempre é técnico. */
 export type Perfil = "tecnico" | "admin";
 
@@ -34,6 +36,10 @@ export interface Usuario {
   /** Nome de quem cadastrou e o instante do cadastro: a tela de espera os mostra quando a `api` os devolve em `/me`. */
   criado_por_nome?: string | null;
   criado_em?: string | null;
+  /** Quem não quer aparecer pelo nome no ranking da gamificação (os pontos continuam valendo); `GET /me` preenche. */
+  ranking_anonimo?: boolean;
+  /** A patente e os pontos da temporada para a barra superior; `GET /me` preenche, e é `null` para o admin (não joga). */
+  gamificacao?: ResumoDaBarra | null;
 }
 
 export type Liberacao = "liberado" | "pendente" | "recusado";

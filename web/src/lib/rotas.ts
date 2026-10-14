@@ -51,6 +51,18 @@ export const rotas = {
      */
     catalogo: "/app/catalogo/servicos",
     catalogoMateriais: "/app/catalogo/materiais",
+    /**
+     * Seção Gamificação, a mesma para todos os perfis (só o admin edita pontos, patentes e conquistas): Minha pontuação (técnico),
+     * Ranking, Conquistas, Patentes e Como pontuar. `/app/gamificacao` sozinho abre a pontuação do técnico; o admin, que não
+     * joga, vai para o ranking.
+     */
+    gamificacao: "/app/gamificacao",
+    gamificacaoMinha: "/app/gamificacao/minha",
+    /** `?tipo=pessoas|equipes` e `?temporada=<codigo>|geral`. */
+    gamificacaoRanking: "/app/gamificacao/ranking",
+    gamificacaoConquistas: "/app/gamificacao/conquistas",
+    gamificacaoPatentes: "/app/gamificacao/patentes",
+    gamificacaoPontos: "/app/gamificacao/pontos",
     /** Campo de treino: entrada com a escolha Direcionado/Livre. */
     treino: "/app/treino",
     /** Liga o modo treino (cookie) e leva à lista; `?modo=direcionado|livre` guarda a escolha. */

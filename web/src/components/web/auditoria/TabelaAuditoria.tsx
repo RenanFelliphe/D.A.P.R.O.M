@@ -33,6 +33,13 @@ function enderecoDoAlvo(r: RegistroDeAuditoria): string | null {
       return r.acao === "atividade.materiais" ? `${rotas.app.catalogo}?busca=${encodeURIComponent(r.entidade_id)}` : null;
     case "plano_preventiva":
       return rotas.app.preventivas;
+    // Patentes, conquistas e o valor de cada tarefa se editam nas abas da seção Gamificação.
+    case "patente":
+      return rotas.app.gamificacaoPatentes;
+    case "conquista":
+      return rotas.app.gamificacaoConquistas;
+    case "regra_pontuacao":
+      return rotas.app.gamificacaoPontos;
     default:
       return null;
   }

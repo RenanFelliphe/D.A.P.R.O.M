@@ -1,6 +1,7 @@
 import type { AbaDaSecao } from "@/components/web/AbasSecao";
 import { abasApr } from "@/components/web/apr/secao";
 import { abasDoCatalogo } from "@/components/web/catalogo/secao";
+import { abasDaGamificacao } from "@/components/web/gamificacao/secao";
 import { abasDoDashboard } from "@/components/web/indicadores/secao";
 import { abasDoPerfil } from "@/components/web/os/secao";
 import { rotas } from "@/lib/rotas";
@@ -9,12 +10,12 @@ import type { ItemMenu } from "./MenuLateral";
 
 /**
  * Itens do menu de quem usa o sistema já liberado (fora do campo de treino). "Ordem de Serviço" reúne Quadro e Importação em
- * abas, "APR" reúne Modelos e Atividades, "Catálogo" reúne Serviços e Materiais, e "Dashboard" reúne os dashboards; o menu
- * também lista as abas como dropdown. Quais abas aparecem fica com cada seção (`secao.ts` em `components/web/os`, `apr`,
- * `catalogo` e `indicadores`).
- * - Admin: Ordem de Serviço, APR, Catálogo, Equipes e usuários, Auditoria e Dashboard.
- * - Supervisor e técnico: Ordem de Serviço (o técnico, "OS da equipe"), Minha equipe, Catálogo (só para consulta) e Dashboard;
- *   o supervisor com cadastro de técnicos e o técnico só para consulta.
+ * abas, "APR" reúne Modelos e Atividades, "Catálogo" reúne Serviços e Materiais, "Gamificação" reúne Minha pontuação, Ranking,
+ * Conquistas, Patentes e Como pontuar, e "Dashboard" reúne os dashboards; o menu também lista as abas como dropdown. Quais abas
+ * aparecem fica com cada seção (`secao.ts` em `components/web/os`, `apr`, `catalogo`, `gamificacao` e `indicadores`).
+ * - Admin: Ordem de Serviço, APR, Catálogo, Equipes e usuários, Auditoria, Gamificação (sem Minha pontuação: o admin não joga) e Dashboard.
+ * - Supervisor e técnico: Ordem de Serviço (o técnico, "OS da equipe"), Minha equipe, Catálogo (só para consulta), Gamificação e
+ *   Dashboard; o supervisor com cadastro de técnicos e o técnico só para consulta.
  * O Dashboard é sempre o último; o Campo de treino vem depois, num grupo à parte (ver `Casca`).
  */
 export function itensDeNavegacao(usuario: Usuario, pendentes?: number): ItemMenu[] {
@@ -27,7 +28,10 @@ export function itensDeNavegacao(usuario: Usuario, pendentes?: number): ItemMenu
   );
   const dashboard = comAbas({ href: rotas.app.dashboard, icone: "bars", rotulo: "Dashboard", prefixos: ["/app/dashboard"] }, abasDoDashboard(usuario));
   const catalogo = comAbas({ href: rotas.app.catalogo, icone: "box", rotulo: "Catálogo", prefixos: ["/app/catalogo"] }, abasDoCatalogo);
-  if (!admin) return [quadro, { href: rotas.app.usuarios, icone: "users", rotulo: "Minha equipe" }, catalogo, dashboard];
+  // A gamificação é para todos; quem joga abre em "Minha pontuação" e o admin, no Ranking (a primeira aba de cada um).
+  const abasDaGamificacaoDeQuem = abasDaGamificacao(usuario);
+  const gamificacao = comAbas({ href: abasDaGamificacaoDeQuem[0]!.href, icone: "trophy", rotulo: "Gamificação", prefixos: ["/app/gamificacao"] }, abasDaGamificacaoDeQuem);
+  if (!admin) return [quadro, { href: rotas.app.usuarios, icone: "users", rotulo: "Minha equipe" }, catalogo, gamificacao, dashboard];
   return [
     quadro,
     comAbas({ href: rotas.web.modelos, icone: "clip", rotulo: "APR", prefixos: ["/web/apr"] }, abasApr),
@@ -40,6 +44,7 @@ export function itensDeNavegacao(usuario: Usuario, pendentes?: number): ItemMenu
     },
     // Só o admin: quem fez o quê nas telas de gestão.
     { href: rotas.web.auditoria, icone: "shield", rotulo: "Auditoria" },
+    gamificacao,
     // O Dashboard é sempre o último item antes do campo.
     dashboard,
   ];

@@ -9,6 +9,9 @@ export const entidadesDaAuditoria = [
   { valor: "importacao", rotulo: "Importação" },
   { valor: "exportacao", rotulo: "Exportação" },
   { valor: "plano_preventiva", rotulo: "Ciclo de preventiva" },
+  { valor: "patente", rotulo: "Patente" },
+  { valor: "conquista", rotulo: "Conquista" },
+  { valor: "regra_pontuacao", rotulo: "Pontos da tarefa" },
 ] as const;
 
 export type EntidadeDaAuditoria = (typeof entidadesDaAuditoria)[number]["valor"];
@@ -67,4 +70,12 @@ export const rotuloDoCampo: Record<string, string> = {
   base_do_ciclo: "Contado a partir de",
   antecedencia_dias: "Antecedência do aviso (dias)",
   observacao: "Observação",
+  titulo: "Título",
+  criterio: "Critério",
+  quantidade: "Quantidade",
+  patente_id: "Patente",
+  pontos: "Pontos",
+  pontos_necessarios: "Pontos necessários",
+  cor: "Cor",
+  ativa: "Ativa",
 };

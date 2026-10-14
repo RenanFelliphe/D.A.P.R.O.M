@@ -1,5 +1,6 @@
 "use client";
 
+import type { RespostaComPontos } from "./gamificacao";
 import { novoUuid } from "./uuid";
 
 /**
@@ -44,9 +45,9 @@ async function lerResposta(resposta: Response) {
   return dados;
 }
 
-/** `enviarFormulario("/importacoes", form)`: POST multipart (arquivos). Lança `ErroCliente` com a mensagem da `api`. */
-export async function enviarFormulario<T = unknown>(caminho: string, form: FormData): Promise<T> {
-  return lerResposta(await fetch(`/api${caminho}`, { method: "POST", body: form, cache: "no-store" })) as Promise<T>;
+/** `enviarFormulario("/importacoes", form)`: POST multipart (arquivos); `"PUT"` troca um arquivo já enviado. Lança `ErroCliente` com a mensagem da `api`. */
+export async function enviarFormulario<T = unknown>(caminho: string, form: FormData, metodo: "POST" | "PUT" = "POST"): Promise<T> {
+  return lerResposta(await fetch(`/api${caminho}`, { method: metodo, body: form, cache: "no-store" })) as Promise<T>;
 }
 
 /** `chamar("POST", "/os/123/ciencia")`; o corpo vai como JSON. Lança `ErroCliente` com a mensagem da `api`. */
@@ -122,7 +123,7 @@ export interface EventoDeCampo {
   ocorrido_em?: string;
 }
 
-export interface RespostaEventos {
+export interface RespostaEventos extends RespostaComPontos {
   confirmados: string[];
   alertas: string[];
   aprs: { id: string; resultado: "aprovada" | "bloqueada" }[];

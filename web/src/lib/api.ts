@@ -6,6 +6,7 @@ import { cache } from "react";
 import { emResponse, responderTreino } from "../treino/api-ficticia";
 import { rotaSempreReal, usuarioDoTreino } from "../treino/sessao";
 import { CABECALHO_ENDERECO, COOKIE_ACESSO, apiUrl } from "./sessao-comum";
+import type { ResumoDaBarra } from "./gamificacao";
 import type { Equipe, Usuario } from "./tipos";
 
 /** Erro de uma resposta da `api` (`{erro: {codigo, mensagem}}`). */
@@ -95,6 +96,7 @@ export async function apiOuNulo<T = unknown>(caminho: string, opcoes: OpcoesApi 
 
 /** Usuário logado e a equipe dele (`GET /me`), lido uma vez por requisição. */
 export const usuarioAtual = cache(async () => {
-  const eu = await api<{ usuario: Usuario; equipe: Equipe | null; equipes_supervisionadas: { id: string; nome: string }[] }>("/me");
-  return { usuario: { ...eu.usuario, equipes_supervisionadas: eu.equipes_supervisionadas }, equipe: eu.equipe };
+  const eu = await api<{ usuario: Usuario; equipe: Equipe | null; equipes_supervisionadas: { id: string; nome: string }[]; gamificacao?: ResumoDaBarra | null }>("/me");
+  // O resumo da gamificação não vem no campo de treino (a `api` fictícia não o conhece): sem ele a barra não mostra o selo.
+  return { usuario: { ...eu.usuario, equipes_supervisionadas: eu.equipes_supervisionadas, gamificacao: eu.gamificacao ?? null }, equipe: eu.equipe };
 });

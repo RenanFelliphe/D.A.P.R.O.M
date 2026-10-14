@@ -1,0 +1,637 @@
+/* Gamificação: selos de patente, cartão de pontuação, ranking, conquistas, escada de patentes e o aviso "+N pontos". */
+
+/* ===== Selo da patente (imagem + nome) ===== */
+
+.selo-patente {
+  --cor-patente: var(--brand);
+  --lado: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0
+}
+
+.selo-patente.selo-p {
+  --lado: 22px;
+  gap: 6px
+}
+
+.selo-patente.selo-g {
+  --lado: 48px
+}
+
+.selo-patente.selo-xg {
+  --lado: 96px
+}
+
+.selo-patente img,
+.selo-patente .selo-ph {
+  width: var(--lado);
+  height: var(--lado);
+  flex: none;
+  object-fit: contain
+}
+
+.selo-patente .selo-ph {
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--cor-patente);
+  color: #fff;
+  font-weight: 700;
+  font-size: calc(var(--lado) * .45)
+}
+
+/* O nome leva a cor da patente, escurecida para ter contraste sobre o fundo claro. */
+.selo-patente .selo-nome {
+  font-weight: 600;
+  color: color-mix(in srgb, var(--cor-patente) 55%, #17212B);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.selo-patente.selo-sem-nome .selo-nome {
+  display: none
+}
+
+/* Barra superior: patente e pontos da temporada, com o link para "Minha pontuação". */
+.selo-barra {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 12px 3px 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap
+}
+
+.selo-barra:hover {
+  background: var(--surface2);
+  border-color: var(--line3)
+}
+
+.selo-barra strong {
+  font-weight: 600
+}
+
+.selo-barra .selo-aviso {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--blq);
+  flex: none
+}
+
+/* ===== Minha pontuação ===== */
+
+.gam-topo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch
+}
+
+.gam-cartao {
+  --cor-patente: var(--brand);
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center
+}
+
+.gam-cartao .gam-imagem {
+  width: 112px;
+  height: 112px;
+  object-fit: contain
+}
+
+.gam-cartao .gam-nome {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: color-mix(in srgb, var(--cor-patente) 55%, #17212B)
+}
+
+.gam-cartao .gam-pontos {
+  font-size: 15px;
+  color: var(--ink3)
+}
+
+.gam-barra {
+  height: 12px;
+  border-radius: 6px;
+  background: #E3E5DE;
+  overflow: hidden
+}
+
+.gam-barra>i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--cor-patente);
+  transition: width .5s
+}
+
+.gam-rotulos {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--ink3)
+}
+
+.gam-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px
+}
+
+.gam-kpis .kpi .v {
+  font-size: 26px
+}
+
+.gam-ultimas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px
+}
+
+.gam-ultima {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  text-align: center;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--surface2)
+}
+
+.gam-ultima img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain
+}
+
+.gam-ultima strong {
+  font-size: 13.5px
+}
+
+.gam-ultima small {
+  color: var(--ink4);
+  font-size: 12px
+}
+
+.gam-extrato .pts {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap
+}
+
+.gam-extrato th.pts {
+  text-align: right
+}
+
+/* ===== Ranking ===== */
+
+.rank-controles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+  justify-content: space-between
+}
+
+.rank-alternar {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff
+}
+
+.rank-alternar a {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink3);
+  text-decoration: none
+}
+
+.rank-alternar a+a {
+  border-left: 1px solid var(--line)
+}
+
+.rank-alternar a[aria-current="true"] {
+  background: var(--brand);
+  color: #fff
+}
+
+.tb td.pos,
+.tb th.pos {
+  width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600
+}
+
+.tb td.num,
+.tb th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap
+}
+
+.tb tr.voce td {
+  background: var(--brand-bg)
+}
+
+.tb tr.voce td:first-child {
+  box-shadow: inset 3px 0 0 var(--brand)
+}
+
+.pos-medalha {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  color: #17212B
+}
+
+.pos-medalha.p1 {
+  background: #F2D66B
+}
+
+.pos-medalha.p2 {
+  background: #D5D7DB
+}
+
+.pos-medalha.p3 {
+  background: #E5B98B
+}
+
+.rank-anonimo {
+  color: var(--ink4);
+  font-style: italic
+}
+
+/* ===== Conquistas ===== */
+
+.gal-conquistas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px
+}
+
+.conquista {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  align-content: start
+}
+
+.conquista.obtida {
+  border-color: var(--enc);
+  background: linear-gradient(180deg, #fff, var(--enc-bg) 220%)
+}
+
+.conquista.desativada {
+  opacity: .75;
+  border-style: dashed
+}
+
+.conquista img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain
+}
+
+.conquista.falta img {
+  filter: grayscale(1);
+  opacity: .5
+}
+
+.conquista .c-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0
+}
+
+.conquista .c-corpo h3 {
+  font-size: 15px;
+  line-height: 1.25
+}
+
+.conquista .c-meta {
+  font-size: 13px;
+  color: var(--ink3)
+}
+
+.conquista .c-desc {
+  font-size: 13px;
+  color: var(--ink4)
+}
+
+.conquista .c-pe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--ink4);
+  margin-top: 2px
+}
+
+.conquista .c-prog {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--ink3)
+}
+
+.conquista .c-acoes {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line2)
+}
+
+.gal-pequena {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px
+}
+
+.gal-pequena .trofeu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: var(--surface2);
+  font-size: 13px
+}
+
+.gal-pequena .trofeu img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain
+}
+
+/* ===== Escada de patentes ===== */
+
+.escada {
+  display: flex;
+  flex-direction: column;
+  gap: 10px
+}
+
+.degrau {
+  --cor-patente: var(--brand);
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--cor-patente);
+  border-radius: 12px;
+  background: #fff
+}
+
+.degrau.atual {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cor-patente) 60%, transparent);
+  background: color-mix(in srgb, var(--cor-patente) 8%, #fff)
+}
+
+.degrau.desativada {
+  opacity: .7;
+  border-style: dashed
+}
+
+.degrau img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain
+}
+
+.degrau h3 {
+  font-size: 17px
+}
+
+.degrau .d-pontos {
+  font-size: 14px;
+  color: var(--ink3)
+}
+
+.degrau .d-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end
+}
+
+/* ===== Como pontuar ===== */
+
+.regras-jogo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 18px;
+  font-size: 14px
+}
+
+.tb .regra-pontos {
+  white-space: nowrap;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums
+}
+
+.tb .regra-editar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap
+}
+
+.tb .regra-editar .input {
+  width: 84px;
+  height: 34px;
+  font-size: 13.5px
+}
+
+.tb td.regra-texto {
+  font-size: 13.5px;
+  color: var(--ink2);
+  min-width: 180px;
+  white-space: normal
+}
+
+.tb tr.regra-grupo th {
+  background: var(--surface2);
+  font-size: 12.5px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--ink3)
+}
+
+/* ===== Aviso "+N pontos" e janela "Conquista desbloqueada" ===== */
+
+.pontos-ganhos {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--enc-bg);
+  color: var(--enc);
+  border: 1px solid color-mix(in srgb, var(--enc) 35%, transparent)
+}
+
+.pontos-ganhos .pg-linha {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px
+}
+
+.pontos-ganhos .pg-detalhe {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--enc) 80%, #17212B)
+}
+
+.aviso-gam {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  padding: 8px 0
+}
+
+.aviso-gam img {
+  width: 96px;
+  height: 96px;
+  object-fit: contain
+}
+
+.aviso-gam h3 {
+  font-size: 18px
+}
+
+.aviso-gam .aviso-sub {
+  font-size: 13.5px;
+  color: var(--ink3)
+}
+
+.aviso-gam+.aviso-gam {
+  border-top: 1px solid var(--line2);
+  padding-top: 16px
+}
+
+/* ===== Perfil: blocos de gamificação ===== */
+
+.gam-bloco {
+  display: flex;
+  flex-direction: column;
+  gap: 12px
+}
+
+.gam-resumo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px
+}
+
+.gam-resumo .r-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px
+}
+
+.gam-resumo .r-item .lbl {
+  font-size: 12.5px
+}
+
+.gam-resumo .r-item strong {
+  font-size: 18px
+}
+
+.opcao-anonimo {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px
+}
+
+.opcao-anonimo input {
+  margin-top: 3px
+}
+
+@media (max-width: 900px) {
+  .gam-topo {
+    grid-template-columns: 1fr
+  }
+}
+
+@media (max-width: 560px) {
+  .gam-cartao {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 12px
+  }
+
+  .gam-cartao .gam-imagem {
+    width: 72px;
+    height: 72px
+  }
+
+  .gam-cartao .gam-nome {
+    font-size: 21px
+  }
+
+  .degrau {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 12px
+  }
+
+  .degrau img {
+    width: 56px;
+    height: 56px
+  }
+
+  .degrau .d-acoes {
+    grid-column: 1 / -1;
+    justify-content: flex-start
+  }
+
+  .gal-conquistas {
+    grid-template-columns: 1fr
+  }
+
+  .selo-barra .selo-texto {
+    display: none
+  }
+}
