@@ -3,7 +3,10 @@
  * como ela devolve. Tudo aqui é só leitura: os pontos são calculados e gravados pelo servidor.
  */
 
-/** O selo de uma patente: a imagem, o nome e a cor, como a barra, o ranking e o perfil o mostram. */
+/**
+ * O selo de uma patente: a imagem, o nome e a cor, como a barra, o ranking e o perfil o mostram. A `api` já manda a imagem do
+ * contexto: a das pessoas nos selos de pessoa e a das equipes nos selos de equipe (ranking de equipes e perfil da equipe).
+ */
 export interface SeloDePatente {
   id: string;
   nome: string;
@@ -12,7 +15,7 @@ export interface SeloDePatente {
   imagem_url: string | null;
 }
 
-/** A patente do cadastro (escada de patentes). */
+/** A patente do cadastro (escada de patentes), com a imagem das pessoas e a imagem das equipes (cada uma escolhida à parte). */
 export interface Patente {
   id: string;
   nome: string;
@@ -20,7 +23,10 @@ export interface Patente {
   cor: string;
   descricao: string | null;
   ativa: boolean;
+  /** A imagem da patente nas pessoas (ranking de pessoas, perfil, barra). */
   imagem_url: string | null;
+  /** A imagem da patente nas equipes (ranking de equipes e perfil da equipe). */
+  imagem_equipe_url: string | null;
 }
 
 export interface ListaDePatentes {
@@ -168,6 +174,7 @@ export interface LinhaDeEquipe {
   pontos: number;
   media: number;
   voce: boolean;
+  /** Na temporada, a patente da média por membro; no ranking geral, a maior patente já alcançada pela equipe. */
   patente: SeloDePatente | null;
 }
 
@@ -219,6 +226,8 @@ export interface PerfilDaEquipeNaGamificacao {
   media: number;
   membros: number;
   patente: SeloDePatente | null;
+  /** A maior patente que a média da equipe já alcançou (numa temporada fechada ou na aberta). */
+  maior_patente: SeloDePatente | null;
   posicao_temporada: number | null;
   equipes_no_ranking: number;
   pontos_gerais: number;

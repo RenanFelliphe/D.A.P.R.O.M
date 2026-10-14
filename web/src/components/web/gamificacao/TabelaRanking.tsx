@@ -83,7 +83,10 @@ interface TabelaDeEquipesProps {
   geral: boolean;
 }
 
-/** O ranking de equipes pela média por membro (a equipe maior não ganha só por ser maior); a soma e o número de pessoas ficam ao lado. */
+/**
+ * O ranking de equipes pela média por membro (a equipe maior não ganha só por ser maior); a soma e o número de pessoas ficam ao
+ * lado. A patente é a da média na temporada; no ranking geral, a maior já alcançada.
+ */
 export function TabelaDeEquipes({ linhas, geral }: TabelaDeEquipesProps) {
   return (
     <Panel style={{ gap: 12 }}>
@@ -94,7 +97,7 @@ export function TabelaDeEquipes({ linhas, geral }: TabelaDeEquipesProps) {
             <tr>
               <th className="pos">#</th>
               <th>Equipe</th>
-              {!geral && <th>Patente</th>}
+              <th>{geral ? "Maior patente" : "Patente"}</th>
               <th className="num">Média por membro</th>
               <th className="num">Soma</th>
               <th className="num">Pessoas</th>
@@ -103,7 +106,7 @@ export function TabelaDeEquipes({ linhas, geral }: TabelaDeEquipesProps) {
           <tbody>
             {linhas.length === 0 ? (
               <tr>
-                <td colSpan={geral ? 5 : 6} className="muted">
+                <td colSpan={6} className="muted">
                   Nenhuma equipe no ranking ainda.
                 </td>
               </tr>
@@ -122,11 +125,9 @@ export function TabelaDeEquipes({ linhas, geral }: TabelaDeEquipesProps) {
                       </>
                     )}
                   </td>
-                  {!geral && (
-                    <td>
-                      <SeloPatente patente={l.patente} tamanho="p" />
-                    </td>
-                  )}
+                  <td>
+                    <SeloPatente patente={l.patente} tamanho="p" />
+                  </td>
                   <td className="num">
                     <strong>{mediaDeEquipe(l.media)}</strong>
                   </td>

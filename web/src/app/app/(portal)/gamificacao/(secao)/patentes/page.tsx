@@ -7,14 +7,22 @@ import { editaGamificacao } from "@/components/web/gamificacao/secao";
 import { lerPatentes } from "@/data/gamificacao";
 import { usuarioAtual } from "@/lib/api";
 import { cx } from "@/lib/cx";
-import { numero, pontos } from "@/lib/gamificacao";
+import { numero, pontos, type Patente } from "@/lib/gamificacao";
 
 export const metadata: Metadata = { title: "Patentes" };
 
+/** A imagem da patente (a das pessoas ou a das equipes); sem imagem, a inicial do nome na cor da patente. */
+function ImagemDaPatente({ patente, url }: { patente: Patente; url: string | null }) {
+  if (!url) return <SeloPatente patente={{ nome: patente.nome, cor: patente.cor, imagem_url: null }} tamanho="g" semNome />;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={url} alt="" loading="lazy" />;
+}
+
 /**
- * Patentes: a escada dos níveis, com a imagem e a pontuação de cada um, e "você está aqui" na patente de agora. As patentes
- * valem só na temporada (zeram com ela; no geral aparece a maior já alcançada). O admin cria, edita, troca a imagem, desativa
- * e exclui (excluir só vale para a que nunca foi gravada numa temporada fechada nem é meta de uma conquista).
+ * Patentes: a escada dos níveis, com as duas imagens (a das pessoas e a das equipes) e a pontuação de cada um, e "você está
+ * aqui" na patente de agora. As patentes valem só na temporada (zeram com ela; no geral aparece a maior já alcançada). O admin
+ * cria, edita, troca cada imagem, desativa e exclui (excluir só vale para a que nunca foi gravada numa temporada fechada nem é
+ * meta de uma conquista).
  */
 export default async function PatentesPage() {
   const [{ usuario }, lista] = await Promise.all([usuarioAtual(), lerPatentes()]);
@@ -24,7 +32,7 @@ export default async function PatentesPage() {
     <div className="stack g16">
       <div className="row between wrap" style={{ alignItems: "flex-end" }}>
         <span className="muted" style={{ fontSize: 14, maxWidth: 760 }}>
-          Quanto mais pontos na temporada, mais alta a patente. As patentes zeram a cada temporada (um trimestre); a maior patente já alcançada fica no seu perfil. A equipe usa a mesma tabela, aplicada à média por membro.
+          Quanto mais pontos na temporada, mais alta a patente. As patentes zeram a cada temporada (um trimestre); a maior patente já alcançada fica no seu perfil. A equipe usa a mesma tabela, aplicada à média por membro, e cada patente tem a imagem das pessoas e a das equipes.
         </span>
         {podeEditar && <NovaPatente />}
       </div>
@@ -37,12 +45,16 @@ export default async function PatentesPage() {
             const atual = lista.voce?.patente_id === p.id;
             return (
               <article key={p.id} className={cx("degrau", atual && "atual", !p.ativa && "desativada")} style={{ "--cor-patente": p.cor } as CSSProperties} aria-label={p.nome}>
-                {p.imagem_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.imagem_url} alt="" loading="lazy" />
-                ) : (
-                  <SeloPatente patente={p} tamanho="g" semNome />
-                )}
+                <div className="d-imagens">
+                  <figure>
+                    <ImagemDaPatente patente={p} url={p.imagem_url} />
+                    <figcaption>Pessoas</figcaption>
+                  </figure>
+                  <figure>
+                    <ImagemDaPatente patente={p} url={p.imagem_equipe_url} />
+                    <figcaption>Equipes</figcaption>
+                  </figure>
+                </div>
                 <div className="stack g4" style={{ minWidth: 0 }}>
                   <div className="row g8 wrap">
                     <h3>{p.nome}</h3>

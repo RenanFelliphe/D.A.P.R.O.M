@@ -18,9 +18,10 @@ interface FormularioPatenteProps {
 const COR_PADRAO = "#9DB4C0";
 
 /**
- * Cadastro de uma patente (na `JanelaModal`): nome, pontuação necessária, cor, descrição, se está ativa e a imagem. Criar envia
- * tudo junto (`POST /gamificacao/patentes`, multipart); editar muda os campos (`PATCH`) e, se a pessoa escolheu outra imagem,
- * a troca (`PUT .../imagem`).
+ * Cadastro de uma patente (na `JanelaModal`): nome, pontuação necessária, cor, descrição, se está ativa e as duas imagens, a das
+ * pessoas e a das equipes. Cada uma é escolhida à parte e as duas só ficam iguais se o admin escolher o mesmo arquivo nos dois
+ * campos. Criar envia tudo junto (`POST /gamificacao/patentes`, multipart); editar muda os campos (`PATCH`) e troca só a imagem
+ * que a pessoa escolheu de novo (`PUT .../imagem` e `PUT .../imagem-equipe`).
  */
 export function FormularioPatente({ patente, aoConcluir, aoCancelar }: FormularioPatenteProps) {
   const [nome, setNome] = useState(patente?.nome ?? "");
@@ -30,11 +31,15 @@ export function FormularioPatente({ patente, aoConcluir, aoCancelar }: Formulari
   const [ativa, setAtiva] = useState(patente?.ativa ?? true);
   const [imagem, setImagem] = useState<File | null>(null);
   const [erroDaImagem, setErroDaImagem] = useState<string | null>(null);
+  const [imagemDaEquipe, setImagemDaEquipe] = useState<File | null>(null);
+  const [erroDaImagemDaEquipe, setErroDaImagemDaEquipe] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const corValida = /^#[0-9A-Fa-f]{6}$/.test(cor);
-  const pronto = nome.trim() !== "" && pontosNecessarios.trim() !== "" && Number.isInteger(Number(pontosNecessarios)) && Number(pontosNecessarios) >= 0 && corValida && (patente || imagem) && !erroDaImagem;
+  const imagensOk = patente ? true : Boolean(imagem && imagemDaEquipe);
+  const pronto =
+    nome.trim() !== "" && pontosNecessarios.trim() !== "" && Number.isInteger(Number(pontosNecessarios)) && Number(pontosNecessarios) >= 0 && corValida && imagensOk && !erroDaImagem && !erroDaImagemDaEquipe;
 
   async function enviar(evento: FormEvent) {
     evento.preventDefault();
@@ -49,6 +54,7 @@ export function FormularioPatente({ patente, aoConcluir, aoCancelar }: Formulari
         form.set("descricao", descricao.trim());
         form.set("ativa", String(ativa));
         form.set("imagem", imagem!);
+        form.set("imagem_equipe", imagemDaEquipe!);
         await enviarFormulario("/gamificacao/patentes", form);
         aoConcluir(`Patente "${nome.trim()}" criada.`);
         return;
@@ -58,6 +64,11 @@ export function FormularioPatente({ patente, aoConcluir, aoCancelar }: Formulari
         const form = new FormData();
         form.set("imagem", imagem);
         await enviarFormulario(`/gamificacao/patentes/${patente.id}/imagem`, form, "PUT");
+      }
+      if (imagemDaEquipe) {
+        const form = new FormData();
+        form.set("imagem_equipe", imagemDaEquipe);
+        await enviarFormulario(`/gamificacao/patentes/${patente.id}/imagem-equipe`, form, "PUT");
       }
       aoConcluir(`Patente "${nome.trim()}" salva.`);
     } catch (e) {
@@ -92,7 +103,31 @@ export function FormularioPatente({ patente, aoConcluir, aoCancelar }: Formulari
       <Field label="Descrição (opcional)" htmlFor="patente-descricao">
         <textarea id="patente-descricao" className="textarea" rows={2} maxLength={300} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
       </Field>
-      <CampoImagem arquivo={imagem} aoEscolher={setImagem} urlAtual={patente?.imagem_url} obrigatoria={!patente} desabilitado={ocupado} erro={erroDaImagem} aoRecusar={setErroDaImagem} />
+      <div className="grade2">
+        <CampoImagem
+          rotulo="Imagem das pessoas"
+          arquivo={imagem}
+          aoEscolher={setImagem}
+          urlAtual={patente?.imagem_url}
+          obrigatoria={!patente}
+          desabilitado={ocupado}
+          erro={erroDaImagem}
+          aoRecusar={setErroDaImagem}
+        />
+        <CampoImagem
+          rotulo="Imagem das equipes"
+          arquivo={imagemDaEquipe}
+          aoEscolher={setImagemDaEquipe}
+          urlAtual={patente?.imagem_equipe_url}
+          obrigatoria={!patente}
+          desabilitado={ocupado}
+          erro={erroDaImagemDaEquipe}
+          aoRecusar={setErroDaImagemDaEquipe}
+        />
+      </div>
+      <span className="small muted">
+        A imagem das pessoas aparece no ranking de pessoas, no perfil e na barra; a das equipes, no ranking de equipes e na equipe. Elas só ficam iguais se você escolher o mesmo arquivo nos dois campos.
+      </span>
       {erro && (
         <Notice tone="blq" icon="alert">
           {erro}

@@ -89,8 +89,8 @@ export function CartaoDaMinhaPontuacao({ resumo, anonimo }: { resumo: ResumoDaBa
 }
 
 /**
- * A gamificação da equipe: a soma, a média por membro, a patente (a tabela de patentes aplicada à média), a posição e as
- * conquistas, e os pontos de cada membro na temporada (os anônimos aparecem como anônimos).
+ * A gamificação da equipe: a soma, a média por membro, a patente (a tabela de patentes aplicada à média), a maior patente já
+ * alcançada, a posição e as conquistas, e os pontos de cada membro na temporada (os anônimos aparecem como anônimos).
  */
 export function BlocoDaEquipe({ dados }: { dados: PerfilDaEquipeNaGamificacao | null }) {
   if (!dados) return null;
@@ -106,6 +106,10 @@ export function BlocoDaEquipe({ dados }: { dados: PerfilDaEquipeNaGamificacao | 
         <div className="r-item">
           <span className="lbl">Patente · {dados.temporada.nome}</span>
           <SeloPatente patente={dados.patente} tamanho="m" />
+        </div>
+        <div className="r-item">
+          <span className="lbl">Maior patente</span>
+          <SeloPatente patente={dados.maior_patente} tamanho="m" />
         </div>
         <div className="r-item">
           <span className="lbl">Posição na temporada</span>
