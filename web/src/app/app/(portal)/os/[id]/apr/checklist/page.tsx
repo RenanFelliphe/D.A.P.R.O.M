@@ -13,7 +13,7 @@ export default async function ChecklistPage({ params }: PageProps<"/app/os/[id]/
   const { id } = await params;
   const detalhe = await apiOuNulo<DetalheDaOs>(`/os/${id}`);
   if (!detalhe) notFound();
-  const { os } = detalhe;
+  const { os, servico } = detalhe;
   if (os.status !== "liberada" && os.status !== "pendente") redirect(rotas.app.os(id));
 
   const [{ usuario }, { usuarios }] = await Promise.all([
@@ -29,5 +29,5 @@ export default async function ChecklistPage({ params }: PageProps<"/app/os/[id]/
     assinatura_path,
   }));
 
-  return <ChecklistScreen os={{ id: os.id, rotulo: rotuloDaOs(os), titulo: os.titulo, local: os.local_instalacao.codigo }} usuarioId={usuario.id} colegas={colegas} />;
+  return <ChecklistScreen os={{ id: os.id, rotulo: rotuloDaOs(os), titulo: os.titulo, local: os.local_instalacao.codigo }} usuarioId={usuario.id} colegas={colegas} materiais={servico?.materiais ?? []} />;
 }

@@ -1,6 +1,7 @@
 /** Tipos das respostas de OS usadas nas telas do técnico (lista, detalhe e APR) e pequenas regras sobre elas. Chaves em snake_case, como a `api` devolve. */
 
 import type { BadgeTone } from "@/components/ui/Badge";
+import type { MaterialDaApr, ServicoDaOs } from "./catalogo";
 import type { DocumentoDeEvidencia, OsStatus, Paginacao } from "./tipos";
 
 export interface LocalDaOs {
@@ -66,6 +67,8 @@ export interface AprDaOs {
   participantes: ParticipanteDaApr[];
   respostas: { item_id: string; texto: string; reprovado: boolean }[];
   itens_reprovados: ItemReprovadoDaApr[];
+  /** A conferência dos materiais do serviço: o que foi levado e a foto do item obrigatório. */
+  materiais: MaterialDaApr[];
 }
 
 export interface ExecucaoDaOs {
@@ -105,6 +108,8 @@ export interface OsDetalhada {
 
 export interface DetalheDaOs {
   os: OsDetalhada;
+  /** O serviço do catálogo da atividade da OS, com a lista de materiais; nulo quando a OS não tem atividade. */
+  servico: ServicoDaOs | null;
   aprs: AprDaOs[];
   execucoes: ExecucaoDaOs[];
 }

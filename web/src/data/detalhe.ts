@@ -1,7 +1,7 @@
 import "server-only";
 
 import { api, apiOuNulo } from "@/lib/api";
-import type { ServicoDaOs } from "@/lib/catalogo";
+import type { MaterialDaApr, ServicoDaOs } from "@/lib/catalogo";
 import type { DocumentoDeEvidencia, OsStatus, Paginacao } from "@/lib/tipos";
 
 export interface LocalDaOs {
@@ -106,6 +106,8 @@ export interface AprDaOs {
   participantes: ParticipanteApr[];
   riscos: { id: string; classificacao: string; nome: string }[];
   respostas: RespostaApr[];
+  /** A conferência dos materiais do serviço: o que o técnico levou e a foto do item obrigatório. */
+  materiais: MaterialDaApr[];
   itens_reprovados: {
     item_id: string;
     texto: string;

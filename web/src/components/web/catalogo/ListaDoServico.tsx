@@ -19,6 +19,14 @@ export function ListaDoServico({ materiais }: { materiais: MaterialDoServico[] }
                 <span>
                   {m.descricao}
                   {m.codigo && <span className="small mono"> · {m.codigo}</span>}
+                  {m.obrigatorio && (
+                    <>
+                      {" "}
+                      <Badge tone="brand" style={{ padding: "0 7px", fontSize: 11 }}>
+                        Obrigatório
+                      </Badge>
+                    </>
+                  )}
                   {!m.ativo && (
                     <>
                       {" "}

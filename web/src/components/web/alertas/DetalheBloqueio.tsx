@@ -1,5 +1,7 @@
 import { DocumentosAnexados } from "@/components/ui/DocumentosAnexados";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
+import { MateriaisDaApr } from "@/components/ui/MateriaisDaApr";
+import { faltouComprovar } from "@/lib/catalogo";
 import { dataHora } from "@/lib/formatar";
 import type { AprDaOs, ExecucaoDaOs, FotoDaOs } from "./tipos";
 
@@ -34,7 +36,8 @@ function AprBloqueada({ apr }: { apr: AprDaOs }) {
         APR bloqueada · {apr.modelo.codigo} · {dataHora(apr.concluida_em)}
         {nomes ? ` · equipe: ${nomes}` : ""}
       </div>
-      {apr.itens_reprovados.length === 0 && <span style={{ fontSize: 14.5 }}>Sem item reprovado registrado.</span>}
+      {apr.itens_reprovados.length === 0 && !apr.materiais.some(faltouComprovar) && <span style={{ fontSize: 14.5 }}>Sem item reprovado registrado.</span>}
+      <MateriaisDaApr materiais={apr.materiais} />
       {apr.itens_reprovados.map((item) => (
         <div key={item.item_id} className="stack g8" style={{ minWidth: 0 }}>
           <div>

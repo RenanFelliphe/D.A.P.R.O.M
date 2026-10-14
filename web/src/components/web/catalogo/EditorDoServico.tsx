@@ -16,6 +16,8 @@ interface ItemEmEdicao {
   material: Pick<MaterialDoServico, "material_id" | "codigo" | "descricao" | "unidade" | "categoria" | "ativo">;
   quantidade: string;
   observacao: string;
+  /** Exige a foto do item na APR; sem ela, a APR é bloqueada. */
+  obrigatorio: boolean;
 }
 
 const RESULTADOS_DA_BUSCA = 8;
@@ -24,6 +26,7 @@ const paraEdicao = (m: MaterialDoServico): ItemEmEdicao => ({
   material: m,
   quantidade: m.quantidade === null ? "" : String(m.quantidade).replace(".", ","),
   observacao: m.observacao ?? "",
+  obrigatorio: m.obrigatorio,
 });
 
 /** "3,6" → 3.6; vazio → nulo (conforme a necessidade); o que não é número positivo → `NaN`. */
@@ -71,7 +74,7 @@ export function EditorDoServico({ servico, aoFechar }: { servico: ServicoDoCatal
   const quantidadesInvalidas = itens.filter((i) => Number.isNaN(lerQuantidade(i.quantidade)));
 
   function adicionar(m: Material) {
-    setItens((atual) => [...atual, { material: { material_id: m.id, codigo: m.codigo, descricao: m.descricao, unidade: m.unidade, categoria: m.categoria, ativo: m.ativo }, quantidade: "", observacao: "" }]);
+    setItens((atual) => [...atual, { material: { material_id: m.id, codigo: m.codigo, descricao: m.descricao, unidade: m.unidade, categoria: m.categoria, ativo: m.ativo }, quantidade: "", observacao: "", obrigatorio: false }]);
     setBusca("");
   }
   const mudar = (indice: number, parcial: Partial<ItemEmEdicao>) => setItens((atual) => atual.map((i, k) => (k === indice ? { ...i, ...parcial } : i)));
@@ -90,7 +93,7 @@ export function EditorDoServico({ servico, aoFechar }: { servico: ServicoDoCatal
     setErro(null);
     try {
       await chamar("PUT", caminhoDoServico(servico.codigo), {
-        materiais: itens.map((i) => ({ material_id: i.material.material_id, quantidade: lerQuantidade(i.quantidade), observacao: i.observacao.trim() || null })),
+        materiais: itens.map((i) => ({ material_id: i.material.material_id, quantidade: lerQuantidade(i.quantidade), observacao: i.observacao.trim() || null, obrigatorio: i.obrigatorio })),
       });
       exibirAviso(`Materiais do serviço ${servico.codigo} salvos.`);
       aoFechar();
@@ -141,6 +144,15 @@ export function EditorDoServico({ servico, aoFechar }: { servico: ServicoDoCatal
                   value={item.observacao}
                   onChange={(e) => mudar(k, { observacao: e.target.value })}
                 />
+                <label className="row g6 small em-obrig" title="O técnico precisa fotografar o item ao concluir a APR; sem a foto, ou sem o item, a APR é bloqueada">
+                  <input
+                    type="checkbox"
+                    checked={item.obrigatorio}
+                    onChange={(e) => mudar(k, { obrigatorio: e.target.checked })}
+                    aria-label={`${item.material.descricao} é obrigatório (exige foto na APR)`}
+                  />
+                  Obrigatório
+                </label>
                 <span className="row g4 em-acoes" style={{ justifyContent: "flex-end" }}>
                   <Button variant="line" sm style={{ height: 32, padding: "0 8px" }} aria-label="Subir" disabled={k === 0} onClick={() => mover(k, -1)}>
                     <Icon name="left" size={13} style={{ transform: "rotate(90deg)" }} />
@@ -192,6 +204,9 @@ export function EditorDoServico({ servico, aoFechar }: { servico: ServicoDoCatal
           </ul>
         ))}
 
+      {itens.some((i) => i.obrigatorio) && (
+        <span className="small muted">Item obrigatório: o técnico precisa enviar uma foto dele ao concluir a APR. Sem a foto, ou sem o item, a APR é bloqueada e o supervisor é avisado.</span>
+      )}
       {quantidadesInvalidas.length > 0 && <span className="small" style={{ color: "var(--blq)" }}>A quantidade precisa ser um número maior que zero, ou ficar vazia.</span>}
       {erro && (
         <Notice tone="blq" icon="alert">

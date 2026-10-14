@@ -41,7 +41,7 @@ const MATERIAIS: MaterialTreino[] = [
   material(44, "Óculos de segurança", "un", "epi"),
 ];
 
-type Linha = [material: number, quantidade: number | null, observacao?: string];
+type Linha = [material: number, quantidade: number | null, observacao?: string, obrigatorio?: boolean];
 
 /** Serviço → descrição e lista. A poda (`COR-PODA`) fica sem lista, para o treino mostrar o serviço ainda não cadastrado. */
 const SERVICOS: { codigo: string; descricao: string; linhas: Linha[] }[] = [
@@ -53,16 +53,16 @@ const SERVICOS: { codigo: string; descricao: string; linhas: Linha[] }[] = [
     linhas: [[1, 2], [2, 4], [3, 3], [22, 1], [23, 1, "Instalar antes de tocar na rede"], [21, 1], [40, 1], [42, 1], [43, 1]],
   },
   { codigo: "PREV-CHAVE", descricao: "Limpeza e inspeção de chaves seccionadoras", linhas: [[6, 1], [7, 5], [8, 0.2], [22, 1], [40, 1], [44, 1]] },
-  { codigo: "PREV-TERMO-MT", descricao: "Inspeção termográfica de média tensão", linhas: [[20, 1], [21, 1], [41, 1, "Obrigatória perto de painel energizado"], [40, 1], [44, 1]] },
+  { codigo: "PREV-TERMO-MT", descricao: "Inspeção termográfica de média tensão", linhas: [[20, 1], [21, 1], [41, 1, "Obrigatória perto de painel energizado", true], [40, 1], [44, 1]] },
   { codigo: "PREV-TRAFO", descricao: "Manutenção preventiva de transformador", linhas: [[9, 1], [24, 1], [25, 1], [40, 1], [43, 1]] },
   { codigo: "PREV-VISUAL", descricao: "Inspeção visual de equipamentos", linhas: [[26, 1], [43, 1], [44, 1]] },
 ];
 
 const porId = new Map(MATERIAIS.map((m) => [m.id, m]));
 const itensDe = (linhas: Linha[]): MaterialDoServico[] =>
-  linhas.map(([n, quantidade, observacao], i) => {
+  linhas.map(([n, quantidade, observacao, obrigatorio], i) => {
     const m = porId.get(idTreino("3", n))!;
-    return { material_id: m.id, codigo: m.codigo, descricao: m.descricao, unidade: m.unidade, categoria: m.categoria, ativo: m.ativo, quantidade, observacao: observacao ?? null, ordem: i + 1 };
+    return { material_id: m.id, codigo: m.codigo, descricao: m.descricao, unidade: m.unidade, categoria: m.categoria, ativo: m.ativo, quantidade, observacao: observacao ?? null, obrigatorio: obrigatorio ?? false, ordem: i + 1 };
   });
 
 /** Os serviços do catálogo de treino, por código, com o modelo de APR que cada OS de treino usa (`modeloDe`). */

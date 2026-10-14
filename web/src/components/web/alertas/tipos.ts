@@ -1,4 +1,5 @@
 import type { IconName } from "@/components/ui/Icon";
+import type { MaterialDaApr } from "@/lib/catalogo";
 import { ehAdmin, ehSupervisor, type DocumentoDeEvidencia, type Usuario } from "@/lib/tipos";
 
 /** Alerta como `GET /alertas` devolve. */
@@ -124,6 +125,7 @@ export interface AprDaOs {
   preenchida_por: { id: string; nome: string };
   modelo: { codigo: string; versao: number; titulo: string };
   participantes: { usuario_id: string; nome: string; funcao: string }[];
+  materiais: MaterialDaApr[];
   itens_reprovados: { item_id: string; texto: string; resposta: "sim" | "nao" | "na"; observacao: string | null; fotos: FotoDaOs[]; documentos?: DocumentoDeEvidencia[] }[];
 }
 

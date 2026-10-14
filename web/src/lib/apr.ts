@@ -6,8 +6,13 @@
  * nem a evidência do item. Quem diz se a APR passa é a `api` (`POST /aprs/avaliar`), depois que tudo foi respondido;
  * só então aparecem os itens reprovados e a evidência que cada um pede. A APR bloqueada já fica registrada nessa hora
  * (descartar o rascunho não a apaga); a evidência dos reprovados vai depois, no evento da mesma APR.
+ *
+ * Os materiais do serviço (a lista do catálogo para a atividade da OS) são conferidos na revisão: o técnico diz se levou
+ * cada item e, no obrigatório, envia a foto dele. Esse, o técnico sabe qual é: o item obrigatório sem a foto, ou não
+ * levado, bloqueia a APR, e a `api` confere de novo ao validar.
  */
 
+import type { MaterialDoServico } from "./catalogo";
 import { novoUuid } from "./uuid";
 
 export type Resposta = "sim" | "nao" | "na";
@@ -42,10 +47,18 @@ export interface ItemReprovado {
   evidencia: EvidenciaDoItem;
 }
 
-/** Resposta de `POST /aprs/avaliar`: o resultado das respostas e, se bloqueada, o que reprovou. */
+/** Material obrigatório que a `api` disse que não ficou comprovado; `levou` é o que o técnico respondeu (levou, mas sem a foto). */
+export interface MaterialFaltando {
+  materialId: string;
+  descricao: string;
+  levou: boolean;
+}
+
+/** Resposta de `POST /aprs/avaliar`: o resultado e, se bloqueada, o que reprovou e os materiais obrigatórios sem comprovação. */
 export interface Avaliacao {
   resultado: "aprovada" | "bloqueada";
   reprovados: ItemReprovado[];
+  materiaisFaltando: MaterialFaltando[];
 }
 
 /** Resumo de um modelo (`GET /modelos-apr`). */
@@ -108,6 +121,12 @@ export interface DocumentoDoRascunho {
   capturadaEm: string;
 }
 
+/** O que o técnico disse de um item da lista do serviço: se levou e, no item obrigatório, a foto dele em mãos. */
+export interface MaterialConferido {
+  levou: boolean;
+  foto?: FotoDoRascunho;
+}
+
 export interface RespostaDoRascunho {
   resposta: Resposta;
   observacao: string;
@@ -130,6 +149,8 @@ export interface RascunhoApr {
   fotos: Record<string, FotoDoRascunho[]>;
   /** PDFs por item reprovado. Ausente nos rascunhos gravados antes de existir a evidência em PDF. */
   documentos?: Record<string, DocumentoDoRascunho[]>;
+  /** A conferência dos materiais do serviço, por `material_id`. Ausente nos rascunhos gravados antes de existir a conferência. */
+  materiais?: Record<string, MaterialConferido>;
   observacaoGeral: string;
   /** Posição (base 0) na lista de perguntas. */
   indice: number;
@@ -173,6 +194,23 @@ export function faltaEvidencia(r: RascunhoApr, reprovado: ItemReprovado): boolea
 
 /** Itens que a `api` reprovou e ainda estão sem a evidência exigida. */
 export const reprovadosSemEvidencia = (r: RascunhoApr) => (r.avaliacao?.reprovados ?? []).filter((x) => faltaEvidencia(r, x));
+
+/** Os itens obrigatórios que a `api` disse que não ficaram comprovados. */
+export const materiaisFaltandoDe = (r: RascunhoApr): MaterialFaltando[] => r.avaliacao?.materiaisFaltando ?? [];
+
+/** O que o técnico respondeu de um item da lista; `undefined` = ainda não respondeu. */
+export const conferenciaDoMaterial = (r: RascunhoApr, materialId: string): MaterialConferido | undefined => r.materiais?.[materialId];
+
+/** Itens da lista que ainda pedem algo do técnico: sem resposta, ou obrigatório levado e ainda sem a foto. */
+export const materiaisPendentes = (r: RascunhoApr, lista: MaterialDoServico[]) =>
+  lista.filter((m) => {
+    const c = conferenciaDoMaterial(r, m.material_id);
+    return !c || (m.obrigatorio && c.levou && !c.foto);
+  });
+
+/** Os obrigatórios que o técnico disse que não levou: a APR vai ser bloqueada. */
+export const obrigatoriosNaoLevados = (r: RascunhoApr, lista: MaterialDoServico[]) =>
+  lista.filter((m) => m.obrigatorio && conferenciaDoMaterial(r, m.material_id)?.levou === false);
 
 /** "NA" exige observação. */
 export const faltaObservacaoNa = (r: RascunhoApr, item: ItemDoModelo) => r.respostas[item.id]?.resposta === "na" && vazio(r.respostas[item.id]?.observacao);
@@ -250,6 +288,27 @@ export function removerDocumento(r: RascunhoApr, itemId: string, documentoId: st
   return { ...r, documentos: { ...r.documentos, [itemId]: documentosDe(r, itemId).filter((d) => d.id !== documentoId) } };
 }
 
+/** Marca se o técnico levou o item. Voltar para "não levei" descarta a foto: só quem levou o item o comprova. */
+export function conferirMaterial(r: RascunhoApr, materialId: string, levou: boolean): RascunhoApr {
+  const foto = conferenciaDoMaterial(r, materialId)?.foto;
+  return { ...r, materiais: { ...r.materiais, [materialId]: levou && foto ? { levou, foto } : { levou } } };
+}
+
+/** A foto do item em mãos: quem a envia levou o item. */
+export function fotografarMaterial(r: RascunhoApr, materialId: string, foto: FotoDoRascunho): RascunhoApr {
+  return { ...r, materiais: { ...r.materiais, [materialId]: { levou: true, foto } } };
+}
+
+export function removerFotoDoMaterial(r: RascunhoApr, materialId: string): RascunhoApr {
+  return { ...r, materiais: { ...r.materiais, [materialId]: { levou: true } } };
+}
+
+/** "Levei os opcionais": marca como levados os itens sem resposta que não pedem foto. Os obrigatórios ficam com o técnico. */
+export function levarOsOpcionais(r: RascunhoApr, lista: MaterialDoServico[]): RascunhoApr {
+  const novos = Object.fromEntries(lista.filter((m) => !m.obrigatorio && !conferenciaDoMaterial(r, m.material_id)).map((m) => [m.material_id, { levou: true }]));
+  return { ...r, materiais: { ...r.materiais, ...novos } };
+}
+
 /** Tira da APR quem não está presente (o técnico logado sempre fica); se saiu o responsável, o técnico logado assume. */
 export function retirarParticipante(r: RascunhoApr, usuarioId: string): RascunhoApr {
   if (usuarioId === r.usuarioId) return r;
@@ -262,8 +321,31 @@ export function retirarParticipante(r: RascunhoApr, usuarioId: string): Rascunho
 // Evento `apr_concluida`
 // ---------------------------------------------------------------------------------------------------------------
 
+/**
+ * A conferência dos materiais nos campos do evento. Com `lista` (a do serviço agora), vão só os itens que ainda estão
+ * nela: o que o admin tirou enquanto o rascunho estava aberto a `api` recusaria.
+ */
+function materiaisDoEvento(r: RascunhoApr, lista?: MaterialDoServico[]) {
+  const daLista = lista ? new Set(lista.map((m) => m.material_id)) : null;
+  return Object.entries(r.materiais ?? {})
+    .filter(([id]) => !daLista || daLista.has(id))
+    .map(([materialId, c]) => ({
+      material_id: materialId,
+      levou: c.levou,
+      ...(c.levou && c.foto
+        ? {
+            foto: {
+              arquivo_id: c.foto.arquivoId,
+              capturada_em: c.foto.capturadaEm,
+              ...(c.foto.latitude !== undefined && c.foto.longitude !== undefined ? { latitude: c.foto.latitude, longitude: c.foto.longitude } : {}),
+            },
+          }
+        : {}),
+    }));
+}
+
 /** A APR do rascunho, sem as fotos, nos campos do evento (`api/src/dominio/eventos-apr.ts`). */
-function dadosDaApr(r: RascunhoApr) {
+function dadosDaApr(r: RascunhoApr, lista?: MaterialDoServico[]) {
   const resultado = r.avaliacao?.resultado;
   return {
     id: r.aprId,
@@ -279,22 +361,24 @@ function dadosDaApr(r: RascunhoApr) {
       const resp = r.respostas[i.id]!;
       return { item_id: i.id, resposta: resp.resposta, ...(vazio(resp.observacao) ? {} : { observacao: resp.observacao.trim() }), respondida_em: resp.respondidaEm };
     }),
+    materiais: materiaisDoEvento(r, lista),
     ...(vazio(r.observacaoGeral) ? {} : { observacao_geral: r.observacaoGeral.trim() }),
     concluida_em: r.concluidaEm ?? new Date().toISOString(),
   };
 }
 
 /**
- * Corpo de `POST /aprs/avaliar`: a APR inteira, menos as fotos (o técnico ainda não sabe o que reprovou). Se ela
- * reprovar, é com isto que a `api` já a registra; `concluidaEm` é a hora da conclusão.
+ * Corpo de `POST /aprs/avaliar`: a APR inteira, menos as fotos dos itens reprovados (o técnico ainda não sabe o que
+ * reprovou) e com a conferência dos materiais, inclusive as fotos deles. Se ela reprovar, é com isto que a `api` já a
+ * registra; `concluidaEm` é a hora da conclusão. `lista` é a lista de materiais do serviço da OS.
  */
-export const montarAvaliacao = (r: RascunhoApr) => ({ ...dadosDaApr({ ...r, avaliacao: null }), os_id: r.osId });
+export const montarAvaliacao = (r: RascunhoApr, lista?: MaterialDoServico[]) => ({ ...dadosDaApr({ ...r, avaliacao: null }, lista), os_id: r.osId });
 
 /**
  * Payload exato do evento `apr_concluida`; o `os_id` vai no envelope. As fotos e os PDFs são só dos itens que a `api`
  * reprovou (`avaliacao`). Na APR bloqueada, que a `api` registrou ao validar, o evento leva a evidência dos reprovados.
  */
-export function montarPayload(r: RascunhoApr) {
+export function montarPayload(r: RascunhoApr, lista?: MaterialDoServico[]) {
   const evidencias = (r.avaliacao?.reprovados ?? []).flatMap((i) => [
     ...(r.fotos[i.itemId] ?? []).map((f) => ({
       id: f.id,
@@ -305,7 +389,7 @@ export function montarPayload(r: RascunhoApr) {
     })),
     ...documentosDe(r, i.itemId).map((d) => ({ id: d.id, arquivo_id: d.arquivoId, tipo: "pdf" as const, nome: d.nome, item_id: i.itemId, capturada_em: d.capturadaEm })),
   ]);
-  return { ...dadosDaApr(r), evidencias };
+  return { ...dadosDaApr(r, lista), evidencias };
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -334,6 +418,7 @@ export function novoRascunho(d: {
     respostas: {},
     fotos: {},
     documentos: {},
+    materiais: {},
     observacaoGeral: "",
     indice: 0,
     modo: "pergunta",

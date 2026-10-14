@@ -76,7 +76,7 @@ const classificacaoDe = async (codigo: string) =>
 async function avaliar(token: string, r: RascunhoApr): Promise<RascunhoApr> {
   const concluidaEm = new Date().toISOString();
   const res = await ok(token, "POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }));
-  return { ...r, concluidaEm, avaliacao: { resultado: res.resultado, reprovados: res.reprovados.map((x: any) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })) } };
+  return { ...r, concluidaEm, avaliacao: { resultado: res.resultado, reprovados: res.reprovados.map((x: any) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })), materiaisFaltando: (res.materiais_faltando ?? []).map((x: any) => ({ materialId: x.material_id, descricao: x.descricao, levou: x.levou })) } };
 }
 
 /** Responde "tudo certo" (a resposta que não bloqueia) em todas as perguntas; `bloqueantes` troca a resposta de itens escolhidos. */

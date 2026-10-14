@@ -18,6 +18,12 @@ interface RevisaoAprProps {
   assinaturas: ReactNode;
   /** Quantos participantes ainda estão sem assinatura no perfil: a validação espera por eles. */
   semAssinatura: number;
+  /** A conferência dos materiais do serviço (`ConferenciaDeMateriais`); nulo quando a OS não tem lista. */
+  materiais?: ReactNode;
+  /** Quantos itens da lista ainda pedem algo do técnico (sem resposta, ou obrigatório levado e sem a foto): a validação espera por eles. */
+  materiaisPendentes?: number;
+  /** Quantos itens obrigatórios o técnico disse que não levou: a APR vai ser bloqueada. */
+  obrigatoriosNaoLevados?: number;
 }
 
 /**
@@ -25,7 +31,21 @@ interface RevisaoAprProps {
  * não diz se a APR vai passar: isso só se sabe ao validar, e quem diz é a `api`. O técnico não vê quais itens são
  * eliminatórios.
  */
-export function RevisaoApr({ rascunho, resumo, aoAbrir, aoVoltar, aoObservarGeral, aoValidar, validando, erro, assinaturas, semAssinatura }: RevisaoAprProps) {
+export function RevisaoApr({
+  rascunho,
+  resumo,
+  aoAbrir,
+  aoVoltar,
+  aoObservarGeral,
+  aoValidar,
+  validando,
+  erro,
+  assinaturas,
+  semAssinatura,
+  materiais,
+  materiaisPendentes = 0,
+  obrigatoriosNaoLevados = 0,
+}: RevisaoAprProps) {
   const { perguntas, naSemObservacao, semResposta } = resumo;
   const indiceDe = (item: ItemDoModelo) => perguntas.indexOf(item);
 
@@ -80,6 +100,15 @@ export function RevisaoApr({ rascunho, resumo, aoAbrir, aoVoltar, aoObservarGera
         </>
       )}
 
+      {materiais}
+
+      {obrigatoriosNaoLevados > 0 && (
+        <Notice tone="al" icon="alert">
+          <strong>A APR será bloqueada.</strong> {obrigatoriosNaoLevados} {obrigatoriosNaoLevados > 1 ? "itens obrigatórios não foram levados" : "item obrigatório não foi levado"}. Se
+          você estiver com {obrigatoriosNaoLevados > 1 ? "eles" : "ele"}, volte e envie a foto.
+        </Notice>
+      )}
+
       <div className="card stack g8">
         <Field label="Observações (opcional)" htmlFor="obs-geral">
           <textarea
@@ -105,14 +134,15 @@ export function RevisaoApr({ rascunho, resumo, aoAbrir, aoVoltar, aoObservarGera
         <Button variant="line" onClick={aoVoltar} disabled={validando}>
           Voltar
         </Button>
-        <Button variant="p" disabled={!resumo.completo || semAssinatura > 0 || validando} onClick={aoValidar} data-treino="ck-concluir">
+        <Button variant="p" disabled={!resumo.completo || semAssinatura > 0 || materiaisPendentes > 0 || validando} onClick={aoValidar} data-treino="ck-concluir">
           {validando ? "Validando…" : "Concluir e validar"}
         </Button>
       </div>
-      {(!resumo.completo || semAssinatura > 0) && (
+      {(!resumo.completo || semAssinatura > 0 || materiaisPendentes > 0) && (
         <p className="small">
           {semResposta.length > 0 && `Faltam respostas em ${semResposta.length} ${semResposta.length > 1 ? "itens" : "item"}. `}
           {naSemObservacao.length > 0 && `Falta observação em ${naSemObservacao.length} item(ns) com NA. `}
+          {materiaisPendentes > 0 && `Falta conferir ${materiaisPendentes} ${materiaisPendentes > 1 ? "materiais" : "material"} do serviço. `}
           {semAssinatura > 0 && `Falta a assinatura de ${semAssinatura} ${semAssinatura > 1 ? "participantes" : "participante"}.`}
         </p>
       )}

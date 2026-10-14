@@ -182,6 +182,75 @@
   background: #fff
 }
 
+/* Conferência dos materiais do serviço, na revisão da APR */
+
+.mat-linha {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line)
+}
+
+.mat-linha:last-child {
+  border-bottom: 0
+}
+
+.mat-linha .mat-nome {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 14.5px
+}
+
+.mat-linha .mat-extra {
+  grid-column: 1 / -1
+}
+
+.mat-resp {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px
+}
+
+.mat-resp button {
+  height: 40px;
+  padding: 0 14px;
+  border: 1.5px solid var(--line3);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer
+}
+
+.mat-resp button[aria-pressed="true"] {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+  color: var(--brand)
+}
+
+.mat-resp button.nao[aria-pressed="true"] {
+  border-color: var(--blq-bd);
+  background: var(--blq-bg);
+  color: var(--blq)
+}
+
+@media (max-width: 480px) {
+  .mat-linha {
+    grid-template-columns: 1fr
+  }
+
+  .mat-resp {
+    grid-template-columns: 1fr 1fr
+  }
+}
+
 .evid {
   border: 1px solid var(--blq-bd);
   background: #FDF3F1;

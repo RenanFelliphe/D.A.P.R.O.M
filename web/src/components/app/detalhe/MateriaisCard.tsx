@@ -32,6 +32,11 @@ export function MateriaisCard({ servico }: { servico: ServicoDaOs | null }) {
             Previsto para o serviço {servico.descricao}, por execução.
           </span>
           <ListaDoServico materiais={servico.materiais} />
+          {servico.materiais.some((m) => m.obrigatorio) && (
+            <span className="small" style={{ color: "var(--ink3)" }}>
+              Os itens obrigatórios exigem uma foto do item ao concluir a APR. Sem a foto, ou sem o item, a APR fica bloqueada.
+            </span>
+          )}
         </>
       )}
     </div>
