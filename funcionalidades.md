@@ -409,8 +409,9 @@ Decidida e feita em 14/10/2026. A regra está também na especificação (Decis�
   - Recomenda o modelo de maior soma. Empate no topo, ou nada achado, não recomenda nenhum.
   - A recomendação nunca é aplicada sozinha.
 - **Técnico, na Nova APR.**
-  - Abre a janela "Escolha o modelo da APR", com todos os modelos publicados. Cada um mostra título, descrição, exemplos, o que foi encontrado na OS e o botão "Selecionar".
-  - O recomendado vem primeiro, em destaque, com o selo "Opção recomendada" e o aviso para conferir se é esse mesmo: a recomendação vem da leitura da OS, não da avaliação do local.
+  - Abre a janela "Escolha o modelo da APR", com todos os modelos publicados. Cada um mostra título, descrição, o que foi encontrado na OS e o botão "Selecionar". Os exemplos de serviço da orientação não aparecem na janela, para não pesar de texto.
+  - O recomendado vem sozinho no topo, em destaque, sob o título "Opção recomendada", com o aviso para conferir se é esse mesmo: a recomendação vem da leitura da OS, não da avaliação do local.
+  - Os demais vêm abaixo, sob o título "Outros modelos de APR", em cartões de duas colunas (uma no celular).
   - Sem recomendação, um aviso diz que nenhum modelo se destacou, ou que mais de um combina.
   - A janela mostra o que foi encontrado na OS, não as palavras-chave.
   - No detalhe da OS, o cartão da APR exigida avisa que o modelo é escolhido ao iniciar a APR.
