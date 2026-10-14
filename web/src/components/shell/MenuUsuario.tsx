@@ -7,8 +7,8 @@ import { sair } from "@/lib/acoes-sessao";
 import { rotas } from "@/lib/rotas";
 import type { UsuarioDaBarra } from "./Barras";
 
-/** Usuário da barra superior: abre um menu com Perfil e Sair. */
-export function MenuUsuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
+/** Usuário da barra superior: abre um menu com Perfil, Minha pontuação (de quem joga) e Sair. */
+export function MenuUsuario({ iniciais, nome, cargo, comPontuacao }: UsuarioDaBarra & { comPontuacao?: boolean }) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -56,6 +56,12 @@ export function MenuUsuario({ iniciais, nome, cargo }: UsuarioDaBarra) {
             <Icon name="user" size={16} />
             Perfil
           </Link>
+          {comPontuacao && (
+            <Link href={rotas.app.gamificacaoMinha} className="usuario-item" onClick={fechar}>
+              <Icon name="trophy" size={16} />
+              Minha pontuação
+            </Link>
+          )}
           <form action={sair}>
             <button type="submit" className="usuario-item perigo">
               <Icon name="x" size={16} />

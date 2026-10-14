@@ -4,6 +4,7 @@ import { LinhaHistorico, type ExecucaoDoHistorico } from "@/components/app/perfi
 import { MinhaAssinatura } from "@/components/app/perfil/MinhaAssinatura";
 import { TrocarSenha } from "@/components/app/perfil/TrocarSenha";
 import { Screen } from "@/components/ui/Screen";
+import { CartaoDaMinhaPontuacao } from "@/components/web/gamificacao/BlocosDoPerfil";
 import { api, usuarioAtual } from "@/lib/api";
 import { data } from "@/lib/formatar";
 import { ehAdmin, rotuloDoPerfil } from "@/lib/tipos";
@@ -76,6 +77,7 @@ export default async function PerfilPage() {
         }
         lateral={
           <>
+            {executa && usuario.gamificacao && <CartaoDaMinhaPontuacao resumo={usuario.gamificacao} anonimo={usuario.ranking_anonimo ?? false} />}
             <MinhaAssinatura assinaturaPath={usuario.assinatura_path} assinaturaEm={usuario.assinatura_em} />
             <TrocarSenha />
           </>

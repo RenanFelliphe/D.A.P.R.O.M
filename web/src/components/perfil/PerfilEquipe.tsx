@@ -4,7 +4,9 @@ import { Trilha } from "@/components/app/AppChrome";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Screen } from "@/components/ui/Screen";
+import { BlocoDaEquipe } from "@/components/web/gamificacao/BlocosDoPerfil";
 import { aparenciaDoStatus } from "@/components/web/quadro/ColunaQuadro";
+import { lerPerfilDaEquipe } from "@/data/gamificacao";
 import type { ContagemPorStatus, OsDoQuadro } from "@/data/quadro";
 import { apiOuNulo, usuarioAtual } from "@/lib/api";
 import { dataDoDia } from "@/lib/formatar";
@@ -33,7 +35,8 @@ interface PerfilEquipeProps {
  * quem enxerga a equipe; o que ela recusa vira `404`.
  */
 export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipeProps) {
-  const [dados, { usuario: eu }] = await Promise.all([apiOuNulo<EquipeDaApi>(`/equipes/${equipeId}`), usuarioAtual()]);
+  // A gamificação da equipe (soma, média, patente, posição, conquistas e os pontos de cada membro) vem à parte e some no campo de treino.
+  const [dados, { usuario: eu }, gamificacao] = await Promise.all([apiOuNulo<EquipeDaApi>(`/equipes/${equipeId}`), usuarioAtual(), lerPerfilDaEquipe(equipeId)]);
   if (!dados) notFound();
 
   const { equipe, supervisor, membros, contagem_por_status: contagem, total_os: totalOs, os_recentes: recentes } = dados;
@@ -151,6 +154,8 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
               <p className="muted">Sem supervisor: os alertas desta equipe ficam só com o admin.</p>
             )}
           </section>
+
+          <BlocoDaEquipe dados={gamificacao} />
 
           <section className="panel" aria-labelledby="membros-da-equipe">
             <h2 id="membros-da-equipe">{`Membros · ${membros.length}`}</h2>

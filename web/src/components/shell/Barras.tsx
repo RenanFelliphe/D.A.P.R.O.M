@@ -1,5 +1,9 @@
+import Link from "next/link";
 import type { Alerta } from "@/components/web/alertas/tipos";
 import { Icon } from "@/components/ui/Icon";
+import { SeloPatente } from "@/components/web/gamificacao/SeloPatente";
+import { numero, type ResumoDaBarra } from "@/lib/gamificacao";
+import { rotas } from "@/lib/rotas";
 import { BuscaBarra } from "./BuscaBarra";
 import { SeloTreino } from "@/components/treino/SeloTreino";
 import { MenuUsuario } from "./MenuUsuario";
@@ -35,10 +39,12 @@ interface BarraProps {
   treino?: boolean;
   /** Técnico pendente fora do treino: a busca global é da `api` real e ele ainda não pode usá-la. */
   semBusca?: boolean;
+  /** A patente e os pontos da temporada de quem joga (técnico, fora do treino): o selo leva a "Minha pontuação". */
+  gamificacao?: ResumoDaBarra;
 }
 
 /** Barra superior das áreas logadas: marca, busca global e, à direita, o que cada papel usa (alertas, conexão ou treino) e o usuário. */
-export function Barra({ usuario, subtitulo, alertas, treino, semBusca }: BarraProps) {
+export function Barra({ usuario, subtitulo, alertas, treino, semBusca, gamificacao }: BarraProps) {
   return (
     <header className="topbar">
       <Marca subtitulo={subtitulo} />
@@ -54,7 +60,22 @@ export function Barra({ usuario, subtitulo, alertas, treino, semBusca }: BarraPr
             Online
           </span>
         )}
-        <MenuUsuario {...usuario} />
+        {gamificacao && (
+          <Link
+            href={rotas.app.gamificacaoMinha}
+            className="selo-barra"
+            data-treino="selo-gamificacao"
+            aria-label={`Minha pontuação: patente ${gamificacao.patente?.nome ?? "nenhuma"}, ${numero(gamificacao.pontos_temporada)} pontos na temporada${gamificacao.avisos_pendentes > 0 ? `, ${gamificacao.avisos_pendentes} aviso(s) novo(s)` : ""}`}
+            title={`${gamificacao.temporada.nome}: ${numero(gamificacao.pontos_temporada)} pontos`}
+          >
+            <SeloPatente patente={gamificacao.patente} tamanho="p" semNome />
+            <span className="selo-texto">
+              <strong>{numero(gamificacao.pontos_temporada)}</strong> pts
+            </span>
+            {gamificacao.avisos_pendentes > 0 && <span className="selo-aviso" aria-hidden />}
+          </Link>
+        )}
+        <MenuUsuario {...usuario} comPontuacao={Boolean(gamificacao)} />
       </div>
     </header>
   );

@@ -4,6 +4,8 @@ import { Trilha } from "@/components/app/AppChrome";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Screen } from "@/components/ui/Screen";
+import { BlocoDaPessoa } from "@/components/web/gamificacao/BlocosDoPerfil";
+import { lerPerfilDaPessoa } from "@/data/gamificacao";
 import { apiOuNulo, usuarioAtual } from "@/lib/api";
 import { data, dataHora, duracao } from "@/lib/formatar";
 import { rotas, urlDoPdf } from "@/lib/rotas";
@@ -39,7 +41,8 @@ interface PerfilUsuarioProps {
  * A `api` decide quem pode ver quem; o que ela recusa vira `404`.
  */
 export async function PerfilUsuario({ usuarioId }: PerfilUsuarioProps) {
-  const [perfil, { usuario: eu }] = await Promise.all([apiOuNulo<PerfilDaApi>(`/usuarios/${usuarioId}`), usuarioAtual()]);
+  // A gamificação (patente, maior patente e conquistas) vem à parte: some para quem está anônimo no ranking e no campo de treino.
+  const [perfil, { usuario: eu }, gamificacao] = await Promise.all([apiOuNulo<PerfilDaApi>(`/usuarios/${usuarioId}`), usuarioAtual(), lerPerfilDaPessoa(usuarioId)]);
   if (!perfil) notFound();
 
   const { usuario: u, equipe, supervisor, membros, resumo, execucoes } = perfil;
@@ -186,6 +189,8 @@ export async function PerfilUsuario({ usuarioId }: PerfilUsuarioProps) {
               ))}
             </dl>
           </section>
+
+          <BlocoDaPessoa perfil={gamificacao} />
 
           <section className="panel" aria-labelledby="equipe-pessoa">
             <h2 id="equipe-pessoa">

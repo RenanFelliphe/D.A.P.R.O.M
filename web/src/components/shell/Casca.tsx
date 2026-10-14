@@ -5,6 +5,7 @@ import { AcessoRecusado } from "@/components/aguardando/AcessoRecusado";
 import { FaixaDoTreino } from "@/components/treino/FaixaDoTreino";
 import { TreinoRaiz } from "@/components/treino/TreinoRaiz";
 import type { Alerta } from "@/components/web/alertas/tipos";
+import { AvisoConquista } from "@/components/web/gamificacao/AvisoConquista";
 import { api, usuarioAtual } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
 import { CABECALHO_ENDERECO } from "@/lib/sessao-comum";
@@ -81,6 +82,10 @@ export async function Casca({ children }: { children: ReactNode }) {
     ? undefined
     : [{ itens: itens.filter((i) => i.href !== rotas.app.treino) }, { itens: itens.filter((i) => i.href === rotas.app.treino) }].filter((g) => g.itens.length > 0);
 
+  // Gamificação: o selo da patente e os pontos da temporada na barra, e o aviso de conquista ou patente nova. Só para quem joga no
+  // sistema real (o admin não joga; no campo de treino e na espera de liberação a `api` fictícia não tem pontos).
+  const gamificacao = !admin && liberado ? (usuario.gamificacao ?? null) : null;
+
   // Primeiro acesso: abre as boas-vindas, a menos que a pessoa tenha escolhido "Fazer depois" nesta sessão (cookie de sessão).
   const adiado = (await cookies()).get(COOKIE_TREINO_ADIADO)?.value === "1";
   const primeiroAcesso = !admin && !treino && !adiado && usuario.treinamento?.estado === "nao_iniciado";
@@ -103,11 +108,13 @@ export async function Casca({ children }: { children: ReactNode }) {
           alertas={comAlertas && alertas && recentes ? { naoLidos: alertas.total, recentes: recentes.alertas } : undefined}
           treino={treino}
           semBusca={restrito}
+          gamificacao={gamificacao ?? undefined}
         />
       }
       menu={<MenuLateral titulo="Menu principal" itens={itens} secoes={secoes} rodape={rodape} />}
     >
       {children}
+      {gamificacao && gamificacao.avisos_pendentes > 0 && <AvisoConquista />}
       {!admin && <TreinoRaiz emTreino={treino} primeiroAcesso={primeiroAcesso} pendente={pendente} />}
     </Shell>
   );
