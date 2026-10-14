@@ -10,6 +10,7 @@
 - O que falta das essenciais é o **app `mobile`** (Android), e com ele o **modo offline**. A especificação exige os dois no critério de sucesso da demo.
 - Das extras, as três ligadas ao fluxo já estavam prontas (OS de apoio, assinatura no perfil, equipe automática). As demais não tinham começado.
 - **Decisão de 13/10/2026:** antes do app, implementar duas extras: a **evidência em PDF** e o **catálogo de serviço com os materiais** (seção 3).
+- **Decisão de 14/10/2026:** o catálogo ganha a **conferência de materiais na APR**: o item obrigatório exige a foto do item, e sem ela a APR é bloqueada. O controle de estoque foi descartado (seção 4).
 
 ---
 
@@ -129,3 +130,63 @@ A ordem só se inverteria se a próxima apresentação aos mentores caísse ante
 ### 3.2 Catálogo de serviço com os materiais
 
 **Estado:** em implementação.
+
+---
+
+## 4. Conferência de materiais na APR
+
+**Data:** 14/10/2026. **Estado:** implementada na `api`, na web e no Campo de treino. Fica registrada só aqui, não na especificação.
+
+### 4.1 De onde veio e o que se decidiu
+
+A ideia inicial era um controle de "empréstimo": o admin cadastraria quantas unidades de cada equipamento a empresa tem, o técnico escolheria o que levaria depois da APR, e o sistema validaria se ainda havia saldo. A conversa reduziu o escopo a três funções e **descartou o controle de estoque**:
+
+1. **Registrar os materiais por atividade.** Já existia (catálogo de serviço, seção 3.2); ganhou o indicador de item obrigatório.
+2. **Mostrar os materiais recomendados na OS.** Já existia (cartão "Materiais e ferramentas" do detalhe da OS); ganhou o selo "Obrigatório".
+3. **Validar se o técnico levou tudo.** É a parte nova: a conferência na revisão da APR.
+
+Por que o estoque ficou de fora:
+
+- **A foto vale mais que o saldo.** Como a foto do item em mãos libera o técnico mesmo com o estoque zerado, o saldo nunca barraria quem tem o item, e só quem está sem ele seria barrado, o que a foto já faz.
+- **Offline.** Sem saldo em tempo real não há o que conferir: a lista vai no snapshot e a foto sobe pela fila de arquivos.
+- **Sem virar almoxarifado.** Contar quantas unidades a empresa tem, quem as retirou e a devolução é trabalho do SAP e de um almoxarifado, não do D.A.P.R.O.M.
+
+O sistema passa a dizer **quais itens o serviço pede e quais precisam de prova**, e não quantos a empresa tem. O "cadastro por entidade" que se pensou é o banco de dados (`material`, `atividade_material`, `apr_material`), e não um cadastro de cada unidade.
+
+### 4.2 Como funciona
+
+- **Admin.** No editor do serviço (Catálogo › Serviços), cada item da lista tem a caixa "Obrigatório". Mudar só isso entra na auditoria (`atividade.materiais`, com o antes e o depois).
+- **Técnico, antes de sair.** O detalhe da OS lista os materiais, com o selo "Obrigatório" e o aviso de que eles exigem foto na APR.
+- **Técnico, na APR.** Depois de responder o checklist, a revisão traz o cartão "Materiais do serviço": para cada item, "Levei" ou "Não levei"; há o botão "Levei os itens opcionais". No item obrigatório, ao marcar "Levei" o técnico envia a foto do item (a foto só vale para aquele item). O técnico sabe quais itens são obrigatórios; isso não é como o item eliminatório da APR, que ele não vê. "Concluir e validar" só libera quando todos os itens foram respondidos e todo obrigatório levado tem a foto.
+- **Bloqueio.** O item obrigatório **não levado, ou levado sem a foto, bloqueia a APR** (também se nem veio na conferência). O bloqueio segue o caminho do item reprovado: a APR fica registrada como bloqueada na validação, a OS fica pendente, o supervisor recebe o alerta no painel e o e-mail (que lista os materiais sem comprovação). Não há evidência a completar: o técnico vê o que faltou e refaz a APR quando estiver com o item. O bloqueio é na APR, não na execução.
+- **Os demais itens** só são conferidos ("levei" ou "não levei"), sem foto e sem bloquear.
+- **Quem decide é o servidor.** O resultado é recalculado a partir da lista atual do serviço; o que o aparelho diz sobre `resultado` não vale.
+- **OS sem atividade, ou serviço sem item obrigatório:** nada muda. A conferência só aparece quando a OS tem uma lista.
+- **Offline.** `atividades[].materiais` do snapshot já leva `obrigatorio`. Da fila offline, o item que o admin tirou da lista enquanto o aparelho estava sem sinal é ignorado em vez de recusar a APR; online, é recusado.
+- **Histórico.** O detalhe da OS (painel e técnico) e o alerta de bloqueio mostram a conferência, com as fotos e o que faltou.
+
+### 4.3 O que mudou no código
+
+- **Banco.** Migração `0018_apr_materiais`: coluna `atividade_material.obrigatorio` e tabela `apr_material` (por APR e material: `obrigatorio` como estava na hora, `levou`, a foto e a posição). O material que já foi conferido numa APR não é excluído (`409 material_em_uso`): desative-o.
+- **API.** `PUT /catalogo/servicos/{codigo}` aceita `obrigatorio` por item. `POST /aprs/avaliar` e o evento `apr_concluida` aceitam `materiais: [{material_id, levou, foto?}]` (a foto sobe antes, com `PUT /arquivos/{id}` e `tipo=foto`). `POST /aprs/avaliar` devolve `materiais_faltando`. Os erros novos são `material_invalido`, `material_repetido`, `foto_sem_material` e `arquivo_ausente` (o evento fica pendente). A foto é lida por `GET /arquivos/{id}/url`, com a regra de equipe das demais evidências. Código em `api/src/dominio/apr-materiais.ts`.
+- **Web.** Editor do serviço, selo e aviso no detalhe da OS, cartão `ConferenciaDeMateriais` na revisão, tela de impedimento com os materiais, histórico e alerta de bloqueio.
+- **Campo de treino.** A API fictícia espelha a regra; a "Vestimenta antichama" da OS guiada é obrigatória, e o passo "Revise e valide" do tutorial explica a conferência.
+- **Carga de demonstração.** O detector de gases e o respirador são obrigatórios nas listas fictícias; as APRs da demonstração fazem a conferência, e uma OS nova ("Aferição de manômetro padrão") está pendente por material sem comprovação.
+
+### 4.4 O que ficou de fora
+
+- **Estoque, saldo e devolução**, pelas razões da seção 4.1.
+- **Pesquisar e levar um material fora da lista.** Estava na ideia inicial; a lista final de três funções não o inclui. Dá para acrescentar depois (e o que o técnico leva a mais diria ao admin o que o serviço usa de verdade).
+- **Os materiais no PDF da OS.** O PDF continua com a página da APR e a da OS, sem a conferência.
+- **Cadastro de cada unidade** (patrimônio, série, validade da calibração): só faria sentido para o instrumento calibrável.
+
+### 4.5 Pontos em aberto
+
+- **Pontos da gamificação.** A APR bloqueada por material pontua como qualquer APR bloqueada (a pontuação não olha a conferência). Não se mexeu na gamificação; se a regra precisar mudar, discutir antes e registrar no [gameficacao.md](gameficacao.md).
+- **Lista real de materiais.** Os itens obrigatórios dependem da lista que a ES Gás vai passar por serviço (questão 65 da especificação); até lá, o catálogo real não tem nenhum item obrigatório e nada bloqueia.
+
+### 4.6 Como foi verificado
+
+- `api`: `tsc` e a suíte de testes, com o novo [apr-materiais.test.ts](api/test/apr-materiais.test.ts) (conferência, bloqueio, alerta e e-mail, offline, leitura da foto e catálogo).
+- Web: `tsc`, `eslint` e `web/scripts/verificar-treino.mts` (a API fictícia, sem navegador).
+- Sem teste no navegador: as telas foram conferidas por código, tipos e lint.
