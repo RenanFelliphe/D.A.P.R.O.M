@@ -11,7 +11,10 @@ export type Emblema = "estrela" | "visto" | "escudo" | "engrenagem" | "raio" | "
 
 export interface PatenteDaCarga {
   id: string;
+  /** O id do arquivo da imagem da patente das pessoas (uma medalha). */
   imagemId: string;
+  /** O id do arquivo da imagem da patente das equipes (um brasão): diferente da das pessoas. */
+  imagemEquipeId: string;
   nome: string;
   pontosNecessarios: number;
   cor: string;
@@ -19,11 +22,11 @@ export interface PatenteDaCarga {
 }
 
 export const PATENTES_DA_CARGA: PatenteDaCarga[] = [
-  { id: "a0000000-0000-4000-8000-000000000001", imagemId: "a1000000-0000-4000-8000-000000000001", nome: "Bronze", pontosNecessarios: 0, cor: "#CD7F32", descricao: "O ponto de partida de toda temporada." },
-  { id: "a0000000-0000-4000-8000-000000000002", imagemId: "a1000000-0000-4000-8000-000000000002", nome: "Prata", pontosNecessarios: 300, cor: "#A8A9AD", descricao: "Primeira subida: o ritmo de campo já aparece." },
-  { id: "a0000000-0000-4000-8000-000000000003", imagemId: "a1000000-0000-4000-8000-000000000003", nome: "Ouro", pontosNecessarios: 1500, cor: "#D4AF37", descricao: "Constância ao longo das semanas." },
-  { id: "a0000000-0000-4000-8000-000000000004", imagemId: "a1000000-0000-4000-8000-000000000004", nome: "Platina", pontosNecessarios: 3000, cor: "#9DB4C0", descricao: "Perto do fim da temporada, com muito serviço feito." },
-  { id: "a0000000-0000-4000-8000-000000000005", imagemId: "a1000000-0000-4000-8000-000000000005", nome: "Diamante", pontosNecessarios: 5000, cor: "#4FC3F7", descricao: "O topo: só quem rende bem acima da média." },
+  { id: "a0000000-0000-4000-8000-000000000001", imagemId: "a1000000-0000-4000-8000-000000000001", imagemEquipeId: "a2000000-0000-4000-8000-000000000001", nome: "Bronze", pontosNecessarios: 0, cor: "#CD7F32", descricao: "O ponto de partida de toda temporada." },
+  { id: "a0000000-0000-4000-8000-000000000002", imagemId: "a1000000-0000-4000-8000-000000000002", imagemEquipeId: "a2000000-0000-4000-8000-000000000002", nome: "Prata", pontosNecessarios: 300, cor: "#A8A9AD", descricao: "Primeira subida: o ritmo de campo já aparece." },
+  { id: "a0000000-0000-4000-8000-000000000003", imagemId: "a1000000-0000-4000-8000-000000000003", imagemEquipeId: "a2000000-0000-4000-8000-000000000003", nome: "Ouro", pontosNecessarios: 1500, cor: "#D4AF37", descricao: "Constância ao longo das semanas." },
+  { id: "a0000000-0000-4000-8000-000000000004", imagemId: "a1000000-0000-4000-8000-000000000004", imagemEquipeId: "a2000000-0000-4000-8000-000000000004", nome: "Platina", pontosNecessarios: 3000, cor: "#9DB4C0", descricao: "Perto do fim da temporada, com muito serviço feito." },
+  { id: "a0000000-0000-4000-8000-000000000005", imagemId: "a1000000-0000-4000-8000-000000000005", imagemEquipeId: "a2000000-0000-4000-8000-000000000005", nome: "Diamante", pontosNecessarios: 5000, cor: "#4FC3F7", descricao: "O topo: só quem rende bem acima da média." },
 ];
 
 const patenteDoMetal = (nome: string) => PATENTES_DA_CARGA.find((p) => p.nome === nome)!.id;
@@ -93,4 +96,14 @@ export function sqlDaCarga(): string {
       `(${aspas(c.id)}, ${aspas(c.titulo)}, ${aspas(c.descricao)}, ${aspas(c.criterio)}, ${c.quantidade}, ${patenteDaConquistaDaCarga(c) ? aspas(patenteDaConquistaDaCarga(c)!) : "NULL"}, ${c.pontos}, ${aspas(c.imagemId)})`,
   ).join(",\n");
   return `INSERT INTO "patente" ("id", "nome", "pontos_necessarios", "imagem_path", "cor", "descricao") VALUES\n${patentes};\n--> statement-breakpoint\nINSERT INTO "conquista" ("id", "titulo", "descricao", "criterio", "quantidade", "patente_id", "pontos", "imagem_path") VALUES\n${conquistas};`;
+}
+
+/**
+ * O SQL que dá às 5 patentes da carga a imagem de equipe, colado na migração `0017_patente_imagem_da_equipe` (a coluna
+ * `imagem_equipe_path` nasceu depois da `0016`). Fica aqui só para o teste conferir que a migração tem exatamente estes ids.
+ */
+export function sqlDaImagemDaEquipe(): string {
+  const casos = PATENTES_DA_CARGA.map((p) => `WHEN ${aspas(p.id)} THEN ${aspas(p.imagemEquipeId)}`).join(" ");
+  const ids = PATENTES_DA_CARGA.map((p) => aspas(p.id)).join(", ");
+  return `UPDATE "patente" SET "imagem_equipe_path" = CASE "id" ${casos} END WHERE "id" IN (${ids}) AND "imagem_equipe_path" IS NULL;`;
 }

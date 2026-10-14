@@ -120,6 +120,13 @@
       "when": 1791943766863,
       "tag": "0016_gamificacao",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791948833584,
+      "tag": "0017_patente_imagem_da_equipe",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ import {
   excluirConquista,
   excluirPatente,
   trocarImagemDaConquista,
+  trocarImagemDaEquipeDaPatente,
   trocarImagemDaPatente,
 } from "../dominio/gamificacao-cadastros";
 import {
@@ -35,12 +36,12 @@ import { esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { lerConsulta, lerCorpo, lerId } from "../http/validacao";
 
-/** O corpo `multipart/form-data` do envio de uma imagem: os campos de texto e o arquivo `imagem`. */
+/** O corpo `multipart/form-data` do envio de imagens: os campos de texto, o arquivo `imagem` e, nas patentes, a `imagem_equipe`. */
 async function lerFormulario(c: Context) {
   const form = await c.req.parseBody().catch(() => null);
   if (!form) throw invalido("validacao", "Envie os dados como multipart/form-data");
-  const { imagem, ...campos } = form;
-  return { campos, imagem };
+  const { imagem, imagem_equipe: imagemEquipe, ...campos } = form;
+  return { campos, imagem, imagemEquipe };
 }
 
 /**
@@ -102,8 +103,8 @@ export function rotasGamificacao(deps: Deps, { autenticar, exigirPerfil }: Auten
   });
 
   r.post("/gamificacao/patentes", autenticar(), admin, async (c) => {
-    const { campos, imagem } = await lerFormulario(c);
-    return responder(c, await criarPatente(deps, c.get("usuario"), campos, imagem), 201);
+    const { campos, imagem, imagemEquipe } = await lerFormulario(c);
+    return responder(c, await criarPatente(deps, c.get("usuario"), campos, imagem, imagemEquipe), 201);
   });
 
   r.patch("/gamificacao/patentes/:id", autenticar(), admin, async (c) => {
@@ -113,6 +114,12 @@ export function rotasGamificacao(deps: Deps, { autenticar, exigirPerfil }: Auten
   r.put("/gamificacao/patentes/:id/imagem", autenticar(), admin, async (c) => {
     const { imagem } = await lerFormulario(c);
     return responder(c, await trocarImagemDaPatente(deps, c.get("usuario"), lerId(c), imagem));
+  });
+
+  /** A imagem da patente nas equipes (ranking de equipes e perfil da equipe): a das pessoas não muda. */
+  r.put("/gamificacao/patentes/:id/imagem-equipe", autenticar(), admin, async (c) => {
+    const { imagemEquipe } = await lerFormulario(c);
+    return responder(c, await trocarImagemDaEquipeDaPatente(deps, c.get("usuario"), lerId(c), imagemEquipe));
   });
 
   r.delete("/gamificacao/patentes/:id", autenticar(), admin, async (c) => {

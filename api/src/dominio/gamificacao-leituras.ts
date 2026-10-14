@@ -22,7 +22,7 @@ import {
   textoDaMeta,
   type Meta,
 } from "./conquistas";
-import { escadaDePatentes, maiorDasPatentes, patenteDosPontos, patenteParaApi, proximaPatente, seloDePatente, todasAsPatentes, urlsDasImagens, type LinhaDePatente } from "./patentes";
+import { caminhoDaImagem, caminhosDasImagens, escadaDePatentes, maiorDasPatentes, patenteDosPontos, patenteParaApi, proximaPatente, seloDePatente, todasAsPatentes, urlsDasImagens, type LinhaDePatente } from "./patentes";
 import { GERAL, NOME_ANONIMO, maioresPatentes, mascararPessoa, membrosDasEquipes, pessoasElegiveis, rankingDeEquipes, rankingDePessoas } from "./ranking";
 import { REGRAS, NAO_PONTUAM, ORDEM_DAS_REGRAS, REGRAS_DO_JOGO } from "./regras-de-pontuacao";
 import { regrasDoBanco } from "./lancamentos";
@@ -214,7 +214,7 @@ export async function listarRegras(deps: Deps) {
 export async function listarPatentes(deps: Deps, eu: UsuarioAutenticado) {
   const todas = [...(await todasAsPatentes(deps.db)).values()].sort((a, b) => a.pontosNecessarios - b.pontosNecessarios || a.nome.localeCompare(b.nome, "pt-BR"));
   const visiveis = eu.perfil === "admin" ? todas : todas.filter((p) => p.ativa);
-  const urls = await urlsDasImagens(deps, visiveis.map((p) => p.imagemPath));
+  const urls = await urlsDasImagens(deps, visiveis.flatMap(caminhosDasImagens));
   let voce: { patenteId: string | null; pontosTemporada: number } | null = null;
   if (jogaNoSistema(eu)) {
     const t = temporadaAtual(deps.agora());
@@ -377,7 +377,7 @@ export async function montarRanking(deps: Deps, eu: UsuarioAutenticado, tipo: "p
     };
   }
   const linhas = await rankingDeEquipes(deps.db, escopo);
-  const urls = await urlsDasImagens(deps, linhas.flatMap((l) => (l.patente ? [l.patente.imagemPath] : [])));
+  const urls = await urlsDasImagens(deps, linhas.flatMap((l) => (l.patente ? [caminhoDaImagem(l.patente, "equipe")] : [])));
   const minhas = new Set([eu.equipeId, ...eu.equipesSupervisionadas].filter((id): id is string => id !== null));
   return {
     ...cabecalho,
@@ -389,7 +389,7 @@ export async function montarRanking(deps: Deps, eu: UsuarioAutenticado, tipo: "p
       pontos: l.pontos,
       media: l.media,
       voce: minhas.has(l.equipeId),
-      patente: seloDePatente(l.patente, urls),
+      patente: seloDePatente(l.patente, urls, "equipe"),
     })),
   };
 }
@@ -447,8 +447,8 @@ export async function perfilDaPessoa(deps: Deps, eu: UsuarioAutenticado, id: str
 }
 
 /**
- * `GET /gamificacao/equipes/{id}`: a soma, a média, a patente e a posição da equipe, as conquistas dela e os pontos de cada membro
- * na temporada (os anônimos aparecem como anônimos).
+ * `GET /gamificacao/equipes/{id}`: a soma, a média, a patente, a maior patente e a posição da equipe, as conquistas dela e os
+ * pontos de cada membro na temporada (os anônimos aparecem como anônimos).
  */
 export async function perfilDaEquipe(deps: Deps, eu: UsuarioAutenticado, id: string) {
   const [e] = await deps.db.select({ id: equipe.id, nome: equipe.nome }).from(equipe).where(eq(equipe.id, id));
@@ -462,14 +462,20 @@ export async function perfilDaEquipe(deps: Deps, eu: UsuarioAutenticado, id: str
     return { m, pontos: linha?.pontos ?? 0, patente: linha?.patente ?? null };
   });
   lista.sort((a, b) => b.pontos - a.pontos || a.m.nome.localeCompare(b.m.nome, "pt-BR"));
-  const urls = await urlsDasImagens(deps, [dela?.patente, ...lista.map((l) => l.patente)].filter((p): p is LinhaDePatente => Boolean(p)).map((p) => p.imagemPath));
+  // No ranking geral, a patente da linha é a maior já alcançada pela equipe (equipe sem ninguém fica fora do ranking).
+  const maior = maiorDasPatentes(doGeral?.patente, dela?.patente);
+  // A patente da equipe tem a imagem das equipes; a de cada membro, a das pessoas.
+  const daEquipe = [dela?.patente, maior].filter((p): p is LinhaDePatente => Boolean(p)).map((p) => caminhoDaImagem(p, "equipe"));
+  const dosMembros = lista.map((l) => l.patente).filter((p): p is LinhaDePatente => Boolean(p)).map((p) => caminhoDaImagem(p));
+  const urls = await urlsDasImagens(deps, [...daEquipe, ...dosMembros]);
   return {
     equipe: e,
     temporada: { codigo: t.codigo, nome: t.nome },
     pontosTemporada: dela?.pontos ?? 0,
     media: dela?.media ?? 0,
     membros: dela?.membros ?? lista.length,
-    patente: seloDePatente(dela?.patente ?? null, urls),
+    patente: seloDePatente(dela?.patente ?? null, urls, "equipe"),
+    maiorPatente: seloDePatente(maior, urls, "equipe"),
     posicaoTemporada: dela?.posicao ?? null,
     equipesNoRanking: times.length,
     pontosGerais: doGeral?.pontos ?? 0,

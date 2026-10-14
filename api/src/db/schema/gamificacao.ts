@@ -160,8 +160,10 @@ export const patente = pgTable(
     id: uuid().primaryKey().defaultRandom(),
     nome: text().notNull().unique(),
     pontosNecessarios: integer().notNull(),
-    /** Imagem no bucket `gamificacao`. */
+    /** Imagem da patente das pessoas, no bucket `gamificacao`. */
     imagemPath: text().notNull(),
+    /** Imagem da patente das equipes, também no bucket. Só é igual à das pessoas se o admin enviar a mesma imagem nos dois campos. */
+    imagemEquipePath: text().notNull(),
     /** Hexadecimal (`#CD7F32`): destaca o nome e a barra de progresso. */
     cor: text().notNull(),
     descricao: text(),

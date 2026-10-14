@@ -213,5 +213,12 @@ export function formulario(campos: Record<string, string | number | boolean | nu
   return f;
 }
 
+/** O formulário de uma patente: a `imagem` das pessoas e a `imagem_equipe` das equipes (as duas obrigatórias; `null` tira uma). */
+export function formularioDePatente(campos: Record<string, string | number | boolean | null | undefined>, imagem: File | null = arquivoPng(), imagemEquipe: File | null = arquivoPng()) {
+  const f = formulario(campos, imagem);
+  if (imagemEquipe) f.set("imagem_equipe", imagemEquipe);
+  return f;
+}
+
 export type Campo = Awaited<ReturnType<typeof prepararCampo>>;
 export type { Ambiente, UsuarioDeTeste };

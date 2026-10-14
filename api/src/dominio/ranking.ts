@@ -198,6 +198,42 @@ async function somasDasEquipes(db: Db, escopo: string) {
   return new Map(linhas.map((l) => [l.equipeId, { pontos: l.pontos, ultimoEm: daBase(l.ultimo) }]));
 }
 
+/**
+ * A maior patente já alcançada por cada equipe: a maior entre as gravadas nas temporadas fechadas e a das temporadas ainda
+ * abertas (a média por membro de hoje, com a escada de hoje). Equipe sem ninguém não entra.
+ */
+export async function maioresPatentesDasEquipes(db: Db, escada?: LinhaDePatente[]): Promise<Map<string, LinhaDePatente>> {
+  const degraus = escada ?? (await escadaDePatentes(db));
+  const maiores = new Map<string, LinhaDePatente>();
+  const considerar = (equipeId: string, p: LinhaDePatente | null) => {
+    const melhor = maiorDasPatentes(maiores.get(equipeId), p);
+    if (melhor) maiores.set(equipeId, melhor);
+  };
+  const fechadas = await db
+    .select({ equipeId: temporadaEquipe.equipeId, patenteId: temporadaEquipe.patenteId })
+    .from(temporadaEquipe)
+    .where(isNotNull(temporadaEquipe.patenteId));
+  if (fechadas.length > 0) {
+    const todas = await todasAsPatentes(db);
+    for (const f of fechadas) considerar(f.equipeId, todas.get(f.patenteId!) ?? null);
+  }
+  const [abertas, membros] = await Promise.all([
+    db
+      .select({ equipeId: lancamentoEquipe.equipeId, pontos: sql<number>`coalesce(sum(${lancamentoPontos.pontos}), 0)::int` })
+      .from(lancamentoEquipe)
+      .innerJoin(lancamentoPontos, eq(lancamentoPontos.id, lancamentoEquipe.lancamentoId))
+      .innerJoin(temporada, eq(temporada.codigo, lancamentoPontos.temporada))
+      .where(isNull(temporada.fechadaEm))
+      .groupBy(lancamentoEquipe.equipeId, lancamentoPontos.temporada),
+    membrosDasEquipes(db),
+  ]);
+  for (const a of abertas) {
+    const n = membros.get(a.equipeId)?.length ?? 0;
+    if (n > 0) considerar(a.equipeId, patenteDosPontos(arredondar(a.pontos / n), degraus));
+  }
+  return maiores;
+}
+
 export interface LinhaDeEquipe {
   posicao: number;
   equipeId: string;
@@ -207,13 +243,14 @@ export interface LinhaDeEquipe {
   pontos: number;
   /** A soma dividida pelas pessoas da equipe: define a patente e a posição. */
   media: number;
+  /** Na temporada, a patente da média; no geral, a maior patente já alcançada. */
   patente: LinhaDePatente | null;
 }
 
 /**
  * Ranking de equipes pela média por membro (a soma aparece ao lado). Equipe sem ninguém fica de fora. Temporada fechada: o
  * gravado no fechamento (com o número de pessoas daquela época); aberta e geral: as pessoas de hoje. A patente da equipe é a
- * tabela de patentes aplicada à média (na temporada).
+ * tabela de patentes aplicada à média (na temporada); no geral, a maior patente já alcançada.
  */
 export async function rankingDeEquipes(db: Db, escopo: string): Promise<LinhaDeEquipe[]> {
   const escada = await escadaDePatentes(db);
@@ -237,6 +274,7 @@ export async function rankingDeEquipes(db: Db, escopo: string): Promise<LinhaDeE
   }
 
   const [equipes, membros, somas] = await Promise.all([db.select({ id: equipe.id, nome: equipe.nome }).from(equipe), membrosDasEquipes(db), somasDasEquipes(db, escopo)]);
+  const maiores = escopo === GERAL ? await maioresPatentesDasEquipes(db, escada) : null;
   const linhas = equipes
     .map((e) => {
       const n = membros.get(e.id)?.length ?? 0;
@@ -259,7 +297,7 @@ export async function rankingDeEquipes(db: Db, escopo: string): Promise<LinhaDeE
     membros: l.n,
     pontos: l.pontos,
     media: l.media,
-    patente: escopo === GERAL ? null : patenteDosPontos(l.media, escada),
+    patente: maiores ? (maiores.get(l.e.id) ?? patenteDosPontos(0, escada)) : patenteDosPontos(l.media, escada),
   }));
 }
 

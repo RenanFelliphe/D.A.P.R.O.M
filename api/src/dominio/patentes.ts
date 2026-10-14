@@ -50,7 +50,16 @@ export async function urlsDasImagens(deps: Deps, caminhos: Iterable<string>): Pr
   return new Map(unicos.map((c, i) => [c, urls[i]!]));
 }
 
-/** A patente como a API a devolve (o `imagem_url` vem de `urlsDasImagens`). */
+/** De quem é o selo: a patente das pessoas e a das equipes têm cada uma a sua imagem. */
+export type DeQuem = "pessoa" | "equipe";
+
+/** O arquivo da imagem da patente para pessoas ou para equipes. */
+export const caminhoDaImagem = (p: Pick<LinhaDePatente, "imagemPath" | "imagemEquipePath">, de: DeQuem = "pessoa") => (de === "equipe" ? p.imagemEquipePath : p.imagemPath);
+
+/** Os dois arquivos da patente (para pedir as URLs de uma vez). */
+export const caminhosDasImagens = (p: Pick<LinhaDePatente, "imagemPath" | "imagemEquipePath">) => [p.imagemPath, p.imagemEquipePath];
+
+/** A patente como a API a devolve, com as duas imagens (`urls` vem de `urlsDasImagens`, com os dois arquivos). */
 export const patenteParaApi = (p: LinhaDePatente, urls: Map<string, string>) => ({
   id: p.id,
   nome: p.nome,
@@ -59,8 +68,12 @@ export const patenteParaApi = (p: LinhaDePatente, urls: Map<string, string>) => 
   descricao: p.descricao,
   ativa: p.ativa,
   imagemUrl: urls.get(p.imagemPath) || null,
+  imagemEquipeUrl: urls.get(p.imagemEquipePath) || null,
 });
 
-/** O resumo curto de uma patente (selo): id, nome, cor e imagem. */
-export const seloDePatente = (p: LinhaDePatente | null | undefined, urls: Map<string, string>) =>
-  p ? { id: p.id, nome: p.nome, cor: p.cor, pontosNecessarios: p.pontosNecessarios, imagemUrl: urls.get(p.imagemPath) || null } : null;
+/**
+ * O resumo curto de uma patente (selo): id, nome, cor e imagem. A imagem é a das pessoas, ou a das equipes quando o selo é de
+ * uma equipe (`de: "equipe"`): quem consome o selo recebe sempre o `imagemUrl` certo para o contexto.
+ */
+export const seloDePatente = (p: LinhaDePatente | null | undefined, urls: Map<string, string>, de: DeQuem = "pessoa") =>
+  p ? { id: p.id, nome: p.nome, cor: p.cor, pontosNecessarios: p.pontosNecessarios, imagemUrl: urls.get(caminhoDaImagem(p, de)) || null } : null;

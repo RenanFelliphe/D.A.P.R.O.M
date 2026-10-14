@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
 import {
@@ -23,12 +23,13 @@ import { diferencas, registrarAuditoria } from "./auditoria";
 import { CRITERIOS_INFO, conferirTodos } from "./conquistas";
 import { listarConquistas } from "./gamificacao-leituras";
 import { lerImagem } from "./imagem";
-import { patenteParaApi, urlsDasImagens } from "./patentes";
+import { caminhoDaImagem, caminhosDasImagens, patenteParaApi, urlsDasImagens, type DeQuem } from "./patentes";
 import { REGRAS } from "./regras-de-pontuacao";
 
 /**
  * O cadastro do admin (seções 3.2, 7.2 e 2 do `gameficacao.md`): o valor e o estado de cada tarefa, as patentes e as
- * conquistas, cada um com a auditoria. As imagens (PNG, JPEG ou WebP, até 1 MB, quadradas) ficam no bucket `gamificacao`.
+ * conquistas, cada um com a auditoria. As imagens (PNG, JPEG ou WebP, até 1 MB, quadradas) ficam no bucket `gamificacao`; cada
+ * patente tem duas, uma para as pessoas e uma para as equipes.
  */
 
 const MB = 1024 * 1024;
@@ -44,8 +45,8 @@ const vazioViraNulo = (v: unknown) => (typeof v === "string" && v.trim() === "" 
 // ---- Imagem -----------------------------------------------------------------------------------------------------
 
 /** Confere o arquivo (conteúdo, tamanho e proporção) e o grava no bucket com um id novo. Devolve o caminho. */
-async function salvarImagem(deps: Deps, arquivo: unknown): Promise<string> {
-  if (!(arquivo instanceof File)) throw invalido("validacao", 'imagem: envie a imagem no campo multipart "imagem"');
+async function salvarImagem(deps: Deps, arquivo: unknown, campo = "imagem"): Promise<string> {
+  if (!(arquivo instanceof File)) throw invalido("validacao", `${campo}: envie a imagem no campo multipart "${campo}"`);
   if (arquivo.size === 0) throw invalido("arquivo_vazio", "Arquivo vazio");
   if (arquivo.size > LIMITE_DA_IMAGEM) throw new ErroApi(413, "arquivo_grande", "A imagem tem mais de 1 MB");
   const bytes = new Uint8Array(await arquivo.arrayBuffer());
@@ -59,6 +60,16 @@ async function salvarImagem(deps: Deps, arquivo: unknown): Promise<string> {
 }
 
 const apagarImagem = (deps: Deps, caminho: string | null | undefined) => (caminho ? deps.armazenamento.remover("gamificacao", caminho).catch(() => {}) : Promise.resolve());
+
+/**
+ * Apaga o arquivo de uma imagem de patente, a não ser que alguma patente ainda o use (nas patentes anteriores à imagem de equipe,
+ * a migração deixou as duas imagens apontando para o mesmo arquivo; trocar só uma não pode apagar a outra). Chamar depois de a
+ * linha ser atualizada ou excluída.
+ */
+async function apagarImagemDaPatente(deps: Deps, caminho: string): Promise<void> {
+  const [uso] = await deps.db.select({ n: sql<number>`count(*)::int` }).from(patente).where(or(eq(patente.imagemPath, caminho), eq(patente.imagemEquipePath, caminho)));
+  if ((uso?.n ?? 0) === 0) await apagarImagem(deps, caminho);
+}
 
 /** Traduz a violação de uma restrição única do cadastro na mensagem para o admin. */
 function recusarDuplicado(erro: unknown, mensagens: Record<string, [string, string]>): never {
@@ -137,16 +148,29 @@ const MENSAGENS_DA_PATENTE: Record<string, [string, string]> = {
 /** Mudar uma patente pode fazer alguém cumprir uma conquista de patente: confere todo mundo. */
 const conferirConquistas = (deps: Deps, opcoes: { soConquista?: string } = {}) => deps.db.transaction(async (tx) => conferirTodos({ tx: tx as unknown as Db, agora: deps.agora() }, opcoes));
 
-/** `POST /gamificacao/patentes` (multipart: os campos e a `imagem`). */
-export async function criarPatente(deps: Deps, ator: Ator, corpo: unknown, arquivo: unknown) {
+/**
+ * `POST /gamificacao/patentes` (multipart: os campos, a `imagem` das pessoas e a `imagem_equipe` das equipes). As duas são
+ * obrigatórias e cada uma vira um arquivo próprio: só ficam iguais se o admin enviar a mesma imagem nos dois campos.
+ */
+export async function criarPatente(deps: Deps, ator: Ator, corpo: unknown, arquivo: unknown, arquivoDaEquipe: unknown) {
   const d = esquemaNovaPatente.safeParse(corpo);
   if (!d.success) throw invalido("validacao", `${d.error.issues[0]?.path.join(".")}: ${d.error.issues[0]?.message}`);
   const caminho = await salvarImagem(deps, arquivo);
-  let criada: typeof patente.$inferSelect;
+  let caminhoDaEquipe: string;
   try {
-    [criada] = (await deps.db.insert(patente).values({ nome: d.data.nome, pontosNecessarios: d.data.pontos_necessarios, cor: d.data.cor.toUpperCase(), descricao: d.data.descricao ?? null, ativa: d.data.ativa, imagemPath: caminho }).returning()) as [typeof criada];
+    caminhoDaEquipe = await salvarImagem(deps, arquivoDaEquipe, "imagem_equipe");
   } catch (erro) {
     await apagarImagem(deps, caminho);
+    throw erro;
+  }
+  let criada: typeof patente.$inferSelect;
+  try {
+    [criada] = (await deps.db
+      .insert(patente)
+      .values({ nome: d.data.nome, pontosNecessarios: d.data.pontos_necessarios, cor: d.data.cor.toUpperCase(), descricao: d.data.descricao ?? null, ativa: d.data.ativa, imagemPath: caminho, imagemEquipePath: caminhoDaEquipe })
+      .returning()) as [typeof criada];
+  } catch (erro) {
+    await Promise.all([apagarImagem(deps, caminho), apagarImagem(deps, caminhoDaEquipe)]);
     recusarDuplicado(erro, MENSAGENS_DA_PATENTE);
   }
   await registrarAuditoria(deps.db, ator, {
@@ -158,7 +182,7 @@ export async function criarPatente(deps: Deps, ator: Ator, corpo: unknown, arqui
     detalhes: { pontos_necessarios: criada.pontosNecessarios, cor: criada.cor, ativa: criada.ativa },
   });
   await conferirConquistas(deps);
-  return patenteParaApi(criada, await urlsDasImagens(deps, [criada.imagemPath]));
+  return patenteParaApi(criada, await urlsDasImagens(deps, caminhosDasImagens(criada)));
 }
 
 /** `PATCH /gamificacao/patentes/{id}`. Mudar vale na hora para a temporada aberta; as fechadas guardam a patente gravada. */
@@ -197,19 +221,37 @@ export async function editarPatente(deps: Deps, ator: Ator, id: string, dados: z
     });
     if ("pontos_necessarios" in mudancas || "ativa" in mudancas) await conferirConquistas(deps);
   }
-  return patenteParaApi(depois, await urlsDasImagens(deps, [depois.imagemPath]));
+  return patenteParaApi(depois, await urlsDasImagens(deps, caminhosDasImagens(depois)));
 }
 
-/** `PUT /gamificacao/patentes/{id}/imagem`: troca a imagem (o arquivo antigo é apagado). */
-export async function trocarImagemDaPatente(deps: Deps, ator: Ator, id: string, arquivo: unknown) {
+/**
+ * `PUT /gamificacao/patentes/{id}/imagem` (a das pessoas) e `PUT /gamificacao/patentes/{id}/imagem-equipe` (a das equipes): troca
+ * só a imagem pedida e apaga o arquivo antigo. A outra imagem não muda: cada uma é escolhida à parte.
+ */
+async function trocarImagem(deps: Deps, ator: Ator, id: string, arquivo: unknown, de: DeQuem) {
   const [antes] = await deps.db.select().from(patente).where(eq(patente.id, id));
   if (!antes) throw naoEncontrado("Patente não encontrada");
-  const caminho = await salvarImagem(deps, arquivo);
-  const [depois] = await deps.db.update(patente).set({ imagemPath: caminho, atualizadaEm: deps.agora() }).where(eq(patente.id, id)).returning();
-  await apagarImagem(deps, antes.imagemPath);
-  await registrarAuditoria(deps.db, ator, { entidade: "patente", verbo: "imagem", entidadeId: id, alvo: antes.nome, resumo: `Trocou a imagem da patente "${antes.nome}"` });
-  return patenteParaApi(depois!, await urlsDasImagens(deps, [caminho]));
+  const caminho = await salvarImagem(deps, arquivo, de === "equipe" ? "imagem_equipe" : "imagem");
+  const [depois] = await deps.db
+    .update(patente)
+    .set({ ...(de === "equipe" ? { imagemEquipePath: caminho } : { imagemPath: caminho }), atualizadaEm: deps.agora() })
+    .where(eq(patente.id, id))
+    .returning();
+  await apagarImagemDaPatente(deps, caminhoDaImagem(antes, de));
+  await registrarAuditoria(deps.db, ator, {
+    entidade: "patente",
+    verbo: "imagem",
+    entidadeId: id,
+    alvo: antes.nome,
+    resumo: `Trocou a imagem ${de === "equipe" ? "das equipes" : "das pessoas"} da patente "${antes.nome}"`,
+    detalhes: { imagem: de },
+  });
+  return patenteParaApi(depois!, await urlsDasImagens(deps, caminhosDasImagens(depois!)));
 }
+
+export const trocarImagemDaPatente = (deps: Deps, ator: Ator, id: string, arquivo: unknown) => trocarImagem(deps, ator, id, arquivo, "pessoa");
+
+export const trocarImagemDaEquipeDaPatente = (deps: Deps, ator: Ator, id: string, arquivo: unknown) => trocarImagem(deps, ator, id, arquivo, "equipe");
 
 /**
  * `DELETE /gamificacao/patentes/{id}`: só vale para a patente que nunca foi gravada numa temporada fechada nem é meta de uma
@@ -224,7 +266,7 @@ export async function excluirPatente(deps: Deps, ator: Ator, id: string) {
   if ((gravada?.n ?? 0) + (gravadaEquipe?.n ?? 0) > 0) throw conflito("patente_em_uso", "Esta patente já foi gravada numa temporada fechada: desative-a em vez de excluir");
   if ((meta?.n ?? 0) > 0) throw conflito("patente_em_uso", "Esta patente é a meta de uma conquista: desative-a em vez de excluir");
   await deps.db.delete(patente).where(eq(patente.id, id));
-  await apagarImagem(deps, p.imagemPath);
+  for (const caminho of new Set(caminhosDasImagens(p))) await apagarImagemDaPatente(deps, caminho);
   await registrarAuditoria(deps.db, ator, { entidade: "patente", verbo: "excluir", entidadeId: id, alvo: p.nome, resumo: `Excluiu a patente "${p.nome}"` });
 }
 

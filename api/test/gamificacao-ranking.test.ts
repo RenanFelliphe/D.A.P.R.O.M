@@ -274,6 +274,56 @@ describe("Gamificação: patentes, ranking e equipes (seções 3, 5 e 6)", () =>
     assert.equal(linha!.ocorridoEm.toISOString(), "2026-09-20T12:00:00.000Z");
   });
 
+  it("maior patente da equipe: a maior que a média já alcançou, numa temporada fechada ou na aberta; no ranking geral e no perfil", async () => {
+    const geral = async () => ((await c.amb.esperar(200, "GET", "/gamificacao/ranking", { como: c.supervisor, consulta: { tipo: "equipes", temporada: "geral" } })) as { linhas: any[] }).linhas;
+    const perfil = (id: string) => c.amb.esperar(200, "GET", `/gamificacao/equipes/${id}`, { como: c.supervisor });
+    const idDaEquipe = async (nome: string) => (await c.amb.db.select({ id: equipe.id }).from(equipe).where(eq(equipe.nome, nome)))[0]!.id;
+
+    // Da temporada fechada (2026-T3, do teste anterior): "Fecha Y" fechou com média 5050 (Diamante) e "Fecha X" com 955 (Prata).
+    // Na aberta (2026-T4) as duas têm média perto de zero, então a patente de agora é a menor, mas a maior continua gravada.
+    const y = await idDaEquipe("Fecha Y");
+    const x = await idDaEquipe("Fecha X");
+    const linhas = await geral();
+    assert.equal(linhas.find((l) => l.equipe_id === y).patente.nome, "Diamante", "no geral, a patente da equipe é a maior já alcançada");
+    assert.equal(linhas.find((l) => l.equipe_id === x).patente.nome, "Prata");
+    const perfilY = await perfil(y);
+    assert.equal(perfilY.patente.nome, "Bronze", "a patente da temporada de agora continua a da média de agora");
+    assert.equal(perfilY.maior_patente.nome, "Diamante");
+    assert.equal((await perfil(x)).maior_patente.nome, "Prata");
+    assert.ok(perfilY.maior_patente.imagem_url?.includes("gamificacao"));
+
+    // A equipe usa a imagem da patente para equipes, e a pessoa, a das pessoas.
+    const escada = (await c.amb.esperar(200, "GET", "/gamificacao/patentes", { como: c.supervisor })).patentes as any[];
+    const patenteDe = (nome: string) => escada.find((p) => p.nome === nome);
+    assert.notEqual(patenteDe("Diamante").imagem_url, patenteDe("Diamante").imagem_equipe_url, "a carga traz uma imagem para cada lado");
+    assert.equal(linhas.find((l) => l.equipe_id === y).patente.imagem_url, patenteDe("Diamante").imagem_equipe_url, "ranking de equipes");
+    assert.equal(perfilY.maior_patente.imagem_url, patenteDe("Diamante").imagem_equipe_url, "maior patente da equipe");
+    assert.equal(perfilY.patente.imagem_url, patenteDe("Bronze").imagem_equipe_url, "patente da equipe");
+    const doMembro = perfilY.pessoas.find((m: any) => m.nome === "Fecha D");
+    assert.equal(doMembro.patente.imagem_url, patenteDe(doMembro.patente.nome).imagem_url, "a patente de cada membro é a das pessoas");
+    const dasPessoas = (await ranking(c.supervisor, { temporada: "geral" })).linhas.find((l) => l.nome === "Fecha A");
+    assert.equal(dasPessoas.patente.imagem_url, patenteDe(dasPessoas.patente.nome).imagem_url, "ranking de pessoas");
+
+    // Da temporada aberta: a média de 1.600 por membro é Ouro, e já conta como a maior sem esperar o fechamento.
+    const ouro = await c.amb.criarEquipe({ nome: "Maior Ouro" });
+    for (const nome of ["Ouro 1", "Ouro 2"]) await dar(await c.amb.criarUsuario({ perfil: "tecnico", equipeId: ouro.id, nome }), 1600, new Date(AGORA.getTime() - MIN));
+    const doOuro = await perfil(ouro.id);
+    assert.equal(doOuro.media, 1600);
+    assert.equal(doOuro.patente.nome, "Ouro");
+    assert.equal(doOuro.maior_patente.nome, "Ouro");
+    assert.equal((await geral()).find((l) => l.equipe_id === ouro.id).patente.nome, "Ouro");
+
+    // Equipe nova, sem pontos: a maior é a primeira da escada (como a de uma pessoa que está começando).
+    const nova = await c.amb.criarEquipe({ nome: "Maior Nova" });
+    await c.amb.criarUsuario({ perfil: "tecnico", equipeId: nova.id, nome: "Novata" });
+    assert.equal((await geral()).find((l) => l.equipe_id === nova.id).patente.nome, "Bronze");
+    assert.equal((await perfil(nova.id)).maior_patente.nome, "Bronze");
+
+    // A temporada fechada continua mostrando a patente gravada (a da média da época), e não a maior de hoje.
+    const t3 = ((await c.amb.esperar(200, "GET", "/gamificacao/ranking", { como: c.supervisor, consulta: { tipo: "equipes", temporada: "2026-T3" } })) as { linhas: any[] }).linhas;
+    assert.equal(t3.find((l) => l.equipe_id === x).patente.nome, "Prata");
+  });
+
   it("temporada impecável: a equipe teve preventivas no trimestre e nenhuma ficou atrasada sem justificativa", async () => {
     const boa = await c.amb.criarEquipe({ nome: "Impecável" });
     const ruim = await c.amb.criarEquipe({ nome: "Atrasada" });

@@ -3,10 +3,10 @@ import { after, before, describe, it } from "node:test";
 import { eq } from "drizzle-orm";
 import { auditoria, patente, regraPontuacao } from "../src/db/schema";
 import { lerImagem } from "../src/dominio/imagem";
-import { CONQUISTAS_DA_CARGA, PATENTES_DA_CARGA, sqlDaCarga } from "../src/db/seed/gamificacao-dados";
+import { CONQUISTAS_DA_CARGA, PATENTES_DA_CARGA, sqlDaCarga, sqlDaImagemDaEquipe } from "../src/db/seed/gamificacao-dados";
 import { imagensDaCarga, garantirImagensDaGamificacao } from "../src/db/seed/imagens-gamificacao";
 import { ArmazenamentoEmMemoria } from "../src/servicos/armazenamento";
-import { arquivoPng, formulario, pngDeTeste, prepararCampo, type Campo } from "./gamificacao-ajuda";
+import { arquivoPng, formulario, formularioDePatente, pngDeTeste, prepararCampo, type Campo } from "./gamificacao-ajuda";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -28,6 +28,7 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
       ["POST", "/gamificacao/patentes", { form: formulario({ nome: "X", pontos_necessarios: 1, cor: "#112233" }) }],
       ["PATCH", `/gamificacao/patentes/${bronze!.id}`, { json: { nome: "Y" } }],
       ["PUT", `/gamificacao/patentes/${bronze!.id}/imagem`, { form: formulario({}) }],
+      ["PUT", `/gamificacao/patentes/${bronze!.id}/imagem-equipe`, { form: formularioDePatente({}, null) }],
       ["DELETE", `/gamificacao/patentes/${bronze!.id}`],
       ["POST", "/gamificacao/conquistas", { form: formulario({ titulo: "X", descricao: "x", criterio: "aprs_completas", quantidade: 1 }) }],
       ["PATCH", `/gamificacao/conquistas/${bronze!.id}`, { json: { titulo: "Y" } }],
@@ -68,19 +69,23 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
   });
 
   it("patente: cria com imagem (multipart), valida nome e pontuação únicos, edita, desativa e audita", async () => {
-    const nova = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formulario({ nome: "Esmeralda", pontos_necessarios: 4000, cor: "#2ecc71", descricao: "Entre a platina e o diamante." }) });
+    const nova = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Esmeralda", pontos_necessarios: 4000, cor: "#2ecc71", descricao: "Entre a platina e o diamante." }) });
     assert.equal(nova.status, 201, JSON.stringify(nova.corpo));
     assert.equal(nova.corpo.nome, "Esmeralda");
     assert.equal(nova.corpo.cor, "#2ECC71", "a cor é guardada em maiúsculas");
     assert.equal(nova.corpo.ativa, true);
     assert.ok(nova.corpo.imagem_url.includes("gamificacao"));
+    assert.ok(nova.corpo.imagem_equipe_url.includes("gamificacao"));
     const [guardada] = await c.amb.db.select().from(patente).where(eq(patente.id, nova.corpo.id));
     assert.equal(await c.amb.armazenamento.existe("gamificacao", guardada!.imagemPath), true, "a imagem foi para o bucket gamificacao");
+    assert.equal(await c.amb.armazenamento.existe("gamificacao", guardada!.imagemEquipePath), true, "a das equipes também");
+    assert.notEqual(guardada!.imagemEquipePath, guardada!.imagemPath, "cada uma é um arquivo próprio, mesmo que o admin envie a mesma imagem nos dois campos");
+    assert.notEqual(nova.corpo.imagem_url, nova.corpo.imagem_equipe_url);
 
-    const nomeRepetido = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formulario({ nome: "Esmeralda", pontos_necessarios: 4100, cor: "#00ff00" }) });
+    const nomeRepetido = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Esmeralda", pontos_necessarios: 4100, cor: "#00ff00" }) });
     assert.equal(nomeRepetido.status, 409);
     assert.equal(nomeRepetido.corpo.erro.codigo, "nome_duplicado");
-    const pontosRepetidos = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formulario({ nome: "Outra", pontos_necessarios: 4000, cor: "#00ff00" }) });
+    const pontosRepetidos = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Outra", pontos_necessarios: 4000, cor: "#00ff00" }) });
     assert.equal(pontosRepetidos.status, 409);
     assert.equal(pontosRepetidos.corpo.erro.codigo, "pontos_duplicados");
 
@@ -91,18 +96,25 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
       ["pontuação que não é número", { nome: "Z", pontos_necessarios: "muitos", cor: "#112233" }],
     ];
     for (const [rotulo, campos] of invalidos) {
-      assert.equal((await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formulario(campos) })).status, 422, rotulo);
+      assert.equal((await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente(campos) })).status, 422, rotulo);
     }
-    // A imagem é obrigatória.
-    const semImagem = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formulario({ nome: "Sem imagem", pontos_necessarios: 10, cor: "#112233" }, null) });
+    // As duas imagens são obrigatórias: a das pessoas e a das equipes (e nada fica gravado se uma delas falta ou não serve).
+    const semImagem = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Sem imagem", pontos_necessarios: 10, cor: "#112233" }, null) });
     assert.equal(semImagem.status, 422);
+    const semImagemDaEquipe = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Sem imagem da equipe", pontos_necessarios: 10, cor: "#112233" }, undefined, null) });
+    assert.equal(semImagemDaEquipe.status, 422);
+    assert.match(semImagemDaEquipe.corpo.erro.mensagem, /imagem_equipe/);
+    const equipeNaoQuadrada = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Equipe torta", pontos_necessarios: 10, cor: "#112233" }, undefined, arquivoPng(200, 100)) });
+    assert.equal(equipeNaoQuadrada.corpo.erro.codigo, "imagem_nao_quadrada");
+    const nomes = (await c.amb.db.select({ nome: patente.nome }).from(patente)).map((p) => p.nome);
+    assert.ok(!nomes.includes("Sem imagem") && !nomes.includes("Sem imagem da equipe") && !nomes.includes("Equipe torta"));
 
     // Editar: a desativada deixa de ser atribuída e libera a pontuação para outra.
     const editada = await c.amb.esperar(200, "PATCH", `/gamificacao/patentes/${nova.corpo.id}`, { como: admin(), json: { descricao: "", pontos_necessarios: 4200 } });
     assert.equal(editada.descricao, null);
     assert.equal(editada.pontos_necessarios, 4200);
     await c.amb.esperar(200, "PATCH", `/gamificacao/patentes/${nova.corpo.id}`, { como: admin(), json: { ativa: false } });
-    const outra = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formulario({ nome: "Ocupa", pontos_necessarios: 4200, cor: "#112233" }) });
+    const outra = await c.amb.req("POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Ocupa", pontos_necessarios: 4200, cor: "#112233" }) });
     assert.equal(outra.status, 201, "a pontuação só é única entre as ativas");
     const reativar = await c.como(admin(), "PATCH", `/gamificacao/patentes/${nova.corpo.id}`, { json: { ativa: true } });
     assert.equal(reativar.status, 409, "reativar com a pontuação de uma ativa é recusado");
@@ -124,7 +136,7 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
   });
 
   it("imagem: só PNG, JPEG ou WebP, quadrada, até 1 MB; trocar apaga a antiga", async () => {
-    const criada = await c.amb.esperar(201, "POST", "/gamificacao/patentes", { como: admin(), form: formulario({ nome: "Imagem", pontos_necessarios: 7000, cor: "#abcdef" }) });
+    const criada = await c.amb.esperar(201, "POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Imagem", pontos_necessarios: 7000, cor: "#abcdef" }) });
     const url = `/gamificacao/patentes/${criada.id}/imagem`;
     const [antes] = await c.amb.db.select().from(patente).where(eq(patente.id, criada.id));
 
@@ -153,6 +165,33 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
     assert.equal(await c.amb.armazenamento.existe("gamificacao", depois!.imagemPath), true);
     assert.equal((await auditar("patente.imagem")).length, 1);
     assert.equal((await c.como(admin(), "PUT", `/gamificacao/patentes/00000000-0000-4000-8000-000000000999/imagem`, { form: formulario({}) })).status, 404);
+    assert.equal(depois!.imagemEquipePath, antes!.imagemEquipePath, "trocar a imagem das pessoas não mexe na das equipes");
+
+    // A imagem das equipes é trocada à parte (campo `imagem_equipe`), com as mesmas regras, e não mexe na das pessoas.
+    const urlEquipe = `/gamificacao/patentes/${criada.id}/imagem-equipe`;
+    assert.equal((await c.como(admin(), "PUT", urlEquipe, { form: formularioDePatente({}, null, arquivoPng(200, 100)) })).corpo.erro.codigo, "imagem_nao_quadrada");
+    assert.equal((await c.como(admin(), "PUT", urlEquipe, { form: formularioDePatente({}, arquivoPng(256), null) })).status, 422, "só o campo `imagem_equipe` vale nesta rota");
+    const trocada = await c.amb.esperar(200, "PUT", urlEquipe, { como: admin(), form: formularioDePatente({}, null, arquivoPng(256)) });
+    assert.ok(trocada.imagem_equipe_url.includes("gamificacao"));
+    const [aposEquipe] = await c.amb.db.select().from(patente).where(eq(patente.id, criada.id));
+    assert.notEqual(aposEquipe!.imagemEquipePath, depois!.imagemEquipePath);
+    assert.equal(aposEquipe!.imagemPath, depois!.imagemPath, "trocar a imagem das equipes não mexe na das pessoas");
+    assert.equal(await c.amb.armazenamento.existe("gamificacao", depois!.imagemEquipePath), false, "a imagem antiga das equipes foi apagada");
+    assert.equal(await c.amb.armazenamento.existe("gamificacao", aposEquipe!.imagemEquipePath), true);
+    assert.equal(await c.amb.armazenamento.existe("gamificacao", aposEquipe!.imagemPath), true);
+    assert.equal((await auditar("patente.imagem")).length, 2);
+    assert.equal((await c.como(admin(), "PUT", `/gamificacao/patentes/00000000-0000-4000-8000-000000000999/imagem-equipe`, { form: formularioDePatente({}, null) })).status, 404);
+  });
+
+  it("patente anterior à imagem de equipe (a migração deixa as duas apontando para o mesmo arquivo): trocar uma não apaga o que a outra ainda usa", async () => {
+    const criada = await c.amb.esperar(201, "POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Herdada", pontos_necessarios: 7500, cor: "#123456" }) });
+    const [linha] = await c.amb.db.select().from(patente).where(eq(patente.id, criada.id));
+    await c.amb.db.update(patente).set({ imagemEquipePath: linha!.imagemPath }).where(eq(patente.id, criada.id));
+
+    await c.amb.esperar(200, "PUT", `/gamificacao/patentes/${criada.id}/imagem`, { como: admin(), form: formulario({}, arquivoPng(256)) });
+    assert.equal(await c.amb.armazenamento.existe("gamificacao", linha!.imagemPath), true, "as equipes ainda usam este arquivo");
+    await c.amb.esperar(200, "PUT", `/gamificacao/patentes/${criada.id}/imagem-equipe`, { como: admin(), form: formularioDePatente({}, null, arquivoPng(256)) });
+    assert.equal(await c.amb.armazenamento.existe("gamificacao", linha!.imagemPath), false, "agora ninguém o usa");
   });
 
   it("o leitor de imagens lê PNG, JPEG e WebP pelos bytes", () => {
@@ -173,10 +212,11 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
   });
 
   it("excluir a patente: só se nunca foi gravada numa temporada fechada nem é meta de uma conquista", async () => {
-    const livre = await c.amb.esperar(201, "POST", "/gamificacao/patentes", { como: admin(), form: formulario({ nome: "Descartável", pontos_necessarios: 9000, cor: "#101010" }) });
+    const livre = await c.amb.esperar(201, "POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Descartável", pontos_necessarios: 9000, cor: "#101010" }) });
     const [linha] = await c.amb.db.select().from(patente).where(eq(patente.id, livre.id));
     assert.equal((await c.como(admin(), "DELETE", `/gamificacao/patentes/${livre.id}`)).status, 200);
     assert.equal(await c.amb.armazenamento.existe("gamificacao", linha!.imagemPath), false);
+    assert.equal(await c.amb.armazenamento.existe("gamificacao", linha!.imagemEquipePath), false, "as duas imagens saem do bucket");
     assert.equal((await auditar("patente.excluir")).length, 1);
     assert.equal((await c.como(admin(), "DELETE", `/gamificacao/patentes/${livre.id}`)).status, 404);
 
@@ -227,17 +267,23 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
   it("a carga inicial: a migração tem exatamente os dados de gamificacao-dados.ts, e as imagens da carga são PNG quadrados", async () => {
     const migracao = readFileSync(join(import.meta.dirname, "..", "db", "migrations", "0016_gamificacao.sql"), "utf8").replace(/\r\n/g, "\n");
     assert.ok(migracao.includes(sqlDaCarga()), "o SQL da carga confere com os dados em TypeScript");
+    const daEquipe = readFileSync(join(import.meta.dirname, "..", "db", "migrations", "0017_patente_imagem_da_equipe.sql"), "utf8").replace(/\r\n/g, "\n");
+    assert.ok(daEquipe.includes(sqlDaImagemDaEquipe()), "a migração das imagens de equipe confere com os dados em TypeScript");
     const patentes = await c.amb.db.select().from(patente).where(eq(patente.id, PATENTES_DA_CARGA[0]!.id));
     assert.equal(patentes[0]!.imagemPath, PATENTES_DA_CARGA[0]!.imagemId);
+    assert.equal(patentes[0]!.imagemEquipePath, PATENTES_DA_CARGA[0]!.imagemEquipeId);
+    for (const p of PATENTES_DA_CARGA) assert.notEqual(p.imagemEquipeId, p.imagemId, "a carga traz uma imagem para as equipes e outra para as pessoas");
     assert.equal(CONQUISTAS_DA_CARGA.length, 23);
 
     const imagens = imagensDaCarga();
-    assert.equal(imagens.size, 28);
+    assert.equal(imagens.size, 33, "5 medalhas, 5 brasões e 23 troféus");
     for (const bytes of imagens.values()) assert.deepEqual(lerImagem(bytes), { tipoMime: "image/png", largura: 192, altura: 192 });
+    for (const p of PATENTES_DA_CARGA) assert.notDeepEqual(imagens.get(p.imagemEquipeId), imagens.get(p.imagemId), `${p.nome}: o brasão não é a medalha`);
     // A subida da api grava só as que faltam, e é idempotente.
     const deposito = new ArmazenamentoEmMemoria();
-    assert.equal(await garantirImagensDaGamificacao(deposito), 28);
+    assert.equal(await garantirImagensDaGamificacao(deposito), 33);
     assert.equal(await garantirImagensDaGamificacao(deposito), 0);
     assert.equal(await deposito.existe("gamificacao", PATENTES_DA_CARGA[4]!.imagemId), true);
+    assert.equal(await deposito.existe("gamificacao", PATENTES_DA_CARGA[4]!.imagemEquipeId), true);
   });
 });

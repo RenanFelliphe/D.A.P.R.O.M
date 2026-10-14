@@ -3,9 +3,9 @@ import type { Armazenamento } from "../../servicos/armazenamento";
 import { CONQUISTAS_DA_CARGA, PATENTES_DA_CARGA, type Emblema } from "./gamificacao-dados";
 
 /**
- * As imagens da carga inicial da gamificação: uma medalha para cada metal e um troféu para cada conquista, desenhados em
- * código (PNG com transparência, sem biblioteca de imagem). São simples de propósito: o admin troca pelas definitivas em
- * "Patentes" e "Conquistas". Quadradas, como o cadastro exige.
+ * As imagens da carga inicial da gamificação: uma medalha (das pessoas) e um brasão (das equipes) para cada metal, e um troféu
+ * para cada conquista, desenhados em código (PNG com transparência, sem biblioteca de imagem). São simples de propósito: o
+ * admin troca pelas definitivas em "Patentes" e "Conquistas". Quadradas, como o cadastro exige.
  */
 
 const LADO = 192;
@@ -171,6 +171,29 @@ function medalha(corHex: string, diamante: boolean): Uint8Array {
   });
 }
 
+/** O contorno do brasão: um escudo de topo reto e ponta embaixo. */
+const ESCUDO_DO_BRASAO: Ponto[] = [[0.14, 0.1], [0.5, 0.03], [0.86, 0.1], [0.86, 0.5], [0.5, 0.97], [0.14, 0.5]];
+const reduzir = (p: Ponto[], k: number): Ponto[] => p.map(([x, y]) => [0.5 + (x - 0.5) * k, 0.5 + (y - 0.5) * k] as Ponto);
+
+/**
+ * O brasão de uma patente de equipe: escudo metálico com aro e duas pessoas no centro, para não se confundir com a medalha
+ * (disco com estrela) das pessoas.
+ */
+function brasao(corHex: string): Uint8Array {
+  const metal = hex(corHex);
+  const escuro = tom(metal, 0.55);
+  const interno = reduzir(ESCUDO_DO_BRASAO, 0.88);
+  const filete = reduzir(ESCUDO_DO_BRASAO, 0.8);
+  return png((u, v) => {
+    if (!dentroDoPoligono(ESCUDO_DO_BRASAO, u, v)) return [0, 0, 0, 0];
+    if (!dentroDoPoligono(interno, u, v)) return opaco(escuro);
+    if (!dentroDoPoligono(filete, u, v)) return opaco(tom(metal, 1.3));
+    if (emblemaEm("pessoas", 0.5, 0.42, 0.2, u, v)) return opaco(tom(metal, 0.5));
+    const luz = Math.max(0, Math.min(1, (u + v) / 2));
+    return opaco(misturar(tom(metal, 1.3), tom(metal, 0.78), luz));
+  });
+}
+
 const NIVEIS: Record<string, string> = { bronze: "#CD7F32", prata: "#A8A9AD", ouro: "#D4AF37", equipe: "#4F86E8" };
 
 /** O troféu de uma conquista: taça com alças, haste e base, na cor do nível (bronze, prata, ouro; azul para as de equipe), e o emblema. */
@@ -201,7 +224,10 @@ const nivelDaConquista = (pontos: number, deEquipe: boolean): keyof typeof NIVEI
 /** Todas as imagens da carga inicial, pelo id do arquivo no bucket `gamificacao`. */
 export function imagensDaCarga(): Map<string, Uint8Array> {
   const imagens = new Map<string, Uint8Array>();
-  for (const p of PATENTES_DA_CARGA) imagens.set(p.imagemId, medalha(p.cor, p.nome === "Diamante"));
+  for (const p of PATENTES_DA_CARGA) {
+    imagens.set(p.imagemId, medalha(p.cor, p.nome === "Diamante"));
+    imagens.set(p.imagemEquipeId, brasao(p.cor));
+  }
   for (const c of CONQUISTAS_DA_CARGA) imagens.set(c.imagemId, trofeu(nivelDaConquista(c.pontos, c.pontos === 0), c.emblema));
   return imagens;
 }
@@ -213,7 +239,7 @@ export function imagensDaCarga(): Map<string, Uint8Array> {
 export async function garantirImagensDaGamificacao(armazenamento: Armazenamento): Promise<number> {
   let gravadas = 0;
   const faltam = [];
-  for (const id of [...PATENTES_DA_CARGA.map((p) => p.imagemId), ...CONQUISTAS_DA_CARGA.map((c) => c.imagemId)]) {
+  for (const id of [...PATENTES_DA_CARGA.flatMap((p) => [p.imagemId, p.imagemEquipeId]), ...CONQUISTAS_DA_CARGA.map((c) => c.imagemId)]) {
     if (!(await armazenamento.existe("gamificacao", id))) faltam.push(id);
   }
   if (faltam.length === 0) return 0;
