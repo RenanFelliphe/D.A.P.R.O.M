@@ -97,7 +97,7 @@ cp .env.example .env
 docker compose up --build   # api em http://localhost:3333 (GET /saude), web em http://localhost:3000
 ```
 
-A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta, e o simulador do SAP já vem ligado. Detalhes e a lista de rotas em [api/README.md](./api/README.md). O `mobile` não entra no compose: é gerado como APK.
+A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta, e os simuladores do SAP e do registro de funcionários já vêm ligados (as telas deles ficam em `/simulador`, só para o admin). Detalhes e a lista de rotas em [api/README.md](./api/README.md). O `mobile` não entra no compose: é gerado como APK.
 
 ## Estrutura do repositório
 

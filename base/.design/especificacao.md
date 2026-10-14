@@ -100,15 +100,15 @@ Tabela `tarefa`.
 | Coluna | Tipo | Nulo | Referência | Nota |
 |---|---|---|---|---|
 | `tarefa.id` | uuid | não | | |
-| `tarefa.tipo` | text | não | | `pdf_os` \| `email_alerta` \| `leitura_sap` |
-| `tarefa.referencia_id` | uuid | sim | | `os.id`, `alerta.id` ou nulo (leitura agendada) |
+| `tarefa.tipo` | text | não | | `pdf_os` \| `email_alerta` \| `leitura_sap` \| `leitura_rh` \| `conferencia_rh` |
+| `tarefa.referencia_id` | uuid | sim | | `os.id`, `alerta.id`, `importacao.id`, `leitura_rh.id`, `usuario.id` (`conferencia_rh`) ou nulo (leitura agendada do SAP) |
 | `tarefa.estado` | text | não | | `pendente` \| `em_andamento` \| `concluida` \| `falhou` |
 | `tarefa.tentativas` | integer | não | | padrão 0 |
 | `tarefa.proxima_em` | timestamptz | não | | |
 | `tarefa.erro` | text | sim | | última mensagem |
 | `tarefa.criada_em` | timestamptz | não | | |
 
-Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_SIMULADO` (`true` liga as rotas do simulador), `SAP_LEITURA_INTERVALO_MIN` (padrão 15), `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`. Do `web`: `API_URL`. Do app: o endereço da API no momento do build.
+Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_SIMULADO` (`true` liga as rotas do simulador), `SAP_LEITURA_INTERVALO_MIN` (padrão 15), `RH_SIMULADO` (`true` liga o registro de funcionários simulado em `/rh-simulado`), `RH_API_URL`, `RH_API_TOKEN` (o que o DAPROM usa para ler o registro), `RH_AVISO_TOKEN` (o que o registro usa para avisar o DAPROM), `RH_AVISO_URL` (para onde o simulador manda os avisos; só ele a usa) e `RH_LEITURA_HORA` (hora, em São Paulo, da leitura diária; padrão 3), `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`. Com `RH_SIMULADO=true`, endereços e tokens do RH têm padrão, como no SAP; no `docker-compose.yml` o simulador do RH vem ligado. Do `web`: `API_URL`. Do app: o endereço da API no momento do build.
 
 1. Banco, autenticação e arquivos — Supabase, na nuvem para a demo; o mesmo código funciona com o Supabase hospedado no Coolify, só trocando as variáveis.
 2. PDF e e-mail — gerados pelo back-end Node (o Supabase não gera PDF): biblioteca de PDF declarativa para as 2 páginas e envio por SMTP configurável.
@@ -122,7 +122,8 @@ Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVI
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Admin cria usuário | usuário com e-mail institucional único (o login), matrícula única, perfil, equipe e senha inicial; no Supabase Auth a conta nasce com esse mesmo e-mail | `201` |
+| Admin cria usuário | só de quem está no registro de funcionários ([Registro de funcionários](#registro-de-funcionários)): informa matrícula e e-mail institucional, e nome, cargo e registro profissional vêm do registro; escolhe perfil e equipe (a do setor já vem sugerida) e define a senha inicial; no Supabase Auth a conta nasce com esse mesmo e-mail | `201` |
+| Matrícula fora do registro, e-mail que não é o dela, funcionário afastado ou desligado, registro fora do ar | nada é gravado | `404` `funcionario_nao_encontrado`, `422` `email_nao_confere`, `409` `funcionario_afastado` ou `funcionario_desligado`, `503` `registro_indisponivel` |
 | Matrícula repetida | nada é gravado | `409` "Matrícula já cadastrada" |
 | Primeiro login com senha inicial | entra, mas só consegue trocar a senha | tela "Defina sua senha" |
 | Login com sinal (web ou app) | confere a senha na `api` e abre a sessão; no app, guarda também um hash salgado da senha e os dados da equipe para o modo offline | `200` |
@@ -141,8 +142,9 @@ Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVI
 `POST /auth/trocar-senha` `{senha_atual, senha_nova}` → `200`
 `GET /me` → `200` `{usuario, equipe}`
 `PUT /me/assinatura` `{arquivo_id}` → `200`
-`POST /usuarios` `{nome, matricula, email, perfil, equipe_id?, cargo?, registro_profissional?, senha_inicial}` → `201` `{id}`
-`PATCH /usuarios/{id}` `{nome?, email?, perfil?, equipe_id?, cargo?, registro_profissional?, ativo?}` → `200` (trocar o e-mail troca também o login da conta no Supabase Auth; a matrícula não muda)
+`POST /usuarios` `{matricula, email, perfil?, equipe_id?, senha_inicial}` → `201` `{id}` (a `api` consulta o registro de funcionários e grava o nome, o cargo e o registro profissional de lá; sem `equipe_id`, o admin cadastra na equipe do setor, e `null` cadastra sem equipe)
+`PATCH /usuarios/{id}` `{perfil?, equipe_id?, ativo?}` → `200` (só o admin; nome, e-mail, cargo e registro profissional não se editam: vêm do registro; reativar consulta o registro e é `409` `funcionario_desligado` ou `funcionario_afastado` se ele não disser que a pessoa está ativa; a matrícula não muda)
+`POST /usuarios/{id}/atualizar-do-registro` → `200` `{situacao_registro, atualizado, desativado, recusado}` (só o admin; copia do registro o nome, o e-mail, o cargo e o registro profissional, e trocar o e-mail troca também o login da conta no Supabase Auth; se o registro diz que a pessoa foi desligada, a conta é desativada)
 `POST /usuarios/{id}/redefinir-senha` → `200` `{senha_inicial}`
 
 `DELETE /usuarios/{id}` → `200` (admin; remove o cadastro e a conta de acesso; `409` `usuario_com_historico` se a pessoa já tem APR, execução, assinatura, evento, alerta ou equipe sob sua supervisão, caso em que se desativa; `422` ao tentar remover a si mesmo)
@@ -154,7 +156,7 @@ Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVI
 
 `POST /auth/sair` → `200` (derruba as sessões da conta: o `refresh_token` deixa de renovar; vale em qualquer situação da conta)
 
-`GET /auditoria` `?entidade&entidade_id&ator_id&busca&de&ate` → `200` `{registros[], pagina, tamanho, total}` (só admin; do mais novo ao mais antigo). Cada registro: `{id, em, ator_id, ator_nome, acao, entidade, entidade_id, alvo, resumo, detalhes}`. A trilha registra, depois que a ação deu certo: cadastro, edição, ativação/desativação, liberação, recusa, redefinição de senha e exclusão de usuário; criação, edição e exclusão de equipe e de atividade; criação de versão, publicação, descarte de rascunho, exclusão e restauração de modelo de APR; leitura imediata do SAP, importação de planilha, OS de apoio (abrir, reprogramar, cancelar), ciência, marcação de local crítico e a exportação para o SAP. Só cresce (um gatilho do banco recusa alterar ou apagar) e não guarda chave estrangeira, para continuar legível depois que a conta ou o cadastro forem removidos. Nunca guarda senha. Salvar o rascunho de um modelo não entra (só criar a versão e publicar); eventos de campo continuam em `evento_campo`.
+`GET /auditoria` `?entidade&entidade_id&ator_id&busca&de&ate` → `200` `{registros[], pagina, tamanho, total}` (só admin; do mais novo ao mais antigo). Cada registro: `{id, em, ator_id, ator_nome, acao, entidade, entidade_id, alvo, resumo, detalhes}` (`ator_id` é nulo quando quem agiu foi o registro de funcionários, com `ator_nome` "Registro de funcionários"). A trilha registra, depois que a ação deu certo: cadastro, edição, ativação/desativação, liberação, recusa, redefinição de senha e exclusão de usuário; criação, edição e exclusão de equipe e de atividade; criação de versão, publicação, descarte de rascunho, exclusão e restauração de modelo de APR; leitura imediata do SAP e do registro de funcionários (`rh.leitura`), o que o registro de funcionários faz sozinho com uma conta (atualizar dados, desativar, recusar, situação mudou, conferência que não pôde desativar o último admin), importação de planilha, OS de apoio (abrir, reprogramar, cancelar), ciência, marcação de local crítico e a exportação para o SAP. Só cresce (um gatilho do banco recusa alterar ou apagar) e não guarda chave estrangeira, para continuar legível depois que a conta ou o cadastro forem removidos. Nunca guarda senha. Salvar o rascunho de um modelo não entra (só criar a versão e publicar); eventos de campo continuam em `evento_campo`.
 `POST /equipes` `{nome, centro_trabalho, supervisor_id?}` → `201` `{id}`
 `PATCH /equipes/{id}` `{nome?, supervisor_id?}` → `200`
 `GET /equipes` → `200` `{equipes[]}`
@@ -179,6 +181,8 @@ Tabelas `equipe`, `usuario`.
 | `usuario.senha_provisoria` | boolean | não | | padrão true na criação e na redefinição |
 | `usuario.assinatura_path` | text | sim | | imagem da rubrica ou assinatura por extenso, no bucket `assinaturas` |
 | `usuario.assinatura_em` | timestamptz | sim | | |
+| `usuario.situacao_registro` | text | sim | | o que o registro de funcionários diz da pessoa na última conferência: `ativo` \| `afastado` \| `desligado` \| `fora_do_registro`; nulo até a primeira |
+| `usuario.registro_conferido_em` | timestamptz | sim | | quando a pessoa foi conferida com o registro |
 
 Perfis e permissões. Só existem dois perfis, `tecnico` e `admin`. O supervisor não é um perfil: é o `tecnico` que alguma equipe aponta em `equipe.supervisor_id` (ver [Supervisão](#supervisão)), e a coluna "técnico que supervisiona" mostra o que ele ganha em cima do que o técnico já faz. A Segurança do Trabalho não é perfil e não usa o sistema: ela define o critério de bloqueio da APR e quem o cadastra no editor é o admin.
 
@@ -215,11 +219,11 @@ Supervisor é quem a equipe aponta em `equipe.supervisor_id`, e é sempre um té
 
 Decidido em 12/10/2026. **Pronto na API** (cadastro, estados de liberação, trava e treinamento); as telas da web acompanham.
 
-1. **Cadastro pelo supervisor:** o supervisor cadastra só técnicos e só em equipes que supervisiona (`POST /usuarios`; perfil `admin`, equipe alheia ou sem equipe supervisionada é recusado com `403`, e a equipe é obrigatória). A senha provisória segue o fluxo do admin (a pessoa a troca no primeiro acesso). Matrícula e e-mail institucional têm as mesmas validações. O admin continua cadastrando qualquer perfil e equipe, e a conta dele nasce já liberada.
+1. **Cadastro pelo supervisor:** o supervisor cadastra só técnicos, e só quem é de um setor cuja equipe ele supervisiona (`POST /usuarios` com a matrícula e o e-mail; perfil `admin` é recusado com `403`, e quem é de outro setor, ou de setor sem equipe dele, com `403` `fora_da_supervisao`). A equipe é sempre a do setor da pessoa, no registro de funcionários. A senha provisória segue o fluxo do admin (a pessoa a troca no primeiro acesso). Matrícula e e-mail institucional têm as mesmas validações. O admin continua cadastrando qualquer perfil e equipe, e a conta dele nasce já liberada.
 2. **Estados de liberação** (`usuario.liberacao`): `liberado` (acesso geral; é o de quem o admin cria e de todos os que já existiam), `pendente` (criado por supervisor, aguarda o admin) e `recusado` (o admin recusou, com motivo; a conta fica inativa e a sessão é revogada). O cadastro guarda `criado_por_id`, `criado_em`, `liberado_por_id`, `liberado_em` e `recusa_motivo`. A API devolve `liberacao`, `criado_por_id`, `criado_por_nome`, `criado_em`, `liberado_em` e `recusa_motivo` nos usuários e em `GET /me`; `criado_em` é nulo nas contas anteriores à migração `0010`.
 3. **Trava do pendente:** o pendente pode entrar, trocar a senha provisória e fazer o Campo de treino (a API só guarda o estado: `GET /me`, `PUT /me/treinamento`, `POST /auth/trocar-senha`, `POST /auth/refresh`); todas as outras rotas respondem `403` com o código `aguardando_liberacao` ("Seu acesso aguarda a liberação de um administrador"). Ele não aparece como colega, membro de equipe nem na busca, e não entra no snapshot offline nem nos indicadores. O recusado não entra: no login é `403 acesso_recusado` (a mensagem traz o motivo); nas demais rotas, `401 acesso_revogado`.
 4. **O que o admin faz:** `GET /usuarios?liberacao=pendente|recusado|liberado` devolve também o `total` (é como descobre os pendentes: não há alerta nem e-mail novos); `POST /usuarios/:id/liberar` e `POST /usuarios/:id/recusar` (corpo `{ "motivo" }`, obrigatório) valem só para `pendente` (senão `409`). Ele exclui o recusado pelo `DELETE` comum, o que libera e-mail e matrícula para um novo cadastro. Ativar ou desativar pelo `PATCH` só vale para quem já está liberado.
-5. **O que o supervisor vê e faz:** em `GET /usuarios` e `GET /usuarios/:id` ele enxerga, além dos colegas liberados, os pendentes e recusados das equipes que supervisiona (a lista de pendentes e recusados só vem com o filtro `liberacao`), inclusive o motivo da recusa. Só nos pendentes que **ele** cadastrou, edita `nome`, `cargo` e `registro_profissional` (`PATCH`) e cancela o cadastro (`DELETE`, que apaga também a conta de acesso). Não mexe em e-mail, matrícula, equipe, perfil nem ativo, não mexe em quem já foi liberado nem no pendente de outro supervisor, e não redefine senha.
+5. **O que o supervisor vê e faz:** em `GET /usuarios` e `GET /usuarios/:id` ele enxerga, além dos colegas liberados, os pendentes e recusados das equipes que supervisiona (a lista de pendentes e recusados só vem com o filtro `liberacao`), inclusive o motivo da recusa. Só nos pendentes que **ele** cadastrou, cancela o cadastro (`DELETE`, que apaga também a conta de acesso). Ele não edita ninguém: nome, cargo e registro profissional vêm do registro de funcionários (`PATCH` é `403`). Não mexe em quem já foi liberado nem no pendente de outro supervisor, e não redefine senha.
 6. **Supervisor que deixa de supervisionar a equipe:** nada acontece automaticamente; os pendentes dele ficam para o admin tratar (o ex-supervisor perde o acesso a eles).
 7. **Treinamento:** no primeiro login, só para técnicos, uma tela de treinamento com dados fictícios, que a pessoa pode pular ou fazer depois; fica acessível no menu. Quem aguarda liberação pode fazer o treino enquanto espera (a web roda o treino sozinha; a API só guarda o estado).
 8. **Importação de OS pelo supervisor:** adiada; segue só do admin (questão 63 de [pontos-a-validar.md](pontos-a-validar.md)).
@@ -241,16 +245,43 @@ Decidido em 12/10/2026. **Pronto na API** (cadastro, estados de liberação, tra
 - RFC: MFA ou SSO corporativo (pergunta aberta da Reunião 1) — bloqueia o uso real, não a demo. Não decidido.
 - RFC: vínculo dispositivo–usuário (aparelho por colaborador ou compartilhado) — muda o login offline e a revogação. Não decidido.
 
+### Registro de funcionários
+
+Decidido e implementado em 14/10/2026 (desenho completo em [apifuncionarios.md](../../apifuncionarios.md)). **Status: pronta com o simulador.** A empresa não forneceu a API de RH, então o DAPROM traz uma versão simulada, do mesmo jeito que faz com o SAP, e a fala com ela por um cliente HTTP de endereço e token configuráveis.
+
+1. **Só funcionário da empresa vira usuário.** O cadastro informa a matrícula e o e-mail institucional; a `api` consulta o registro e copia o nome, o cargo e o registro profissional, que deixam de ser digitados ou editados no DAPROM. O DAPROM decide só o perfil, a equipe, a liberação, se a conta está ativa e a senha.
+2. **O automático só tira acesso; quem dá acesso é uma pessoa.** Afastado só grava a situação; desligado ou fora do registro desativa a conta liberada e recusa a pendente (motivo "Desligado no registro de funcionários"); a conferência nunca desativa o último admin ativo; readmitido não reativa sozinho (o admin reativa, e só se o registro disser que a pessoa está ativa).
+3. **O desligamento vale em tempo real:** o registro avisa o DAPROM (`POST /rh/avisos`, só com a lista de matrículas a conferir) e uma tarefa `conferencia_rh` consulta o registro e age pelo que ele responde, então um aviso falso não desativa ninguém. Uma leitura completa, uma por dia a partir de `RH_LEITURA_HORA`, atualiza os dados e pega os desligamentos cujo aviso não chegou. Se uma leitura fosse desativar mais da metade dos usuários ativos, não aplica nada e termina com erro (proteção contra registro vazio ou mal configurado).
+4. **Com o registro fora do ar, o cadastro para** (`503`): é melhor recusar do que deixar entrar alguém que não foi conferido.
+
+`GET /rh/funcionarios/{matricula}` `?email=` → `200` `{funcionario: {matricula, nome, cargo, centro_trabalho, setor, registro_profissional, situacao}, equipe_sugerida, conta_existente}` — admin e supervisor; a prévia da primeira etapa do cadastro, com as mesmas recusas do `POST /usuarios`
+`POST /rh/avisos` `{matriculas[]}` → `202` `{enfileiradas}` — só o registro, com `Authorization: Bearer {RH_AVISO_TOKEN}`; matrícula sem conta é ignorada
+`POST /rh/leituras` → `202` `{leitura_id}` — admin; o "Ler agora"
+`GET /rh/sincronizacao` → `200` `{ultima_leitura, configurado, leitura_hora}` — admin; `ultima_leitura`: `{id, origem, iniciada_em, concluida_em, conferidos, atualizados, desativados, erro, situacao}`, com `situacao` `concluida`, `falhou`, `tentando_de_novo` ou `em_andamento`
+
+O que o DAPROM lê do registro (o contrato, igual ao da API real que a empresa precisar oferecer), com `Authorization: Bearer {RH_API_TOKEN}`: `GET {RH_API_URL}/funcionarios/{matricula}` → `200` o funcionário ou `404`, e `GET {RH_API_URL}/funcionarios` `?pagina&tamanho` → `200` `{funcionarios[], proxima_pagina?}`. Funcionário: `{matricula, nome, email, cargo, centro_trabalho, setor, registro_profissional, situacao, data_admissao, data_nascimento, telefone, gestor_matricula, lotacao}`, com `situacao` `ativo`, `afastado` ou `desligado`. Sem CPF.
+
+**Simulador** (só com `RH_SIMULADO=true`, em `/rh-simulado`; os dados ficam na tabela `funcionario_simulado`, no banco do DAPROM, e não na memória): o contrato acima, e a gestão, que exige o admin logado e serve à tela `/simulador/funcionarios` da web:
+`GET /rh-simulado/gestao/funcionarios` `?busca&pagina&tamanho` (com `conta_no_daprom` de cada um e o contador por situação), `GET /rh-simulado/gestao/catalogo`, `POST /rh-simulado/gestao/funcionarios`, `POST /rh-simulado/gestao/funcionarios/aleatorios` `{lotes: [{quantidade, centro_trabalho?, cargo?, situacao?}]}` (no máximo 200 por envio), `PATCH` e `DELETE /rh-simulado/gestao/funcionarios/{matricula}` (a matrícula não muda; quem tem conta no DAPROM é desligado, não excluído) e `POST /rh-simulado/gestao/funcionarios/em-massa` `{matriculas[] ou todos_da_busca, acao: excluir|mudar_setor|mudar_situacao, valor?}` → `{afetados, recusados}`. Quando um funcionário passa a desligado, o simulador avisa o DAPROM. Carga inicial: um funcionário para cada usuário existente, mais uns 30 sem conta (modo local e demonstração); no banco publicado, `pnpm rh:carga-inicial`, que precisa rodar antes de a conferência ser ligada.
+
+Tabelas `funcionario_simulado` (matrícula, nome, e-mail, cargo, centro de trabalho, setor, registro profissional, situação, datas de admissão e de nascimento, telefone, gestor, lotação) e `leitura_rh` (`id`, `origem` `agendada` \| `manual`, `usuario_id`, `dia` — único por dia nas leituras agendadas —, `iniciada_em`, `concluida_em`, `conferidos`, `atualizados`, `desativados`, `erro`). Na web, a tela de usuários mostra o selo "Desligado no registro" (ou "Afastado") e o cartão "Registro de funcionários" com o "Ler agora".
+
 ### Integração SAP
 
 **Entrega** OS no sistema a partir da API do SAP (simulada no protótipo), da planilha exportada ou do PDF da OS impresso pelo SAP, conferido campo a campo antes de registrar (a digitalização da folha em papel pela câmera, só do admin, está em desenvolvimento), e a OS de apoio, a única que nasce no sistema, aberta pelo supervisor da equipe ou pelo admin a partir de um impedimento. **Status: aberta.** A importação (API, planilha, PDF e digitalização) é só do admin; a do supervisor foi adiada (questão 63).
 
-O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio back-end e só está ativo com `SAP_SIMULADO=true`, devolve dados fictícios no mesmo formato, e o adaptador de leitura não sabe se fala com um ou com o outro.
+O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio back-end e só está ativo com `SAP_SIMULADO=true`, devolve dados fictícios no mesmo formato, e o adaptador de leitura não sabe se fala com um ou com o outro. As ordens do simulador ficam na tabela `ordem_sap_simulada`, no banco do DAPROM (e não na memória), e as 11 ordens de `fixtures/sap/ordens.json` entram na primeira subida, com a tabela vazia; a carga de demonstração grava ali também as OS que cria (com `LIB` nas ativas e sem ele nas encerradas e canceladas).
 
 `GET {SAP_API_URL}/ordens` `?alteradas_desde&pagina&tamanho` com `Authorization: Bearer` → `200` `{ordens: [{numero_ordem, numero_nota, tipo_ordem, tipo_atividade, codigo_atividade, titulo, descricao, centro_trabalho, local_instalacao: {codigo, endereco, plus_code, cliente}, equipamento, prioridade, data_inicio_prog, data_fim_prog, status_sap, solicitante, criado_por, criada_em}], proxima_pagina?}`
 `GET {SAP_API_URL}/ordens/{numero_ordem}` → `200` a mesma ordem
-`POST /sap-simulado/ordens` `{...ordem}` → `201` — só no simulador, para injetar OS na demonstração
-`PATCH /sap-simulado/ordens/{numero_ordem}` `{status_sap}` → `200` — só no simulador, para demonstrar uma OS cancelada
+O contrato do simulador é só leitura, como o do SAP real. O que cria e muda ordens é a gestão do simulador, com o admin logado (serve à tela `/simulador/ordens` da web; ver [apiSAP.md](../../apiSAP.md)):
+`GET /sap-simulado/gestao/ordens` `?busca&tipo&centro_trabalho&no_daprom&pagina&tamanho` → `200` `{ordens[], total, pagina, tamanho, contagem, total_geral}` — cada ordem traz `no_daprom` (`{situacao, motivo?, aviso?}`: `nao_lida`, `ignorada` com o motivo da leitura, ou o status da OS no DAPROM) e `alterada_depois_da_leitura`
+`GET /sap-simulado/gestao/catalogo` → centros de trabalho, locais, atividades (com `com_modelo`), serviços, status prontos e o próximo número livre
+`POST /sap-simulado/gestao/ordens` → `201` `{ordem}` (manual; `409` `ordem_duplicada`)
+`POST /sap-simulado/gestao/ordens/aleatorias` `{lotes: [{quantidade, tipo?, centro_trabalho?, status?, atividade?}], dias?}` → `201` `{criadas}` (no máximo 200 por envio; `atividade`: `com_modelo`, `sem_modelo` ou `qualquer`)
+`PATCH /sap-simulado/gestao/ordens/{numero_ordem}` → `200` `{ordem}` (o número não muda)
+`DELETE /sap-simulado/gestao/ordens/{numero_ordem}` → `200` (`409` `ordem_no_daprom` se o DAPROM já tem a OS: no SAP uma ordem não é apagada, é encerrada)
+`POST /sap-simulado/gestao/ordens/em-massa` `{numeros[] ou todos_da_busca (com os filtros), acao: mudar_status|mudar_centro|reprogramar|excluir, valor?, dias?, data?}` → `{afetadas, recusadas}`
 
 `tipo_ordem` é `YBA1` (corretiva) ou `YBA2` (preventiva); `tipo_atividade` é o texto do SAP (`Z01-Manutenção Corretiva`); `codigo_atividade` é a chave que liga a OS a um modelo de APR (questão 58). As OS de exemplo mostram que ela não vem pronta: a corretiva 4023470 não tem plano de manutenção, e a preventiva 4019821 traz Plano `10573`, Item `10603` e o título `1.2 - Inspeção Funcional de Retificador`, que não aparece em nenhuma lista das APR (a APR 02 lista `8.1.2 - Inspeção Elétrica no Retificador`; a APR 03, `8.2.1 - Leitura Retificador`). O adaptador preenche `codigo_atividade` quando acha a atividade na tabela `atividade` e a deixa nula quando não acha; `plano_manutencao` e `item_manutencao` vêm do SAP e ficam guardados na OS. O simulador usa `codigo_atividade`.
 
