@@ -401,4 +401,47 @@ assert.equal(nova.os.find((o: any) => o.id === OS_BLOQUEIO).status, "liberada");
 assert.equal((await ler<any>("GET", `/os/${OS_GUIADA}`)).aprs.length, 0);
 ok("reiniciarTreino volta ao estado inicial");
 
+// ---- Dashboards (sobre a massa inicial) -----------------------------------------------------------------------------
+// O que a `api` devolve ao técnico que não supervisiona: só a equipe, nada por pessoa e sem a classificação dos itens da APR.
+{
+  const geral = await ler<any>("GET", "/indicadores/geral");
+  assert.equal(geral.periodo, "30d", "sem `periodo`, 30 dias");
+  assert.equal(geral.encerradas.total, 2);
+  assert.deepEqual(geral.aprs, { total: 4, bloqueadas: 1, anterior: 0, bloqueadas_anterior: 0 });
+  assert.equal(geral.carteira.em_execucao, 1);
+  assert.equal(geral.carteira.pendentes, 1);
+  assert.equal(geral.tempo.execucoes, 2);
+  assert.deepEqual(geral.pendencias, { a_exportar: null, sem_ciencia: null, execucoes_esquecidas: 0, atividades_sem_modelo: null });
+
+  const os = await ler<any>("GET", "/indicadores/os", undefined, { periodo: "7d" });
+  assert.equal(os.serie.length, 7);
+  assert.equal(os.tempo.os_com_mais_pausa.length, 1);
+  assert.equal(os.tempo.os_com_mais_pausa[0].executor, null, "o técnico não vê quem executou");
+  assert.equal(os.reprogramacoes, 0);
+  assert.ok(os.locais.length >= 1);
+
+  const equipes = await ler<any>("GET", "/indicadores/equipes", undefined, { periodo: "90d" });
+  assert.equal(equipes.agrupamento, "semana");
+  assert.equal(equipes.equipes.length, 1);
+  assert.equal(equipes.equipes[0].supervisor_nome, COLEGAS_TREINO.marcos.nome);
+  assert.equal(equipes.equipes[0].aprs, 4);
+  assert.deepEqual([equipes.tecnicos, equipes.totais.tecnicos_com_execucao, equipes.cadastro], [[], null, null]);
+
+  const meus = await ler<any>("GET", "/indicadores/meus", undefined, { periodo: "12m" });
+  assert.equal(meus.serie.length, 12);
+  assert.equal(meus.encerradas.total, 1);
+  assert.equal(meus.aprs.total, 1);
+  assert.deepEqual(meus.tempo.por_motivo, [{ motivo: "almoco", pausas: 1, minutos: 60 }]);
+
+  const mes = new Date().toISOString().slice(0, 7);
+  const aprs = await ler<any>("GET", "/aprs/resumo", undefined, { periodo: mes });
+  assert.equal(aprs.de, `${mes}-01`);
+  assert.deepEqual([aprs.itens_que_bloqueiam, aprs.alertas_registrados, aprs.totais.alertas], [null, null, null]);
+  assert.equal(aprs.por_modelo.reduce((n: number, m: any) => n + m.aprs, 0), aprs.totais.aprs);
+
+  assert.equal((await chamar("GET", "/indicadores/geral", undefined, { periodo: "ontem" })).status, 422);
+  assert.equal((await chamar("GET", "/indicadores/os", undefined, { equipe_id: idTreino("e", 99) })).status, 403);
+}
+ok("dashboards geral, OS, equipe, APR e Meus resultados respondem sobre a massa do treino");
+
 console.log(`\n${passos} verificações passaram.`);

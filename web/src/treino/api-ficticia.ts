@@ -7,8 +7,9 @@
  * Simplificações (a `api` real faz mais): sem fila offline (`/sync/pull` não existe aqui), sem alertas por e-mail, sem
  * reprogramação nem cancelamento (são do supervisor e do admin e respondem `403`), a ciência e `/alertas` idem, a troca
  * de senha só confere os dois campos, o PDF da OS é um documento genérico de treino e as fotos e os PDFs enviados ficam na
- * memória (até 2 MB cada). O catálogo de serviço é fixo e só de leitura (`treino/catalogo.ts`). Qualquer endereço que o
- * campo não usa responde `404 indisponivel_no_treino`.
+ * memória (até 2 MB cada). O catálogo de serviço é fixo e só de leitura (`treino/catalogo.ts`). Os dashboards são
+ * calculados sobre a massa em memória (`treino/indicadores.ts`). Qualquer endereço que o campo não usa responde
+ * `404 indisponivel_no_treino`.
  */
 import type { CategoriaMaterial, ServicoDoCatalogo } from "../lib/catalogo";
 import type { Usuario } from "../lib/tipos";
@@ -16,6 +17,7 @@ import { obterEstado } from "./armazem";
 import { materiaisDoTreino, servicosDoTreino } from "./catalogo";
 import { diaDe, statusDerivado, type AlertaReg, type AprReg, type EstadoTreino, type ExecucaoReg, type ItemRegDoModelo, type ModeloReg, type OsReg, type UsuarioTreino } from "./dados";
 import { idTreino } from "./ids";
+import { dashboardDeEquipes, dashboardDeOs, dashboardGeral, meusResultados, periodoDoFiltro, resumoDasAprs } from "./indicadores";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Resposta e erros
@@ -1319,6 +1321,22 @@ rota("GET", "/historico", ({ e, q }) => {
   });
   return ok({ execucoes: itens, ...meta(pag, todas.length) });
 });
+
+// ---- Dashboards (o que a `api` devolve ao técnico que não supervisiona) -----------------------------------------
+
+/** O `?periodo=` validado; a única equipe que o técnico pode pedir é a dele, como em `equipeDoIndicador` da `api`. */
+function periodoDosIndicadores(e: EstadoTreino, q: Record<string, string>): string {
+  const periodo = periodoDoFiltro(q.periodo);
+  if (!periodo) throw invalido("validacao", "periodo: Use 7d, 30d, 90d, 12m ou um mês AAAA-MM");
+  if (q.equipe_id && q.equipe_id !== e.equipe.id) throw proibido("Você só vê os indicadores das suas equipes");
+  return periodo;
+}
+
+rota("GET", "/indicadores/geral", ({ e, q, agora }) => ok(dashboardGeral(e, periodoDosIndicadores(e, q), agora)));
+rota("GET", "/indicadores/os", ({ e, q, agora }) => ok(dashboardDeOs(e, periodoDosIndicadores(e, q), agora)));
+rota("GET", "/indicadores/equipes", ({ e, q, agora }) => ok(dashboardDeEquipes(e, periodoDosIndicadores(e, q), agora)));
+rota("GET", "/indicadores/meus", ({ e, eu, q, agora }) => ok(meusResultados(e, eu.id, periodoDosIndicadores(e, q), agora)));
+rota("GET", "/aprs/resumo", ({ e, q, agora }) => ok(resumoDasAprs(e, periodoDosIndicadores(e, q), agora)));
 
 // ---- Modelos de APR ---------------------------------------------------------------------------------------------
 
