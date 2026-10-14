@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Vitória">
+  <title>Vitória</title>
+  
+  <path d="M150 236 C150 196 362 196 362 236 L366 352 C366 378 334 384 326 360 L326 250 L186 250 L186 360 C178 384 146 378 146 352 Z" fill="#3B2A22"/>
+  <rect x="226" y="340" width="60" height="70" rx="22" fill="#BF8460"/>
+  
+  <clipPath id="clip-tronco"><path d="M92 512 C92 432 150 394 256 394 C362 394 420 432 420 512 Z"/></clipPath>
+  <path d="M92 512 C92 432 150 394 256 394 C362 394 420 432 420 512 Z" fill="#0F5C78"/>
+  <g clip-path="url(#clip-tronco)">
+    <rect x="168" y="380" width="22" height="140" fill="#DDE8EC"/>
+    <rect x="322" y="380" width="22" height="140" fill="#DDE8EC"/>
+    <rect x="80" y="468" width="360" height="18" fill="#DDE8EC"/>
+  </g>
+  <path d="M212 398 L256 448 L300 398 L286 386 L256 420 L226 386 Z" fill="#F7F7F4"/>
+  <ellipse cx="256" cy="282" rx="88" ry="98" fill="#D59C76"/>
+  <path d="M168 236 C186 204 232 196 256 204 C282 196 328 204 344 236 L344 246 C320 226 286 224 262 238 C236 222 194 226 168 248 Z" fill="#3B2A22"/>
+  
+  <path d="M150 216 C150 124 200 84 256 84 C312 84 362 124 362 216 Z" fill="#FFC83D"/>
+  <rect x="244" y="88" width="24" height="124" rx="12" fill="#FFD966"/>
+  <rect x="130" y="204" width="252" height="26" rx="13" fill="#F2B705"/>
+  <circle cx="256" cy="166" r="20" fill="#0F5C78"/>
+  <path d="M246 157 L256 177 L266 157" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="200" cy="320" rx="15" ry="9" fill="#E8806A" opacity="0.35"/><ellipse cx="312" cy="320" rx="15" ry="9" fill="#E8806A" opacity="0.35"/>
+  <path d="M204 262 Q222 252 240 260" fill="none" stroke="#3B2A22" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M272 260 Q290 252 308 262" fill="none" stroke="#3B2A22" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <ellipse cx="222" cy="286" rx="9" ry="12" fill="#17212B"/><circle cx="225" cy="282" r="3" fill="#FFFFFF"/><ellipse cx="290" cy="286" rx="9" ry="12" fill="#17212B"/><circle cx="293" cy="282" r="3" fill="#FFFFFF"/>
+  <path d="M257 298 Q249 314 259 317" fill="none" stroke="#BF8460" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M236 336 Q256 352 276 336" fill="none" stroke="#8C3B2E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  
+</svg>
