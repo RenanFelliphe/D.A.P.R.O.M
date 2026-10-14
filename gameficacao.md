@@ -524,3 +524,23 @@ Feita em 13/10/2026, nas quatro etapas da seção 10 de uma vez: a `api` (migra�
 - **Duas imagens por patente.** A patente da pessoa e a da equipe têm imagens diferentes: `patente.imagem_equipe_path`, obrigatória, ao lado de `imagem_path`. As duas só são iguais se o admin enviar a mesma imagem nos dois campos; mesmo assim, cada envio vira um arquivo próprio no bucket. Os selos já saem da `api` com o `imagem_url` do contexto (a das pessoas no ranking de pessoas, no perfil, na barra e nos membros da equipe; a das equipes no ranking de equipes e no bloco da equipe), então a web não escolhe qual usar. `GET /gamificacao/patentes` devolve as duas (`imagem_url` e `imagem_equipe_url`).
 - **Migração `0017_patente_imagem_da_equipe`** (a `0016` não foi alterada). A coluna nasce nula, as 5 patentes da carga ganham o brasão próprio (ids `a2000000-…`, desenhados em código como as medalhas, 192 × 192) e as demais, criadas pelo admin antes da migração, começam com a **mesma imagem das pessoas** (a `api` não tem outra para dar a elas); só então a coluna vira `NOT NULL`. O script é idempotente. Por isso a `api` só apaga o arquivo de uma imagem quando nenhuma patente mais o usa: nas patentes herdadas, trocar uma imagem não pode apagar a outra. As 33 imagens da carga (5 medalhas, 5 brasões e 23 troféus) são gravadas pela subida da `api` se faltarem.
 - **Cadastro:** `POST /gamificacao/patentes` pede `imagem` e `imagem_equipe` (as duas, e se uma falha a outra não fica gravada); trocar é `PUT .../imagem` (pessoas) e `PUT .../imagem-equipe` (equipes), cada uma sem mexer na outra; excluir a patente apaga as duas. A auditoria registra a troca como `patente.imagem`, dizendo no resumo de qual imagem foi. Na web, o formulário tem os dois campos e a escada de patentes mostra as duas imagens de cada degrau.
+
+---
+
+## 13. Treinamentos de serviço
+
+Decidido em 14/10/2026, ainda não implementado. É a parte de pontos dos treinamentos de serviço, o jogo por serviço do catálogo; o desenho completo está no [chatbot.md](chatbot.md#38-pontos-e-conquistas).
+
+| Tarefa | Quem ganha | Pontos | Quando conta | Limite |
+|---|---|---|---|---|
+| Treinamento de serviço concluído | o técnico, inclusive quem aguarda liberação | 5 | ao terminar a explicação e o jogo pela primeira vez | uma por treinamento |
+| Fases certas no treinamento | o técnico, inclusive quem aguarda liberação | 1 por fase | junto com o concluído; conta a primeira resposta dada a cada fase | um lançamento por treinamento (o jogo tem até 10 fases) |
+
+- **Valem as regras do jogo.** Só o servidor corrige, e o gabarito não chega ao aparelho antes da resposta (regra 3). Errar não tira ponto, refazer não pontua e uma versão nova do treinamento não pontua de novo quem já concluiu.
+- **No máximo 15 pontos por treinamento,** metade de uma OS: conhecimento vale, mas trabalho em campo vale mais. O total é limitado pelo número de treinamentos publicados.
+- **Critérios novos de pessoa:** "Treinamentos de serviço concluídos" e "Treinamentos gabaritados" (todas as fases certas na primeira resposta).
+- **Conquistas novas:**
+  - Aprendiz: 3 treinamentos concluídos, 25 pontos.
+  - Especialista: 10 treinamentos concluídos, 50 pontos. A ideia era "todos os serviços da equipe", mas o sistema não liga serviços a equipes.
+  - Nota máxima: 1 treinamento gabaritado, 25 pontos.
+- **Entram por uma migração nova;** a `0016` e a `0017` não mudam.
