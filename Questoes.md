@@ -7,7 +7,7 @@
 | # | Questão | Quem responde | Impacto |
 |---|---|---|---|
 | 57 | Como é o formulário de inspeção das OS preventivas? | Iago | 🟡 MVP |
-| 58 | Como ligar a OS ao modelo de APR? | Iago | 🔴 Schema |
+| 58 | Como ligar a OS ao modelo de APR? | Iago (respondida em 14/10/2026) | 🔴 Schema |
 | 59 | Só as medidas dos riscos marcados são respondidas? | Mario | 🔴 Schema |
 | 60 | Qual é a "função da atividade" nas APR 04, 05 e 09? | Mario | 🟢 Depois |
 | 61 | O item de espaço confinado da APR 06 aceita "NA"? | Mario | 🟡 MVP |
@@ -41,7 +41,9 @@ A OS corretiva 4023470 não tem nada disso. O texto parece vir da descrição lo
 
 **Pergunta:** qual informação do SAP identifica a atividade de uma OS (plano, item, título, tipo de atividade)? Corretivas sem plano têm outra forma de indicar o modelo? Quando a nova tabela de tipos de manutenção × APR sai?
 
-**Adotado por enquanto:** a OS sempre entra no sistema. O vínculo com a atividade é opcional (`os.codigo_atividade`), e quando não existe, o técnico escolhe o modelo ao iniciar a APR. O plano e o item de manutenção ficam guardados na OS.
+**Resposta do Iago (14/10/2026):** hoje o gasista escolhe a APR pelo serviço. As preventivas têm nome padrão, mas as corretivas não têm código padronizado, e o mesmo serviço pode pedir APRs diferentes conforme a situação no local (remover marimbondo com ou sem trabalho em altura).
+
+**Decidido em 14/10/2026:** não há atribuição automática do modelo. A cada APR, o técnico escolhe entre os modelos publicados, e o sistema só orienta: mostra a descrição e os exemplos de cada modelo e recomenda o que mais combina com a OS, pelas palavras-chave achadas no título, no serviço do catálogo e na descrição. A recomendação nunca é aplicada sozinha. A ligação atividade → modelo saiu do banco (migração `0021`). A OS continua entrando sempre; `os.codigo_atividade` segue opcional e aponta só o serviço do catálogo (a lista de materiais); o plano e o item de manutenção ficam guardados na OS. Isso substitui o que estava adotado: o modelo vinha da atividade e, quando a OS não tinha atividade com modelo, o técnico o escolhia ao iniciar a APR.
 
 ## 59. Só as medidas dos riscos marcados são respondidas?
 

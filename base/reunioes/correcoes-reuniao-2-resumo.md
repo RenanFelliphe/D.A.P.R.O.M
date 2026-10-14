@@ -9,6 +9,7 @@
 3. **Evidência por item reprovado.** Todos os itens eliminatórios reprovados são listados. Cada um leva observação e, quando o item pede, foto; condição psicológica pede só justificativa em texto (direito de recusa).
 4. **Participantes vêm da equipe da OS.** A OS já traz a equipe definida pelo SAP; o papel de campo passa a se chamar "responsável".
 5. **Modelo de APR pela atividade.** O modelo sai do código do plano de manutenção da OS, numa tabela editável pela Segurança do Trabalho, e não mais da equipe.
+   *Substituída em 14/10/2026: o técnico escolhe o modelo a cada APR, e o sistema só recomenda; a tabela atividade → modelo saiu (questão 58 de [pontos-a-validar.md](../.design/pontos-a-validar.md)).*
 
 ## OS e execução
 

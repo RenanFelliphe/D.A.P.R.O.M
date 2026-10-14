@@ -29,7 +29,7 @@
 | Ordem já lida que perdeu o `LIB` | Vira `cancelada`. Se houver execução em andamento, a execução segue e sai um alerta `conflito_planejamento`. |
 | Ordem reprogramada no DAPROM, com outra data no SAP | Ignorada: "Reprogramada no sistema". A reprogramação vence. |
 | Centro de trabalho sem equipe | Ignorada, com o motivo. |
-| Atividade sem modelo de APR | A OS entra, com o aviso "Atividade sem modelo de APR". |
+| Atividade que o DAPROM não conhece | A OS entra, e a leitura cadastra a atividade, com o título da ordem como descrição. A atividade é só o serviço do catálogo: o modelo da APR é o técnico quem escolhe, a cada APR. |
 | OS já encerrada ou cancelada no DAPROM | O SAP só acompanha: o status e a execução não mudam. |
 
 ## 2. Decisões
@@ -55,7 +55,7 @@ São os campos do contrato (`OrdemSap`).
 | `numero_nota` | Nota | |
 | `tipo_ordem` | Tipo | Obrigatório: `YBA1` (corretiva) ou `YBA2` (preventiva). |
 | `tipo_atividade` | Tipo de atividade | Texto do SAP, por exemplo `Z01-Manutenção Corretiva`. |
-| `codigo_atividade` | Atividade | O código que o DAPROM liga a um modelo de APR. |
+| `codigo_atividade` | Atividade | O serviço do catálogo no DAPROM (a lista de materiais). Não escolhe o modelo de APR. |
 | `titulo` | Título | Obrigatório. |
 | `descricao` | Descrição | Instruções, materiais e ferramentas. |
 | `centro_trabalho` | Centro de trabalho | Obrigatório. Define a equipe no DAPROM. |
@@ -104,7 +104,7 @@ Todas essas rotas já existem.
 - Todos os campos da seção 3.1. O número vem sugerido e o status começa em `LIB IMPR`.
 - **Centro de trabalho:** escolhido numa lista.
 - **Local de instalação:** escolhido num catálogo de locais ou digitado.
-- **Atividade:** escolhida numa lista que diz quais atividades têm modelo de APR no DAPROM, ou digitada.
+- **Atividade:** escolhida numa lista com as atividades que o DAPROM já tem (código e descrição), ou digitada. A que o DAPROM não conhece é cadastrada pela leitura.
 
 ### 6.2 Aleatória
 
@@ -113,7 +113,7 @@ Todas essas rotas já existem.
   - tipo (corretiva ou preventiva);
   - centro de trabalho;
   - status (liberada ou criada);
-  - atividade: com modelo, sem modelo ou qualquer uma.
+  - atividade: cadastrada no DAPROM, nova (um código que o DAPROM não conhece) ou qualquer uma.
 - **Início programado** sorteado nos próximos N dias (padrão 14).
 - **Limite:** no máximo 200 ordens por envio.
 
@@ -125,8 +125,8 @@ Assim, "10 preventivas liberadas para Serviços Especiais e 5 corretivas criadas
 - **Serviços:** um catálogo fixo de serviços fictícios (título, descrição, tipo e prefixo do equipamento), no estilo das ordens de exemplo.
 - **Locais:** um catálogo fixo de locais de instalação (código, endereço, plus code e cliente), que inclui os das ordens de exemplo.
 - **Atividades:**
-  - "com modelo" sorteia entre as atividades da tabela `atividade` do DAPROM que têm modelo, para a APR abrir com o modelo certo;
-  - "sem modelo" usa códigos inventados, para mostrar o aviso "Atividade sem modelo de APR".
+  - "cadastrada" sorteia entre as atividades da tabela `atividade` do DAPROM, para a OS chegar com o serviço do catálogo e a lista de materiais;
+  - "nova" usa códigos inventados, que a leitura cadastra em `atividade` (o serviço fica sem lista de materiais até o admin montá-la).
 - **Preventivas:** recebem plano e item de manutenção e, às vezes, intervalo entre ciclos.
 - **Prioridade e "criado por":** sorteados; "criado por" sai de uma lista de usuários fictícios do SAP.
 - **Sorteio injetável,** para que os testes sejam reproduzíveis.
@@ -182,7 +182,7 @@ Assim, "10 preventivas liberadas para Serviços Especiais e 5 corretivas criadas
 | Rota | O que faz |
 |---|---|
 | `GET /sap-simulado/gestao/ordens` `?busca&tipo&centro_trabalho&no_daprom&pagina&tamanho` | Lista com `total` e, em cada ordem, `no_daprom` e `alterada_depois_da_leitura`. |
-| `GET /sap-simulado/gestao/catalogo` | Centros de trabalho, locais, atividades (dizendo quais têm modelo), serviços, opções de status e o próximo número livre. |
+| `GET /sap-simulado/gestao/catalogo` | Centros de trabalho, locais, as atividades do DAPROM (código e descrição), serviços, opções de status e o próximo número livre. |
 | `POST /sap-simulado/gestao/ordens` | Cria uma ordem (manual) → `201`. |
 | `POST /sap-simulado/gestao/ordens/aleatorias` `{lotes: [{quantidade, tipo?, centro_trabalho?, status?, atividade?}], dias?}` | Gera em lotes → `201` `{criadas}`. No máximo 200 por envio. |
 | `PATCH /sap-simulado/gestao/ordens/{numero_ordem}` | Edita. O número não muda. |
@@ -199,7 +199,7 @@ Assim, "10 preventivas liberadas para Serviços Especiais e 5 corretivas criadas
   - o mesmo formato e a mesma paginação de hoje;
   - o `alteradas_desde` filtra pela `alterada_em` da tabela;
   - o teste do simulador em `test/sap.test.ts` muda junto.
-- **Gestão:** criação manual com número único; gerador (quantidade, filtros, atividades com e sem modelo, limite de 200); edição com número fixo; exclusão recusada para ordem que o DAPROM tem; ações em massa com recusadas.
+- **Gestão:** criação manual com número único; gerador (quantidade, filtros, atividades cadastradas e novas, limite de 200); edição com número fixo; exclusão recusada para ordem que o DAPROM tem; ações em massa com recusadas.
 - **Coluna "No DAPROM":** ordem não lida, ignorada (com motivo), cada status de OS e o selo "Alterada depois da última leitura".
 - **De ponta a ponta:**
   1. criar ordens aleatórias, ler e ver as OS criadas;
@@ -228,13 +228,14 @@ O que foi feito segue as seções acima. Estes pontos, que o desenho deixava abe
 
 - **Tabela e carga:** `ordem_sap_simulada` (migração `0020`). Na subida com `SAP_SIMULADO=true` e a tabela vazia, entram as 11 ordens de `fixtures/sap/ordens.json` (cada uma com `alterada_em` igual à sua `criada_em`); com ordens já lá, nada é tocado. No modo local a carga é a da subida. A demonstração grava também as OS que cria, no fim da carga, com `LIB IMPR` nas liberadas, pendentes e em execução, `ENCE` nas encerradas e `CRTD` nas canceladas.
 - **Contrato:** só leitura. `POST` e `PATCH /sap-simulado/ordens` saíram (respondem `404`). A `criada_em` sai sempre em UTC (ISO).
-- **Coluna "No DAPROM":** `no_daprom: {situacao, motivo?, aviso?}`. A `situacao` é `nao_lida`, `ignorada` (o `motivo` vem da leitura mais recente, entre as últimas 100 sem erro, que ignorou a ordem) ou o status da OS. Quando a OS existe e a atividade dela não tem modelo de APR, vem também o `aviso` "Atividade sem modelo de APR", que é o aviso que a leitura dá ao criar a OS. O selo `alterada_depois_da_leitura` compara a `alterada_em` com o início da última leitura sem erro; sem nenhuma leitura, toda ordem conta como alterada.
+- **Coluna "No DAPROM":** `no_daprom: {situacao, motivo?}`. A `situacao` é `nao_lida`, `ignorada` (o `motivo` vem da leitura mais recente, entre as últimas 100 sem erro, que ignorou a ordem) ou o status da OS. O selo `alterada_depois_da_leitura` compara a `alterada_em` com o início da última leitura sem erro; sem nenhuma leitura, toda ordem conta como alterada.
 - **Lista:** os filtros `tipo`, `centro_trabalho` e `no_daprom` e a busca (sem acento) valem juntos; `contagem` traz todas as ordens por situação no DAPROM, sem os filtros. Com o filtro `no_daprom`, a lista é filtrada antes de paginar.
-- **Catálogo:** os centros de trabalho são os do catálogo do simulador do RH (`SERV_ESP`, `INSTRUM`, `LAB_QUI` e três sem equipe) mais os das equipes que o admin criar, cada um dizendo a equipe que tem no DAPROM. As atividades vêm da tabela `atividade` com `com_modelo`.
-- **Gerador:** o sorteio de atividade "qualquer" usa as com modelo ou as inventadas; "com modelo" é `422` `sem_atividade_com_modelo` se o DAPROM não tiver nenhuma. Preventivas sempre levam plano e item e, em cerca de 60%, o intervalo. O `dias` (padrão 14) vai de 0 a 365.
+- **Catálogo:** os centros de trabalho são os do catálogo do simulador do RH (`SERV_ESP`, `INSTRUM`, `LAB_QUI` e três sem equipe) mais os das equipes que o admin criar, cada um dizendo a equipe que tem no DAPROM. As atividades vêm da tabela `atividade`, com código e descrição.
+- **Gerador:** a `atividade` do lote é `cadastrada` (sorteada entre as do DAPROM), `nova` (um código inventado, que o DAPROM não conhece e a leitura cadastra) ou `qualquer` (uma das duas, por sorteio); `cadastrada` é `422` `sem_atividade_cadastrada` se o DAPROM não tiver nenhuma. Preventivas sempre levam plano e item e, em cerca de 60%, o intervalo. O `dias` (padrão 14) vai de 0 a 365.
 - **Edição:** o número da ordem é recusado (`422`), como a data fim antes do início (`422` `datas_invalidas`). O aviso do efeito no DAPROM é montado pela tela, a partir da situação da ordem (seção 7).
 - **Excluir:** `409` `ordem_no_daprom` quando a OS existe, em qualquer status. Ordem nunca lida ou ignorada pode ser excluída.
 - **Ações em massa:** `reprogramar` recebe `dias` (desloca início e fim; aceita negativo) ou `data` (novo início; o fim mantém a duração), um dos dois. `todos_da_busca` aceita `busca`, `tipo`, `centro_trabalho` e `no_daprom`. A confirmação da tela conta quantas das selecionadas estão no DAPROM e o efeito nelas.
-- **Cartão de sincronização:** usa `GET /sap/sincronizacao`, `POST /sap/leituras` e `GET /importacoes`. A leitura pedida termina quando a última sem erro alcança o início dela (ou quando ela traz erro). Mostra OS criadas, atualizadas e as ignoradas com o motivo. **Os avisos da leitura não aparecem aí:** a `api` não os guarda; o aviso de cada OS está na coluna "No DAPROM".
+- **Cartão de sincronização:** usa `GET /sap/sincronizacao`, `POST /sap/leituras` e `GET /importacoes`. A leitura pedida termina quando a última sem erro alcança o início dela (ou quando ela traz erro). Mostra OS criadas, atualizadas e as ignoradas com o motivo. **Os avisos da leitura não aparecem aí:** a `api` não os guarda.
 - **Ponte da web:** libera o `/sap-simulado/gestao` (o contrato continua bloqueado).
+- **Modelo da APR escolhido pelo técnico (14/10/2026):** com a decisão de que o técnico escolhe o modelo a cada APR (questão 58 de [pontos-a-validar.md](base/.design/pontos-a-validar.md)), a atividade deixou de indicar modelo. A leitura não dá mais o aviso "Atividade sem modelo de APR": o código da atividade vai sempre para a OS, e o código novo é cadastrado em `atividade`, com o título da ordem como descrição. Por isso o catálogo traz as atividades sem a indicação de modelo, a atividade do gerador passou de "com modelo", "sem modelo" e "qualquer" para `cadastrada`, `nova` e `qualquer` (o erro passou de `sem_atividade_com_modelo` a `sem_atividade_cadastrada`), e a coluna "No DAPROM" não tem mais o aviso. Na tela, a criação manual lista as atividades com código e descrição, e o "ver mais" diz se a atividade está cadastrada no DAPROM.
 - **Testes:** `api/test/sap-simulado.test.ts` (gestão, gerador, coluna "No DAPROM", selo, exclusão, ações em massa e os três cenários de ponta a ponta mais a reprogramação), e o teste do simulador em `api/test/sap.test.ts` mudou junto.

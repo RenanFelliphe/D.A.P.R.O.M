@@ -17,7 +17,7 @@ Análise preliminar de risco
 - A validação é feita pelo servidor, depois que tudo foi respondido. Só então o técnico fica sabendo o resultado e, se reprovou, quais itens reprovaram. Com a APR reprovada as respostas ficam travadas: falta só a evidência e o registro do impedimento
 - Todos os itens reprovados são listados, e cada um exige evidência: foto quando houver obstáculo físico; justificativa em texto quando não houver (ex.: condição psicológica, direito de recusa). A evidência é pedida apenas depois da validação, e não durante o checklist
 - Toda APR é nova e vale para uma única OS. Não se reaproveitam nem se pré-preenchem respostas de outra APR
-- O modelo de APR é definido pelo tipo de atividade da OS, por uma tabela editável pelo admin. São 8 modelos, homologados pela Segurança do Trabalho, que define o critério de bloqueio mas não usa o sistema; o admin o cadastra no editor
+- O técnico escolhe o modelo de APR a cada APR, entre os publicados; o sistema lê a OS e recomenda um, mas não o aplica sozinho (o mesmo serviço pode pedir APRs diferentes conforme a situação no local). São 8 modelos, homologados pela Segurança do Trabalho, que define o critério de bloqueio mas não usa o sistema; o admin o cadastra no editor
 - A OS com APR bloqueada guarda o histórico de todas as APRs. Qualquer pessoa da equipe pode fazer uma APR nova e retomar a OS, sem esperar reprogramação do supervisor; o supervisor é avisado e acompanha
 - Quem executa a OS é quem a encerra, e só com APR aprovada. Nenhum usuário encerra a OS de outra pessoa, e a OS pendente não é duplicada
 

@@ -8,15 +8,31 @@
 
 - **O fluxo online está completo na `api` e na `web`.** A OS entra pela API do SAP, pela planilha ou pelo PDF. A APR é respondida e validada no servidor, a execução é registrada e sai o PDF de 2 páginas. Também já funcionam o painel, os alertas, os indicadores, a auditoria e a gamificação. A web é responsiva e funciona no navegador do celular.
 - **Falta das essenciais o app Android e, com ele, o modo offline** (fila local, cópia da equipe e login sem sinal). A `api` já está pronta para os dois. Sem eles, o critério de sucesso da demo não fecha.
-- **Três essenciais estão parciais:**
-  - o modelo da APR na OS sem atividade: hoje o técnico escolhe, o que o time considera errado;
-  - o formulário de inspeção das preventivas: a `api` guarda, mas não há tela;
-  - a troca do SAP simulado pelo real, que depende do contrato.
+- **Uma essencial está parcial:** o formulário de inspeção das preventivas: a `api` guarda, mas não há tela.
+- **A escolha do modelo da APR foi decidida e feita em 14/10/2026:** o técnico escolhe o modelo a cada APR, entre os publicados, e o sistema só recomenda um pela leitura da OS (seção 5).
 - **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com a conferência de materiais na APR, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
 - **Extras não iniciadas:**
   - a Vitória e os treinamentos de serviço, desenhados no [chatbot.md](chatbot.md) (só existe o avatar);
   - o escaneamento de OS e APR antigas (a câmera é só protótipo).
-- **Números:** 126 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 21 migrações (`0000` a `0020`) e 572 testes em 30 arquivos. Os 572 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
+- **Números:** 128 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 22 migrações (`0000` a `0021`) e 582 testes em 31 arquivos. Os 582 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
+
+## O que ainda falta, num relance
+
+**Funcionalidades (código)**
+
+- [ ] **App Android** (`mobile/`): login, OS da equipe, APR, execução, câmera, assinatura e perfil (seção 2.3).
+- [ ] **Modo offline:** fila em SQLite, cópia da equipe, login sem sinal e aviso de pendentes (seção 2.3). A `api` já está pronta.
+- [ ] **Dockerfile que gera o APK.**
+- [ ] **Formulário de inspeção das preventivas** na web, com o encerramento e o detalhe da OS (questão 57).
+- [ ] **Vitória e treinamentos de serviço**, nenhum começado (seção 3.3).
+- [ ] **Escaneamento de OS e APR antigas**, que depende de OCR (seção 3.3).
+- [ ] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão (seção 3.2).
+
+**Depende de terceiros** (seção 6.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos e a aprovação da empresa para enviar dados ao fornecedor de IA.
+
+**Documentação e arrumação** (seções 6.2 e 6.3): README da raiz, especificação, `api/README.md` e `web/README.md` ainda têm trechos desatualizados; o `Inconsistencias.md` é anterior a quase tudo; há código sem uso na web e o indicador "Online" é texto fixo.
+
+**Já resolvido nesta rodada (14/10/2026):** os dashboards do Campo de treino (antes respondiam 404), a carga de demonstração entre a meia-noite e 2h10 (antes quebrava) e a escolha do modelo da APR pelo técnico, com a recomendação, a troca e a orientação editável (seção 5).
 
 ---
 
@@ -52,8 +68,8 @@ O supervisor não é um perfil, e a web tem uma casca única para todos.
    - todas as APRs e execuções anteriores.
 3. **APR.**
    - **Etapas:**
-     1. modelo, participantes e riscos;
-     2. checklist respondido por inteiro, sem marcar o que é eliminatório;
+     1. modelo, participantes e riscos: o técnico escolhe o modelo numa janela com todos os publicados, e o sistema recomenda um pela leitura da OS (seção 5);
+     2. checklist respondido por inteiro, sem marcar o que é eliminatório (o modelo ainda pode ser trocado);
      3. revisão, com a conferência de materiais;
      4. validação no servidor (`POST /aprs/avaliar`).
    - **Bloqueada:** quando um item eliminatório é reprovado ou falta a foto de um material obrigatório. A APR fica registrada na hora, a OS fica pendente e o supervisor recebe alerta e e-mail. O técnico documenta cada item reprovado com foto, texto ou PDF, conforme o modelo pede.
@@ -73,12 +89,12 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale 
 |---|---|
 | Plataforma | **Pronta.** Monorepo, Dockerfiles da `api` e da `web`, `docker-compose`, migrações aplicadas na subida, 6 buckets privados, tarefas em segundo plano com novas tentativas e modo local sem Supabase (`pnpm dev:local`) |
 | Acesso e usuários | **Pronta.** Login pelo e-mail institucional, senha provisória trocada no primeiro acesso, redefinição pelo admin, cadastro pelo supervisor com liberação ou recusa pelo admin, assinatura no perfil e trilha de auditoria que só cresce |
-| Campo de treino | **Pronto.** API fictícia em memória por usuário, tutorial Direcionado (17 passos) ou modo Livre; a `api` real só guarda o estado |
+| Campo de treino | **Pronto.** API fictícia em memória por usuário, tutorial Direcionado (18 passos) ou modo Livre; a `api` real só guarda o estado |
 | Entrada de OS | **Pronta com o simulador** (agora com tabela no banco e tela própria), com a planilha e com o PDF que tem texto. A digitalização pela câmera é só protótipo |
 | Registro de funcionários | **Pronto com o simulador.** Cadastro só de quem está no registro, desligamento em tempo real (aviso e leitura diária), selos na tela de usuários e a tela do simulador |
-| Modelos de APR | **Pronta.** 8 modelos na carga inicial, versões imutáveis, editor, tabela atividade → modelo, arquivamento e restauração. O critério de bloqueio da carga é provisório até a Segurança do Trabalho validar |
+| Modelos de APR | **Pronta.** 8 modelos na carga inicial, versões imutáveis, editor, orientação de cada modelo para a escolha do técnico, arquivamento e restauração. O critério de bloqueio da carga é provisório até a Segurança do Trabalho validar |
 | Catálogo de serviço | **Pronta.** Materiais, ferramentas e EPIs por serviço, com quantidade e item obrigatório |
-| APR | **Pronta na web.** Checklist inteiro, validação no servidor, conferência de materiais, evidência por foto, texto ou PDF e APR bloqueada registrada na validação |
+| APR | **Pronta na web.** Modelo escolhido pelo técnico, com a recomendação e a troca, checklist inteiro, validação no servidor, conferência de materiais, evidência por foto, texto ou PDF e APR bloqueada registrada na validação |
 | Execução | **Pronta na web.** Pausa com motivo, suspensão, interrupção por risco, cancelamento por engano, assinaturas e PDF de 2 páginas |
 | Impedimento e alertas | **Pronta.** 7 tipos de alerta (e-mail só no bloqueio), reprogramação e OS de apoio |
 | Painel | **Pronta.** Quadro, detalhe, ciência, local crítico, busca global, PDF e exportação para baixa |
@@ -131,17 +147,7 @@ As definições e telas do DesignDoc (dados da OS, regras da APR, execução, PD
 
 **Parcial**
 
-- **Modelo da APR na OS sem atividade.** Quando a OS não tem atividade ligada a um modelo, o técnico escolhe o modelo na etapa 1 da APR (`SeletorModelo`). O time considera isso errado: o técnico poderia aplicar o checklist e o critério de bloqueio de outra atividade. A regra nova ainda não foi decidida. Falta definir:
-  1. o destino da OS sem modelo: travar a APR e avisar o admin para mapear, ou deixar o admin escolher o modelo na OS;
-  2. o modelo da OS corretiva, que costuma vir sem plano de manutenção;
-  3. quem define a atividade da OS de apoio;
-  4. se uma mudança no mapeamento vale para as OS que já existem.
-
-  Isso precisa estar decidido antes da APR do app, para ele não nascer com o mesmo problema.
 - **Formulário de inspeção das preventivas (questão 57).** A `api` aceita `dados_inspecao` no encerramento, guarda e imprime no PDF como pares de campo e valor. Mas a web não tem o formulário, e o detalhe da OS não o mostra. A estrutura do formulário depende do Iago.
-- **API real do SAP (questão 43).** O adaptador lê `GET /ordens` num contrato JSON definido pelo projeto, com token Bearer.
-  - Se o SAP, ou um intermediário, falar esse contrato, basta trocar o endereço e o token.
-  - Se for OData, BAPI ou outra forma de autenticação, é preciso escrever um adaptador.
 - **Planilha do SAP.** O mapeamento das colunas é provisório até chegar a planilha de 2025.
 
 **Para o piloto, não para a demo**
@@ -163,7 +169,7 @@ Por quê:
 
    O app é um cliente.
 3. **É o maior risco de prazo.** O contrato dos eventos é a decisão mais cara de desfazer, e um cliente com fila o testa antes de existir aparelho com fila pendente.
-4. **As outras frentes dependem de terceiros:** o contrato do SAP, o formulário de inspeção e a regra da OS sem modelo.
+4. **A outra frente essencial depende de terceiros:** o formulário de inspeção. A escolha do modelo da APR, que também esperava uma decisão, foi feita em 14/10/2026 (seção 5), e o app já nasce com ela.
 
 Ordem sugerida:
 
@@ -219,7 +225,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 
 **Catálogo de serviço**
 
-- O serviço é a própria atividade do plano de manutenção, a mesma que liga a OS ao modelo de APR.
+- O serviço é a própria atividade do plano de manutenção, a que a OS traz do SAP. Ela não escolhe o modelo de APR, mas a descrição dela entra na recomendação do modelo (seção 5).
 - O admin cadastra materiais, ferramentas e EPIs e monta a lista de cada serviço, com quantidade e item obrigatório.
 - O detalhe da OS mostra a lista, e a APR a confere (seção 4).
 - **Falta:** a lista real, que depende da ES Gás (questão 65). Até lá, só a carga fictícia tem itens.
@@ -256,12 +262,9 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
   - o desligamento vale em tempo real: o registro avisa o DAPROM, e a conta é desativada em segundos; uma leitura completa por dia (e o "Ler agora") pega o que o aviso perdeu;
   - o registro de funcionários e as ordens do SAP são simulados, com tabelas no banco e uma tela de CRUD cada, em `/simulador/funcionarios` e `/simulador/ordens` (só o admin): criação manual e aleatória, busca, seleção com ações em massa, "ver mais", editar e excluir;
   - a tela do SAP mostra, em cada ordem, como o DAPROM reagiu (ainda não lida, ignorada com o motivo, ou o status da OS) e o que ele vai pegar na próxima leitura.
-- **Trocar pelo real:** basta configurar `RH_API_URL` e `RH_API_TOKEN` (e `SAP_API_URL`), se a API real oferecer o contrato (consulta e, de preferência, o aviso de desligamento).
 - **Falta:**
-  - validar com a empresa, via Iago, se a API de RH avisa desligamentos; sem o aviso, o desligamento leva até 24 horas;
-  - o formato real do registro (campos e matrícula);
   - o alerta no sino quando a leitura diária falha, e reativar a conta na readmissão, ficaram fora do escopo;
-  - o cartão da tela do SAP não mostra os avisos da leitura (por exemplo "Atividade sem modelo de APR"), porque a `api` não os guarda; a coluna "No DAPROM" mostra o aviso de cada OS.
+  - o cartão da tela do SAP não mostra os avisos da leitura (por exemplo, o intervalo entre ciclos que não foi reconhecido), porque a `api` não os guarda.
 
 ### 3.3 As que não começaram
 
@@ -387,15 +390,81 @@ O sistema diz **quais itens o serviço pede e quais precisam de prova**, e não 
 
 ---
 
-## 5. Pendências transversais
+## 5. Escolha do modelo da APR
 
-### 5.1 Insumos de terceiros
+Decidida e feita em 14/10/2026. A regra está também na especificação (Decisão-chave 6 e as fatias Modelo de APR e APR) e na questão 58.
+
+### 5.1 De onde veio e o que se decidiu
+
+- **Antes:** o modelo vinha da atividade da OS (`atividade.modelo_apr_codigo`). Quando a atividade não tinha modelo, o técnico escolhia numa lista, o que o time considerava errado, e a regra esperava a tabela de tipos de manutenção × APR do Iago.
+- **O que o Iago explicou:** hoje o gasista escolhe a APR pelo serviço. As preventivas têm nome padrão, mas as corretivas não têm código padronizado, e o mesmo serviço pode pedir APRs diferentes conforme a situação no local (remover marimbondo com ou sem trabalho em altura).
+- **Decisão:** não há atribuição automática. A cada APR, o técnico escolhe entre os modelos publicados (hoje 8), e o sistema só orienta. A ligação atividade → modelo saiu de vez; a atividade continua como o serviço do catálogo (a lista de materiais).
+
+### 5.2 Como funciona
+
+- **Admin.** Na tela do modelo, a seção "Orientação para o técnico" mostra e edita a descrição dos serviços que o modelo atende, os exemplos e as palavras-chave. Vale na hora, para todas as versões, sem publicar, e entra na auditoria (`modelo_apr.orientacao`). A carga inicial traz a orientação dos 8 modelos, escrita a partir dos títulos e das listas de atividades das planilhas; é só o ponto de partida.
+- **Recomendação.**
+  - O sistema procura as palavras-chave de cada modelo no título da OS (peso 3), na descrição do serviço do catálogo (peso 2) e na descrição da OS (peso 1). Cada palavra conta uma vez, pelo campo onde mais pesa.
+  - A comparação é sem acento nem maiúsculas. A palavra-chave com 4 letras ou mais vale também como começo de palavra ("calibr" acha "calibração"); as curtas, só inteiras ("PSV", "tê").
+  - Recomenda o modelo de maior soma. Empate no topo, ou nada achado, não recomenda nenhum.
+  - A recomendação nunca é aplicada sozinha.
+- **Técnico, na Nova APR.**
+  - Abre a janela "Escolha o modelo da APR", com todos os modelos publicados. Cada um mostra título, descrição, exemplos, o que foi encontrado na OS e o botão "Selecionar".
+  - O recomendado vem primeiro, em destaque, com o selo "Opção recomendada" e o aviso para conferir se é esse mesmo: a recomendação vem da leitura da OS, não da avaliação do local.
+  - Sem recomendação, um aviso diz que nenhum modelo se destacou, ou que mais de um combina.
+  - A janela mostra o que foi encontrado na OS, não as palavras-chave.
+  - No detalhe da OS, o cartão da APR exigida avisa que o modelo é escolhido ao iniciar a APR.
+- **Troca do modelo.**
+  - Na etapa 1 ("Trocar modelo") e no checklist ("Trocar o modelo"), enquanto a APR não foi registrada como bloqueada.
+  - Escolhido o modelo novo, o técnico confere os riscos (os de mesmo nome já vêm marcados) e vê quantas respostas continuam e quantas perguntas ficam em branco.
+  - Pergunta igual é a da mesma seção e com o mesmo texto (sem acento, maiúsculas e pontuação); na medida preventiva, também do mesmo risco, pelo nome. Ela guarda a resposta e a observação. "NA" só passa se o modelo novo aceita NA. As demais ficam em branco.
+  - A conferência dos materiais fica, porque é do serviço da OS. A validação anterior é apagada, e o checklist volta para a primeira pergunta em branco.
+- **Quem decide o resultado continua sendo o servidor.** `POST /aprs/avaliar` e o evento `apr_concluida` aceitam qualquer modelo publicado.
+- **Offline.** O snapshot traz, em cada OS, a escolha do modelo (o recomendado e o que cada modelo achou nela) e, em cada modelo, a orientação (descrição e exemplos).
+- **Campo de treino.** A API fictícia tem a mesma recomendação e a orientação dos dois modelos de treino. O tutorial ganhou o passo "Escolha o modelo da APR", que aponta para a opção recomendada, e o passo "Monte a APR" agora aponta para os riscos.
+
+### 5.3 Onde está no código
+
+- **Banco.** Migração `0021_modelo_escolhido_pelo_tecnico`:
+  - tabela `orientacao_modelo_apr`, uma linha por código de modelo, fora do versionamento (`descricao`, `exemplos`, `palavras_chave` e `atualizada_em`);
+  - saem a coluna `atividade.modelo_apr_codigo` e o índice `atividade_sem_modelo_idx`.
+
+  A orientação inicial está em `api/src/db/seed/orientacoes-modelos-apr.ts`, e a carga só grava a de um código que ainda não tem orientação.
+- **API.**
+  - `GET /os/{id}/modelos-apr`: os modelos para escolher, com a orientação, o que cada um achou na OS (`encontradas`) e o `recomendado`. Quem não vê a equipe da OS recebe `404`.
+  - `PUT /modelos-apr/{codigo}/orientacao` (só admin); `GET /modelos-apr/{codigo}` traz a `orientacao`.
+  - `POST /sync/pull`: `escolha_do_modelo` em cada OS e `orientacao` em cada modelo.
+  - A leitura do SAP e a importação gravam sempre o código da atividade na OS; o código novo é cadastrado em `atividade`, com o título da ordem como descrição.
+  - Saíram: `modelo_apr_codigo` de `GET /os/{id}`, `atividades_total` de `GET /modelos-apr`, as atividades e as OS abertas do uso do modelo, o `?substituto=` da exclusão, os filtros por modelo de `GET /atividades`, o aviso "Atividade sem modelo de APR" da leitura e da importação, e os indicadores "APRs em OS sem modelo ligado" e "atividades sem modelo".
+  - Código em `api/src/dominio/recomendacao-apr.ts`; testes em [recomendacao-apr.test.ts](api/test/recomendacao-apr.test.ts) e [modelos-apr.test.ts](api/test/modelos-apr.test.ts).
+- **Web.**
+  - a janela `JanelaDeModelos` na Nova APR e a `TrocaDeModelo` no checklist;
+  - as regras da troca em `trocarModelo` e `riscosEquivalentes` (`web/src/lib/apr.ts`), conferidas com os 8 modelos reais por `web/scripts/testar-troca-de-modelo.mts`;
+  - a janela das telas de campo (`JanelaSobreposta`) não usa a `<dialog>` nativa, para o tutorial do treino continuar clicável por cima dela;
+  - a seção "Orientação para o técnico" (`OrientacaoDoModelo`) na tela do modelo;
+  - a aba Atividades, só com código, descrição e provisório.
+- **Campo de treino.** `web/src/treino/recomendacao.ts` e o passo novo em `web/src/components/treino/passos.ts`.
+- **Simulador do SAP.** O gerador sorteia a atividade como `cadastrada`, `nova` ou `qualquer` ([apiSAP.md](apiSAP.md), seção 14).
+
+### 5.4 O que ficou de fora
+
+- **Escolha automática do modelo,** pelas razões da seção 5.1.
+- **Dois modelos para a mesma execução** (por exemplo, a APR 03 e a APR 06 juntas): cada APR tem um modelo, e cada execução, uma APR; a questão 3 continua aberta.
+
+### 5.5 Pontos em aberto
+
+- **Orientação real.** A descrição, os exemplos e as palavras-chave da carga foram escritos a partir das planilhas. O admin deve revisá-los com o que a Segurança do Trabalho e a operação indicarem.
+- **O app.** A janela de escolha e a troca precisam ser refeitas no app, com a escolha que vem no snapshot quando não houver sinal.
+
+---
+
+## 6. Pendências transversais
+
+### 6.1 Insumos de terceiros
 
 | Quem | O quê | Destrava | Questão |
 |---|---|---|---|
-| Iago | Contrato da API real do SAP | Troca do simulador pela API real | 43 |
 | Iago | Planilha de OS de 2025 | Mapeamento da planilha e base fictícia mais fiel | 54 |
-| Iago | Tabela de tipos de manutenção × APR e o campo do SAP que identifica a atividade | Modelo da APR saindo da OS | 52 e 58 |
 | Iago | Estrutura do formulário de inspeção | Formulário das preventivas | 57 |
 | Iago | Onde o SAP guarda o ciclo do plano e como o conta | Ciclo das preventivas com dado real | 66 |
 | Iago | Validade da assinatura desenhada | Assinatura aceita em auditoria | 38 |
@@ -403,9 +472,8 @@ O sistema diz **quais itens o serviço pede e quais precisam de prova**, e não 
 | ES Gás | Lista de materiais por serviço | Catálogo e conferência de materiais reais | 65 |
 | Mario e Segurança do Trabalho | Critério de bloqueio dos 8 modelos, medidas só dos riscos marcados e "NA" na APR 06 | Modelos reais | 59 e 61 |
 | Empresa | Aprovação para enviar dados ao fornecedor de IA | Vitória e rascunhos no piloto | — |
-| Time | Regra da OS sem modelo de APR (seção 2.3) | APR do app | 58 |
 
-### 5.2 Documentação desatualizada
+### 6.2 Documentação desatualizada
 
 - **[README.md](README.md):**
   - a seção "O que a demonstração apresenta" ainda descreve telas ilustrativas ("Fila de sincronização ilustrativa", "Telas ilustrativas para importação…");
@@ -433,10 +501,11 @@ O sistema diz **quais itens o serviço pede e quais precisam de prova**, e não 
 - **[Inconsistencias.md](Inconsistencias.md):** é uma varredura de 11/10/2026, anterior a quase tudo o que está acima. Vale refazer ou arquivar.
 - **Comentário no código:** em `api/src/rotas/sap.ts`, o comentário da criação da OS de apoio diz que o supervisor a abre "desde que veja a OS de origem". O código exige que ele supervisione a equipe dela.
 
-### 5.3 Defeitos e sobras conhecidos
+### 6.3 Defeitos e sobras conhecidos
 
-- **Carga de demonstração.** O `pnpm demo:popular` quebra entre a meia-noite e cerca de 2h10. O cenário "em pausa neste momento" cria a APR 130 minutos atrás, o que cai no dia anterior, e a `api` recusa APR de outro dia.
-- **Campo de treino.** Os dashboards respondem 404, porque a API fictícia não atende os indicadores.
+- **Resolvidos em 14/10/2026:**
+  - **Carga de demonstração.** O `pnpm demo:popular` quebrava entre a meia-noite e cerca de 2h10, porque o cenário "em pausa neste momento" criava a APR no dia anterior e a `api` recusa APR de outro dia. Agora o cenário começa logo depois da meia-noite (`api/src/db/seed/demo.ts`).
+  - **Campo de treino.** Os dashboards respondiam 404. Agora a API fictícia atende os indicadores (`web/src/treino/indicadores.ts`), sem dados por pessoa nem pendências de gestão.
 - **Indicador "Online".** O da barra é um texto fixo, que não confere a conexão.
 - **Código sem uso na web:**
   - `BotaoAviso` e `LinkAviso` (`components/ui/Aviso.tsx`);
@@ -446,12 +515,13 @@ O sistema diz **quais itens o serviço pede e quais precisam de prova**, e não 
   - as classes `.sync-row` e `.sync-ic` de `styles/os.css`;
   - um `return` inalcançável em `app/app/treino/estado/route.ts`.
 
-### 5.4 Fora do escopo, por decisão
+### 6.4 Fora do escopo, por decisão
 
 - Escrita no SAP por API: a baixa é por planilha (questão 51).
 - Notificação push no celular: a OS nova aparece quando a lista é atualizada.
 - iOS e terceiros no app.
 - MFA, SSO e vínculo do aparelho com o usuário, que estão como RFC.
 - Estoque, saldo e devolução de materiais (seção 4.1) e baixa do material gasto.
+- Escolha automática do modelo da APR: o técnico escolhe a cada APR, e o sistema só recomenda (seção 5.1).
 - Cadastro de equipamentos como entidade.
 - Importação de OS pelo supervisor, adiada (questão 63).

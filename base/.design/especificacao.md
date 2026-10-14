@@ -1,7 +1,7 @@
 # APR e OS digitais — D.A.P.R.O.M
 
 > Planeje a partir deste documento. Cada fatia abaixo traz o próprio formato — copie, não re-derive.
-> Status: confirmado por Renan Felliphe, 2026-10-03; revisado em 2026-10-10 com a Reunião 2, as decisões do time (stack, API do SAP simulada, retomada da OS) e a recomendação adotada para todas as questões que estavam em aberto; revisado de novo em 2026-10-10 para corrigir um mal-entendido: o sistema é online, e o modo offline é um recurso adicional de contingência para o campo sem sinal, não a base da arquitetura. Web e app atendem todos os perfis.
+> Status: confirmado por Renan Felliphe, 2026-10-03; revisado em 2026-10-10 com a Reunião 2, as decisões do time (stack, API do SAP simulada, retomada da OS) e a recomendação adotada para todas as questões que estavam em aberto; revisado de novo em 2026-10-10 para corrigir um mal-entendido: o sistema é online, e o modo offline é um recurso adicional de contingência para o campo sem sinal, não a base da arquitetura. Web e app atendem todos os perfis. Revisado em 2026-10-14: o modelo de cada APR passa a ser escolhido pelo técnico, com a recomendação do sistema, e a ligação atividade → modelo sai (questão 58).
 
 ## Situação
 
@@ -24,7 +24,7 @@ Volume: ~390 OS encerradas no mês passado, variando de ~200 a 409 por mês (Reu
 
 ## Escopo
 
-Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por arquivo (a planilha exportada ou o PDF da OS impresso pelo SAP); aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor da equipe; tabela de atividade → modelo de APR; editor versionado de modelos; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP. Só há dois perfis, `tecnico` e `admin`; o supervisor é o técnico que a equipe aponta, não um perfil, e a Segurança do Trabalho não usa o sistema.
+Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por arquivo (a planilha exportada ou o PDF da OS impresso pelo SAP); aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor da equipe; escolha do modelo de APR pelo técnico, com a recomendação do sistema; editor versionado de modelos, com a orientação de cada um para essa escolha; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP. Só há dois perfis, `tecnico` e `admin`; o supervisor é o técnico que a equipe aponta, não um perfil, e a Segurança do Trabalho não usa o sistema.
 
 Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Escaneamento de OS e APR antigas e chatbot de consulta — ideias do time e sugestões dos mentores, depois do MVP (o catálogo de serviço, a evidência em PDF, o intervalo entre ciclos das preventivas e a gamificação, que também eram ideias para depois, foram feitos em 13/10/2026: ver [Catálogo de serviço](#catálogo-de-serviço), [Execução](#execução), [Ciclo das preventivas](#ciclo-das-preventivas) e [Gamificação](#gamificação)). Baixa de material consumido na execução — o catálogo diz o que cada serviço prevê, não o que foi gasto. Substituir o BI ou o site Lovable — são de outra equipe. Cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin (pronto na API), e tela de treinamento no primeiro login (ver [Cadastro pelo supervisor, liberação e treinamento](#cadastro-pelo-supervisor-liberação-e-treinamento)). Importação de OS pelo supervisor foi adiada: fica só com o admin ([pontos-a-validar.md](pontos-a-validar.md), questão 63).
 
@@ -41,7 +41,7 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 3. **Todo registro de campo nasce com ID gerado no cliente, e reenviar não tem efeito; o `status` da OS é derivado no servidor, nenhum cliente o grava direto.** Isso torna o envio seguro contra rede instável, reenvio e duplo toque, online ou pela fila offline. As transições ficam no diagrama de [Eventos e modo offline](#eventos-e-modo-offline).
 4. **Uma APR vale para uma única OS e ampara uma única Execução; nenhuma Execução começa sem a APR aprovada, do dia, da própria OS; uma APR bloqueada é imutável.** A relação é 1:1, como o Iago e o Mario confirmaram (a mesma APR para várias OS foi descartada porque os riscos de cada atividade são diferentes). Toda nova tentativa, mesmo no mesmo local e na mesma hora, exige uma APR nova, e as respostas nunca são pré-preenchidas nem copiadas de outra APR. O registro das APRs bloqueadas fica para auditoria e para o indicador de atraso justificado.
 5. **A APR é respondida por inteiro e só então validada; cada item do modelo define `resposta_bloqueante`, `tipo` e `evidencia`.** O técnico responde todos os itens, em qualquer ordem, e volta a corrigir enquanto não concluir; ao concluir, o resultado é `bloqueada` se qualquer item `eliminatorio` tiver a resposta bloqueante, e todos os itens reprovados são registrados, cada um com observação e, quando o item pede foto, ao menos 1 foto. O servidor recalcula o resultado a partir das respostas e da versão do modelo; o valor enviado pelo aparelho é só conferido. **O técnico não sabe quais itens são eliminatórios**: o modelo que ele recebe (`GET /modelos-apr/{codigo}/versoes/{versao}` e a cópia offline) vem sem `tipo`, `resposta_bloqueante` e `evidencia`, o checklist trata todas as perguntas do mesmo jeito e nada pede evidência durante as respostas; se soubesse, bastaria responder "certo" nesses itens para fazer o serviço. Quem avalia é o servidor, em `POST /aprs/avaliar`, chamado ao concluir com a APR inteira (menos as fotos): confere tudo o que o registro confere (OS da equipe, participantes com assinatura, respostas completas, "NA" com observação) antes de dizer o resultado, para que a recusa nunca revele o que reprova, e devolve `aprovada` ou `bloqueada` e, se bloqueada, os itens reprovados com a evidência que cada um pede. A aprovada não é gravada ali (segue para as assinaturas). A bloqueada vale na hora: é registrada já na validação, pelo canal dos eventos (OS `pendente`, alerta e e-mail ao supervisor), porque descobrir o que reprova precisa deixar registro; descartar o rascunho e refazer a APR não a apaga, e a nova é outra APR. Só então o técnico fica sabendo quais itens reprovaram; as respostas ficam travadas e falta a evidência de cada item, que chega no `apr_concluida` da mesma APR. Só o admin, que edita o modelo, vê e define `tipo`, `resposta_bloqueante` e `evidencia`; os rankings e o detalhe da OS também escondem isso dos demais perfis (o técnico vê apenas o que reprovou).
-6. **Um modelo de APR publicado é imutável; editar cria versão nova, e toda APR aponta para a versão exata que respondeu.** O modelo de uma OS sai da tabela `atividade` (chave da atividade no SAP → código do modelo), que o admin mantém, com o que a Segurança do Trabalho define; quando a OS não tem atividade mapeada, o técnico escolhe o modelo ao iniciar a APR, e a APR guarda a versão escolhida. APRs antigas e PDFs continuam reproduzíveis depois de uma revisão, e uma APR preenchida offline numa versão anterior é aceita com a versão que usou.
+6. **Um modelo de APR publicado é imutável; editar cria versão nova, e toda APR aponta para a versão exata que respondeu.** Quem escolhe o modelo de cada APR é o técnico, entre os modelos publicados; o sistema só orienta: mostra a descrição e os exemplos de cada modelo e recomenda o que mais combina com a OS, pela leitura do título e das descrições, mas nunca aplica a recomendação sozinho. Não há atribuição automática: as preventivas têm nome padrão, mas as corretivas não têm código padronizado, e o mesmo serviço pode pedir APRs diferentes conforme a situação no local (remover marimbondo com ou sem trabalho em altura), como o Iago explicou em 14/10/2026 (questão 58). A atividade da OS (`codigo_atividade`) é só o serviço do catálogo. A APR guarda a versão escolhida. APRs antigas e PDFs continuam reproduzíveis depois de uma revisão, e uma APR preenchida offline numa versão anterior é aceita com a versão que usou.
 7. **O SAP é fonte de leitura e destino de planilha: a OS entra por um adaptador de leitura (API, simulada no protótipo) ou por planilha, a leitura insere ou atualiza por `numero_ordem` tocando só colunas de planejamento, e a saída é PDF mais planilha para baixa manual.** Nenhuma OS nasce à mão: a única criada no sistema é a OS de apoio, aberta a partir de um impedimento (Decisão-chave 8). Reler nunca reabre uma OS encerrada nem apaga execução de campo. Trocar a API simulada pela real muda só o endereço e as credenciais, porque o contrato é o mesmo.
 8. **Uma tentativa que não conclui não trava a OS: ela fica `pendente` e qualquer pessoa da equipe a retoma com uma APR nova, sem esperar o supervisor.** O supervisor é avisado e acompanha, e pode reprogramar ou abrir uma OS de apoio, mas não autoriza a retomada. Quem executa é quem encerra, com todas as assinaturas dos participantes; nenhum usuário encerra a OS de outro e a OS pendente nunca é duplicada.
 
@@ -52,7 +52,7 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 | [Plataforma](#plataforma) | monorepo, imagens, migrações, acesso ao Supabase, arquivos e tarefas | definida |
 | [Usuário e Equipe](#usuário-e-equipe) | perfis, equipes, login pelo e-mail institucional (com login offline de contingência), assinatura do perfil | aberta — 4 suposições adotadas; 2 RFC fora da demo |
 | [Integração SAP](#integração-sap) | OS entram pela API simulada ou por planilha; OS de apoio | aberta — 5 suposições adotadas |
-| [Modelo de APR](#modelo-de-apr) | modelos versionados, atividade → modelo e os 8 modelos de `base/apr-examples/` | aberta — 4 suposições adotadas |
+| [Modelo de APR](#modelo-de-apr) | modelos versionados, a orientação para o técnico escolher o modelo e os 8 modelos de `base/apr-examples/` | aberta — 4 suposições adotadas |
 | [Eventos e modo offline](#eventos-e-modo-offline) | envio idempotente dos eventos de campo (online e pela fila offline) e cópia local da equipe para o campo sem sinal | definida |
 | [APR](#apr) | checklist respondido por inteiro, evidência e validação | definida |
 | [Execução](#execução) | execução com pausa, assinaturas, interrupção e PDF de 2 páginas | definida |
@@ -198,7 +198,7 @@ Perfis e permissões. Só existem dois perfis, `tecnico` e `admin`. O supervisor
 | Dar ciência da execução | — | equipes que supervisiona | — |
 | Cancelar OS de apoio | — | — | sim |
 | Receber alertas | — | das equipes que supervisiona | de OS de equipe sem supervisor e `falha_importacao` |
-| Criar, editar, publicar e excluir modelos, definir o critério de bloqueio e editar a tabela de atividades | — | — | sim |
+| Criar, editar, publicar e excluir modelos, definir o critério de bloqueio, escrever a orientação de cada modelo e editar a tabela de atividades | — | — | sim |
 | Usuários e equipes | — | — | sim |
 | Indicadores | — | equipes que supervisiona | todas |
 
@@ -275,15 +275,15 @@ O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio ba
 `GET {SAP_API_URL}/ordens` `?alteradas_desde&pagina&tamanho` com `Authorization: Bearer` → `200` `{ordens: [{numero_ordem, numero_nota, tipo_ordem, tipo_atividade, codigo_atividade, titulo, descricao, centro_trabalho, local_instalacao: {codigo, endereco, plus_code, cliente}, equipamento, prioridade, data_inicio_prog, data_fim_prog, status_sap, solicitante, criado_por, criada_em}], proxima_pagina?}`
 `GET {SAP_API_URL}/ordens/{numero_ordem}` → `200` a mesma ordem
 O contrato do simulador é só leitura. O que cria e muda ordens é a gestão do simulador, com o admin logado (serve à tela `/simulador/ordens` da web; ver [apiSAP.md](../../apiSAP.md)):
-`GET /sap-simulado/gestao/ordens` `?busca&tipo&centro_trabalho&no_daprom&pagina&tamanho` → `200` `{ordens[], total, pagina, tamanho, contagem, total_geral}` — cada ordem traz `no_daprom` (`{situacao, motivo?, aviso?}`: `nao_lida`, `ignorada` com o motivo da leitura, ou o status da OS no DAPROM) e `alterada_depois_da_leitura`
-`GET /sap-simulado/gestao/catalogo` → centros de trabalho, locais, atividades (com `com_modelo`), serviços, status prontos e o próximo número livre
+`GET /sap-simulado/gestao/ordens` `?busca&tipo&centro_trabalho&no_daprom&pagina&tamanho` → `200` `{ordens[], total, pagina, tamanho, contagem, total_geral}` — cada ordem traz `no_daprom` (`{situacao, motivo?}`: `nao_lida`, `ignorada` com o motivo da leitura, ou o status da OS no DAPROM) e `alterada_depois_da_leitura`
+`GET /sap-simulado/gestao/catalogo` → centros de trabalho, locais, atividades do DAPROM (`{codigo, descricao}`), serviços, status prontos e o próximo número livre
 `POST /sap-simulado/gestao/ordens` → `201` `{ordem}` (manual; `409` `ordem_duplicada`)
-`POST /sap-simulado/gestao/ordens/aleatorias` `{lotes: [{quantidade, tipo?, centro_trabalho?, status?, atividade?}], dias?}` → `201` `{criadas}` (no máximo 200 por envio; `atividade`: `com_modelo`, `sem_modelo` ou `qualquer`)
+`POST /sap-simulado/gestao/ordens/aleatorias` `{lotes: [{quantidade, tipo?, centro_trabalho?, status?, atividade?}], dias?}` → `201` `{criadas}` (no máximo 200 por envio; `atividade`: `cadastrada`, sorteada entre as do DAPROM, `nova`, um código que o DAPROM não conhece e que a leitura cadastra, ou `qualquer`; `cadastrada` sem nenhuma atividade no DAPROM é `422` `sem_atividade_cadastrada`)
 `PATCH /sap-simulado/gestao/ordens/{numero_ordem}` → `200` `{ordem}` (o número não muda)
 `DELETE /sap-simulado/gestao/ordens/{numero_ordem}` → `200` (`409` `ordem_no_daprom` se o DAPROM já tem a OS: no SAP uma ordem não é apagada, é encerrada)
 `POST /sap-simulado/gestao/ordens/em-massa` `{numeros[] ou todos_da_busca (com os filtros), acao: mudar_status|mudar_centro|reprogramar|excluir, valor?, dias?, data?}` → `{afetadas, recusadas}`
 
-`tipo_ordem` é `YBA1` (corretiva) ou `YBA2` (preventiva); `tipo_atividade` é o texto do SAP (`Z01-Manutenção Corretiva`); `codigo_atividade` é a chave que liga a OS a um modelo de APR (questão 58). As OS de exemplo mostram que ela não vem pronta: a corretiva 4023470 não tem plano de manutenção, e a preventiva 4019821 traz Plano `10573`, Item `10603` e o título `1.2 - Inspeção Funcional de Retificador`, que não aparece em nenhuma lista das APR (a APR 02 lista `8.1.2 - Inspeção Elétrica no Retificador`; a APR 03, `8.2.1 - Leitura Retificador`). O adaptador preenche `codigo_atividade` quando acha a atividade na tabela `atividade` e a deixa nula quando não acha; `plano_manutencao` e `item_manutencao` vêm do SAP e ficam guardados na OS. O simulador usa `codigo_atividade`.
+`tipo_ordem` é `YBA1` (corretiva) ou `YBA2` (preventiva); `tipo_atividade` é o texto do SAP (`Z01-Manutenção Corretiva`); `codigo_atividade` é a atividade do plano de manutenção, o serviço do catálogo (a lista de materiais); ela não escolhe o modelo de APR, que o técnico escolhe a cada APR (Decisão-chave 6 e questão 58). As OS de exemplo mostram que ela não vem pronta: a corretiva 4023470 não tem plano de manutenção, e a preventiva 4019821 traz Plano `10573`, Item `10603` e o título `1.2 - Inspeção Funcional de Retificador`, que não aparece em nenhuma lista das APR (a APR 02 lista `8.1.2 - Inspeção Elétrica no Retificador`; a APR 03, `8.2.1 - Leitura Retificador`). O adaptador grava em `codigo_atividade` o código que a ordem traz (o código que a tabela `atividade` ainda não tem é cadastrado nela) e o deixa nulo quando a ordem não traz nenhum; `plano_manutencao` e `item_manutencao` vêm do SAP e ficam guardados na OS. O simulador usa `codigo_atividade`.
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
@@ -296,7 +296,7 @@ O contrato do simulador é só leitura. O que cria e muda ordens é a gestão do
 | Ordem cancelada no SAP com execução em andamento | a execução segue; `alerta` `conflito_planejamento` | alerta no painel |
 | Ordem com reprogramação registrada no sistema e data diferente | linha ignorada, para não desfazer a reprogramação | `ignoradas`, motivo "Reprogramada no sistema" |
 | Centro de trabalho sem equipe cadastrada | linha ignorada | `ignoradas`, com o motivo |
-| Atividade da OS fora da tabela `atividade`, ou OS sem plano de manutenção | a OS entra normalmente, com `codigo_atividade` nulo; se havia um código, ele é cadastrado em `atividade` sem modelo, para o admin mapear com a Segurança do Trabalho; o técnico escolhe o modelo ao iniciar a APR | conta em `criadas`, com o aviso "Atividade sem modelo de APR" |
+| Atividade da OS fora da tabela `atividade`, ou OS sem plano de manutenção | a OS entra normalmente. O código novo é cadastrado em `atividade`, com o título da ordem como descrição (o admin monta a lista de materiais depois), e vai para a OS; sem código, `codigo_atividade` fica nulo, e a OS ganha a atividade que uma leitura seguinte trouxer. A atividade não decide o modelo: o técnico o escolhe a cada APR | conta em `criadas` |
 | Linha sem número de ordem | linha ignorada | `ignoradas` |
 | API fora do ar, resposta inválida ou erro ao gravar | nenhuma OS é criada, alterada ou removida; a leitura seguinte retoma de onde parou | `importacao` com `erro` no histórico; `alerta` `falha_importacao` no sino de quem pediu a sincronização (na leitura agendada, dos admins ativos) |
 | Planilha enviada no lugar da API | mesmo processamento, com o mesmo mapeamento de colunas | `201` `{importacao_id, criadas, atualizadas, ignoradas}` |
@@ -313,7 +313,7 @@ O contrato do simulador é só leitura. O que cria e muda ordens é a gestão do
 
 `POST /sap/leituras` → `202` `{importacao_id}`
 `POST /importacoes` `multipart: arquivo .xlsx` → `201` `{importacao_id, criadas, atualizadas, ignoradas: [{linha, motivo}]}`
-`POST /importacoes/pdf/leitura` `multipart: arquivo .pdf` → `200` `{arquivo, paginas, paginas_sem_ordem, ordens: [{paginas, ordem: {...OrdemSap}, faltando, observacoes, existente: {id, status, origem}?, equipe: {id, nome}?, atividade: {codigo, com_modelo}?}]}` — só lê; nada é gravado
+`POST /importacoes/pdf/leitura` `multipart: arquivo .pdf` → `200` `{arquivo, paginas, paginas_sem_ordem, ordens: [{paginas, ordem: {...OrdemSap}, faltando, observacoes, existente: {id, status, origem}?, equipe: {id, nome}?, atividade: {codigo, descricao} | null}]}` — só lê; nada é gravado (`atividade` é a cadastrada que casou com o título)
 `POST /importacoes/pdf` `multipart: arquivo .pdf, ordens (JSON: [OrdemSap])` → `201` `{importacao_id, criadas, atualizadas, ignoradas: [{numero_ordem, motivo}], avisos}`
 `GET /importacoes` → `200` `{importacoes[]}`
 `GET /importacoes/resumo` `?periodo=7d|30d|90d|12m` (padrão `30d`) → `200` `{periodo, agrupamento: dia|semana|mes, de, ate, totais, anterior, por_origem: {api: {..., leituras, leituras_com_erro}, planilha: {..., arquivos}}, serie: [{inicio, fim, api, planilha, leituras, falhas}], motivos_ignoradas: [{motivo, total}]}` — a aba Diagnóstico de OS da seção Indicadores e exportação: OS registradas (criadas) por dia, semana (de segunda a domingo) ou mês e por origem, leituras da API com e sem falha e os motivos das linhas ignoradas (agrupados pelo texto antes de ":", com os que passam de cinco somados em "Outros motivos"), pelo dia de São Paulo em que a leitura ou o arquivo aconteceu, comparadas ao período anterior de mesmo tamanho; `planilha` é o método Importação (arquivo) e soma a planilha e o PDF da OS
@@ -330,7 +330,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.numero_nota` | text | sim | | nota SAP (`10006463`) |
 | `os.tipo` | text | não | | `corretiva` (YBA1) \| `preventiva` (YBA2) |
 | `os.tipo_atividade` | text | sim | | texto do SAP, ex.: `Z01-Manutenção Corretiva`; só exibição |
-| `os.codigo_atividade` | text | sim | `atividade.codigo` | liga a OS ao modelo de APR (Decisão-chave 6); nulo quando a atividade não está mapeada, e o técnico escolhe o modelo |
+| `os.codigo_atividade` | text | sim | `atividade.codigo` | o serviço do catálogo (a lista de materiais); nulo quando a ordem não traz atividade. Não escolhe o modelo de APR (Decisão-chave 6) |
 | `os.titulo` | text | não | | ex.: `DCV Desobstrução de caixa de valvula` |
 | `os.descricao` | text | sim | | instruções, materiais e ferramentas |
 | `os.equipamento` | text | sim | | texto do SAP; chave do histórico |
@@ -382,36 +382,39 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 
 ### Modelo de APR
 
-**Entrega** modelos de APR versionados, criados, editados e excluídos na web pelo administrador (`admin`), que cadastra o que a Segurança do Trabalho define (ela é dona do conteúdo e do critério de bloqueio, mas não usa o sistema), a tabela que liga cada atividade a um modelo, e os 8 modelos de `base/apr-examples/` como carga inicial. No painel, ficam na seção APR (abas Modelos e Atividades, como a seção Ordem de Serviço). O dashboard de APR, na seção Indicadores e exportação (`GET /aprs/resumo` `?periodo=7d|30d|90d|12m`, só do admin) mostra, pela data de conclusão, as APRs respondidas e bloqueadas com a comparação com o período anterior, os alertas registrados, as APRs de OS sem atividade ligada a um modelo, os itens que mais bloqueiam, os alertas mais registrados e as APRs por modelo e por equipe. **Status: aberta.**
+**Entrega** modelos de APR versionados, criados, editados e excluídos na web pelo administrador (`admin`), que cadastra o que a Segurança do Trabalho define (ela é dona do conteúdo e do critério de bloqueio, mas não usa o sistema), a orientação de cada modelo para o técnico escolher (descrição, exemplos e palavras-chave), a tabela de atividades (o serviço que a OS traz do SAP) e os 8 modelos de `base/apr-examples/` como carga inicial. Não há ligação entre atividade e modelo: o técnico escolhe o modelo a cada APR, e o sistema só recomenda (Decisão-chave 6). No painel, ficam na seção APR (abas Modelos e Atividades, como a seção Ordem de Serviço). O dashboard de APR, na seção Indicadores e exportação (`GET /aprs/resumo` `?periodo=7d|30d|90d|12m`, só do admin) mostra, pela data de conclusão, as APRs respondidas e bloqueadas com a comparação com o período anterior, os alertas registrados, os itens que mais bloqueiam, os alertas mais registrados e as APRs por modelo e por equipe. **Status: aberta.**
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
 | Carga inicial | APR 01–07 e 09 entram publicadas, na versão e na data que o próprio documento traz (`VERSÃO 04 DATA: 24/07/2026`), com itens de verificação, riscos, medidas preventivas e o bloco de contatos de emergência (PAE) | |
-| Carga inicial da tabela de atividades | cada código de plano de manutenção listado no campo "Plano de manutenção e operação (SAP)" (APR 01, 02, 03, 06 e 07; uma faixa como `8.7.2/ 8.7.3` vira uma linha por código), e cada atividade da tabela dinâmica "APR → atividades" presente nos 8 arquivos, vira uma linha em `atividade`; a que aparece em mais de um modelo fica no primeiro, na ordem das APR | todas entram marcadas como provisórias; sem código do SAP, o texto é a chave |
+| Carga inicial da tabela de atividades | cada código de plano de manutenção listado no campo "Plano de manutenção e operação (SAP)" (APR 01, 02, 03, 06 e 07; uma faixa como `8.7.2/ 8.7.3` vira uma linha por código), e cada atividade da tabela dinâmica "APR → atividades" presente nos 8 arquivos, vira uma linha em `atividade`; a que aparece em mais de uma planilha entra uma vez. A atividade não guarda modelo | todas entram marcadas como provisórias; sem código do SAP, o texto é a chave |
+| Carga inicial da orientação | a orientação dos 8 modelos (descrição, exemplos e palavras-chave), escrita a partir dos títulos e das listas de atividades das planilhas; só entra a de um código que ainda não tem orientação, então a que o admin editou fica | |
 | Admin edita um modelo publicado | cria rascunho da versão seguinte; a publicada não muda (Decisão-chave 6) | `201` |
 | Publicar rascunho | vira a versão usada pelas APRs novas; a anterior fica só para leitura | `200` |
 | Publicar sem nenhum item eliminatório | recusado | `422` "Modelo precisa de ao menos um item eliminatório" |
 | Publicar com item de verificação sem resposta bloqueante | recusado | `422` "Todo item de verificação precisa de resposta bloqueante" |
 | APR offline respondida na versão anterior chega | aceita, gravada com a versão que usou | |
-| Admin liga um código de atividade a um modelo | as OS dessa atividade passam a usar o modelo; a leitura seguinte preenche `codigo_atividade` das OS que ainda estavam sem atividade mapeada | `200` |
-| Admin troca o modelo de um código | vale para as APRs novas; as OS já abertas usam o modelo novo ao atualizar a lista (no modo offline, na próxima sincronização) | `200` |
+| Admin edita a orientação de um modelo | descrição dos serviços que ele atende, exemplos e palavras-chave; vale na hora para todas as versões, sem publicar versão nova (no modo offline, na próxima sincronização); entra na auditoria (`modelo_apr.orientacao`) | `200` |
+| Recomendar um modelo para a OS | procura as palavras-chave de cada modelo no título da OS (peso 3), na descrição do serviço do catálogo (peso 2) e na descrição da OS (peso 1); cada palavra conta uma vez, pelo campo onde mais pesa; a comparação é sem acento nem maiúsculas, e a palavra-chave com 4 letras ou mais vale também como começo de palavra ("calibr" acha "calibração"), as curtas só inteiras ("PSV", "tê"); recomenda o modelo de maior soma, e nunca a aplica sozinha | o recomendado e, em cada modelo, o que ele achou na OS |
+| Empate no topo, ou nenhuma palavra achada | nenhum modelo é recomendado | o técnico escolhe pela descrição e pelos exemplos |
 | Cria um modelo novo | rascunho da versão escolhida (a revisão do documento; padrão 1), em branco ou copiado da versão em uso de outro modelo; só vale para as APRs depois de publicado | `201` |
-| Exclui um modelo que nunca foi publicado | o rascunho é apagado e o código fica livre | `200` |
-| Exclui um modelo já publicado | arquivado, não apagado: sai das listas, das APRs novas e da cópia offline, e o rascunho é descartado; as versões ficam, porque APRs, PDFs e a APR offline pendente apontam para elas (a que chegar ainda é aceita). As atividades dele vão para o substituto escolhido ou ficam sem modelo | `200` |
-| Restaura um modelo excluído | volta às listas e às APRs novas; as atividades não voltam sozinhas | `200` |
-| Liga atividade a um modelo excluído, cria versão dele ou o exclui de novo | recusado | `422` / `409` |
+| Exclui um modelo que nunca foi publicado | o rascunho e a orientação são apagados e o código fica livre | `200` |
+| Exclui um modelo já publicado | arquivado, não apagado: sai das listas, das APRs novas e da cópia offline, e o rascunho é descartado; as versões ficam, porque APRs, PDFs e a APR offline pendente apontam para elas (a que chegar ainda é aceita). A orientação fica guardada | `200` |
+| Restaura um modelo excluído | volta às listas e à escolha das APRs novas, com a orientação que tinha | `200` |
+| Cria versão de um modelo excluído ou o exclui de novo | recusado | `422` / `409` |
 
 `POST /modelos-apr/{codigo}/versoes` `{titulo, pae?, itens: [{secao, grupo, ordem, texto, resposta_bloqueante, tipo, evidencia, permite_na}]}` → `201` `{id, versao}`
 `POST /modelos-apr/{codigo}/versoes/{versao}/publicar` → `200` `{id, versao, publicado_em}`
 `GET /modelos-apr` `?arquivados` → `200` `{modelos[]}`
-`GET /modelos-apr/{codigo}` → `200` `{codigo, titulo, arquivado_em, versoes[]}`
-`GET /modelos-apr/{codigo}/uso` → `200` `{atividades[], os_abertas: {total, recentes[]}, aprs: {total, bloqueadas, ultima_em}}` — só admin
-`DELETE /modelos-apr/{codigo}` `?substituto` → `200` `{codigo, resultado: excluido | arquivado, atividades, substituto}`
+`GET /modelos-apr/{codigo}` → `200` `{codigo, titulo, arquivado_em, orientacao: {codigo, descricao, exemplos, palavras_chave, atualizada_em}, versoes[]}` — a orientação vem vazia enquanto ninguém a escreveu
+`PUT /modelos-apr/{codigo}/orientacao` `{descricao, exemplos[], palavras_chave[]}` → `200` a orientação gravada — só admin; vale na hora para todas as versões, sem publicar; até 20 exemplos e 80 palavras-chave (as vazias e as repetidas são descartadas); auditoria `modelo_apr.orientacao`
+`GET /modelos-apr/{codigo}/uso` → `200` `{codigo, aprs: {total, bloqueadas, ultima_em}}` — só admin; nenhuma OS fica presa a um modelo
+`DELETE /modelos-apr/{codigo}` → `200` `{codigo, resultado: excluido | arquivado}` — o `excluido` apaga também a orientação; o `arquivado` a guarda para a restauração
 `POST /modelos-apr/{codigo}/restaurar` → `200` `{codigo, versoes}`
-`PUT /atividades/{codigo}` `{descricao, modelo_apr_codigo}` → `200`
-`GET /atividades` `?sem_modelo&modelo` → `200` `{atividades[]}`
+`PUT /atividades/{codigo}` `{descricao, provisorio?}` → `200`
+`GET /atividades` `?busca` → `200` `{atividades[]}`
 
-Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
+Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `orientacao_modelo_apr`, `atividade`.
 
 | Coluna | Tipo | Nulo | Referência | Nota |
 |---|---|---|---|---|
@@ -438,19 +441,26 @@ Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
 | `item_modelo_apr.tipo` | text | não | | `eliminatorio` \| `alerta` |
 | `item_modelo_apr.evidencia` | text | não | | `foto` (padrão) \| `texto` \| `pdf`; `texto` dispensa o arquivo obrigatório e `pdf` pede um documento em vez da foto |
 | `item_modelo_apr.permite_na` | boolean | não | | as APR 04 e 05 têm coluna NA (todos os itens); na APR 06, só o item do teste de explosividade (questão 61) |
+| `orientacao_modelo_apr.codigo` | text | não | | código do modelo (`APR 01`); PK; uma linha por código, fora do versionamento (mudar a orientação não cria versão); não é chave estrangeira porque o código do modelo só é único junto com a versão |
+| `orientacao_modelo_apr.descricao` | text | não | | os serviços que o modelo atende, mostrados ao técnico na escolha; padrão vazio |
+| `orientacao_modelo_apr.exemplos` | text[] | não | | exemplos de serviço, mostrados ao técnico; padrão vazio |
+| `orientacao_modelo_apr.palavras_chave` | text[] | não | | com que o sistema lê a OS para recomendar o modelo; a escolha do modelo (`GET /os/{id}/modelos-apr` e a cópia offline) não as mostra: o técnico vê só o que foi achado na OS |
+| `orientacao_modelo_apr.atualizada_em` | timestamptz | não | | |
 | `atividade.codigo` | text | não | | código do plano de manutenção do SAP (`8.7.1`); PK |
 | `atividade.descricao` | text | não | | ex.: `Drenagem Caixa de Válvula` |
-| `atividade.modelo_apr_codigo` | text | sim | | modelo usado pelas OS dessa atividade |
 | `atividade.provisorio` | boolean | não | | código inventado na carga inicial, à espera do código real do SAP |
+
+A migração `0021_modelo_escolhido_pelo_tecnico` criou `orientacao_modelo_apr` (com RLS ligado) e tirou a coluna `atividade.modelo_apr_codigo` e o índice `atividade_sem_modelo_idx`: a tabela `atividade` continua, como o serviço do catálogo que a OS traz em `codigo_atividade`.
 
 1. Critério de bloqueio — quem define é a Segurança do Trabalho, **por item**, e o admin cadastra no editor de modelos o que ela definiu: quais perguntas existem, qual resposta é a correta e quais são eliminatórias (nem toda pergunta bloqueia no "Não"). A carga inicial não traz esse critério (as planilhas não o dizem) e usa só um ponto de partida, que o admin ajusta, conforme a Segurança, criando uma versão nova: todo item de verificação é `eliminatorio` e bloqueia no Não, exceto "O serviço requer uso de iluminação auxiliar?" (`alerta`, registra no Sim) e "Existe algum impedimento para executar a atividade?" (`eliminatorio`, bloqueia no Sim); toda medida preventiva é `alerta` sem resposta que avise. Os riscos da planilha são marcados pela equipe com "( )", e só as medidas dos riscos marcados são respondidas: nas duas APR 03 preenchidas dos exemplos, as medidas dos riscos sem marca ficam em branco. Por isso o risco é uma entidade do modelo (`risco_modelo_apr`) e a marcação fica em `apr_risco` (questão 59). O ponto de partida é provisório até a Segurança do Trabalho validar, via Iago.
 2. Evidência por item — `texto` só para "Todos os participantes da atividade estão em boas condições psicológicas?" (e equivalentes), porque condição psicológica não se comprova com foto e a NR 01 dá ao trabalhador o direito de recusa; todos os demais são `foto`. O admin altera isso no editor, conforme a Segurança do Trabalho (questão 50), e pode pedir um documento em PDF (`pdf`) onde a prova é um papel: um certificado de calibração vencido, um laudo. Foto e PDF a mais são sempre aceitos (questão 46).
 3. Resposta "NA" — passa, exige observação, e só é oferecida nos itens com `permite_na` (questão 9): todos os itens das APR 04 e 05 (que têm a coluna) e o teste de explosividade da APR 06 (questão 61).
-4. Tabela de atividades — editável pelo admin, com o que a Segurança do Trabalho define; o código real do SAP ainda não foi confirmado e o plano de manutenção está em revisão, então os códigos vão mudar (questões 3, 52 e 58). Toda a carga entra como `provisorio`; a chave é o código do plano quando existe e o texto quando não. Um modelo por OS: o que a APR 06 repete das listas das APR 01, 02 e 03 fica com a primeira.
+4. Tabela de atividades — editável pelo admin; é o serviço que a OS traz (a lista de materiais do [Catálogo de serviço](#catálogo-de-serviço)) e não escolhe o modelo de APR. O código real do SAP ainda não foi confirmado e o plano de manutenção está em revisão, então os códigos vão mudar (questões 3, 52 e 58). Toda a carga entra como `provisorio`; a chave é o código do plano quando existe e o texto quando não. O que a APR 06 repete das listas das APR 01, 02 e 03 entra uma vez.
+5. Escolha do modelo — o técnico escolhe a cada APR, entre os modelos publicados, e o sistema só recomenda (questão 58, respondida pelo Iago em 14/10/2026): as preventivas têm nome padrão, mas as corretivas não têm código padronizado, e o mesmo serviço pode pedir APRs diferentes conforme a situação no local. Isso substitui a regra anterior, em que o modelo vinha da atividade da OS e o técnico só escolhia quando a atividade não tinha modelo. A orientação inicial dos 8 modelos é só o ponto de partida: o admin a ajusta na tela do modelo, com o que a Segurança do Trabalho indicar.
 
 ### Catálogo de serviço
 
-**Entrega** o catálogo de materiais, ferramentas e EPIs e a lista do que cada serviço usa, com a quantidade prevista por execução, mostrada ao técnico no detalhe da OS (o que levar para o campo). O serviço é a atividade do plano de manutenção (`atividade`), a mesma que liga a OS ao modelo de APR: a OS chega ao serviço pelo `codigo_atividade`. No painel, fica na seção Catálogo (abas Serviços e Materiais, em `/app/catalogo`), aberta a todos os perfis; só o admin edita. **Status: feita em 13/10/2026.** A lista real de cada serviço depende da ES Gás (questão 65); o modo local e a demonstração trazem uma carga fictícia (`api/src/db/seed/catalogo-demo.ts`).
+**Entrega** o catálogo de materiais, ferramentas e EPIs e a lista do que cada serviço usa, com a quantidade prevista por execução, mostrada ao técnico no detalhe da OS (o que levar para o campo). O serviço é a atividade do plano de manutenção (`atividade`), que a OS traz do SAP: a OS chega ao serviço pelo `codigo_atividade`. O serviço não escolhe o modelo de APR (Decisão-chave 6), mas a descrição dele entra na recomendação do modelo. No painel, fica na seção Catálogo (abas Serviços e Materiais, em `/app/catalogo`), aberta a todos os perfis; só o admin edita. **Status: feita em 13/10/2026.** A lista real de cada serviço depende da ES Gás (questão 65); o modo local e a demonstração trazem uma carga fictícia (`api/src/db/seed/catalogo-demo.ts`).
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
@@ -470,7 +480,7 @@ Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade`.
 `POST /catalogo/materiais` `{codigo?, descricao, unidade, categoria}` → `201` — só admin
 `PUT /catalogo/materiais/{id}` `{codigo?, descricao, unidade, categoria, ativo?}` → `200` — só admin
 `DELETE /catalogo/materiais/{id}` → `200` — só admin
-`GET /catalogo/servicos` `?busca&sem_materiais&material_id&pagina&tamanho` → `200` `{servicos: [{codigo, descricao, modelo_apr_codigo, provisorio, materiais: [{material_id, codigo, descricao, unidade, categoria, ativo, quantidade, observacao, ordem}]}], pagina, tamanho, total}`
+`GET /catalogo/servicos` `?busca&sem_materiais&material_id&pagina&tamanho` → `200` `{servicos: [{codigo, descricao, provisorio, materiais: [{material_id, codigo, descricao, unidade, categoria, ativo, quantidade, observacao, ordem}]}], pagina, tamanho, total}`
 `GET /catalogo/servicos/{codigo}` → `200` o serviço com a lista
 `PUT /catalogo/servicos/{codigo}` `{materiais: [{material_id, quantidade?, observacao?}]}` → `200` — só admin; troca a lista inteira
 `GET /os/{id}` passa a trazer `servico: {codigo, descricao, materiais[]} | null`
@@ -494,7 +504,7 @@ Tabelas `material` e `atividade_material`.
 
 A trilha de auditoria registra `material.criar`, `material.editar`, `material.desativar`, `material.ativar`, `material.excluir` e `atividade.materiais` (a troca da lista, com o antes e o depois).
 
-1. Serviço = atividade — não há tabela de serviço à parte: a atividade já é o que a OS traz do SAP e o que escolhe o modelo de APR. O código e a descrição continuam sendo editados em APR › Atividades.
+1. Serviço = atividade — não há tabela de serviço à parte: a atividade já é o que a OS traz do SAP (ela não escolhe o modelo de APR: o técnico o escolhe a cada APR). O código e a descrição continuam sendo editados em APR › Atividades.
 2. Previsto, não consumido — o catálogo diz o que levar; a baixa do material gasto no SAP fica fora (ver Escopo).
 3. Sem lista ainda — a ES Gás precisa passar o que cada serviço usa; até lá, o detalhe da OS avisa e valem as instruções do SAP (questão 65).
 
@@ -646,11 +656,11 @@ Com sinal, a aplicação da APR e a realização da OS não passam por fila nem 
 | OS reatribuída ou reprogramada enquanto o técnico estava offline | execução de campo aplicada; `alerta` `conflito_planejamento` (Decisão-chave 2) | a OS aparece com o novo planejamento após a próxima sincronização |
 | Duas pessoas executam a mesma OS offline | as duas Execuções são guardadas; vale a primeira encerrada; `alerta` `execucao_duplicada` | |
 | OS removida do escopo da equipe | sai do celular na próxima sincronização, a menos que tenha execução local pendente | |
-| Dados do snapshot de uma equipe | OS `liberada`, `pendente` e `em_execucao` da equipe, com o resumo das APRs e execuções de cada uma; as OS `encerrada` do próprio técnico nos últimos 60 dias (para o histórico do perfil); modelos publicados; tabela de atividades; locais dessas OS; usuários da equipe | |
+| Dados do snapshot de uma equipe | OS `liberada`, `pendente` e `em_execucao` da equipe, com o resumo das APRs e execuções de cada uma; as OS `encerrada` do próprio técnico nos últimos 60 dias (para o histórico do perfil); em cada OS, a escolha do modelo (o recomendado e o que cada modelo achou nela); modelos publicados, com a orientação; tabela de atividades; locais dessas OS; usuários da equipe | |
 | Snapshot em vez de cursor | o snapshot nunca apaga do aparelho uma OS com evento local pendente | |
 
 `POST /eventos` `{eventos: [{id, tipo, os_id, payload, ocorrido_em}]}` → `200` `{confirmados: [id], alertas: [id], aprs?: [{id, resultado}], os?: [{id, status}]}` — o canal único de escrita de campo, usado por web e app; online, o cliente manda um evento por vez e usa `aprs` e `os` da resposta para mostrar o resultado
-`POST /sync/pull` `{cursor?}` → `200` `{os[], aprs[], execucoes[], locais[], atividades[], modelos_apr[], usuarios[], cursor}` — só do modo offline: baixa a cópia local da equipe
+`POST /sync/pull` `{cursor?}` → `200` `{os[], aprs[], execucoes[], locais[], atividades[], modelos_apr[], usuarios[], cursor}` — só do modo offline: baixa a cópia local da equipe. Cada OS traz `escolha_do_modelo: {recomendado, encontradas: [{codigo, palavras}]}` (a mesma recomendação de `GET /os/{id}/modelos-apr`, para o técnico escolher o modelo sem sinal), e cada modelo traz `orientacao: {descricao, exemplos}`
 
 No modo online, a lista de OS e o detalhe vêm de `GET /os` e `GET /os/{id}` (ver [Painel](#painel)); o técnico só vê a própria equipe.
 
@@ -745,7 +755,8 @@ Alternativas consideradas: replicação genérica com mesclagem campo a campo �
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Iniciar APR | o técnico escolhe uma OS `liberada` ou `pendente` da equipe; o modelo é o publicado mais recente do `codigo_atividade` da OS (Decisão-chave 6); se a OS não tem atividade mapeada, o técnico escolhe o modelo entre os publicados | modelo e versão |
+| Iniciar APR | o técnico escolhe uma OS `liberada` ou `pendente` da equipe, e a janela "Escolha o modelo da APR" abre com todos os modelos publicados (`GET /os/{id}/modelos-apr`; vale a versão publicada mais recente de cada um). O recomendado vem primeiro, em destaque, com o aviso para conferir se é esse mesmo, porque a recomendação vem da leitura da OS, não da avaliação do local. Nada é escolhido sozinho (Decisão-chave 6) | em cada modelo, título, descrição dos serviços que atende, exemplos, o que foi encontrado na OS e "Selecionar"; o selo "Opção recomendada", ou o aviso de que nenhum modelo se destacou (ou de que mais de um combina) |
+| Trocar o modelo | na etapa 1 ("Trocar modelo") ou no checklist ("Trocar o modelo"), enquanto a APR não foi registrada como bloqueada. Escolhido o modelo novo, o técnico confere os riscos (os de mesmo nome já vêm marcados). A pergunta igual (mesma seção e mesmo texto, sem acento, maiúsculas e pontuação; na medida preventiva, também o mesmo risco, pelo nome) guarda a resposta e a observação; "NA" só passa se o modelo novo aceita NA; as demais ficam em branco. A conferência dos materiais fica (é do serviço da OS); a validação anterior é apagada, e o checklist volta para a primeira pergunta em branco | quantas respostas continuam e quantas perguntas ficam em branco |
 | OS com execução em andamento | recusado | "Esta OS já está em execução" |
 | Escolher os participantes | a lista é a equipe da OS; o técnico logado é o `responsavel` por padrão e é sempre participante; marca quem está presente (de 1 pessoa em diante) | participantes da equipe |
 | Marcar os riscos | o técnico marca os riscos que existem na atividade (a "( )" da planilha), agrupados por classificação; só as medidas desses riscos aparecem para resposta e só elas são exigidas | lista de riscos por classificação |
@@ -770,6 +781,9 @@ Alternativas consideradas: replicação genérica com mesclagem campo a campo �
 | Tentar mudar uma APR bloqueada | impossível (Decisão-chave 4) | só leitura |
 
 `GET /os/{id}/aprs` → `200` `{aprs[]}` (histórico da OS, para a web)
+`GET /os/{id}/modelos-apr` → `200` `{recomendado: codigo | null, modelos: [{codigo, versao, titulo, descricao, exemplos, encontradas}]}` — a versão publicada mais recente de cada modelo não excluído, com a orientação; `encontradas` são as palavras achadas na OS, como a OS as escreveu; as palavras-chave não vão na resposta; quem não vê a equipe da OS recebe `404`
+
+`POST /aprs/avaliar` e o evento `apr_concluida` aceitam qualquer modelo publicado: quem escolhe é o técnico. `GET /os/{id}` não traz modelo de APR.
 
 Tabelas `apr`, `apr_participante`, `apr_risco`, `apr_resposta`. Todos os IDs nascem no cliente (app ou navegador).
 
@@ -805,7 +819,7 @@ erDiagram
   risco_modelo_apr ||--o{ apr_risco : "marcado em"
   apr ||--o{ apr_risco : marca
   modelo_apr ||--o{ apr : "versao usada"
-  atividade ||--o{ os : "define o modelo"
+  atividade ||--o{ os : "servico do catalogo"
   os ||--o{ apr : "tentativas"
   apr ||--|{ apr_participante : assinam
   apr ||--o{ apr_resposta : responde
@@ -984,7 +998,7 @@ Colunas da aba `Encerradas`: `numero_ordem`, `data_inicio`, `hora_inicio`, `data
 `GET /indicadores?mes=2026-09&equipe_id?` → `200` `{encerradas, atrasadas_justificadas, atrasadas_sem_justificativa, por_equipe[]}`
 `GET /indicadores/tempo?mes=2026-09&equipe_id?&usuario_id?` → `200` `{execucoes, tempo_total_medio_min, tempo_liquido_medio_min, pausa_media_min, proporcao_pausa, execucoes_com_pausa, pausas_por_execucao, por_equipe[], por_usuario[], por_motivo: [{motivo, pausas, minutos}], os_com_mais_pausa: [{os_id, numero_ordem, titulo, executor, fim, tempo_total_min, tempo_liquido_min, pausa_min, pausas, proporcao_pausa}]}` (as mesmas medidas em cada linha de `por_equipe` e `por_usuario`)
 
-No painel, os indicadores ficam na seção Indicadores e exportação, em quatro dashboards com o mesmo filtro: `?periodo=` (os últimos 7 dias, 30 dias, 13 semanas ou 12 meses, ou um mês fechado `AAAA-MM`, que é o indicador mensal; o período anterior de mesmo tamanho serve de comparação) e `?equipe_id=` (o supervisor só vê as equipes do próprio escopo, a dele e as que supervisiona; pedir outra é `403`). Geral (`GET /indicadores/geral`): a carteira de OS de agora, o resumo do período e as pendências (baixa no SAP, ciência, execução aberta há mais de 12 h, atividades sem modelo). Equipes e usuários (`GET /indicadores/equipes`): por equipe e por técnico (preventivas, execuções, APRs e bloqueios, interrupções e as medidas de tempo do indicador de tempo), o tempo do conjunto com a pausa por motivo e, só para o admin, o estado do cadastro; o técnico que não supervisiona vê a própria equipe, sem nada por pessoa. OS (`GET /indicadores/os`): carteira, programadas e encerradas por tipo e por faixa, preventivas, tempo (com a pausa por motivo e as OS com mais pausa; o nome de quem executou só para quem acompanha a equipe), interrupções por risco, reprogramações e locais; só para o admin, a entrada de OS (`GET /importacoes/resumo`) e a planilha de baixa no SAP. APR (`GET /aprs/resumo`).
+No painel, os indicadores ficam na seção Indicadores e exportação, em quatro dashboards com o mesmo filtro: `?periodo=` (os últimos 7 dias, 30 dias, 13 semanas ou 12 meses, ou um mês fechado `AAAA-MM`, que é o indicador mensal; o período anterior de mesmo tamanho serve de comparação) e `?equipe_id=` (o supervisor só vê as equipes do próprio escopo, a dele e as que supervisiona; pedir outra é `403`). Geral (`GET /indicadores/geral`): a carteira de OS de agora, o resumo do período e as pendências (baixa no SAP, ciência, execução aberta há mais de 12 h). Equipes e usuários (`GET /indicadores/equipes`): por equipe e por técnico (preventivas, execuções, APRs e bloqueios, interrupções e as medidas de tempo do indicador de tempo), o tempo do conjunto com a pausa por motivo e, só para o admin, o estado do cadastro; o técnico que não supervisiona vê a própria equipe, sem nada por pessoa. OS (`GET /indicadores/os`): carteira, programadas e encerradas por tipo e por faixa, preventivas, tempo (com a pausa por motivo e as OS com mais pausa; o nome de quem executou só para quem acompanha a equipe), interrupções por risco, reprogramações e locais; só para o admin, a entrada de OS (`GET /importacoes/resumo`) e a planilha de baixa no SAP. APR (`GET /aprs/resumo`).
 `GET /historico?local_instalacao_id&equipamento?` → `200` `{execucoes[]}`
 `POST /exportacoes/sap` → `200` `.xlsx`
 `PATCH /locais/{id}` `{critico}` → `200`
@@ -999,7 +1013,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 
 | Questão | Solução adotada | Confirma |
 |---|---|---|
-| 3 | um modelo de APR por OS, vindo da atividade | Mario |
+| 3 | um modelo por APR, escolhido pelo técnico entre os publicados (ver 58) | Mario |
 | 4 | snapshot no `pull`; `cursor` fica opcional | time |
 | 5 | status do SAP vira `cancelada`; a OS de apoio se cancela na web | Iago |
 | 6 | `execucao_cancelada`, só sem foto nem pausa e em até 10 minutos | time |
@@ -1038,7 +1052,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 48 | sem vínculo automático entre OS pendente e a OS nova do mês | Iago |
 | 49 | ciência por botão na web, depois do encerramento | Iago |
 | 50 | `evidencia` no item do modelo, definida pela Segurança do Trabalho e cadastrada pelo admin | Mario |
-| 52 e 58 | tabela `atividade` editável; OS sem atividade mapeada entra mesmo assim e o técnico escolhe o modelo | Iago |
+| 52 e 58 | **respondida pelo Iago em 14/10/2026:** sem atribuição automática; o técnico escolhe o modelo a cada APR e o sistema só recomenda; a tabela `atividade` é só o serviço do catálogo, e a OS entra mesmo sem atividade | Iago (respondida) |
 | 53 | motivo da pausa opcional, em lista curta | time e Iago |
 | 57 | `execucao.dados_inspecao` guarda o formulário de inspeção das preventivas como JSON; a estrutura por atividade vem depois | Iago |
 | 59 | só as medidas dos riscos marcados são respondidas | Mario |

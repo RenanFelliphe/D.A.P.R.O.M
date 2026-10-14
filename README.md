@@ -15,7 +15,7 @@ O objetivo é apoiar a operação para que cada OS tenha sua própria APR, a exe
 ## Fluxo operacional especificado
 
 1. **Receber a OS:** as ordens são originadas no SAP e chegam à plataforma por uma API de leitura ou, como alternativa, por arquivo: a planilha exportada ou o PDF da OS impresso pelo SAP, conferido campo a campo antes de registrar. A plataforma não cria OS por iniciativa do usuário: a única que nasce nela é a OS de apoio, aberta pelo supervisor da equipe ou pelo admin a partir de um impedimento e ligada à OS original. A equipe indicada na ordem é usada para apresentar os participantes; os dados de atribuição não são recriados manualmente.
-2. **Analisar os riscos:** antes de executar, a equipe realiza uma APR nova, exclusiva para aquela OS e para aquela tentativa. As respostas não são copiadas nem pré-preenchidas a partir de outra APR. O modelo é selecionado a partir do tipo/código da atividade e mantido em uma tabela editável, cadastrada pelo admin com o que a Segurança do Trabalho define.
+2. **Analisar os riscos:** antes de executar, a equipe realiza uma APR nova, exclusiva para aquela OS e para aquela tentativa. As respostas não são copiadas nem pré-preenchidas a partir de outra APR. O técnico escolhe o modelo a cada APR, entre os modelos publicados: o sistema lê a OS e recomenda o que mais combina, mas não escolhe por ele, porque o mesmo serviço pode pedir APRs diferentes conforme a situação no local. Os modelos e a orientação de cada um são cadastrados pelo admin com o que a Segurança do Trabalho define. A equipe marca os riscos que existem na atividade, e só as medidas desses riscos são respondidas.
 3. **Validar a APR:** o checklist é respondido por inteiro antes da validação. Respostas reprovadas em itens eliminatórios impedem a execução, mas o técnico não sabe quais itens são eliminatórios (só o admin, que edita o modelo, vê isso): o sistema valida as respostas depois que tudo foi respondido e só então mostra o que reprovou. Todos os itens reprovados devem ser documentados, com foto quando se tratar de um obstáculo físico ou justificativa em texto quando a evidência visual não for adequada, como no direito de recusa.
 4. **Manter a OS pendente quando houver impedimento:** a APR bloqueada é preservada no histórico, a OS continua pendente e o supervisor é avisado. A equipe pode retomar a OS com uma APR totalmente nova, sem duplicar a ordem nem depender de reprogramação prévia.
 5. **Registrar a execução:** uma APR aprovada libera o início. A execução registra horários, quantidade de pessoas, descrição do serviço, pausas e evidências. Pausar uma atividade por intervalo é diferente de interrompê-la por risco; cada nova retomada da OS exige uma nova APR.
@@ -29,7 +29,7 @@ A aplicação `web` reúne as telas de campo, de gestão e do documento:
 
 - Entrada ilustrativa e informação de que o acesso offline temporário é uma contingência, não o modo normal.
 - Lista de OS da equipe com filtros por status e detalhes de atividade, local, criticidade, prioridade, equipamento e materiais.
-- Abertura de APR vinculada a uma OS, seleção dos participantes e indicação do responsável.
+- Abertura de APR vinculada a uma OS, escolha do modelo pelo técnico (com a recomendação do sistema), seleção dos participantes e indicação do responsável.
 - Checklist de 18 itens demonstrativos, respondido por completo e validado somente ao final; todas as perguntas têm a mesma aparência, sem marcar o que é eliminatório ou alerta.
 - Justificativa e evidência fotográfica dos itens reprovados, pedidas só depois da validação, tela de APR bloqueada e tela de APR aprovada.
 - Confirmação das assinaturas dos participantes antes de iniciar a execução.
@@ -52,6 +52,8 @@ A aplicação `web` reúne as telas de campo, de gestão e do documento:
 ## Regras de negócio centrais
 
 - A relação é **uma OS para uma APR por tentativa de execução**; não se reutiliza uma APR entre ordens.
+- O técnico escolhe o modelo de cada APR; o sistema só recomenda um, pela leitura da OS, e nunca o aplica sozinho.
+- Só as medidas dos riscos que a equipe marca na APR são respondidas.
 - O checklist completo é analisado antes de se decidir se a atividade pode prosseguir.
 - Alertas não eliminatórios são registrados, mas não bloqueiam automaticamente a OS. O técnico não é avisado de qual resposta é alerta nem de qual é eliminatória.
 - APRs bloqueadas e tentativas anteriores permanecem no histórico da OS.

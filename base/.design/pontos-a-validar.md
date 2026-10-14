@@ -2,7 +2,7 @@
 
 > Questões que a [especificação](especificacao.md) ainda não responde. Cada uma traz uma recomendação para não travar o desenvolvimento: se ninguém discordar, ela vale.
 >
-> **Atualizado em 13/10/2026** (evidência em PDF: questão 46; catálogo de serviço: questão 65) e em 12/10/2026 (perfis: só `tecnico` e `admin`; questões 63 e 64), a partir do que foi atualizado em 10/10/2026, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
+> **Atualizado em 14/10/2026** (o técnico escolhe o modelo da APR: questão 58, que deixa a 52 sem objeto), em 13/10/2026 (evidência em PDF: questão 46; catálogo de serviço: questão 65) e em 12/10/2026 (perfis: só `tecnico` e `admin`; questões 63 e 64), a partir do que foi atualizado em 10/10/2026, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
 >
 > **Todas as questões abertas seguem com a recomendação adotada** na [especificação](especificacao.md) (seção "Suposições adotadas"), para a implementação não esperar. Elas continuam listadas aqui para a confirmação com o Iago, o Mario e o time; se a resposta for outra, o ajuste é restrito ao que a especificação cita. As questões 22–46 estavam só no [contexto da sessão](../contexto/contexto-sessao-2026-10-10.md) e entram aqui; as 47–54 são novas.
 
@@ -17,14 +17,14 @@
 
 | Situação | Questões |
 |---|---|
-| Respondidas ou sem objeto | 1, 2, 11, 15, 19, 23, 30, 31, 32, 34, 37 (protótipo), 42 |
+| Respondidas ou sem objeto | 1, 2, 11, 15, 19, 23, 30, 31, 32, 34, 37 (protótipo), 42, 52 e 58 (14/10/2026) |
 | Adotadas com a recomendação, a confirmar | todas as demais (seção 1), mais 45 e 51 (seção 6) |
 
 ## 1. Adotadas com a recomendação, a confirmar
 
 | # | Questão | Impacto | Quem decide | O que mudou |
 |---|---|---|---|---|
-| 3 | Uma OS pode exigir mais de um modelo de APR? | 🔴 | Iago/Mario | continua aberta; o modelo agora vem do tipo de atividade |
+| 3 | Uma OS pode exigir mais de um modelo de APR? | 🔴 | Iago/Mario | continua aberta; desde 14/10 o técnico escolhe o modelo a cada APR (ver 58) |
 | 4 | Pull por cursor ou snapshot completo no MVP? | 🔴 | Time | passa a carregar o histórico de APRs da OS pendente |
 | 5 | Como uma OS cancelada no SAP sai do sistema? | 🔴 | Iago | com a API simulada, o status pode vir da API |
 | 6 | Como desfazer uma execução iniciada por engano? | 🔴 | Time + Iago | continua; existe pausar, mas não cancelar |
@@ -54,7 +54,7 @@
 | **48** | Preventiva pendente do ciclo anterior × OS nova do mês | 🟡 | Iago | nova |
 | **49** | Ciência do supervisor: quando e onde assina | 🟡 | Iago | nova |
 | **50** | Quais itens aceitam justificativa em texto no lugar de foto | 🟡 | Mario | nova |
-| **52** | Tabela real de tipo de atividade → modelo de APR | 🟡 | Iago | nova |
+| **52** | Tabela real de tipo de atividade → modelo de APR | ✅ | Iago | **sem objeto desde 14/10:** não há tabela atividade → modelo; o técnico escolhe o modelo (ver 58) |
 | **53** | Pausa exige motivo? | 🟡 | Time + Iago | nova |
 | **54** | API simulada do SAP: contrato e base fictícia | 🟡 | Time | nova |
 | **63** | Importação de OS pelo supervisor (adiada) | 🟡 | Time | nova |
@@ -73,7 +73,7 @@
 
 ### 3. Uma OS pode exigir mais de um modelo de APR?
 
-**Contexto:** hoje o modelo vem do tipo de atividade da OS (questão 52), um por OS. Na prática uma manutenção pode exigir a APR 03 e também a APR 06 (altura e espaço confinado). A reunião disse que "cada tipo de atividade tem um tipo de APR" (37:22), sem tratar o caso de dois.
+**Contexto:** desde 14/10/2026 o técnico escolhe o modelo a cada APR, entre os publicados, e o sistema só recomenda (questão 58); cada APR tem um modelo. Na prática uma manutenção pode exigir a APR 03 e também a APR 06 (altura e espaço confinado). A reunião disse que "cada tipo de atividade tem um tipo de APR" (37:22), sem tratar o caso de dois.
 **Opções:** (a) um modelo por OS; (b) lista de modelos por OS, e a execução só libera com todas aprovadas.
 **Recomendação:** (a) no MVP. Confirmar com o Mario se o caso existe. Se existir, (b) muda `os` e a regra de início da execução.
 
@@ -200,10 +200,11 @@
 **Contexto:** condição psicológica não se comprova com foto; o direito de recusa permite não executar e justificar depois (21:22–22:05). Hoje só o item 1 do protótipo é assim.
 **Recomendação:** campo no item do modelo, definido pela Segurança do Trabalho.
 
-### 52. Tabela real de tipo de atividade → modelo de APR (nova)
+### 52. Tabela real de tipo de atividade → modelo de APR (sem objeto desde 14/10/2026)
 
 **Contexto:** o modelo é definido pelo tipo de atividade (1:12:15). O Iago consegue gerar a tabela no SAP, mas ela ainda não foi aprovada e os códigos vão mudar (1:10:47–1:11:30).
 **Recomendação:** tabela editável no sistema (já está no protótipo, com exemplos fictícios). Uma OS com tipo de atividade sem modelo mapeado não é levada ao aplicativo e aparece na leitura como ignorada, com o motivo.
+**Sem objeto desde 14/10/2026:** com a resposta da questão 58, o modelo não vem da atividade: o técnico o escolhe a cada APR, e o sistema só recomenda. Não há tabela atividade → modelo, e a recomendação acima não vale: a OS entra sempre. A tabela `atividade` continua como o serviço do catálogo (a lista de materiais).
 
 ### 53. Pausa exige motivo? (nova)
 
@@ -230,10 +231,13 @@
 **Contexto:** a página 2 da OS 4019821 (preventiva) traz um "Checklist de Inspeção Técnica" com leituras por semana (horímetro, hora da coleta, tensão de entrada, de saída e de shunt, técnico) e conformidades por componente ("Conforme / Não conforme", "Operante", "Executado / Não necessário / Aguardando parada", "Íntegra / Comprometida / Sinais de umidade"), além de "Observações Gerais / Requisições de Ação Corretiva". Vem do texto longo da OS no SAP. A corretiva 4023470 não tem nada disso. Nenhuma fatia da especificação capturava esses dados.
 **Recomendação:** guardar o preenchimento em `execucao.dados_inspecao` (JSON) e definir com o Iago a estrutura do formulário por atividade; o texto do SAP (`os.descricao`) segue sendo exibido. Impacto 🟡.
 
-### 58. Como ligar a OS ao modelo de APR (nova, ajusta a 52)
+### 58. Como ligar a OS ao modelo de APR (respondida em 14/10/2026; deixa a 52 sem objeto)
 
 **Contexto:** a especificação supunha um código de atividade (`8.7.1`) vindo do SAP. Nos exemplos não vem: a corretiva 4023470 não tem plano, e a preventiva 4019821 traz Plano 10573, Item 10603 e o título "1.2 - Inspeção Funcional de Retificador", que não consta em nenhuma lista das APR (a APR 02 lista "8.1.2 - Inspeção Elétrica no Retificador"; a APR 03, "8.2.1 - Leitura Retificador"). As listas das APR 02 e 03 misturam códigos numéricos, faixas ("8.7.2/ 8.7.3/ 8.7.4/…") e nomes sem código ("CLB - Calibração PSV", "BOMBA EXTERNA – PÁTIO"). Nas abas ocultas há ainda uma lista de atividades da ES Gás por APR, sem código. O Iago disse que o plano está em revisão e os códigos vão mudar.
 **Recomendação:** `os.codigo_atividade` passa a ser opcional; a OS entra sempre; o técnico escolhe o modelo quando não há mapeamento. Confirmar com o Iago qual campo do SAP identifica a atividade (plano, item, título ou tipo). Impacto 🔴 (já refletido no schema).
+**Resposta do Iago (14/10/2026):** hoje o gasista escolhe a APR pelo serviço. As preventivas têm nome padrão, mas as corretivas não têm código padronizado, e o mesmo serviço pode pedir APRs diferentes conforme a situação no local (remover marimbondo com ou sem trabalho em altura).
+**Decisão (14/10):** não há atribuição automática do modelo. A cada APR, o técnico escolhe entre os modelos publicados (hoje 8), e o sistema só orienta: mostra a descrição e os exemplos de cada modelo e recomenda o que mais combina com a OS, pelas palavras-chave achadas no título, no serviço do catálogo e na descrição; a recomendação nunca é aplicada sozinha, e o modelo pode ser trocado até a APR ser registrada como bloqueada. A ligação atividade → modelo saiu de vez (migração `0021`, que tira `atividade.modelo_apr_codigo`). A OS continua entrando sempre, `os.codigo_atividade` segue opcional e é só o serviço do catálogo, e o plano e o item de manutenção ficam guardados na OS. Substitui a recomendação acima (o modelo vinha da atividade e, sem ela, o técnico escolhia numa lista).
+**Detalhes:** Decisão-chave 6 e as fatias [Modelo de APR](especificacao.md#modelo-de-apr) e [APR](especificacao.md#apr).
 
 ### 59. Medidas preventivas: todas ou só as dos riscos marcados? (nova)
 
@@ -276,7 +280,7 @@
 
 ### 65. Catálogo de serviço: a lista real de materiais de cada serviço (nova, 13/10/2026)
 
-**Contexto:** o catálogo de serviço foi feito em 13/10/2026: cada serviço é a atividade do plano de manutenção (a mesma que escolhe o modelo de APR), com os materiais, ferramentas e EPIs e a quantidade prevista por execução; o técnico vê a lista no detalhe da OS. Falta o conteúdo: hoje os materiais chegam só como texto na descrição da OS, e o modo local e a demonstração usam uma carga fictícia.
+**Contexto:** o catálogo de serviço foi feito em 13/10/2026: cada serviço é a atividade do plano de manutenção (a que a OS traz em `codigo_atividade`), com os materiais, ferramentas e EPIs e a quantidade prevista por execução; o técnico vê a lista no detalhe da OS. Falta o conteúdo: hoje os materiais chegam só como texto na descrição da OS, e o modo local e a demonstração usam uma carga fictícia.
 **Perguntas:** (1) a ES Gás tem a lista de materiais por serviço (ou por plano de manutenção) em algum lugar que dê para importar? (2) os materiais têm código no SAP que valha guardar? (3) além do previsto, o técnico deve registrar o que gastou, para a baixa de material no SAP?
 **Recomendação:** o admin cadastra a lista dos serviços mais frequentes à mão, com o código do SAP quando houver; a baixa do material gasto fica fora do MVP. Como os códigos do plano vão mudar (questão 58), a lista acompanha a atividade: se o código mudar, o admin recria a atividade e copia a lista. Impacto 🟡.
 **Detalhes:** [Catálogo de serviço](especificacao.md#catálogo-de-serviço).
@@ -308,13 +312,15 @@
 | 11 | Quem assina o encerramento numa dupla? | **Todos os executantes**, ao fim da atividade; o supervisor dá ciência (ver 49) | 59:25–1:00:08 |
 | 15 | PDF por OS ou por APR? | **Um PDF por OS**, em 2 páginas: a APR e a OS | 53:48 |
 | 19 | Local que depois chega do SAP com outro código | **Sem objeto:** os locais vêm só do SAP, pelo código da ordem; o sistema não cadastra local | — |
-| 23 | `os.modelo_apr_codigo` obrigatório × `equipe.modelo_apr_codigo` opcional | **O modelo vem do tipo de atividade** (ver 52), não da equipe | 1:12:15 |
+| 23 | `os.modelo_apr_codigo` obrigatório × `equipe.modelo_apr_codigo` opcional | **O modelo vem do tipo de atividade** (ver 52), não da equipe; desde 14/10/2026, o técnico escolhe o modelo a cada APR (ver 58) | 1:12:15 |
 | 30 | Status "Pendente" e "Imprimida" | **"Pendente"** é a OS com APR negativa; "impressa" é do SAP e não se usa | 9:06–15:30 |
 | 31 | Designar a OS a um usuário, com aceite | **A OS é designada à equipe** | 40:55–41:17 |
 | 32 | Não existe APR 08 | **"Só existem esses 8"**; falta só saber se a numeração pula o 08 de propósito | 1:10:05–1:10:20 |
 | 34 | "Parâmetros exóticos" (respostas que não são Sim/Não) | **As respostas são sim ou não** | 34:58–35:23 |
 | 37 | Dados reais num Supabase fora do ambiente corporativo | **No protótipo, só dados fictícios**; o aval da empresa fica para o piloto | 1:28–1:56 |
 | 42 | "APR 1 - 1 OS" × uma APR para várias OS | **1:1**, confirmado pelos mentores | 28:09–28:26 |
+| 52 | Tabela real de tipo de atividade → modelo de APR | **Sem objeto:** o modelo não vem da atividade (ver 58) | 14/10/2026 |
+| 58 | Como ligar a OS ao modelo de APR | **Não liga: o técnico escolhe o modelo a cada APR**, e o sistema só recomenda. As corretivas não têm código padronizado, e o mesmo serviço pode pedir APRs diferentes conforme a situação no local | Iago, 14/10/2026 |
 
 ## 6. Antes adiadas, agora adotadas
 
@@ -352,12 +358,16 @@ Decidido em 12/10/2026 (já refletido na especificação):
 - **Alertas:** OS de equipe sem supervisor e falha de importação vão aos admins ativos; a Segurança "em leitura" some.
 - **Cadastro pelo supervisor com liberação pelo admin:** pronto na API (questão 64). O Campo de treino (tela de treinamento no primeiro login, só técnicos) está em construção.
 
+Decidido em 14/10/2026 (já refletido na especificação):
+
+- **Modelo da APR escolhido pelo técnico:** sem atribuição automática. A cada APR, o técnico escolhe entre os modelos publicados; o sistema mostra a orientação de cada modelo (descrição e exemplos, que o admin edita) e recomenda um pela leitura da OS, sem aplicá-lo sozinho. A ligação atividade → modelo saiu (questão 58).
+
 ## 8. Insumos prometidos na Reunião 2
 
 | Quem | O quê | Liga com |
 |---|---|---|
 | Iago | Planilha do SAP com o pacote de OS de 2025 | 54 |
 | Iago | Documento de arquitetura (SharePoint e Power Apps) | — |
-| Iago | Tabela de tipos de manutenção × APR (ainda não aprovada) | 52 |
+| Iago | Tabela de tipos de manutenção × APR (ainda não aprovada) | 52 (sem objeto desde 14/10/2026) |
 | Mario | Tabela de equipes | 54 |
 | Marcos | Novo desafio sobre APR por tipo de ordem | 52 |

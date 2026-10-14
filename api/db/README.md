@@ -8,7 +8,7 @@ PostgreSQL (Supabase na hospedagem, Postgres comum no desenvolvimento). O schema
 |---|---|
 | `plataforma.ts` | `tarefa`, `auditoria` |
 | `usuarios.ts` | `equipe`, `usuario` |
-| `modelos-apr.ts` | `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `atividade` |
+| `modelos-apr.ts` | `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `orientacao_modelo_apr` (o que o técnico vê ao escolher o modelo e as palavras-chave da recomendação, uma linha por código, fora do versionamento), `atividade` (o serviço que a OS traz; não escolhe o modelo) |
 | `catalogo.ts` | `material`, `atividade_material` (catálogo de serviço: o que cada atividade usa) |
 | `sap.ts` | `local_instalacao`, `os`, `importacao` |
 | `preventivas.ts` | `plano_preventiva` (ciclo das preventivas: o intervalo entre ciclos de cada plano + item de manutenção) |
@@ -17,7 +17,7 @@ PostgreSQL (Supabase na hospedagem, Postgres comum no desenvolvimento). O schema
 | `eventos.ts` | `evento_campo` |
 | `impedimento.ts` | `alerta`, `reprogramacao` |
 | `gamificacao.ts` | `regra_pontuacao`, `temporada`, `lancamento_pontos`, `lancamento_equipe`, `patente`, `conquista`, `conquista_usuario`, `conquista_equipe`, `temporada_usuario`, `temporada_equipe` (gamificação: o extrato de pontos, as temporadas, as patentes, as conquistas e o resultado gravado no fechamento de cada temporada); mais `usuario.ranking_anonimo`, `patente_avisada_id` e `patente_avisada_temporada` |
-| `seed/` | não é schema: a carga inicial dos modelos de APR e das atividades (ver [Carga inicial](#carga-inicial)) |
+| `seed/` | não é schema: a carga inicial dos modelos de APR, da orientação de cada um e das atividades (ver [Carga inicial](#carga-inicial)) |
 
 ## Como trabalhar
 
@@ -51,15 +51,16 @@ Geradas pelo `drizzle-kit`, aplicadas em ordem, uma única vez cada, e registrad
 | `0015_preventivas_ciclos.sql` | ciclo das preventivas: `plano_preventiva` (com RLS ligado e `UNIQUE NULLS NOT DISTINCT` em plano + item), `alerta.plano_preventiva_id` com os tipos `preventiva_proxima` e `preventiva_vencida` (o `CHECK` `alerta_plano_so_na_preventiva` liga os dois), o índice `os_plano_idx` e `plano_preventiva` em `auditoria.entidade`; gerada do schema, com a carga dos planos das OS preventivas que já existiam (sem intervalo) escrita à mão |
 | `0016_gamificacao.sql` | gamificação: as 10 tabelas novas (todas com RLS ligado), `usuario.ranking_anonimo` e as colunas da última patente avisada, `patente`, `conquista` e `regra_pontuacao` em `auditoria.entidade`, e a carga inicial (as 13 tarefas com os valores do [`gameficacao.md`](../../gameficacao.md), as 5 patentes e as 23 conquistas, com ids fixos: entram uma vez por banco; as imagens são gravadas pela subida da `api`); gerada do schema, com a carga escrita à mão (o teste `gamificacao-cadastros` confere que ela é igual a `src/db/seed/gamificacao-dados.ts`) |
 | `0014_catalogo_e_evidencia_pdf.sql` | catálogo de serviço (`material` e `atividade_material`, com RLS ligado), evidência em PDF (`evidencia.tipo` `foto` \| `pdf`, com padrão `foto` para as linhas que já existem, e `evidencia.nome_arquivo`, só no PDF), `pdf` em `item_modelo_apr.evidencia` e `material` em `auditoria.entidade`; só acrescenta, nenhuma linha muda de valor; gerada do schema |
+| `0021_modelo_escolhido_pelo_tecnico.sql` | o técnico escolhe o modelo da APR (questão 58): cria `orientacao_modelo_apr` (chave `codigo`, `descricao`, `exemplos text[]`, `palavras_chave text[]` e `atualizada_em`, com RLS ligado) e tira a coluna `atividade.modelo_apr_codigo` e o índice `atividade_sem_modelo_idx`; a orientação inicial dos 8 modelos entra pela carga, não pela migração; gerada do schema |
 
 O Painel não tem tabela própria: lê as acima.
 
 ## Carga inicial
 
-Os 8 modelos de APR e a tabela de atividades vêm das planilhas de [`base/apr-examples/`](../../base/apr-examples), em duas etapas:
+Os 8 modelos de APR, a orientação de cada um e a tabela de atividades vêm das planilhas de [`base/apr-examples/`](../../base/apr-examples), em duas etapas:
 
 1. [`gerar-modelos-apr.mjs`](../src/db/seed/gerar-modelos-apr.mjs) lê as planilhas e grava [`modelos-apr.json`](../src/db/seed/modelos-apr.json). O JSON é commitado: é o dado a revisar, e o diff mostra o que mudou quando uma planilha muda. As colunas variam de um arquivo para outro (A ou B, com ou sem a coluna NA), então a leitura se guia pelo texto dos cabeçalhos e pelas células mescladas (o risco é a célula mesclada da coluna "Riscos").
-2. [`carregar.ts`](../src/db/seed/carregar.ts) grava o JSON no banco: cada modelo entra como rascunho e é publicado ao fim, na mesma transação. É segura para rodar a cada subida da `api`: um modelo só entra se o código ainda não existe em nenhuma versão, e uma atividade só entra se o código ainda não existe, então o que a Segurança do Trabalho editou fica. A conexão da `api` precisa de `casing: "snake_case"` no `drizzle()`, igual ao `drizzle.config.ts`.
+2. [`carregar.ts`](../src/db/seed/carregar.ts) grava o JSON no banco: cada modelo entra como rascunho e é publicado ao fim, na mesma transação. Grava também a orientação inicial dos 8 modelos ([`orientacoes-modelos-apr.ts`](../src/db/seed/orientacoes-modelos-apr.ts): descrição, exemplos e palavras-chave, escritos a partir dos títulos dos modelos e das listas de atividades das planilhas; é só o ponto de partida, que o admin ajusta na tela do modelo). É segura para rodar a cada subida da `api`: um modelo só entra se o código ainda não existe em nenhuma versão, e uma orientação ou uma atividade só entra se o código ainda não existe, então o que o admin editou fica. A conexão da `api` precisa de `casing: "snake_case"` no `drizzle()`, igual ao `drizzle.config.ts`.
 
 O critério de bloqueio **não vem das planilhas**: a Segurança do Trabalho define por item, no editor, qual resposta é a correta e o que é eliminatório. O gerador só dá um ponto de partida (função `criterioProvisorio`, o único lugar a mudar): item de verificação eliminatório que bloqueia no "Não", com duas exceções (iluminação auxiliar só alerta; impedimento bloqueia no "Sim"), e medida preventiva só alerta, sem resposta que avise. Evidência em texto só para as condições psicológicas.
 
@@ -74,7 +75,7 @@ O critério de bloqueio **não vem das planilhas**: a Segurança do Trabalho def
 | APR 07 | 4 (24/07/2026) | 10 | 7 | 16 | — |
 | APR 09 | 2 (24/07/2026) | 7 | 3 | 5 | — |
 
-**Atividades:** 116 linhas, todas `provisorio`. Vêm da aba oculta "APR → atividades" (textos, a chave é o texto) e do campo "Plano de manutenção e operação (SAP)" das APR 01, 02, 03, 06 e 07 (a chave é o código; uma faixa como `8.7.2/ 8.7.3/ 8.7.4` vira uma linha por código; nomes sem código, como `CLB - Calibração PSV`, usam o texto). Só "Inspeção operacional em estação de gás natural" fica sem modelo (a planilha a coloca em "NÃO APLICÁVEL"). A APR 06 repete 27 códigos das listas das APR 01, 02 e 03; cada um fica com o primeiro modelo, e o gerador lista os repetidos (questão 3).
+**Atividades:** 116 linhas, todas `provisorio`. Vêm da aba oculta "APR → atividades" (textos, a chave é o texto) e do campo "Plano de manutenção e operação (SAP)" das APR 01, 02, 03, 06 e 07 (a chave é o código; uma faixa como `8.7.2/ 8.7.3/ 8.7.4` vira uma linha por código; nomes sem código, como `CLB - Calibração PSV`, usam o texto). A atividade não guarda modelo: o `modeloAprCodigo` de cada atividade no `modelos-apr.json` só diz em que planilha ela aparece (nulo em "Inspeção operacional em estação de gás natural", que a planilha coloca em "NÃO APLICÁVEL"), e a carga não o grava. A APR 06 repete 27 códigos das listas das APR 01, 02 e 03; cada um entra uma vez, e o gerador lista os repetidos (questão 3).
 
 **O que as planilhas trazem e o banco não guarda:** o bloco "Instruções importantes para a atividade" da APR 07 (3 regras, como "Não usar o celular enquanto dirigir"; a APR 09 tem o título e nenhuma regra) e as colunas de função, nome e assinatura dos participantes (questão 60).
 
@@ -85,7 +86,7 @@ erDiagram
   equipe ||--o{ usuario : "integra"
   usuario |o--o{ equipe : "supervisiona"
   equipe ||--o{ os : "planejada para"
-  atividade |o--o{ os : "define o modelo"
+  atividade |o--o{ os : "servico do catalogo"
   local_instalacao ||--o{ os : "local"
   os ||--o{ os : "OS de apoio"
   modelo_apr ||--o{ item_modelo_apr : contem
@@ -132,8 +133,8 @@ O banco recusa o que é sempre inválido, em qualquer cliente. As regras que dep
 - Só as medidas dos riscos que a equipe marcou na APR (`apr_risco`) precisam de resposta; o risco marcado deve ser do modelo da APR.
 - Itens reprovados exigem observação e foto; modelo publicado precisa de ao menos um item eliminatório e de resposta bloqueante nos itens de verificação.
 - A APR precisa ser `aprovada`, do dia, da própria OS e ainda não usada para amparar uma execução.
-- `os.codigo_atividade` pode ser nulo: a OS entra mesmo sem atividade mapeada, e o técnico escolhe o modelo ao iniciar a APR.
-- `atividade.modelo_apr_codigo` aponta para um código de modelo que tenha versão publicada. Não é chave estrangeira porque `modelo_apr.codigo` só é único junto com `versao`.
+- `os.codigo_atividade` pode ser nulo: a OS entra mesmo sem atividade. A atividade é só o serviço do catálogo; o modelo da APR é escolhido pelo técnico a cada APR, com a recomendação que sai de `orientacao_modelo_apr`.
+- `orientacao_modelo_apr.codigo` aponta para um código de modelo. Não é chave estrangeira porque `modelo_apr.codigo` só é único junto com `versao`; a `api` apaga a orientação quando exclui de vez um modelo nunca publicado e a guarda quando arquiva o publicado.
 - Não existe índice único de "uma execução em andamento por OS", de propósito: duas pessoas podem executar a mesma OS offline, e as duas execuções são guardadas (vale a primeira encerrada, com alerta `execucao_duplicada`).
 - Permissões por perfil. O banco tem RLS ligado e sem políticas: só a `api` acessa, e nenhum cliente recebe a chave do Supabase.
 
