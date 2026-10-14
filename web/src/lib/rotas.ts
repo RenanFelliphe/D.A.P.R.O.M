@@ -86,6 +86,7 @@ export const rotas = {
   /** Telas dos sistemas da empresa que o DAPROM só lê e que são simulados (só o admin): o registro de funcionários e as ordens do SAP. */
   simulador: {
     funcionarios: "/simulador/funcionarios",
+    ordens: "/simulador/ordens",
   },
   doc: {
     /** PDF da OS executada, dentro do painel. */

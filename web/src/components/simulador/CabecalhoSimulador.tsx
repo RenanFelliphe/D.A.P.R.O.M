@@ -3,9 +3,10 @@ import { Icon } from "@/components/ui/Icon";
 import { rotas } from "@/lib/rotas";
 import { AbasSecao, type AbaDaSecao } from "@/components/web/AbasSecao";
 
-/** As telas dos sistemas simulados: o registro de funcionários (RH); as ordens do SAP entram aqui quando a tela delas existir. */
+/** As telas dos sistemas simulados: o registro de funcionários (RH) e as ordens do SAP. */
 export const abasDoSimulador: AbaDaSecao[] = [
   { href: rotas.simulador.funcionarios, rotulo: "Funcionários", icone: "users" },
+  { href: rotas.simulador.ordens, rotulo: "Ordens do SAP", icone: "list" },
 ];
 
 /**

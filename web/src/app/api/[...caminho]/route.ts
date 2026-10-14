@@ -16,12 +16,11 @@ import { rotaSempreReal, usuarioDoTreino, usuarioReal } from "@/treino/sessao";
  */
 /**
  * O que o navegador não alcança: os contratos dos simuladores (`/sap-simulado` e `/rh-simulado`, que falam com token de sistema e
- * não de usuário) e o aviso do registro de funcionários (`/rh/avisos`). Só a gestão do simulador do RH, `/rh-simulado/gestao`, passa:
- * ela exige o admin logado, e quem decide é a `api`.
+ * não de usuário) e o aviso do registro de funcionários (`/rh/avisos`). Só a gestão dos simuladores, `/sap-simulado/gestao` e
+ * `/rh-simulado/gestao`, passa: ela exige o admin logado, e quem decide é a `api`.
  */
 function rotaLiberada(caminho: string[]): boolean {
-  if (caminho[0] === "sap-simulado") return false;
-  if (caminho[0] === "rh-simulado") return caminho[1] === "gestao";
+  if (caminho[0] === "sap-simulado" || caminho[0] === "rh-simulado") return caminho[1] === "gestao";
   if (caminho[0] === "rh" && caminho[1] === "avisos") return false;
   return true;
 }
