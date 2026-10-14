@@ -13,7 +13,7 @@
 - **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com a conferência de materiais na APR, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
 - **Extras não iniciadas:**
   - a Vitória e os treinamentos de serviço, desenhados no [chatbot.md](chatbot.md) (só existe o avatar);
-  - o escaneamento de OS e APR antigas (a câmera é só protótipo).
+  - o escaneamento de OS e APR antigas, em discussão no [digitalizacao.md](digitalizacao.md) (a câmera é só protótipo).
 - **Números:** 128 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 22 migrações (`0000` a `0021`) e 582 testes em 31 arquivos. Os 582 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
 
 ## O que ainda falta, num relance
@@ -25,7 +25,7 @@
 - [ ] **Dockerfile que gera o APK.**
 - [ ] **Formulário de inspeção das preventivas** na web, com o encerramento e o detalhe da OS (questão 57).
 - [ ] **Vitória e treinamentos de serviço**, nenhum começado (seção 3.3).
-- [ ] **Escaneamento de OS e APR antigas**, que depende de OCR (seção 3.3).
+- [ ] **Escaneamento de OS e APR antigas**, em discussão no [digitalizacao.md](digitalizacao.md) (seção 3.3).
 - [ ] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão (seção 3.2).
 
 **Depende de terceiros** (seção 6.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos e a aprovação da empresa para enviar dados ao fornecedor de IA.
@@ -198,7 +198,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 | Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | **Pronto** |
 | Gamificação | Time, na Reunião 2 | **Pronta** |
 | Chatbot de consulta | Iago, na Reunião 2 | **Desenhado, não iniciado.** Virou a Vitória e os treinamentos de serviço ([chatbot.md](chatbot.md)) |
-| Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Não iniciado.** A Digitalização da tela de importação só abre a câmera |
+| Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Em discussão** ([digitalizacao.md](digitalizacao.md)). A Digitalização da tela de importação só abre a câmera |
 | API de funcionários para cadastro rápido | DesignDoc (extras) | **Pronta com o simulador.** Registro de funcionários simulado, com tela própria; cadastro só de quem está nele e desligamento em tempo real ([apifuncionarios.md](apifuncionarios.md)) |
 | Tela do simulador do SAP | Time, em 14/10/2026 | **Pronta** ([apiSAP.md](apiSAP.md)) |
 
@@ -283,7 +283,8 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 **Escaneamento de OS e APR antigas**
 
 - **O que existe:** a câmera abre e captura no navegador, mas nada é lido nem enviado, e o PDF só com imagem é recusado (`pdf_sem_texto`).
-- **Do que depende:** de leitura de texto em imagem (OCR).
+- **Em discussão** no [digitalizacao.md](digitalizacao.md) (14/10/2026). O objetivo são as OS antigas, já executadas no papel, que entram encerradas, de histórico. A proposta é a IA de visão ler as folhas, inclusive a parte escrita à mão, e o sistema conferir o que foi lido.
+- **Do que depende:** do teste da leitura com folhas fictícias e, no piloto, da aprovação da empresa para enviar as folhas ao fornecedor de IA.
 - **Quando existir:** vira uma nova origem de importação e pode reaproveitar a conferência do PDF.
 - **APR antigas:** não há nada.
 
@@ -294,7 +295,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
   - Roda sobre a web pronta.
   - É a vitrine da feira. Se a feira cair antes de o app ter algo para mostrar, ela passa à frente do app.
 - **A API de funcionários e a tela do SAP** já foram feitas, na ordem do [apifuncionarios.md](apifuncionarios.md#11-ordem-de-implementação) e depois a do [apiSAP.md](apiSAP.md#12-ordem-de-implementação).
-- **O escaneamento** espera um insumo que o time não tem: a leitura de texto em imagem (OCR).
+- **O escaneamento** começa pelo teste da leitura das folhas pela IA ([digitalizacao.md](digitalizacao.md#12-ordem-de-implementação-proposta)).
 
 ---
 
@@ -472,7 +473,7 @@ Decidida e feita em 14/10/2026. A regra está também na especificação (Decis�
 | Iago | Um PDF de OS gerado pelo SAP, com texto (os exemplos são digitalizações) | Conferir a leitura do PDF real | — |
 | ES Gás | Lista de materiais por serviço | Catálogo e conferência de materiais reais | 65 |
 | Mario e Segurança do Trabalho | Critério de bloqueio dos 8 modelos, medidas só dos riscos marcados e "NA" na APR 06 | Modelos reais | 59 e 61 |
-| Empresa | Aprovação para enviar dados ao fornecedor de IA | Vitória e rascunhos no piloto | — |
+| Empresa | Aprovação para enviar dados ao fornecedor de IA | Vitória, rascunhos e digitalização das OS antigas no piloto | — |
 
 ### 6.2 Documentação desatualizada
 
