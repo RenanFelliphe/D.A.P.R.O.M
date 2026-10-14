@@ -40,7 +40,6 @@ describe("Dashboards de Indicadores e exportação", () => {
     const [m] = await amb.db.insert(modeloApr).values({ codigo: "APR 03", versao: 1, titulo: "Operação" }).returning();
     await amb.db.insert(itemModeloApr).values({ modeloAprId: m!.id, secao: "verificacao", ordem: 1, texto: "EPI?", respostaBloqueante: "nao", tipo: "eliminatorio" });
     await amb.db.update(modeloApr).set({ publicadoEm: h("2026-01-01T12:00:00Z") }).where(eq(modeloApr.id, m!.id));
-    await amb.db.insert(atividade).values({ codigo: "9.9.9", descricao: "Sem modelo", modeloAprCodigo: null });
 
     let numero = 7_000_000;
     const novaOs = async (nome: string, d: { equipeId: string; tipo: "corretiva" | "preventiva"; status: "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada"; inicio: string; local: string; cienciaEm?: Date; exportadaEm?: Date }) => {
@@ -118,7 +117,7 @@ describe("Dashboards de Indicadores e exportação", () => {
       assert.deepEqual(r.aprs, { total: 5, bloqueadas: 1, anterior: 1, bloqueadas_anterior: 0 });
       assert.deepEqual(r.tempo, { execucoes: 2, tempo_liquido_medio_min: 85, pausa_media_min: 5, proporcao_pausa: 0.0556 });
       assert.equal(r.interrupcoes, 1);
-      assert.deepEqual(r.pendencias, { a_exportar: 2, sem_ciencia: 2, execucoes_esquecidas: 1, atividades_sem_modelo: 1 });
+      assert.deepEqual(r.pendencias, { a_exportar: 2, sem_ciencia: 2, execucoes_esquecidas: 1 });
     });
 
     it("equipe_id e o supervisor limitam tudo à equipe", async () => {
@@ -273,7 +272,6 @@ describe("Dashboards de Indicadores e exportação", () => {
       assert.equal(r.encerradas.total, 2); // o1 e o2, da Equipe Norte
       assert.equal(r.pendencias.sem_ciencia, null);
       assert.equal(r.pendencias.a_exportar, null);
-      assert.equal(r.pendencias.atividades_sem_modelo, null);
       assert.equal(r.pendencias.execucoes_esquecidas, 0);
     });
 

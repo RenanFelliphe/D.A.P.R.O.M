@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNull, sql, type SQL } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { apr, atividade, equipe, execucao, localInstalacao, os, PERFIS, reprogramacao, usuario, type Perfil } from "../db/schema";
+import { apr, equipe, execucao, localInstalacao, os, PERFIS, reprogramacao, usuario, type Perfil } from "../db/schema";
 import { ehSupervisor, veTodasAsEquipes, type UsuarioAutenticado } from "../http/autenticacao";
 import { condicaoEscopo, diaNoFuso, noEscopo, todas } from "./painel-comum";
 import { situacaoDasPreventivas, temposDeExecucao, type MedidaDeTempo } from "./painel-indicadores";
@@ -113,12 +113,12 @@ export async function interrupcoes(db: Db, filtroOs: SQL | undefined, p: ReturnT
 }
 
 /**
- * O que pede ação agora: baixa no SAP, ciência do supervisor, execução esquecida aberta e atividade sem modelo. Quem não
+ * O que pede ação agora: baixa no SAP, ciência do supervisor e execução esquecida aberta. Quem não
  * acompanha a equipe recebe só a execução esquecida (as demais são de gestão: `null`).
  */
 async function pendencias(db: Db, filtroOs: SQL | undefined, agora: Date, gestao: boolean) {
   const esquecida = new Date(agora.getTime() - HORAS_DE_EXECUCAO_ESQUECIDA * 3_600_000);
-  const [osPendentes, [abertas], semModelo] = await Promise.all([
+  const [osPendentes, [abertas]] = await Promise.all([
     gestao
       ? db
           .select({
@@ -134,9 +134,8 @@ async function pendencias(db: Db, filtroOs: SQL | undefined, agora: Date, gestao
       .from(execucao)
       .innerJoin(os, eq(os.id, execucao.osId))
       .where(todas(isNull(execucao.resultado), sql`${execucao.inicio} < ${esquecida}`, filtroOs)),
-    gestao ? db.select({ total: contagem }).from(atividade).where(isNull(atividade.modeloAprCodigo)).then(([l]) => l!.total) : null,
   ]);
-  return { aExportar: osPendentes?.aExportar ?? null, semCiencia: osPendentes?.semCiencia ?? null, execucoesEsquecidas: abertas!.total, atividadesSemModelo: semModelo };
+  return { aExportar: osPendentes?.aExportar ?? null, semCiencia: osPendentes?.semCiencia ?? null, execucoesEsquecidas: abertas!.total };
 }
 
 /** Dashboard geral: a carteira de agora, o resumo do período (OS, preventivas, APRs, tempo, interrupções) e as pendências. */

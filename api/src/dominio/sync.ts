@@ -3,6 +3,7 @@ import type { Db } from "../db/conexao";
 import { apr, aprParticipante, atividade, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
 import { materiaisDosServicos } from "./catalogo";
 import { semClassificacao } from "./modelo-apr-banco";
+import { modelosParaEscolher, recomendarModelo } from "./recomendacao-apr";
 import { usuarioParaApi } from "./usuarios";
 
 const DIAS_DE_HISTORICO = 60;
@@ -10,7 +11,8 @@ const DIAS_DE_HISTORICO = 60;
 /**
  * Snapshot da equipe para o modo offline (Eventos, tabela "Dados do snapshot"): as OS `liberada`, `pendente` e
  * `em_execucao` da equipe, as `encerrada` do próprio técnico dos últimos 60 dias, com o resumo das APRs e execuções de
- * cada uma, os modelos publicados (mais as versões que as APRs do snapshot usaram), a tabela de atividades (com os
+ * cada uma e a escolha do modelo da APR (o recomendado pela leitura da OS e o que cada modelo achou nela), os modelos
+ * publicados com a orientação (mais as versões que as APRs do snapshot usaram), a tabela de atividades (com os
  * materiais de cada serviço do catálogo), os locais dessas OS e os usuários da equipe. No MVP é sempre completo: o
  * `cursor` devolvido é só o instante da geração.
  */
@@ -62,13 +64,27 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
 
   const equipe = await db.select().from(usuario).where(and(eq(usuario.equipeId, usuarioLogado.equipeId), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")));
 
+  // A escolha do modelo offline: a orientação de cada modelo e, em cada OS, o recomendado e o que cada modelo achou nela.
+  const paraEscolher = await modelosParaEscolher(db);
+  const orientacaoPorCodigo = new Map(paraEscolher.map((m) => [m.codigo, { descricao: m.descricao, exemplos: m.exemplos }]));
+  const servicoPorCodigo = new Map(atividades.map((a) => [a.codigo, a.descricao]));
+  const escolhaDe = (o: (typeof ordens)[number]) => {
+    const { codigo, encontradas } = recomendarModelo({ titulo: o.titulo, servico: o.codigoAtividade ? servicoPorCodigo.get(o.codigoAtividade) : null, descricao: o.descricao }, paraEscolher);
+    return { recomendado: codigo, encontradas: [...encontradas].map(([modelo, palavras]) => ({ codigo: modelo, palavras })) };
+  };
+
   return {
-    os: ordens,
+    os: ordens.map((o) => ({ ...o, escolhaDoModelo: escolhaDe(o) })),
     aprs: aprs.map((a) => ({ ...a, participantes: participantes.filter((p) => p.aprId === a.id).map(({ usuarioId, funcao }) => ({ usuarioId, funcao })) })),
     execucoes: execucoes.map((e) => ({ ...e, pausas: pausas.filter((p) => p.execucaoId === e.id) })),
     locais,
     atividades: atividades.map((a) => ({ ...a, materiais: materiais.get(a.codigo) ?? [] })),
-    modelosApr: modelos.map((m) => ({ ...m, riscos: riscos.filter((r) => r.modeloAprId === m.id), itens: itens.filter((i) => i.modeloAprId === m.id).map(semClassificacao) })),
+    modelosApr: modelos.map((m) => ({
+      ...m,
+      orientacao: orientacaoPorCodigo.get(m.codigo) ?? { descricao: "", exemplos: [] },
+      riscos: riscos.filter((r) => r.modeloAprId === m.id),
+      itens: itens.filter((i) => i.modeloAprId === m.id).map(semClassificacao),
+    })),
     usuarios: equipe.map((u) => usuarioParaApi(u, { semEmail: true })),
     cursor: agora.toISOString(),
   };

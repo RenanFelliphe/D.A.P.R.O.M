@@ -143,7 +143,7 @@ describe("Importação por PDF: POST /importacoes/pdf/leitura e POST /importacoe
     equipeServ = (await amb.criarEquipe({ nome: "Serviços Especiais", centroTrabalho: "SERV_ESP" })).id;
     equipeProt = (await amb.criarEquipe({ nome: "Proteção Catódica", centroTrabalho: "PROT_CAT" })).id;
     // "1.2" já cadastrada em Atividades: a leitura a sugere pelo título "1.2 - Inspeção Funcional de Retificador".
-    await amb.db.insert(atividade).values({ codigo: "1.2", descricao: "Inspeção Funcional de Retificador", modeloAprCodigo: null, provisorio: false });
+    await amb.db.insert(atividade).values({ codigo: "1.2", descricao: "Inspeção Funcional de Retificador", provisorio: false });
     pdfDuasOs = await gerarPdfDeOs([PREVENTIVA_4019821, CORRETIVA_4023470]);
   });
   after(() => amb.fechar());
@@ -156,7 +156,7 @@ describe("Importação por PDF: POST /importacoes/pdf/leitura e POST /importacoe
     const [preventiva, corretiva] = r.corpo.ordens;
     assert.deepEqual(preventiva.equipe, { id: equipeProt, nome: "Proteção Catódica" });
     assert.equal(preventiva.existente, null);
-    assert.deepEqual(preventiva.atividade, { codigo: "1.2", com_modelo: false });
+    assert.deepEqual(preventiva.atividade, { codigo: "1.2", descricao: "Inspeção Funcional de Retificador" });
     assert.equal(preventiva.ordem.codigo_atividade, "1.2");
     assert.deepEqual(corretiva.equipe, { id: equipeServ, nome: "Serviços Especiais" });
     assert.equal(corretiva.atividade, null);
@@ -191,18 +191,15 @@ describe("Importação por PDF: POST /importacoes/pdf/leitura e POST /importacoe
     const r = await registrar(pdfDuasOs, conferidas, admin, "Ordens de outubro.pdf");
     assert.equal(r.status, 201, JSON.stringify(r.corpo));
     assert.deepEqual([r.corpo.criadas, r.corpo.atualizadas, r.corpo.ignoradas], [2, 0, []]);
-    assert.deepEqual(r.corpo.avisos.map((a: any) => [a.numero_ordem, a.motivo]), [
-      ["4019821", "Atividade sem modelo de APR"],
-      ["4023470", "Atividade sem modelo de APR"],
-    ]);
+    assert.deepEqual(r.corpo.avisos, []);
 
     const preventiva = (await osDe("4019821"))!;
     assert.deepEqual(
       [preventiva.origem, preventiva.status, preventiva.tipo, preventiva.equipeId, preventiva.dataInicioProg, preventiva.planoManutencao, preventiva.itemManutencao, preventiva.statusSap, preventiva.dataOrdem, preventiva.criadoPorSap],
       ["pdf", "liberada", "preventiva", equipeProt, "2026-01-12", "10573", "10603", "LIB CAPC NOAP SCDM", "2025-12-02", "IP1020251202"],
     );
-    // A atividade sugerida não tem modelo: a OS entra sem ela, como na leitura pela API.
-    assert.equal(preventiva.codigoAtividade, null);
+    // A atividade sugerida vai para a OS (é o serviço do catálogo; o modelo da APR, o técnico escolhe).
+    assert.equal(preventiva.codigoAtividade, "1.2");
     const corretiva = (await osDe("4023470"))!;
     assert.deepEqual([corretiva.origem, corretiva.tipo, corretiva.prioridade, corretiva.numeroNota, corretiva.equipeId], ["pdf", "corretiva", "Alto", "10006463", equipeServ]);
     const [local] = await amb.db.select().from(localInstalacao).where(eq(localInstalacao.id, corretiva.localInstalacaoId));

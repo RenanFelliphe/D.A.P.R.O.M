@@ -1,6 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { apr, aprResposta, atividade, equipe, itemModeloApr, modeloApr, os } from "../db/schema";
+import { apr, aprResposta, equipe, itemModeloApr, modeloApr, os } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { condicaoEscopo, diaNoFuso, todas } from "./painel-comum";
 import { diaDoInstante, faixaDoDia, instanteEntre, resolverPeriodo, type Periodo } from "./periodo";
@@ -12,8 +12,7 @@ const contagem = sql<number>`count(*)::int`;
 
 /**
  * Dashboard de APR: respondidas por faixa, aprovadas e bloqueadas, os itens que mais bloquearam e os alertas mais
- * registrados, as APRs por modelo e por equipe, e quantas caíram numa OS sem atividade ligada a um modelo (o técnico
- * teve de escolher). Conta pela data de conclusão da APR, no fuso de São Paulo, e traz os totais do período anterior.
+ * registrados e as APRs por modelo e por equipe. Conta pela data de conclusão da APR, no fuso de São Paulo, e traz os totais do período anterior.
  * A equipe é a da OS; o supervisor só vê a dele (a equipe já vem resolvida por `equipeDoIndicador`).
  */
 export async function resumoDasAprs(db: Db, eu: UsuarioAutenticado, f: { periodo: Periodo; equipeId?: string }, agora: Date) {
@@ -23,7 +22,7 @@ export async function resumoDasAprs(db: Db, eu: UsuarioAutenticado, f: { periodo
   const dia = diaDoInstante(apr.concluidaEm);
   const bloqueadas = sql<number>`(count(*) filter (where ${apr.resultado} = 'bloqueada'))::int`;
 
-  const [porDia, reprovados, porModelo, porEquipe, [semModelo]] = await Promise.all([
+  const [porDia, reprovados, porModelo, porEquipe] = await Promise.all([
     db
       .select({ dia, resultado: apr.resultado, total: contagem })
       .from(apr)
@@ -63,13 +62,6 @@ export async function resumoDasAprs(db: Db, eu: UsuarioAutenticado, f: { periodo
       .where(noPeriodo)
       .groupBy(equipe.id, equipe.nome)
       .orderBy(sql`count(*) desc`, equipe.nome),
-    // A ligação é a de hoje: a atividade da OS (se houver) ainda sem modelo.
-    db
-      .select({ total: contagem })
-      .from(apr)
-      .innerJoin(os, eq(os.id, apr.osId))
-      .leftJoin(atividade, eq(atividade.codigo, os.codigoAtividade))
-      .where(todas(noPeriodo, sql`${atividade.modeloAprCodigo} is null`)),
   ]);
 
   const serie = faixas.map((faixa) => ({ ...faixa, aprovadas: 0, bloqueadas: 0 }));
@@ -105,7 +97,6 @@ export async function resumoDasAprs(db: Db, eu: UsuarioAutenticado, f: { periodo
       ...totais,
       /** Vezes em que um item de alerta recebeu a resposta que o modelo marca (registrado, sem bloquear). */
       alertas: veClassificacao ? reprovados.filter((r) => r.tipo === "alerta").reduce((soma, r) => soma + r.total, 0) : null,
-      semModeloLigado: semModelo?.total ?? 0,
     },
     anterior: { aprs: doAnterior.aprovadas + doAnterior.bloqueadas, bloqueadas: doAnterior.bloqueadas },
     serie,

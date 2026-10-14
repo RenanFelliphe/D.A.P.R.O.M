@@ -538,20 +538,14 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.equal(encerrada.execucoes[0].tempo_liquido_min, 120);
     });
 
-    it("traz o código do modelo de APR da atividade da OS, ou null sem atividade mapeada", async () => {
-      await amb.db.insert(atividade).values([
-        { codigo: "ATV-COM-MODELO", descricao: "Atividade mapeada", modeloAprCodigo: "APR 03" },
-        { codigo: "ATV-SEM-MODELO", descricao: "Atividade sem modelo", modeloAprCodigo: null },
-      ]);
-      const mapeada = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4090", inicio: "2026-10-21" });
-      const semModelo = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4091", inicio: "2026-10-21" });
-      await amb.db.update(os).set({ codigoAtividade: "ATV-COM-MODELO" }).where(eq(os.id, mapeada.id));
-      await amb.db.update(os).set({ codigoAtividade: "ATV-SEM-MODELO" }).where(eq(os.id, semModelo.id));
+    it("a OS não traz modelo de APR (o técnico escolhe a cada APR); a atividade vira o serviço do catálogo", async () => {
+      await amb.db.insert(atividade).values({ codigo: "ATV-1", descricao: "Atividade do plano" });
+      const comAtividade = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4090", inicio: "2026-10-21" });
+      await amb.db.update(os).set({ codigoAtividade: "ATV-1" }).where(eq(os.id, comAtividade.id));
 
-      assert.equal((await amb.esperar(200, "GET", `/os/${mapeada.id}`, { como: tecA })).os.modelo_apr_codigo, "APR 03");
-      assert.equal((await amb.esperar(200, "GET", `/os/${semModelo.id}`, { como: tecA })).os.modelo_apr_codigo, null);
-      // OS sem atividade alguma
-      assert.equal((await amb.esperar(200, "GET", `/os/${osLiberada.id}`, { como: tecA })).os.modelo_apr_codigo, null);
+      const c = await amb.esperar(200, "GET", `/os/${comAtividade.id}`, { como: tecA });
+      assert.equal("modelo_apr_codigo" in c.os, false);
+      assert.deepEqual(c.servico, { codigo: "ATV-1", descricao: "Atividade do plano", materiais: [] });
     });
 
     it("OS sem APR, execução, alerta nem reprogramação devolve listas vazias", async () => {

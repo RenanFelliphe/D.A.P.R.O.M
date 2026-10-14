@@ -9,6 +9,7 @@ import { exportarParaSap, MENSAGEM_SEM_NOVAS, nomeDoArquivo, TIPO_XLSX } from ".
 import { equipeDoIndicador, historicoDoLocal, indicadoresDeTempo, indicadoresMensais } from "../dominio/painel-indicadores";
 import { darCiencia, detalharOs, listarAprsDaOs, listarOs } from "../dominio/painel-os";
 import { meusResultados } from "../dominio/meus-resultados";
+import { escolhaDoModelo } from "../dominio/recomendacao-apr";
 import { esquemaPeriodo } from "../dominio/periodo";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { esquemaPaginacao, meta } from "../http/paginacao";
@@ -46,6 +47,11 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
 
   r.get("/os/:id", autenticar(), async (c) => {
     return responder(c, await detalharOs(deps.db, c.get("usuario"), lerId(c), deps.agora()));
+  });
+
+  /** Os modelos de APR para o técnico escolher, com a orientação de cada um e o recomendado pela leitura da OS. */
+  r.get("/os/:id/modelos-apr", autenticar(), async (c) => {
+    return responder(c, await escolhaDoModelo(deps.db, c.get("usuario"), lerId(c)));
   });
 
   r.get("/os/:id/aprs", autenticar(), async (c) => {

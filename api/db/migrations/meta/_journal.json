@@ -148,6 +148,13 @@
       "when": 1791991201271,
       "tag": "0020_sap_simulador_ordens",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792004853383,
+      "tag": "0021_modelo_escolhido_pelo_tecnico",
+      "breakpoints": true
     }
   ]
 }

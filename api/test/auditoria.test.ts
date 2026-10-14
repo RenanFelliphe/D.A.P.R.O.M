@@ -85,9 +85,9 @@ describe("Auditoria e ajustes do painel do admin", () => {
     it("registra equipe, atividade e modelo de APR", async () => {
       const { id } = await amb.esperar(201, "POST", "/equipes", { como: admin, json: { nome: "Mecânica", centro_trabalho: "MEC_1" } });
       await amb.esperar(200, "PATCH", `/equipes/${id}`, { como: admin, json: { nome: "Mecânica Pesada", supervisor_id: supervisor.id } });
-      await amb.esperar(200, "PUT", "/atividades/8.7.1", { como: admin, json: { descricao: "Inspeção", modelo_apr_codigo: null } });
-      await amb.esperar(200, "PUT", "/atividades/8.7.1", { como: admin, json: { descricao: "Inspeção geral", modelo_apr_codigo: null } });
-      await amb.esperar(200, "PUT", "/atividades/8.7.1", { como: admin, json: { descricao: "Inspeção geral", modelo_apr_codigo: null } });
+      await amb.esperar(200, "PUT", "/atividades/8.7.1", { como: admin, json: { descricao: "Inspeção" } });
+      await amb.esperar(200, "PUT", "/atividades/8.7.1", { como: admin, json: { descricao: "Inspeção geral" } });
+      await amb.esperar(200, "PUT", "/atividades/8.7.1", { como: admin, json: { descricao: "Inspeção geral" } });
 
       const equipes = await trilha({ entidade: "equipe", entidade_id: id });
       assert.deepEqual(equipes.map((r) => r.acao).reverse(), ["equipe.criar", "equipe.editar"]);
@@ -206,7 +206,7 @@ describe("Auditoria e ajustes do painel do admin", () => {
     });
 
     it("exclui a atividade que nenhuma OS usa; só o admin; inexistente é 404", async () => {
-      await amb.esperar(200, "PUT", "/atividades/9.9.9", { como: admin, json: { descricao: "Temporária", modelo_apr_codigo: null } });
+      await amb.esperar(200, "PUT", "/atividades/9.9.9", { como: admin, json: { descricao: "Temporária" } });
       assert.equal((await amb.req("DELETE", "/atividades/9.9.9", { como: tecnico })).status, 403);
       await amb.esperar(200, "DELETE", "/atividades/9.9.9", { como: admin });
       assert.equal((await amb.req("DELETE", "/atividades/9.9.9", { como: admin })).status, 404);

@@ -8,7 +8,7 @@ import { ultimaLeituraConcluida } from "../servicos/leitura-sap";
 import type { OrdemSap } from "../servicos/sap";
 import { algum, contem } from "./busca";
 import type { DetalheIgnorada } from "./importacao-ordens";
-import { AVISO_SEM_MODELO, esquemaOrdem } from "./importacao-ordens";
+import { esquemaOrdem } from "./importacao-ordens";
 import { SETORES } from "./rh-simulado";
 
 /*
@@ -154,8 +154,8 @@ export const SERVICOS: readonly ServicoDoCatalogo[] = [
 const PRIORIDADES = ["Muito alto", "Alto", "Médio", "Baixo"];
 const CRIADORES = ["RFAVARO", "MSANTOS", "LCARDOSO", "IP1020251202", "TPEREIRA"];
 const INTERVALOS: OrdemSap["intervalo_ciclo"][] = ["mensal", "trimestral", "3 MES", "6 meses", "semestral", "1 ano", { quantidade: 2, unidade: "meses" }];
-/** Atividades que não existem no DAPROM: a OS entra com o aviso "Atividade sem modelo de APR". */
-const ATIVIDADES_SEM_MODELO = ["Z-ATIV-01", "Z-ATIV-02", "Z-ATIV-03", "Inspeção especial", "Ajuste de campo"];
+/** Atividades que o DAPROM ainda não conhece: a leitura as cadastra, e o serviço fica sem lista de materiais. */
+const ATIVIDADES_NOVAS = ["Z-ATIV-01", "Z-ATIV-02", "Z-ATIV-03", "Inspeção especial", "Ajuste de campo"];
 
 export async function catalogoDoSimuladorSap(db: Db) {
   const equipes = await db.select({ centro: equipe.centroTrabalho, nome: equipe.nome }).from(equipe);
@@ -166,11 +166,11 @@ export async function catalogoDoSimuladorSap(db: Db) {
     ...SETORES.map((s) => ({ centroTrabalho: s.centro, nome: s.nome, equipeNoDaprom: comEquipe.get(s.centro) ?? null })),
     ...equipes.filter((e) => !conhecidos.has(e.centro)).map((e) => ({ centroTrabalho: e.centro, nome: e.nome, equipeNoDaprom: e.nome })),
   ];
-  const atividades = await db.select({ codigo: atividade.codigo, descricao: atividade.descricao, modelo: atividade.modeloAprCodigo }).from(atividade).orderBy(asc(atividade.codigo));
+  const atividades = await db.select({ codigo: atividade.codigo, descricao: atividade.descricao }).from(atividade).orderBy(asc(atividade.codigo));
   return {
     centrosDeTrabalho: centros,
     locais: LOCAIS,
-    atividades: atividades.map((a) => ({ codigo: a.codigo, descricao: a.descricao, comModelo: a.modelo !== null })),
+    atividades,
     servicos: SERVICOS,
     statusProntos: STATUS_PRONTOS,
     proximoNumero: await proximoNumero(db),
@@ -200,7 +200,8 @@ export const esquemaLotesDeOrdens = z.object({
         tipo: z.enum(["corretiva", "preventiva"]).optional(),
         centro_trabalho: z.string().trim().min(1).optional(),
         status: z.enum(["liberada", "criada"]).optional(),
-        atividade: z.enum(["com_modelo", "sem_modelo", "qualquer"]).optional(),
+        /** `cadastrada`: sorteada entre as do DAPROM (o serviço do catálogo); `nova`: um código que o DAPROM não conhece. */
+        atividade: z.enum(["cadastrada", "nova", "qualquer"]).optional(),
       }),
     )
     .min(1),
@@ -212,8 +213,8 @@ export interface OpcoesDoGeradorDeOrdens {
   sorteio?: () => number;
   /** Primeiro número livre. */
   numeroInicial: number;
-  /** Atividades do DAPROM que têm modelo de APR (para o "com modelo"). */
-  atividadesComModelo: string[];
+  /** Atividades que o DAPROM já tem (para o "cadastrada"). */
+  atividadesCadastradas: string[];
   /** Hoje, `AAAA-MM-DD`: o início programado sai dos próximos `dias`. */
   hoje: Date;
   dias?: number;
@@ -223,8 +224,8 @@ export interface OpcoesDoGeradorDeOrdens {
 const somaDias = (dia: string, dias: number) => new Date(Date.parse(`${dia}T12:00:00Z`) + dias * 86_400_000).toISOString().slice(0, 10);
 
 /**
- * Gera as ordens dos lotes: números sequenciais depois do maior existente, serviços e locais dos catálogos fixos, atividade com
- * modelo (sorteada entre as do DAPROM) ou sem modelo (códigos inventados), preventivas com plano, item e, às vezes, intervalo,
+ * Gera as ordens dos lotes: números sequenciais depois do maior existente, serviços e locais dos catálogos fixos, atividade
+ * cadastrada (sorteada entre as do DAPROM) ou nova (códigos inventados), preventivas com plano, item e, às vezes, intervalo,
  * prioridade e "criado por" sorteados, e início programado nos próximos `dias`. O sorteio é injetável.
  */
 export function gerarOrdens(lotes: LoteDeOrdens[], o: OpcoesDoGeradorDeOrdens): NovaLinha[] {
@@ -241,12 +242,12 @@ export function gerarOrdens(lotes: LoteDeOrdens[], o: OpcoesDoGeradorDeOrdens): 
   let numero = o.numeroInicial;
   for (const lote of lotes) {
     if (lote.centro_trabalho && !centros.includes(lote.centro_trabalho)) throw invalido("centro_inexistente", `Centro de trabalho desconhecido: ${lote.centro_trabalho}`);
-    if (lote.atividade === "com_modelo" && o.atividadesComModelo.length === 0) throw invalido("sem_atividade_com_modelo", "O DAPROM não tem nenhuma atividade com modelo de APR para sortear");
+    if (lote.atividade === "cadastrada" && o.atividadesCadastradas.length === 0) throw invalido("sem_atividade_cadastrada", "O DAPROM não tem nenhuma atividade cadastrada para sortear");
     for (let i = 0; i < lote.quantidade; i++) {
       const tipo = lote.tipo ?? (sorteio() < 0.5 ? "corretiva" : "preventiva");
       const servico = escolher(SERVICOS.filter((s) => s.tipo === (tipo === "corretiva" ? "YBA1" : "YBA2")));
       const local = escolher(LOCAIS);
-      const comModelo = lote.atividade === "com_modelo" || (lote.atividade !== "sem_modelo" && o.atividadesComModelo.length > 0 && sorteio() < 0.5);
+      const cadastrada = lote.atividade === "cadastrada" || (lote.atividade !== "nova" && o.atividadesCadastradas.length > 0 && sorteio() < 0.5);
       const inicio = somaDias(hoje, entre(0, dias));
       const preventiva = tipo === "preventiva";
       const liberada = (lote.status ?? "liberada") === "liberada";
@@ -257,7 +258,7 @@ export function gerarOrdens(lotes: LoteDeOrdens[], o: OpcoesDoGeradorDeOrdens): 
         numeroNota: String(10_000_000 + entre(0, 99_999)),
         tipoOrdem: preventiva ? "YBA2" : "YBA1",
         tipoAtividade: preventiva ? "Z02-Manutenção Preventiva" : "Z01-Manutenção Corretiva",
-        codigoAtividade: comModelo ? escolher(o.atividadesComModelo) : escolher(ATIVIDADES_SEM_MODELO),
+        codigoAtividade: cadastrada ? escolher(o.atividadesCadastradas) : escolher(ATIVIDADES_NOVAS),
         titulo: servico.titulo,
         descricao: servico.descricao,
         centroTrabalho: lote.centro_trabalho ?? escolher(centros),
@@ -293,8 +294,6 @@ export interface NoDaprom {
   situacao: SituacaoNoDaprom;
   /** Só em `ignorada`: o motivo que a leitura gravou em `importacao.detalhe_ignoradas`. */
   motivo?: string;
-  /** Só quando a OS existe: "Atividade sem modelo de APR" (o aviso que a leitura dá ao criar a OS; o técnico escolhe o modelo na APR). */
-  aviso?: string;
 }
 
 /**
@@ -304,12 +303,8 @@ export interface NoDaprom {
 export async function situacoesNoDaprom(db: Db, numeros: string[]): Promise<Map<string, NoDaprom>> {
   const mapa = new Map<string, NoDaprom>();
   if (numeros.length === 0) return mapa;
-  const oss = await db.select({ numero: os.numeroOrdem, status: os.status, atividade: os.codigoAtividade }).from(os).where(and(isNotNull(os.numeroOrdem), inArray(os.numeroOrdem, numeros)));
-  const codigos = [...new Set(oss.map((o) => o.atividade).filter((c): c is string => c !== null))];
-  const comModelo = new Set(
-    codigos.length ? (await db.select({ codigo: atividade.codigo }).from(atividade).where(and(inArray(atividade.codigo, codigos), isNotNull(atividade.modeloAprCodigo)))).map((a) => a.codigo) : [],
-  );
-  for (const o of oss) mapa.set(o.numero!, { situacao: o.status, ...(o.atividade && comModelo.has(o.atividade) ? {} : { aviso: AVISO_SEM_MODELO }) });
+  const oss = await db.select({ numero: os.numeroOrdem, status: os.status }).from(os).where(and(isNotNull(os.numeroOrdem), inArray(os.numeroOrdem, numeros)));
+  for (const o of oss) mapa.set(o.numero!, { situacao: o.status });
 
   const faltam = new Set(numeros.filter((n) => !mapa.has(n)));
   if (faltam.size > 0) {
@@ -439,12 +434,12 @@ export async function criarOrdem(db: Db, dados: z.output<typeof esquemaOrdem>, a
 }
 
 export async function criarAleatorias(db: Db, corpo: z.infer<typeof esquemaLotesDeOrdens>, agora: Date, sorteio?: () => number): Promise<number> {
-  const comModelo = await db.select({ codigo: atividade.codigo }).from(atividade).where(isNotNull(atividade.modeloAprCodigo));
+  const cadastradas = await db.select({ codigo: atividade.codigo }).from(atividade).orderBy(asc(atividade.codigo));
   const equipes = await db.select({ centro: equipe.centroTrabalho }).from(equipe);
   const novas = gerarOrdens(corpo.lotes, {
     ...(sorteio ? { sorteio } : {}),
     numeroInicial: Number(await proximoNumero(db)),
-    atividadesComModelo: comModelo.map((a) => a.codigo),
+    atividadesCadastradas: cadastradas.map((a) => a.codigo),
     hoje: agora,
     ...(corpo.dias !== undefined ? { dias: corpo.dias } : {}),
     centrosConhecidos: [...new Set([...SETORES.map((s) => s.centro), ...equipes.map((e) => e.centro)])],

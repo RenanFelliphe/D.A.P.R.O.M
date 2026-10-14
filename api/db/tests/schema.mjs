@@ -71,7 +71,7 @@ await deve("rascunho apaga com itens", `with m as (insert into modelo_apr (id,co
 await deve("apagar rascunho", `delete from modelo_apr where id='${id(29)}'`);
 
 // os
-await deve("atividade", `insert into atividade (codigo,descricao,modelo_apr_codigo) values ('8.7.1','Drenagem Caixa de Válvula','APR 03')`);
+await deve("atividade", `insert into atividade (codigo,descricao) values ('8.7.1','Drenagem Caixa de Válvula')`);
 await deve("local", `insert into local_instalacao (id,codigo) values ('${id(30)}','VILA VELHA/REDE VILA VELHA')`);
 await deve("OS SAP", `insert into os (id,numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('${id(40)}','4031187','corretiva','8.7.1','DCV','${id(30)}','${id(1)}','2026-10-13','sap')`);
 await recusa("ordem SAP repetida", `insert into os (numero_ordem,tipo,codigo_atividade,titulo,local_instalacao_id,equipe_id,data_inicio_prog,origem) values ('4031187','corretiva','8.7.1','dup','${id(30)}','${id(1)}','2026-10-13','sap')`);

@@ -13,7 +13,7 @@ import { configDeTeste, criarAmbiente, type Ambiente, type UsuarioDeTeste } from
 const CT = "SERV_ESP";
 const TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 /** Atividade com modelo de APR na carga inicial. */
-const ATIVIDADE_COM_MODELO = "Teste, manutenção e válvulas";
+const ATIVIDADE_CADASTRADA = "Teste, manutenção e válvulas";
 
 let sequencia = 4_100_000;
 const proximoNumero = () => String(++sequencia);
@@ -75,7 +75,7 @@ describe("Integração SAP: leitura das ordens", () => {
   after(() => amb.fechar());
 
   it("ordem nova liberada cria a OS liberada, com equipe pelo centro de trabalho, origem sap e local criado pelo código", async () => {
-    const o = ordem({ tipo_ordem: "YBA2", plano_manutencao: "10573", item_manutencao: "10603", codigo_atividade: ATIVIDADE_COM_MODELO, status_sap: "IMPR LIB CAPC" });
+    const o = ordem({ tipo_ordem: "YBA2", plano_manutencao: "10573", item_manutencao: "10603", codigo_atividade: ATIVIDADE_CADASTRADA, status_sap: "IMPR LIB CAPC" });
     comOrdens(o);
     const r = await ler();
     assert.equal(r.erro, null);
@@ -89,7 +89,7 @@ describe("Integração SAP: leitura das ordens", () => {
     assert.equal(criada.tipo, "preventiva");
     assert.equal(criada.planoManutencao, "10573");
     assert.equal(criada.itemManutencao, "10603");
-    assert.equal(criada.codigoAtividade, ATIVIDADE_COM_MODELO);
+    assert.equal(criada.codigoAtividade, ATIVIDADE_CADASTRADA);
     assert.equal(criada.dataOrdem, "2026-10-08");
     assert.equal(criada.criadoPorSap, "RFAVARO");
     assert.equal(criada.statusSap, "IMPR LIB CAPC");
@@ -149,7 +149,7 @@ describe("Integração SAP: leitura das ordens", () => {
       criado_por: "OUTRO",
       status_sap: "LIB IMPR NOAP",
       local_instalacao: { codigo: "LOCAL/B", endereco: "Rua B", plus_code: null, cliente: null },
-      codigo_atividade: ATIVIDADE_COM_MODELO,
+      codigo_atividade: ATIVIDADE_CADASTRADA,
     });
     const r = await ler();
     assert.deepEqual([r.criadas, r.atualizadas, r.ignoradas.length], [0, 1, 0]);
@@ -163,7 +163,7 @@ describe("Integração SAP: leitura das ordens", () => {
     assert.deepEqual([depois.tipoAtividade, depois.solicitante, depois.numeroNota, depois.dataOrdem, depois.criadoPorSap, depois.statusSap], ["Z02-Manutenção Preventiva", "Fulano", "777", "2026-10-05", "OUTRO", "LIB IMPR NOAP"]);
     assert.notEqual(depois.localInstalacaoId, antes.localInstalacaoId);
     // `codigo_atividade` entra quando a OS ainda não tinha e a atividade existe com modelo.
-    assert.equal(depois.codigoAtividade, ATIVIDADE_COM_MODELO);
+    assert.equal(depois.codigoAtividade, ATIVIDADE_CADASTRADA);
     // O que não é planejamento fica como estava.
     assert.equal(depois.status, "pendente");
     assert.equal(depois.equipeId, outraEquipe.id);
@@ -336,39 +336,24 @@ describe("Integração SAP: leitura das ordens", () => {
     assert.equal(await osDe(tipoRuim.numero_ordem), undefined);
   });
 
-  it("atividade fora da tabela ou OS sem plano: entra com código nulo, cadastra o código sem modelo e avisa", async () => {
+  it("atividade fora da tabela é cadastrada e vai para a OS; OS sem plano entra sem atividade; nada disso vira aviso", async () => {
     const desconhecida = ordem({ tipo_ordem: "YBA2", codigo_atividade: "1.2", plano_manutencao: "10573", item_manutencao: "10603", titulo: "1.2 - Inspeção Funcional de Retificador" });
     const semPlano = ordem({ codigo_atividade: null });
-    const comModelo = ordem({ codigo_atividade: ATIVIDADE_COM_MODELO });
-    comOrdens(desconhecida, semPlano, comModelo);
+    const cadastrada = ordem({ codigo_atividade: ATIVIDADE_CADASTRADA });
+    comOrdens(desconhecida, semPlano, cadastrada);
     const r = await ler();
-    assert.deepEqual([r.criadas, r.atualizadas, r.ignoradas.length], [3, 0, 0]);
-    assert.deepEqual(
-      r.avisos.map((a) => [a.numero_ordem, a.motivo]),
-      [
-        [desconhecida.numero_ordem, "Atividade sem modelo de APR"],
-        [semPlano.numero_ordem, "Atividade sem modelo de APR"],
-      ],
-    );
-    assert.equal((await osDe(desconhecida.numero_ordem))!.codigoAtividade, null);
-    assert.equal((await osDe(semPlano.numero_ordem))!.codigoAtividade, null);
-    assert.equal((await osDe(comModelo.numero_ordem))!.codigoAtividade, ATIVIDADE_COM_MODELO);
-    const [nova] = await amb.db.select().from(atividade).where(eq(atividade.codigo, "1.2"));
-    assert.deepEqual([nova!.modeloAprCodigo, nova!.provisorio], [null, false]);
-
-    // O aviso não vai para as ignoradas gravadas na importação.
-    const [i] = await amb.db.select().from(importacao).where(eq(importacao.id, r.importacaoId));
-    assert.deepEqual(i!.detalheIgnoradas, []);
-
-    // Quando a Segurança mapeia a atividade, a releitura preenche o código na OS que ainda não tinha.
-    await amb.db.update(atividade).set({ modeloAprCodigo: "APR 02" }).where(eq(atividade.codigo, "1.2"));
-    comOrdens(desconhecida);
-    const r2 = await ler();
-    assert.equal(r2.atualizadas, 1);
+    assert.deepEqual([r.criadas, r.atualizadas, r.ignoradas.length, r.avisos.length], [3, 0, 0, 0]);
     assert.equal((await osDe(desconhecida.numero_ordem))!.codigoAtividade, "1.2");
-    // Já preenchido, não muda mais.
-    comOrdens({ ...desconhecida, codigo_atividade: ATIVIDADE_COM_MODELO });
-    await ler();
+    assert.equal((await osDe(semPlano.numero_ordem))!.codigoAtividade, null);
+    assert.equal((await osDe(cadastrada.numero_ordem))!.codigoAtividade, ATIVIDADE_CADASTRADA);
+    const [nova] = await amb.db.select().from(atividade).where(eq(atividade.codigo, "1.2"));
+    assert.deepEqual([nova!.descricao, nova!.provisorio], ["1.2 - Inspeção Funcional de Retificador", false]);
+
+    // A OS que entrou sem atividade ganha a que o SAP mandar depois; a que já tem, não muda mais.
+    comOrdens({ ...semPlano, codigo_atividade: ATIVIDADE_CADASTRADA }, { ...desconhecida, codigo_atividade: ATIVIDADE_CADASTRADA });
+    const r2 = await ler();
+    assert.equal(r2.atualizadas, 2);
+    assert.equal((await osDe(semPlano.numero_ordem))!.codigoAtividade, ATIVIDADE_CADASTRADA);
     assert.equal((await osDe(desconhecida.numero_ordem))!.codigoAtividade, "1.2");
   });
 
@@ -784,11 +769,7 @@ describe("Integração SAP: planilha", () => {
     assert.equal(r.status, 201, JSON.stringify(r.corpo));
     assert.match(r.corpo.importacao_id, /^[0-9a-f-]{36}$/);
     assert.deepEqual([r.corpo.criadas, r.corpo.atualizadas], [3, 0]);
-    assert.deepEqual(r.corpo.avisos.map((a: any) => [a.linha, a.numero_ordem, a.motivo]), [
-      [2, "4200001", "Atividade sem modelo de APR"],
-      [3, "4200002", "Atividade sem modelo de APR"],
-      [8, "4200007", "Atividade sem modelo de APR"],
-    ]);
+    assert.deepEqual(r.corpo.avisos, []);
     assert.deepEqual(
       r.corpo.ignoradas.map((i: any) => [i.linha, i.motivo]),
       [
@@ -1049,8 +1030,8 @@ describe("Integração SAP: OS de apoio e locais", () => {
     assert.equal((await quer(422, { equipe_id: randomUUID() })).erro.codigo, "equipe_inexistente");
     assert.equal((await quer(422, { codigo_atividade: "não existe" })).erro.codigo, "atividade_inexistente");
 
-    const comAtividade = await quer(201, { codigo_atividade: ATIVIDADE_COM_MODELO });
-    assert.equal((await osPorId(comAtividade.id)).codigoAtividade, ATIVIDADE_COM_MODELO);
+    const comAtividade = await quer(201, { codigo_atividade: ATIVIDADE_CADASTRADA });
+    assert.equal((await osPorId(comAtividade.id)).codigoAtividade, ATIVIDADE_CADASTRADA);
   });
 
   it("POST /locais não existe: o local só vem do SAP", async () => {
@@ -1246,7 +1227,7 @@ describe("Integração SAP: simulador e cliente HTTP", () => {
     }
   });
 
-  it("leitura de ponta a ponta contra o simulador: cria, ignora com o motivo e avisa sobre atividade sem modelo", async () => {
+  it("leitura de ponta a ponta contra o simulador: cria, ignora com o motivo e cadastra a atividade nova", async () => {
     await amb.criarEquipe({ centroTrabalho: "SERV_ESP" });
     await amb.criarEquipe({ centroTrabalho: "INSTRUM" });
     const deps = { ...amb.deps, sap: new ClienteSapHttp(base, configDeTeste.sapApiToken, buscarNaApp) };
@@ -1261,15 +1242,12 @@ describe("Integração SAP: simulador e cliente HTTP", () => {
         ["4031230", "Status SAP diferente de liberada"],
       ],
     );
-    assert.deepEqual(
-      r.avisos.map((a) => a.numero_ordem),
-      ["4019821", "4023470", "4031192", "4031210", "4031236", "7000001"],
-    );
+    assert.deepEqual(r.avisos, []);
     const [corretiva] = await amb.db.select().from(os).where(eq(os.numeroOrdem, "4023470"));
     assert.deepEqual([corretiva!.planoManutencao, corretiva!.tipo, corretiva!.status, corretiva!.origem, corretiva!.codigoAtividade], [null, "corretiva", "liberada", "sap", null]);
     const [preventiva] = await amb.db.select().from(os).where(eq(os.numeroOrdem, "4019821"));
-    assert.deepEqual([preventiva!.planoManutencao, preventiva!.itemManutencao, preventiva!.titulo, preventiva!.codigoAtividade], ["10573", "10603", "1.2 - Inspeção Funcional de Retificador", null]);
-    assert.equal((await amb.db.select().from(atividade).where(eq(atividade.codigo, "1.2")))[0]?.modeloAprCodigo, null);
+    assert.deepEqual([preventiva!.planoManutencao, preventiva!.itemManutencao, preventiva!.titulo, preventiva!.codigoAtividade], ["10573", "10603", "1.2 - Inspeção Funcional de Retificador", "1.2"]);
+    assert.equal((await amb.db.select().from(atividade).where(eq(atividade.codigo, "1.2")))[0]?.descricao, "1.2 - Inspeção Funcional de Retificador");
 
     // O SAP cancela a 4023470: a próxima leitura (só as alteradas) cancela a OS.
     amb.relogio.agora = new Date(amb.relogio.agora.getTime() + 7_200_000);

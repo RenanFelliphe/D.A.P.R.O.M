@@ -15,7 +15,7 @@ export interface ResultadoLeitura {
   criadas: number;
   atualizadas: number;
   ignoradas: DetalheIgnorada[];
-  /** Não ficam no banco: só no retorno (por exemplo, "Atividade sem modelo de APR"). */
+  /** Não ficam no banco: só no retorno (por exemplo, o intervalo entre ciclos que não foi reconhecido). */
   avisos: AvisoOrdem[];
   /** Preenchido quando a leitura falhou; nesse caso nada foi gravado além da própria `importacao`. */
   erro: string | null;

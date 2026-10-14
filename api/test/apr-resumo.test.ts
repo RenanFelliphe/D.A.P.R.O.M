@@ -41,8 +41,8 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
     ]);
     const apr05 = await modelo("APR 05", "Conversão de clientes", [verificacao(1, "Medidor lacrado?", "nao", "eliminatorio")]);
 
-    // A OS da Equipe Norte tem a atividade ligada ao modelo; a da Equipe Sul, não (o técnico escolheu).
-    await amb.db.insert(atividade).values({ codigo: "8.7.1", descricao: "Drenagem", modeloAprCodigo: "APR 03" });
+    // A OS da Equipe Norte tem atividade (o serviço do catálogo); a da Equipe Sul, não. O modelo, o técnico escolhe.
+    await amb.db.insert(atividade).values({ codigo: "8.7.1", descricao: "Drenagem" });
     const [local] = await amb.db.insert(localInstalacao).values({ codigo: "VILA VELHA/REDE" }).returning();
     const novaOs = async (equipeId: string, codigoAtividade: string | null) =>
       (await amb.db.insert(os).values({ numeroOrdem: randomUUID().slice(0, 8), tipo: "preventiva", titulo: "OS", localInstalacaoId: local!.id, equipeId, dataInicioProg: "2026-10-01", origem: "sap", codigoAtividade }).returning())[0]!.id;
@@ -76,7 +76,7 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
     assert.equal(r.agrupamento, "dia");
     assert.equal(r.de, "2026-09-16");
     assert.equal(r.ate, "2026-10-15");
-    assert.deepEqual(r.totais, { aprs: 6, aprovadas: 3, bloqueadas: 3, alertas: 2, sem_modelo_ligado: 2 });
+    assert.deepEqual(r.totais, { aprs: 6, aprovadas: 3, bloqueadas: 3, alertas: 2 });
     assert.deepEqual(r.anterior, { aprs: 2, bloqueadas: 1 });
     assert.equal(r.serie.length, 30);
     const doDia = (d: string) => r.serie.find((p: any) => p.inicio === d);
@@ -139,7 +139,7 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
     assert.equal(outubro.de, "2026-10-01");
     assert.equal(outubro.ate, "2026-10-15", "o mês corrente vai até hoje");
     assert.equal(outubro.serie.length, 31);
-    assert.deepEqual(outubro.totais, { aprs: 5, aprovadas: 2, bloqueadas: 3, alertas: 2, sem_modelo_ligado: 2 });
+    assert.deepEqual(outubro.totais, { aprs: 5, aprovadas: 2, bloqueadas: 3, alertas: 2 });
     assert.deepEqual(outubro.anterior, { aprs: 3, bloqueadas: 1 }, "setembro inteiro, inclusive 23:30 de 15/09 em São Paulo");
     const setembro = await resumo({ periodo: "2026-09" });
     assert.equal(setembro.ate, "2026-09-30");
@@ -149,7 +149,7 @@ describe("Diagnóstico das APRs (GET /aprs/resumo)", () => {
 
   it("equipe_id filtra pela equipe da OS", async () => {
     const sul = await resumo({ equipe_id: equipeB });
-    assert.deepEqual(sul.totais, { aprs: 2, aprovadas: 0, bloqueadas: 2, alertas: 1, sem_modelo_ligado: 2 });
+    assert.deepEqual(sul.totais, { aprs: 2, aprovadas: 0, bloqueadas: 2, alertas: 1 });
     assert.deepEqual(sul.por_equipe.map((e: any) => e.nome), ["Equipe Sul"]);
   });
 

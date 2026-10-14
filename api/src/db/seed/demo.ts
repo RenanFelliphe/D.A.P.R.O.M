@@ -176,8 +176,13 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const apr01 = await carregarModelo("APR 01");
   const apr02 = await carregarModelo("APR 02");
   const apr03 = await carregarModelo("APR 03");
-  const atividadePara = async (modelo: string) => (await db.select({ codigo: atividade.codigo }).from(atividade).where(eq(atividade.modeloAprCodigo, modelo)).limit(1))[0]?.codigo ?? null;
-  const ativ = { 1: await atividadePara("APR 01"), 2: await atividadePara("APR 02"), 3: await atividadePara("APR 03") };
+  // A primeira atividade da planilha de cada modelo (só o serviço do catálogo: quem escolhe o modelo da APR é o técnico).
+  const atividadeDaCarga = async (codigo: string) => (await db.select({ codigo: atividade.codigo }).from(atividade).where(eq(atividade.codigo, codigo)).limit(1))[0]?.codigo ?? null;
+  const ativ = {
+    1: await atividadeDaCarga("Medição"),
+    2: await atividadeDaCarga("Ação em caso de urgência e emergências com odorante (mercaptana)"),
+    3: await atividadeDaCarga("Lavagem de Estação"),
+  };
   await popularCatalogoDemo(db, Object.values(ativ));
 
   // ---------- arquivos --------------------------------------------------------------------------------------------

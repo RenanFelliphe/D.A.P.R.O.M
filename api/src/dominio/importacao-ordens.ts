@@ -58,7 +58,6 @@ export const MOTIVO_SEM_NUMERO = "Linha sem número de ordem";
 export const MOTIVO_STATUS_DIFERENTE = "Status SAP diferente de liberada";
 export const MOTIVO_REPROGRAMADA = "Reprogramada no sistema";
 export const MOTIVO_SEM_EQUIPE = "Centro de trabalho sem equipe cadastrada";
-export const AVISO_SEM_MODELO = "Atividade sem modelo de APR";
 export const AVISO_INTERVALO_INVALIDO = "Intervalo entre ciclos não reconhecido (use, por exemplo, 30 dias, 3 meses ou trimestral); o plano ficou como estava";
 
 const TIPOS_DA_ORDEM = { YBA1: "corretiva", YBA2: "preventiva" } as const;
@@ -162,7 +161,8 @@ interface Contexto {
   origem: OrigemDasOrdens;
   equipes: Map<string, string | null>;
   locais: Map<string, string>;
-  atividades: Map<string, { modeloAprCodigo: string | null } | null>;
+  /** Códigos de atividade que já se sabe existirem (ou que esta importação cadastrou). */
+  atividades: Set<string>;
 }
 
 const textoSimples = (v: unknown): string | null => {
@@ -197,21 +197,18 @@ async function localDaOrdem(db: Db, ctx: Contexto, l: OrdemNormalizada["local_in
 }
 
 /**
- * Situação da atividade da ordem. Código desconhecido é cadastrado em `atividade` sem modelo, para a Segurança do
- * Trabalho mapear. Só um código com modelo ligado vai para a OS; sem ele o técnico escolhe o modelo ao iniciar a APR.
+ * O código da atividade da ordem (o serviço do catálogo), ou `null` se ela não traz um. Código desconhecido é cadastrado
+ * em `atividade`, com o título da ordem como descrição, para o admin montar a lista de materiais. A atividade não escolhe
+ * o modelo da APR: o técnico escolhe a cada APR.
  */
-async function atividadeDaOrdem(db: Db, ctx: Contexto, ordem: OrdemNormalizada): Promise<{ codigo: string | null; comModelo: boolean }> {
+async function atividadeDaOrdem(db: Db, ctx: Contexto, ordem: OrdemNormalizada): Promise<string | null> {
   const codigo = ordem.codigo_atividade;
-  if (!codigo) return { codigo: null, comModelo: false };
+  if (!codigo) return null;
   if (!ctx.atividades.has(codigo)) {
-    const [existente] = await db.select({ modeloAprCodigo: atividade.modeloAprCodigo }).from(atividade).where(eq(atividade.codigo, codigo));
-    if (!existente) {
-      await db.insert(atividade).values({ codigo, descricao: ordem.titulo, modeloAprCodigo: null, provisorio: false }).onConflictDoNothing();
-    }
-    ctx.atividades.set(codigo, existente ?? { modeloAprCodigo: null });
+    await db.insert(atividade).values({ codigo, descricao: ordem.titulo, provisorio: false }).onConflictDoNothing();
+    ctx.atividades.add(codigo);
   }
-  const a = ctx.atividades.get(codigo)!;
-  return a.modeloAprCodigo ? { codigo, comModelo: true } : { codigo: null, comModelo: false };
+  return codigo;
 }
 
 function validar(bruto: unknown): OrdemNormalizada {
@@ -228,7 +225,7 @@ interface PlanoTocado {
   chave: { plano: string; item: string | null };
   titulo: string;
 }
-type Resultado = ({ tipo: "criada"; aviso?: string } | { tipo: "atualizada" }) & { plano?: PlanoTocado; intervaloInvalido?: boolean };
+type Resultado = { tipo: "criada" | "atualizada" } & { plano?: PlanoTocado; intervaloInvalido?: boolean };
 
 /**
  * O plano da OS preventiva (criado na primeira OS dele) e, se a ordem trouxe, o intervalo entre ciclos. Um intervalo que não
@@ -306,7 +303,7 @@ async function atualizarOrdem(db: Db, ctx: Contexto, existente: typeof os.$infer
       ...(ordem.criada_em !== undefined && { dataOrdem: ordem.criada_em }),
       ...(ordem.criado_por !== undefined && { criadoPorSap: ordem.criado_por }),
       statusSap: ordem.status_sap ?? null,
-      ...(ativ?.codigo && { codigoAtividade: ativ.codigo }),
+      ...(ativ && { codigoAtividade: ativ }),
     })
     .where(eq(os.id, existente.id));
   const plano = ordem.plano_manutencao === undefined ? existente.planoManutencao : ordem.plano_manutencao;
@@ -327,7 +324,7 @@ async function criarOrdem(db: Db, ctx: Contexto, bruto: unknown): Promise<Result
     numeroNota: ordem.numero_nota ?? null,
     tipo: TIPOS_DA_ORDEM[ordem.tipo_ordem],
     tipoAtividade: ordem.tipo_atividade ?? null,
-    codigoAtividade: ativ.codigo,
+    codigoAtividade: ativ,
     titulo: ordem.titulo,
     descricao: ordem.descricao ?? null,
     equipamento: ordem.equipamento ?? null,
@@ -346,7 +343,7 @@ async function criarOrdem(db: Db, ctx: Contexto, bruto: unknown): Promise<Result
     origem: ctx.origem,
   });
   const plano = await planoDaOrdem(db, ctx, TIPOS_DA_ORDEM[ordem.tipo_ordem], ordem.plano_manutencao ?? null, ordem.item_manutencao ?? null, ordem.titulo, bruto);
-  return { tipo: "criada", ...(ativ.comModelo ? {} : { aviso: AVISO_SEM_MODELO }), ...plano };
+  return { tipo: "criada", ...plano };
 }
 
 async function processarUma(db: Db, ctx: Contexto, bruto: unknown): Promise<Resultado> {
@@ -379,7 +376,7 @@ export async function processarOrdens(
   entradas: EntradaOrdem[],
   opcoes: { origem: OrigemDasOrdens; agora: Date },
 ): Promise<ResultadoProcessamento> {
-  const ctx: Contexto = { agora: opcoes.agora, origem: opcoes.origem, equipes: new Map(), locais: new Map(), atividades: new Map() };
+  const ctx: Contexto = { agora: opcoes.agora, origem: opcoes.origem, equipes: new Map(), locais: new Map(), atividades: new Set() };
   const resultado: ResultadoProcessamento = { criadas: 0, atualizadas: 0, ignoradas: [], avisos: [], planos: [], planosSemIntervalo: [] };
   const semIntervalo = new Map<string, PlanoSemIntervalo>();
 
@@ -399,10 +396,8 @@ export async function processarOrdens(
           throw erro;
         }
       });
-      if (r.tipo === "criada") {
-        resultado.criadas++;
-        if (r.aviso) resultado.avisos.push({ ...identificacao(), numero_ordem: numero!, motivo: r.aviso });
-      } else resultado.atualizadas++;
+      if (r.tipo === "criada") resultado.criadas++;
+      else resultado.atualizadas++;
       if (r.intervaloInvalido) resultado.avisos.push({ ...identificacao(), numero_ordem: numero!, motivo: AVISO_INTERVALO_INVALIDO });
       if (r.plano) {
         if (!resultado.planos.includes(r.plano.id)) resultado.planos.push(r.plano.id);

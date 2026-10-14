@@ -1,15 +1,14 @@
-import { and, asc, count, desc, eq, ilike, inArray, isNotNull, isNull, max, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNotNull, isNull, max, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { diferencas, registrarAuditoria } from "../dominio/auditoria";
-import { apr, atividade, equipe, itemModeloApr, modeloApr, os, riscoModeloApr, type Perfil } from "../db/schema";
+import { apr, atividade, itemModeloApr, modeloApr, orientacaoModeloApr, riscoModeloApr, type Perfil } from "../db/schema";
 import {
   conteudoDe,
   gravarRiscosEItens,
   modeloCompleto,
   modeloPorVersao,
-  publicadoEmUso,
   rascunhoDoCodigo,
   resolverVersao,
   traduzirImutabilidade,
@@ -32,15 +31,12 @@ import { responder } from "../http/resposta";
 import { booleanoDaConsulta, lerConsulta, lerCorpo, textoObrigatorio } from "../http/validacao";
 
 /**
- * Quem cria, edita, publica e exclui modelos e mantém a tabela de atividades: só o administrador do sistema, que
- * mantém o conteúdo definido pela Segurança do Trabalho (que não usa o sistema). Ele também enxerga os rascunhos.
+ * Quem cria, edita, publica e exclui modelos, escreve a orientação deles e mantém a tabela de atividades: só o
+ * administrador do sistema, que mantém o conteúdo definido pela Segurança do Trabalho (que não usa o sistema). Ele também
+ * enxerga os rascunhos.
  */
 const PERFIS_DE_MODELO = ["admin"] as const satisfies readonly Perfil[];
 const editaModelos = (perfil: Perfil) => (PERFIS_DE_MODELO as readonly Perfil[]).includes(perfil);
-
-/** Status em que a OS ainda vai pedir uma APR (ou está em campo com uma). */
-const OS_ABERTAS = ["liberada", "pendente", "em_execucao"] as const;
-const OS_ABERTAS_NA_RESPOSTA = 10;
 
 /** `:versao` da URL precisa ser um número ou `publicada`; qualquer outra coisa é uma versão que não existe. */
 function numeroDaVersao(versao: string): number {
@@ -63,14 +59,29 @@ const resumoDaVersao = {
   itensTotal: sql<number>`(select count(*)::int from item_modelo_apr where item_modelo_apr.modelo_apr_id = modelo_apr.id)`,
   /** APRs respondidas nesta versão. */
   aprsTotal: sql<number>`(select count(*)::int from apr where apr.modelo_apr_id = modelo_apr.id)`,
-  /** Atividades do SAP ligadas ao código (igual em todas as versões dele). */
-  atividadesTotal: sql<number>`(select count(*)::int from atividade where atividade.modelo_apr_codigo = modelo_apr.codigo)`,
 };
 
+/** A orientação do código (o que o técnico vê ao escolher o modelo); vazia enquanto ninguém a escreveu. */
+async function orientacaoDe(db: Deps["db"], codigo: string) {
+  const [o] = await db.select().from(orientacaoModeloApr).where(eq(orientacaoModeloApr.codigo, codigo));
+  return o ?? { codigo, descricao: "", exemplos: [] as string[], palavrasChave: [] as string[], atualizadaEm: null };
+}
+
+/** Um texto por linha: sem espaços nas pontas, sem linhas vazias e sem repetidos (sem diferenciar maiúsculas). */
+const listaDeTextos = (maximo: number) =>
+  z
+    .array(z.string().trim().max(200))
+    .max(maximo)
+    .transform((lista) => {
+      const vistos = new Set<string>();
+      return lista.filter((t) => t !== "" && !vistos.has(t.toLowerCase()) && Boolean(vistos.add(t.toLowerCase())));
+    });
+
 /**
- * Modelos de APR versionados e a tabela de atividades. Todo perfil autenticado lê (rascunho só quem edita); só o
- * administrador escreve (a Segurança do Trabalho não usa o sistema). Um modelo publicado é imutável (Decisão-chave 6): editar é criar
- * um rascunho da versão seguinte, ajustá-lo e publicá-lo; excluir um modelo publicado o arquiva.
+ * Modelos de APR versionados, a orientação de cada um e a tabela de atividades. Todo perfil autenticado lê (rascunho só
+ * quem edita); só o administrador escreve (a Segurança do Trabalho não usa o sistema). Um modelo publicado é imutável
+ * (Decisão-chave 6): editar é criar um rascunho da versão seguinte, ajustá-lo e publicá-lo; excluir um modelo publicado o
+ * arquiva. A orientação fica fora do versionamento.
  */
 export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();
@@ -105,7 +116,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
     return responder(c, { modelos: linhas, ...meta(filtros, await contar(deps.db, modeloApr, onde)) });
   });
 
-  /** Um modelo e todas as versões dele, inclusive quando excluído (arquivado), para a tela do modelo. */
+  /** Um modelo, a orientação e todas as versões dele, inclusive quando excluído (arquivado), para a tela do modelo. */
   r.get("/modelos-apr/:codigo", autenticar(), async (c) => {
     const codigo = c.req.param("codigo");
     const veRascunho = editaModelos(c.get("usuario").perfil);
@@ -116,84 +127,78 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
       .orderBy(desc(modeloApr.versao));
     if (versoes.length === 0) throw naoEncontrado("Modelo não encontrado");
     const principal = versoes.find((v) => !v.rascunho) ?? versoes[0]!;
-    return responder(c, { codigo, titulo: principal.titulo, arquivadoEm: principal.arquivadoEm, versoes });
+    return responder(c, { codigo, titulo: principal.titulo, arquivadoEm: principal.arquivadoEm, orientacao: await orientacaoDe(deps.db, codigo), versoes });
   });
 
   /**
-   * Onde o modelo é usado: as atividades do SAP ligadas a ele (é por elas que uma OS chega ao modelo), as OS abertas
-   * dessas atividades e as APRs já respondidas em qualquer versão. Só para quem enxerga as OS de todas as equipes.
+   * Troca a orientação do modelo: a descrição dos serviços que ele atende, os exemplos e as palavras-chave com que o sistema
+   * lê a OS e recomenda um modelo ao técnico. Vale para todas as versões e na hora, sem publicar.
    */
+  r.put("/modelos-apr/:codigo/orientacao", autenticar(), soQuemEdita, async (c) => {
+    const codigo = c.req.param("codigo");
+    const dados = await lerCorpo(
+      c,
+      z.object({
+        descricao: z.string().trim().max(1000),
+        exemplos: listaDeTextos(20),
+        palavras_chave: listaDeTextos(80),
+      }),
+    );
+    const [existe] = await deps.db.select({ id: modeloApr.id }).from(modeloApr).where(eq(modeloApr.codigo, codigo)).limit(1);
+    if (!existe) throw naoEncontrado("Modelo não encontrado");
+
+    const anterior = await orientacaoDe(deps.db, codigo);
+    const valores = { descricao: dados.descricao, exemplos: dados.exemplos, palavrasChave: dados.palavras_chave, atualizadaEm: deps.agora() };
+    const [salva] = await deps.db.insert(orientacaoModeloApr).values({ codigo, ...valores }).onConflictDoUpdate({ target: orientacaoModeloApr.codigo, set: valores }).returning();
+    const mudancas = diferencas(
+      { descricao: anterior.descricao, exemplos: anterior.exemplos.join(" | "), palavras_chave: anterior.palavrasChave.join(", ") },
+      { descricao: dados.descricao, exemplos: dados.exemplos.join(" | "), palavras_chave: dados.palavras_chave.join(", ") },
+    );
+    if (Object.keys(mudancas).length > 0) {
+      await registrarAuditoria(deps.db, c.get("usuario"), {
+        entidade: "modelo_apr",
+        verbo: "orientacao",
+        entidadeId: codigo,
+        alvo: codigo,
+        resumo: `Editou a orientação do modelo de APR ${codigo} (${Object.keys(mudancas).join(", ")})`,
+        detalhes: mudancas,
+      });
+    }
+    return responder(c, salva);
+  });
+
+  /** Onde o modelo é usado: as APRs já respondidas em qualquer versão. Só para quem enxerga as OS de todas as equipes. */
   r.get("/modelos-apr/:codigo/uso", autenticar(), exigirPerfil("admin"), async (c) => {
     const codigo = c.req.param("codigo");
     const [existe] = await deps.db.select({ id: modeloApr.id }).from(modeloApr).where(eq(modeloApr.codigo, codigo)).limit(1);
     if (!existe) throw naoEncontrado("Modelo não encontrado");
 
-    const atividades = await deps.db
-      .select({ codigo: atividade.codigo, descricao: atividade.descricao, provisorio: atividade.provisorio })
-      .from(atividade)
-      .where(eq(atividade.modeloAprCodigo, codigo))
-      .orderBy(asc(atividade.codigo));
+    const [aprs] = await deps.db
+      .select({
+        total: count(),
+        bloqueadas: sql<number>`(count(*) filter (where ${apr.resultado} = 'bloqueada'))::int`,
+        ultimaEm: max(apr.concluidaEm),
+      })
+      .from(apr)
+      .innerJoin(modeloApr, eq(modeloApr.id, apr.modeloAprId))
+      .where(eq(modeloApr.codigo, codigo));
 
-    const abertas = and(
-      inArray(os.status, [...OS_ABERTAS]),
-      inArray(os.codigoAtividade, deps.db.select({ codigo: atividade.codigo }).from(atividade).where(eq(atividade.modeloAprCodigo, codigo))),
-    );
-    const [recentes, totalAbertas, [aprs]] = await Promise.all([
-      deps.db
-        .select({
-          id: os.id,
-          numeroOrdem: os.numeroOrdem,
-          titulo: os.titulo,
-          status: os.status,
-          codigoAtividade: os.codigoAtividade,
-          dataInicioProg: os.dataInicioProg,
-          equipe: equipe.nome,
-        })
-        .from(os)
-        .innerJoin(equipe, eq(equipe.id, os.equipeId))
-        .where(abertas)
-        .orderBy(asc(os.dataInicioProg), asc(os.numeroOrdem))
-        .limit(OS_ABERTAS_NA_RESPOSTA),
-      contar(deps.db, os, abertas),
-      deps.db
-        .select({
-          total: count(),
-          bloqueadas: sql<number>`(count(*) filter (where ${apr.resultado} = 'bloqueada'))::int`,
-          ultimaEm: max(apr.concluidaEm),
-        })
-        .from(apr)
-        .innerJoin(modeloApr, eq(modeloApr.id, apr.modeloAprId))
-        .where(eq(modeloApr.codigo, codigo)),
-    ]);
-
-    return responder(c, { codigo, atividades, osAbertas: { total: totalAbertas, recentes }, aprs });
+    return responder(c, { codigo, aprs });
   });
 
   /**
-   * Exclui o modelo. O rascunho sai de vez; se já houve versão publicada, as versões ficam arquivadas (APRs, PDFs e
-   * a APR offline que ainda vai chegar apontam para elas): o modelo some das listas, das APRs novas e da cópia offline.
-   * As atividades ligadas a ele passam para o `substituto` (um modelo publicado) ou ficam sem modelo, e o técnico
-   * escolhe ao abrir a APR dessas OS.
+   * Exclui o modelo. O rascunho sai de vez, com a orientação; se já houve versão publicada, as versões ficam arquivadas
+   * (APRs, PDFs e a APR offline que ainda vai chegar apontam para elas) e a orientação fica para uma restauração: o modelo
+   * some das listas, da escolha das APRs novas e da cópia offline.
    */
   r.delete("/modelos-apr/:codigo", autenticar(), soQuemEdita, async (c) => {
     const codigo = c.req.param("codigo");
-    const { substituto } = lerConsulta(c, z.object({ substituto: esquemaCodigo.optional() }));
-    if (substituto === codigo) throw invalido("substituto_invalido", "O substituto precisa ser outro modelo");
-
     const feito = await traduzirImutabilidade(() =>
       deps.db.transaction(async (tx) => {
         const versoes = await tx.select({ publicadoEm: modeloApr.publicadoEm, arquivadoEm: modeloApr.arquivadoEm }).from(modeloApr).where(eq(modeloApr.codigo, codigo));
         if (versoes.length === 0) throw naoEncontrado("Modelo não encontrado");
         if (versoes.some((v) => v.arquivadoEm)) throw conflito("modelo_arquivado", `O modelo ${codigo} já foi excluído`);
-        if (substituto && !(await publicadoEmUso(tx, substituto))) {
-          throw invalido("substituto_invalido", `O modelo ${substituto} não existe, não tem versão publicada ou foi excluído`);
-        }
 
-        const movidas = await tx
-          .update(atividade)
-          .set({ modeloAprCodigo: substituto ?? null })
-          .where(eq(atividade.modeloAprCodigo, codigo))
-          .returning({ codigo: atividade.codigo });
         await tx.delete(modeloApr).where(and(eq(modeloApr.codigo, codigo), isNull(modeloApr.publicadoEm)));
         const arquivado = versoes.some((v) => v.publicadoEm);
         if (arquivado) {
@@ -201,8 +206,10 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
             .update(modeloApr)
             .set({ arquivadoEm: deps.agora() })
             .where(and(eq(modeloApr.codigo, codigo), isNotNull(modeloApr.publicadoEm)));
+        } else {
+          await tx.delete(orientacaoModeloApr).where(eq(orientacaoModeloApr.codigo, codigo));
         }
-        return { codigo, resultado: arquivado ? "arquivado" : "excluido", atividades: movidas.length, substituto: substituto ?? null };
+        return { codigo, resultado: arquivado ? "arquivado" : "excluido" };
       }),
     );
     await registrarAuditoria(deps.db, c.get("usuario"), {
@@ -211,12 +218,12 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
       entidadeId: codigo,
       alvo: codigo,
       resumo: feito.resultado === "arquivado" ? `Excluiu o modelo de APR ${codigo} (versões arquivadas)` : `Excluiu o modelo de APR ${codigo}`,
-      detalhes: { resultado: feito.resultado, atividades_movidas: feito.atividades, substituto: feito.substituto },
+      detalhes: { resultado: feito.resultado },
     });
     return responder(c, feito);
   });
 
-  /** Desfaz a exclusão de um modelo arquivado. As atividades não voltam sozinhas: ligue-as de novo na tabela. */
+  /** Desfaz a exclusão de um modelo arquivado: ele volta à escolha das APRs novas, com a orientação que tinha. */
   r.post("/modelos-apr/:codigo/restaurar", autenticar(), soQuemEdita, async (c) => {
     const codigo = c.req.param("codigo");
     const restauradas = await deps.db
@@ -403,22 +410,13 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
 
   // ---- Atividades ------------------------------------------------------------------------------------------------
 
-  /** A ligação OS → modelo: cada OS traz o código da atividade (plano de manutenção), e a atividade diz o modelo. */
+  /**
+   * As atividades do plano de manutenção: cada OS traz o código de uma, e ela é o serviço do catálogo (a lista de
+   * materiais). Não escolhem o modelo da APR.
+   */
   r.get("/atividades", autenticar(), async (c) => {
-    const filtros = lerConsulta(
-      c,
-      esquemaPaginacao.extend({
-        sem_modelo: booleanoDaConsulta,
-        busca: z.string().trim().min(1).optional(),
-        modelo: esquemaCodigo.optional(),
-      }),
-    );
-    const condicoes: (SQL | undefined)[] = [
-      filtros.sem_modelo ? isNull(atividade.modeloAprCodigo) : undefined,
-      filtros.modelo ? eq(atividade.modeloAprCodigo, filtros.modelo) : undefined,
-      filtros.busca ? or(ilike(atividade.codigo, `%${escaparLike(filtros.busca)}%`), ilike(atividade.descricao, `%${escaparLike(filtros.busca)}%`)) : undefined,
-    ];
-    const onde = and(...condicoes);
+    const filtros = lerConsulta(c, esquemaPaginacao.extend({ busca: z.string().trim().min(1).optional() }));
+    const onde = filtros.busca ? or(ilike(atividade.codigo, `%${escaparLike(filtros.busca)}%`), ilike(atividade.descricao, `%${escaparLike(filtros.busca)}%`)) : undefined;
     const { limit, offset } = limiteEDeslocamento(filtros);
     const linhas = await deps.db.select().from(atividade).where(onde).orderBy(asc(atividade.codigo)).limit(limit).offset(offset);
     return responder(c, { atividades: linhas, ...meta(filtros, await contar(deps.db, atividade, onde)) });
@@ -432,31 +430,20 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
       c,
       z.object({
         descricao: textoObrigatorio,
-        modelo_apr_codigo: z.string().trim().min(1).nullable(),
         provisorio: z.boolean().optional(),
       }),
     );
-    if (dados.modelo_apr_codigo !== null && !(await publicadoEmUso(deps.db, dados.modelo_apr_codigo))) {
-      throw invalido("modelo_sem_versao_publicada", `O modelo ${dados.modelo_apr_codigo} não existe, não tem versão publicada ou foi excluído`);
-    }
 
     const [anterior] = await deps.db.select().from(atividade).where(eq(atividade.codigo, codigo));
     const [salva] = await deps.db
       .insert(atividade)
-      .values({ codigo, descricao: dados.descricao, modeloAprCodigo: dados.modelo_apr_codigo, provisorio: dados.provisorio ?? false })
+      .values({ codigo, descricao: dados.descricao, provisorio: dados.provisorio ?? false })
       .onConflictDoUpdate({
         target: atividade.codigo,
-        set: {
-          descricao: dados.descricao,
-          modeloAprCodigo: dados.modelo_apr_codigo,
-          ...(dados.provisorio !== undefined && { provisorio: dados.provisorio }),
-        },
+        set: { descricao: dados.descricao, ...(dados.provisorio !== undefined && { provisorio: dados.provisorio }) },
       })
       .returning();
-    const mudancas = diferencas(
-      { descricao: anterior?.descricao, modelo_apr_codigo: anterior?.modeloAprCodigo ?? null, provisorio: anterior?.provisorio },
-      { descricao: dados.descricao, modelo_apr_codigo: dados.modelo_apr_codigo, provisorio: dados.provisorio },
-    );
+    const mudancas = diferencas({ descricao: anterior?.descricao, provisorio: anterior?.provisorio }, { descricao: dados.descricao, provisorio: dados.provisorio });
     if (!anterior || Object.keys(mudancas).length > 0) {
       await registrarAuditoria(deps.db, c.get("usuario"), {
         entidade: "atividade",
@@ -465,23 +452,23 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         alvo: codigo,
         resumo: anterior
           ? `Editou a atividade ${codigo} (${Object.keys(mudancas).join(", ")})`
-          : `Cadastrou a atividade ${codigo}${dados.modelo_apr_codigo ? ` com o modelo ${dados.modelo_apr_codigo}` : " sem modelo"}`,
+          : `Cadastrou a atividade ${codigo}`,
         detalhes: mudancas,
       });
     }
     return responder(c, salva);
   });
 
-  /** Remove a atividade. Só se nenhuma OS a usa (a OS guarda o código da atividade); senão `409`, e a saída é ligar a atividade a outro modelo ou deixá-la sem modelo. */
+  /** Remove a atividade. Só se nenhuma OS a usa (a OS guarda o código da atividade); senão `409`. */
   r.delete("/atividades/:codigo{.+}", autenticar(), soQuemEdita, async (c) => {
     const codigo = c.req.param("codigo").trim();
-    const [atual] = await deps.db.select({ descricao: atividade.descricao, modeloAprCodigo: atividade.modeloAprCodigo }).from(atividade).where(eq(atividade.codigo, codigo));
+    const [atual] = await deps.db.select({ descricao: atividade.descricao }).from(atividade).where(eq(atividade.codigo, codigo));
     if (!atual) throw naoEncontrado("Atividade não encontrada");
     try {
       await deps.db.delete(atividade).where(eq(atividade.codigo, codigo));
     } catch (erro) {
       if (codigoPostgres(erro) === "23503") {
-        throw conflito("atividade_com_os", "Há OS com esta atividade e ela não pode ser excluída. Deixe-a sem modelo ou ligue-a a outro.");
+        throw conflito("atividade_com_os", "Há OS com esta atividade e ela não pode ser excluída.");
       }
       throw erro;
     }
@@ -491,7 +478,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
       entidadeId: codigo,
       alvo: codigo,
       resumo: `Excluiu a atividade ${codigo}`,
-      detalhes: { descricao: atual.descricao, modelo_apr_codigo: atual.modeloAprCodigo },
+      detalhes: { descricao: atual.descricao },
     });
     return responder(c, {});
   });

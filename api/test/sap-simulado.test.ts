@@ -19,7 +19,7 @@ function sorteioComSemente(semente: number) {
   };
 }
 
-const ATIVIDADE_COM_MODELO = "Teste, manutenção e válvulas";
+const ATIVIDADE_CADASTRADA = "Teste, manutenção e válvulas";
 const HOJE = new Date("2026-10-12T12:00:00Z");
 
 const novaOrdem = (numero: string, extra: Record<string, unknown> = {}) => ({
@@ -90,15 +90,14 @@ describe("Simulador do SAP: gestão das ordens", () => {
   });
 
   describe("catálogo", () => {
-    it("traz centros (com e sem equipe), locais, atividades com a indicação de modelo, serviços, status prontos e o próximo número", async () => {
+    it("traz centros (com e sem equipe), locais, atividades do DAPROM, serviços, status prontos e o próximo número", async () => {
       const c = (await gestao("GET", "/catalogo")).corpo;
       const serv = c.centros_de_trabalho.find((x: any) => x.centro_trabalho === "SERV_ESP");
       assert.equal(serv.equipe_no_daprom, "Serviços Especiais");
       assert.equal(c.centros_de_trabalho.find((x: any) => x.centro_trabalho === "MAN_ELE").equipe_no_daprom, null);
       assert.ok(c.locais.length >= 9);
       assert.ok(c.locais.every((l: any) => l.codigo && "endereco" in l && "plus_code" in l && "cliente" in l));
-      assert.equal(c.atividades.find((a: any) => a.codigo === ATIVIDADE_COM_MODELO).com_modelo, true);
-      assert.ok(c.atividades.some((a: any) => a.com_modelo === false));
+      assert.deepEqual(c.atividades.find((a: any) => a.codigo === ATIVIDADE_CADASTRADA), { codigo: ATIVIDADE_CADASTRADA, descricao: ATIVIDADE_CADASTRADA });
       assert.ok(c.servicos.length >= 6);
       assert.deepEqual(
         c.status_prontos.map((s: any) => s.codigo),
@@ -131,7 +130,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
   });
 
   describe("gerador", () => {
-    const base = { numeroInicial: 5_000_001, atividadesComModelo: ["1.2", "8.7.1"], hoje: HOJE };
+    const base = { numeroInicial: 5_000_001, atividadesCadastradas: ["1.2", "8.7.1"], hoje: HOJE };
 
     it("respeita quantidade, tipo, centro e status dos lotes, com números sequenciais e únicos", () => {
       const o = gerarOrdens(
@@ -159,12 +158,12 @@ describe("Simulador do SAP: gestão das ordens", () => {
       assert.ok(o.every((x) => x.criadoPor && x.prioridade));
     });
 
-    it("atividade com modelo sorteia entre as do DAPROM; sem modelo usa códigos inventados", () => {
-      const com = gerarOrdens([{ quantidade: 30, atividade: "com_modelo" }], { ...base, sorteio: sorteioComSemente(1) });
-      assert.ok(com.every((x) => base.atividadesComModelo.includes(x.codigoAtividade!)));
-      const sem = gerarOrdens([{ quantidade: 30, atividade: "sem_modelo" }], { ...base, sorteio: sorteioComSemente(1) });
-      assert.ok(sem.every((x) => !base.atividadesComModelo.includes(x.codigoAtividade!) && x.codigoAtividade));
-      assert.throws(() => gerarOrdens([{ quantidade: 1, atividade: "com_modelo" }], { ...base, atividadesComModelo: [] }), /nenhuma atividade com modelo/);
+    it("atividade cadastrada sorteia entre as do DAPROM; nova usa códigos inventados", () => {
+      const cadastradas = gerarOrdens([{ quantidade: 30, atividade: "cadastrada" }], { ...base, sorteio: sorteioComSemente(1) });
+      assert.ok(cadastradas.every((x) => base.atividadesCadastradas.includes(x.codigoAtividade!)));
+      const novas = gerarOrdens([{ quantidade: 30, atividade: "nova" }], { ...base, sorteio: sorteioComSemente(1) });
+      assert.ok(novas.every((x) => !base.atividadesCadastradas.includes(x.codigoAtividade!) && x.codigoAtividade));
+      assert.throws(() => gerarOrdens([{ quantidade: 1, atividade: "cadastrada" }], { ...base, atividadesCadastradas: [] }), /nenhuma atividade cadastrada/);
     });
 
     it("o início programado sai dos próximos N dias (padrão 14), e o fim não vem antes", () => {
@@ -189,8 +188,8 @@ describe("Simulador do SAP: gestão das ordens", () => {
       const antes = (await lista()).total;
       const r = await gestao("POST", "/ordens/aleatorias", {
         lotes: [
-          { quantidade: 10, tipo: "preventiva", centro_trabalho: "SERV_ESP", status: "liberada", atividade: "com_modelo" },
-          { quantidade: 5, tipo: "corretiva", centro_trabalho: "INSTRUM", status: "criada", atividade: "sem_modelo" },
+          { quantidade: 10, tipo: "preventiva", centro_trabalho: "SERV_ESP", status: "liberada", atividade: "cadastrada" },
+          { quantidade: 5, tipo: "corretiva", centro_trabalho: "INSTRUM", status: "criada", atividade: "nova" },
         ],
         dias: 7,
       });
@@ -199,8 +198,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
       const depois = await lista({ tipo: "YBA2", centro_trabalho: "SERV_ESP" });
       assert.ok(depois.ordens.length >= 10);
       assert.equal((await lista()).total, antes + 15);
-      const comModelo = depois.ordens.filter((o: any) => o.codigo_atividade === ATIVIDADE_COM_MODELO || /^\d/.test(o.codigo_atividade ?? "") || o.codigo_atividade);
-      assert.ok(comModelo.length >= 10);
+      assert.ok(depois.ordens.filter((o: any) => o.codigo_atividade).length >= 10);
 
       const demais = await gestao("POST", "/ordens/aleatorias", { lotes: [{ quantidade: 150 }, { quantidade: 60 }] });
       assert.equal(demais.status, 422);
@@ -255,7 +253,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
 
       const r = await ler();
       assert.equal(r.erro, null);
-      assert.deepEqual((await daLista("N1")).no_daprom, { situacao: "liberada", aviso: "Atividade sem modelo de APR" });
+      assert.deepEqual((await daLista("N1")).no_daprom, { situacao: "liberada" });
       assert.deepEqual((await daLista("N2")).no_daprom, { situacao: "ignorada", motivo: "Status SAP diferente de liberada" });
       assert.deepEqual((await daLista("N3")).no_daprom, { situacao: "ignorada", motivo: "Centro de trabalho sem equipe cadastrada" });
     });

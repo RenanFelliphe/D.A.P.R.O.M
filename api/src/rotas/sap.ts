@@ -128,16 +128,14 @@ async function situacaoNoSistema(db: Db, lida: OsDoPdf) {
   // O PDF não imprime o código da atividade: vale o título inteiro ou o código no começo dele ("1.2 - Inspeção…") que
   // já estiver cadastrado em Atividades. Código que não existe não é sugerido (o registro cadastraria uma atividade nova).
   const candidatos = [ordem.titulo, /^(\d+(?:\.\d+)+)\s*-/.exec(ordem.titulo ?? "")?.[1]].filter((c): c is string => Boolean(c));
-  const atividades = candidatos.length
-    ? await db.select({ codigo: atividade.codigo, modeloAprCodigo: atividade.modeloAprCodigo }).from(atividade).where(inArray(atividade.codigo, candidatos))
-    : [];
+  const atividades = candidatos.length ? await db.select({ codigo: atividade.codigo, descricao: atividade.descricao }).from(atividade).where(inArray(atividade.codigo, candidatos)) : [];
   const achada = candidatos.map((c) => atividades.find((a) => a.codigo === c)).find(Boolean);
   return {
     ...lida,
     ordem: { ...ordem, codigo_atividade: ordem.codigo_atividade ?? achada?.codigo ?? null },
     existente: existente ?? null,
     equipe: daEquipe ?? null,
-    atividade: achada ? { codigo: achada.codigo, comModelo: achada.modeloAprCodigo !== null } : null,
+    atividade: achada ? { codigo: achada.codigo, descricao: achada.descricao } : null,
     preventiva: await preventivaDaOrdem(db, ordem),
   };
 }

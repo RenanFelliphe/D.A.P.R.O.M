@@ -43,10 +43,9 @@ export const os = pgTable(
     /** Texto do SAP; só exibição. */
     tipoAtividade: text(),
     /**
-     * Chave que liga a OS a um modelo de APR, quando a Segurança do Trabalho já mapeou a atividade. Nula quando
-     * não há mapeamento: a OS corretiva 4023470 não tem plano algum e o título da preventiva 4019821
-     * ("1.2 - Inspeção Funcional de Retificador") não aparece em nenhuma APR. Nesse caso o técnico escolhe o
-     * modelo ao iniciar a APR (`apr.modelo_apr_id` guarda a escolha).
+     * A atividade do plano de manutenção (o serviço do catálogo, com a lista de materiais). Nula quando a ordem não traz
+     * uma: a corretiva 4023470 não tem plano algum. Não escolhe o modelo da APR: o técnico escolhe a cada APR
+     * (`apr.modelo_apr_id` guarda a escolha), com a recomendação que o sistema tira da leitura da OS.
      */
     codigoAtividade: text().references(() => atividade.codigo),
     titulo: text().notNull(),

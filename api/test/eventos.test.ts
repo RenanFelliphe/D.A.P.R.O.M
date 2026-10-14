@@ -415,6 +415,9 @@ describe("Eventos de campo: APR, execução e sync", () => {
     for (const m of snap.modelos_apr) {
       for (const i of m.itens) assert.deepEqual(["tipo", "resposta_bloqueante", "evidencia"].filter((c) => c in i), [], "a cópia offline não diz o que é eliminatório");
     }
+    // A escolha do modelo offline: a orientação de cada modelo e, em cada OS, o recomendado (o técnico escolhe).
+    assert.ok(snap.modelos_apr.every((m: any) => typeof m.orientacao.descricao === "string" && Array.isArray(m.orientacao.exemplos) && !("palavras_chave" in m.orientacao)));
+    assert.ok(snap.os.every((x: any) => "recomendado" in x.escolha_do_modelo && Array.isArray(x.escolha_do_modelo.encontradas)));
     assert.ok(snap.atividades.length > 100);
     assert.ok(snap.locais.some((l: any) => l.id === localId));
     assert.ok(snap.usuarios.some((u: any) => u.id === colega.id) && snap.usuarios.every((u: any) => !("email" in u)));

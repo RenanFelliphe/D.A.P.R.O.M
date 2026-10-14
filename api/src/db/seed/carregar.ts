@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
-import { atividade, itemModeloApr, modeloApr, riscoModeloApr } from "../schema";
+import { atividade, itemModeloApr, modeloApr, orientacaoModeloApr, riscoModeloApr } from "../schema";
 import dados from "./modelos-apr.json" with { type: "json" };
+import { ORIENTACOES_INICIAIS } from "./orientacoes-modelos-apr";
 
 type ItemDoSeed = Omit<typeof itemModeloApr.$inferInsert, "id" | "modeloAprId" | "riscoId"> & { risco: number | null };
 
@@ -9,19 +10,21 @@ export interface ResultadoDaCarga {
   modelosCarregados: string[];
   modelosJaExistentes: string[];
   atividadesInseridas: number;
+  orientacoesInseridas: number;
 }
 
 /**
  * Carga inicial: os 8 modelos de APR de `base/apr-examples/` (já lidos para `modelos-apr.json` por
- * `gerar-modelos-apr.mjs`) e a tabela de atividades.
+ * `gerar-modelos-apr.mjs`), a orientação de cada um (o que o técnico vê ao escolher o modelo) e a tabela de atividades.
  *
  * Segura para rodar a cada subida da api: um modelo só entra se o código ainda não existe em nenhuma versão (se a
- * Segurança já criou versões novas, a carga não toca), e uma atividade só entra se o código ainda não existe (o que a
- * Segurança editou fica). Cada modelo entra como rascunho e é publicado ao fim, na mesma transação, porque o banco
+ * Segurança já criou versões novas, a carga não toca), e uma orientação ou uma atividade só entra se o código ainda não
+ * existe (o que o admin editou fica). O `modeloAprCodigo` das atividades do JSON só diz em que planilha a atividade
+ * aparece: a atividade não escolhe o modelo da APR. Cada modelo entra como rascunho e é publicado ao fim, na mesma transação, porque o banco
  * não aceita itens em modelo publicado.
  */
 export async function carregarDadosIniciais(db: PgDatabase<PgQueryResultHKT>): Promise<ResultadoDaCarga> {
-  const resultado: ResultadoDaCarga = { modelosCarregados: [], modelosJaExistentes: [], atividadesInseridas: 0 };
+  const resultado: ResultadoDaCarga = { modelosCarregados: [], modelosJaExistentes: [], atividadesInseridas: 0, orientacoesInseridas: 0 };
 
   for (const m of dados.modelos) {
     await db.transaction(async (tx) => {
@@ -56,10 +59,13 @@ export async function carregarDadosIniciais(db: PgDatabase<PgQueryResultHKT>): P
     });
   }
 
+  const orientacoes = await db.insert(orientacaoModeloApr).values([...ORIENTACOES_INICIAIS]).onConflictDoNothing({ target: orientacaoModeloApr.codigo }).returning({ codigo: orientacaoModeloApr.codigo });
+  resultado.orientacoesInseridas = orientacoes.length;
+
   for (const a of dados.atividades) {
     const inseridas = await db
       .insert(atividade)
-      .values({ codigo: a.codigo, descricao: a.descricao, modeloAprCodigo: a.modeloAprCodigo, provisorio: a.provisorio })
+      .values({ codigo: a.codigo, descricao: a.descricao, provisorio: a.provisorio })
       .onConflictDoNothing({ target: atividade.codigo })
       .returning({ codigo: atividade.codigo });
     resultado.atividadesInseridas += inseridas.length;

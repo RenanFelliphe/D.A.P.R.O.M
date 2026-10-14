@@ -92,18 +92,29 @@ export const itemModeloApr = pgTable(
 ).enableRLS();
 
 /**
- * Código do plano de manutenção do SAP → modelo de APR. `modeloAprCodigo` não é chave estrangeira
- * porque o código do modelo só é único junto com a versão; a api valida que existe uma versão publicada.
+ * O que o técnico vê ao escolher o modelo da APR (a escolha é sempre dele): a descrição dos serviços que o modelo atende,
+ * exemplos e as palavras-chave com que o sistema lê a OS e recomenda um modelo. Uma linha por código, fora do
+ * versionamento: mudar a orientação não cria versão nova do modelo. `codigo` não é chave estrangeira porque o código do
+ * modelo só é único junto com a versão.
  */
-export const atividade = pgTable(
-  "atividade",
-  {
-    /** Ex.: 8.7.1. */
-    codigo: text().primaryKey(),
-    descricao: text().notNull(),
-    modeloAprCodigo: text(),
-    /** Código inventado na carga inicial, à espera do código real do SAP. */
-    provisorio: boolean().notNull().default(false),
-  },
-  (t) => [index("atividade_sem_modelo_idx").on(t.codigo).where(sql`${t.modeloAprCodigo} is null`)],
-).enableRLS();
+export const orientacaoModeloApr = pgTable("orientacao_modelo_apr", {
+  /** APR 01 … APR 09. */
+  codigo: text().primaryKey(),
+  descricao: text().notNull().default(""),
+  exemplos: text().array().notNull().default(sql`'{}'::text[]`),
+  /** Comparadas sem acento nem maiúsculas; a de 4 letras ou mais vale também como começo de palavra ("calibr" acha "calibração"). */
+  palavrasChave: text().array().notNull().default(sql`'{}'::text[]`),
+  atualizadaEm: instante().notNull().defaultNow(),
+}).enableRLS();
+
+/**
+ * A atividade do plano de manutenção que a OS traz (`os.codigo_atividade`): é o serviço do catálogo, com a lista de
+ * materiais. Não escolhe o modelo da APR (quem escolhe é o técnico, com a recomendação de `orientacao_modelo_apr`).
+ */
+export const atividade = pgTable("atividade", {
+  /** Ex.: 8.7.1. */
+  codigo: text().primaryKey(),
+  descricao: text().notNull(),
+  /** Código inventado na carga inicial, à espera do código real do SAP. */
+  provisorio: boolean().notNull().default(false),
+}).enableRLS();

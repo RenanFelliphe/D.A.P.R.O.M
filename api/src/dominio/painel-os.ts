@@ -4,7 +4,6 @@ import type { Db } from "../db/conexao";
 import {
   alerta,
   apr,
-  atividade,
   aprParticipante,
   aprResposta,
   aprRisco,
@@ -193,7 +192,7 @@ export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosO
 }
 
 /** A OS e o que o usuário pode saber dela: quem não vê a equipe da OS recebe `404`, como se não existisse. */
-async function osVisivel(db: Db, eu: UsuarioAutenticado, osId: string) {
+export async function osVisivel(db: Db, eu: UsuarioAutenticado, osId: string) {
   const cienciaPor = alias(usuario, "ciencia_por_usuario");
   const [linha] = await db
     .select({
@@ -203,13 +202,11 @@ async function osVisivel(db: Db, eu: UsuarioAutenticado, osId: string) {
       equipeCentro: equipe.centroTrabalho,
       equipeSupervisorId: equipe.supervisorId,
       cienciaPorNome: cienciaPor.nome,
-      modeloAprCodigo: atividade.modeloAprCodigo,
     })
     .from(os)
     .innerJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
     .innerJoin(equipe, eq(equipe.id, os.equipeId))
     .leftJoin(cienciaPor, eq(cienciaPor.id, os.cienciaPor))
-    .leftJoin(atividade, eq(atividade.codigo, os.codigoAtividade))
     .where(eq(os.id, osId));
   if (!linha || !podeVerEquipe(eu, linha.os.equipeId)) throw naoEncontrado("OS não encontrada");
   return linha;
@@ -421,7 +418,7 @@ async function carregarExecucoes(db: Db, osId: string) {
 
 /** Detalhe da OS: dados do SAP, o serviço do catálogo, APRs, execuções, alertas, reprogramações e a linha do tempo que une tudo. */
 export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, agora: Date) {
-  const { os: o, local, equipeNome, equipeCentro, equipeSupervisorId, cienciaPorNome, modeloAprCodigo } = await osVisivel(db, eu, osId);
+  const { os: o, local, equipeNome, equipeCentro, equipeSupervisorId, cienciaPorNome } = await osVisivel(db, eu, osId);
 
   const equipeAnterior = alias(equipe, "equipe_anterior");
   const equipeNova = alias(equipe, "equipe_nova");
@@ -479,8 +476,6 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
       localInstalacao: local,
       equipe: { id: o.equipeId, nome: equipeNome, centroTrabalho: equipeCentro, supervisorId: equipeSupervisorId },
       cienciaPorNome,
-      /** Modelo de APR da atividade da OS; `null` quando a OS não tem atividade mapeada (o técnico escolhe o modelo). */
-      modeloAprCodigo: modeloAprCodigo ?? null,
       pdfPronto: o.pdfPath !== null,
       execucaoAbertaHaHoras: abertas.get(osId) ?? null,
       atrasada: estaAtrasada(o, diaNoFuso(agora)),
@@ -488,7 +483,7 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
     },
     /**
      * O serviço do catálogo (a atividade da OS) com os materiais, ferramentas e EPIs que ele usa; `null` quando a OS não
-     * tem atividade. O modelo de APR fica de fora: o técnico não o escolhe por aqui.
+     * tem atividade. O modelo de APR fica de fora: o técnico o escolhe a cada APR (`GET /os/{id}/modelos-apr`).
      */
     servico: servico ? { codigo: servico.codigo, descricao: servico.descricao, materiais: servico.materiais } : null,
     aprs,

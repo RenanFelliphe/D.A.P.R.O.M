@@ -70,22 +70,31 @@ confere("medidas preventivas não bloqueiam nem avisam por padrão", medidasNaoA
 const texto = await consulta<{ n: number }>("select count(*)::int n from item_modelo_apr where evidencia = 'texto'");
 confere("evidência em texto só nas condições psicológicas", texto[0]!.n === 8);
 
-// Atividades: todas provisórias; as que têm modelo apontam para um código com versão publicada.
+// Atividades: todas provisórias (a atividade não escolhe o modelo da APR).
 const atividadesDef = await consulta<{ n: number }>("select count(*)::int n from atividade where not provisorio");
 confere("todas as atividades entram como provisórias", atividadesDef[0]!.n === 0);
-const semModelo = await consulta<{ codigo: string }>("select codigo from atividade where modelo_apr_codigo is null");
-confere("só 'Inspeção operacional…' fica sem modelo", semModelo.length === 1, semModelo[0]?.codigo);
-const modeloInexistente = await consulta(
-  "select a.codigo from atividade a where a.modelo_apr_codigo is not null and not exists (select 1 from modelo_apr m where m.codigo = a.modelo_apr_codigo and m.publicado_em is not null)",
-);
-confere("atividade aponta para modelo publicado", modeloInexistente.length === 0);
 
-// Reexecutar não duplica nem desfaz o que a Segurança editou.
-await cliente.query("update atividade set modelo_apr_codigo = 'APR 06', provisorio = false where codigo = '8.7.1'");
+// Orientação: uma por modelo da carga, com descrição, exemplos e palavras-chave.
+const orientacoes = await consulta<{ codigo: string; descricao: string; exemplos: string[]; palavras_chave: string[] }>("select codigo, descricao, exemplos, palavras_chave from orientacao_modelo_apr order by codigo");
+confere(
+  "orientação dos 8 modelos da carga",
+  orientacoes.map((o) => o.codigo).join(",") === "APR 01,APR 02,APR 03,APR 04,APR 05,APR 06,APR 07,APR 09",
+  orientacoes.map((o) => o.codigo).join(","),
+);
+confere("toda orientação tem descrição, exemplos e palavras-chave", orientacoes.every((o) => o.descricao.length > 20 && o.exemplos.length >= 4 && o.palavras_chave.length >= 5));
+
+// Reexecutar não duplica nem desfaz o que o admin editou.
+await cliente.query("update atividade set descricao = 'Drenagem (revisada)', provisorio = false where codigo = '8.7.1'");
+await cliente.query("update orientacao_modelo_apr set descricao = 'Editada pelo admin' where codigo = 'APR 03'");
 const segunda = await carregarDadosIniciais(db);
-confere("segunda carga não insere nada", segunda.modelosCarregados.length === 0 && segunda.modelosJaExistentes.length === 8 && segunda.atividadesInseridas === 0);
-const editada = await consulta<{ modelo_apr_codigo: string; provisorio: boolean }>("select modelo_apr_codigo, provisorio from atividade where codigo = '8.7.1'");
-confere("segunda carga preserva a edição da atividade", editada[0]?.modelo_apr_codigo === "APR 06" && editada[0]?.provisorio === false);
+confere(
+  "segunda carga não insere nada",
+  segunda.modelosCarregados.length === 0 && segunda.modelosJaExistentes.length === 8 && segunda.atividadesInseridas === 0 && segunda.orientacoesInseridas === 0,
+);
+const editada = await consulta<{ descricao: string; provisorio: boolean }>("select descricao, provisorio from atividade where codigo = '8.7.1'");
+confere("segunda carga preserva a edição da atividade", editada[0]?.descricao === "Drenagem (revisada)" && editada[0]?.provisorio === false);
+const orientacaoEditada = await consulta<{ descricao: string }>("select descricao from orientacao_modelo_apr where codigo = 'APR 03'");
+confere("segunda carga preserva a edição da orientação", orientacaoEditada[0]?.descricao === "Editada pelo admin");
 
 await cliente.close();
 if (falhas > 0) {
