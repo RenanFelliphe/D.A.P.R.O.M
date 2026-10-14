@@ -82,7 +82,6 @@ export const faltouComprovar = (m: Pick<MaterialDaApr, "obrigatorio" | "levou" |
 export interface ServicoDoCatalogo {
   codigo: string;
   descricao: string;
-  modelo_apr_codigo: string | null;
   provisorio: boolean;
   materiais: MaterialDoServico[];
 }

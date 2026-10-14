@@ -24,7 +24,7 @@ export function VerMaisOrdem({ ordem: o, catalogo, aoFechar }: { ordem: Ordem; c
             { rotulo: "Tipo da ordem", valor: o.tipo_ordem === "YBA1" ? "YBA1 · Corretiva" : "YBA2 · Preventiva" },
             { rotulo: "Tipo de atividade", valor: o.tipo_atividade },
             { rotulo: "Título", valor: o.titulo },
-            { rotulo: "Atividade", valor: o.codigo_atividade ? `${o.codigo_atividade}${atividade ? (atividade.com_modelo ? " (com modelo de APR)" : " (sem modelo de APR)") : " (o DAPROM não a conhece)"}` : null },
+            { rotulo: "Atividade", valor: o.codigo_atividade ? `${o.codigo_atividade}${atividade ? " (cadastrada no DAPROM)" : " (o DAPROM não a conhece)"}` : null },
             { rotulo: "Status SAP", valor: `${o.status_sap ?? "—"}${o.status_sap ? ` · ${rotuloDoStatus(o.status_sap, catalogo.status_prontos)}` : ""}` },
             { rotulo: "Prioridade", valor: o.prioridade },
             { rotulo: "Centro de trabalho", valor: `${o.centro_trabalho}${centro ? ` · ${centro.nome}` : ""}` },
@@ -53,7 +53,6 @@ export function VerMaisOrdem({ ordem: o, catalogo, aoFechar }: { ordem: Ordem; c
           itens: [
             { rotulo: "Situação", valor: rotuloDaSituacaoNoDaprom[o.no_daprom.situacao] },
             ...(o.no_daprom.motivo ? [{ rotulo: "Motivo", valor: o.no_daprom.motivo }] : []),
-            ...(o.no_daprom.aviso ? [{ rotulo: "Aviso", valor: o.no_daprom.aviso }] : []),
             { rotulo: "Próxima leitura", valor: o.alterada_depois_da_leitura ? "Vai pegar a alteração desta ordem" : "Nada novo nesta ordem" },
             ...(efeito ? [{ rotulo: "O que acontece se mudar", valor: efeito }] : []),
           ],

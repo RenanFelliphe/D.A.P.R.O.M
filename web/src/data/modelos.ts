@@ -1,7 +1,6 @@
 /** Tipos e rótulos da seção APR (formato das respostas de `GET /modelos-apr` e `GET /atividades`). */
 
 import type { Agrupamento } from "@/components/web/importacao/tipos";
-import type { OsStatus } from "@/lib/tipos";
 
 export type RespostaBloqueante = "sim" | "nao";
 export type TipoItem = "eliminatorio" | "alerta";
@@ -23,26 +22,32 @@ export interface ResumoModelo {
   itens_total: number;
   /** APRs respondidas nesta versão. */
   aprs_total: number;
-  /** Atividades do SAP ligadas ao código (igual em todas as versões). */
-  atividades_total: number;
 }
 
-/** `GET /modelos-apr/{codigo}`: o modelo e todas as versões dele, da mais nova à mais antiga. */
+/**
+ * Orientação do modelo (igual em todas as versões, fora da publicação): o que o técnico vê ao escolher o modelo e o que o
+ * sistema lê na OS para recomendar um. Vazia (`atualizada_em` nulo) enquanto ninguém a escreveu.
+ */
+export interface OrientacaoDoModelo {
+  codigo: string;
+  descricao: string;
+  exemplos: string[];
+  palavras_chave: string[];
+  atualizada_em: string | null;
+}
+
+/** `GET /modelos-apr/{codigo}`: o modelo, a orientação e todas as versões dele, da mais nova à mais antiga. */
 export interface DetalheModelo {
   codigo: string;
   titulo: string;
   arquivado_em: string | null;
+  orientacao: OrientacaoDoModelo;
   versoes: ResumoModelo[];
 }
 
-/** `GET /modelos-apr/{codigo}/uso`: por onde as OS chegam ao modelo e o que já foi respondido nele. */
+/** `GET /modelos-apr/{codigo}/uso`: o que já foi respondido no modelo, em qualquer versão. */
 export interface UsoDoModelo {
   codigo: string;
-  atividades: { codigo: string; descricao: string; provisorio: boolean }[];
-  os_abertas: {
-    total: number;
-    recentes: { id: string; numero_ordem: string | null; titulo: string; status: OsStatus; codigo_atividade: string | null; data_inicio_prog: string; equipe: string }[];
-  };
   aprs: { total: number; bloqueadas: number; ultima_em: string | null };
 }
 
@@ -63,7 +68,7 @@ export interface ResumoDasAprs {
   agrupamento: Agrupamento;
   de: string;
   ate: string;
-  totais: { aprs: number; aprovadas: number; bloqueadas: number; alertas: number | null; sem_modelo_ligado: number };
+  totais: { aprs: number; aprovadas: number; bloqueadas: number; alertas: number | null };
   anterior: { aprs: number; bloqueadas: number };
   serie: { inicio: string; fim: string; aprovadas: number; bloqueadas: number }[];
   itens_que_bloqueiam: ItemReprovado[] | null;
@@ -82,7 +87,6 @@ export interface GrupoModelo {
   rascunho?: ResumoModelo;
   arquivadoEm: string | null;
   aprsTotal: number;
-  atividadesTotal: number;
 }
 
 /** Agrupa as versões (já ordenadas por código e versão decrescente) por código do modelo. */
@@ -100,7 +104,6 @@ export function agruparModelos(modelos: ResumoModelo[]): GrupoModelo[] {
       rascunho,
       arquivadoEm: versoes[0]!.arquivado_em,
       aprsTotal: versoes.reduce((soma, v) => soma + v.aprs_total, 0),
-      atividadesTotal: versoes[0]!.atividades_total,
     };
   });
 }
@@ -155,10 +158,10 @@ export interface ModeloCompleto {
   itens: ItemModelo[];
 }
 
+/** Atividade do plano de manutenção (`GET /atividades`): o serviço do catálogo que a OS traz. Não escolhe o modelo da APR. */
 export interface Atividade {
   codigo: string;
   descricao: string;
-  modelo_apr_codigo: string | null;
   provisorio: boolean;
 }
 

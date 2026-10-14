@@ -103,7 +103,7 @@ assert.ok(tec2, "tec2 está na equipe de tec1");
 console.log("login ok · equipe", equipeId);
 
 // ---- OS de teste: a OS não nasce no sistema, então entram como em produção: o SAP simulado recebe as ordens e a leitura as traz.
-// Uma com atividade mapeada (modelo da atividade) e as outras sem atividade (o técnico escolhe) -----------------------------
+// Uma com atividade (o serviço do catálogo) e as outras sem atividade; o modelo da APR, o técnico escolhe em todas ----------
 const local = (await ok(sup1Token, "GET", "/locais?tamanho=1")).locais[0];
 const lote = Date.now() % 1_000_000;
 let sequencia = 0;
@@ -143,12 +143,15 @@ const osNa = await aguardarOs(numeroNa);
 // ---- 1. Detalhe e modelo ----------------------------------------------------------------------------------------------
 const detA = await ok(tec1Token, "GET", `/os/${osAprovada}`);
 assert.equal(detA.os.status, "liberada");
-assert.equal(detA.os.modelo_apr_codigo, "APR 03", "a OS com atividade mapeada traz o modelo");
-const detB = await ok(tec1Token, "GET", `/os/${osBloqueada}`);
-assert.equal(detB.os.modelo_apr_codigo, null, "OS sem atividade mapeada: o técnico escolhe o modelo");
-console.log("detalhe: modelo_apr_codigo", detA.os.modelo_apr_codigo, "/", detB.os.modelo_apr_codigo);
+assert.equal("modelo_apr_codigo" in detA.os, false, "a OS não traz modelo: o técnico escolhe a cada APR");
+const escolhaA = await ok(tec1Token, "GET", `/os/${osAprovada}/modelos-apr`);
+assert.ok(escolhaA.modelos.length >= 8 && escolhaA.modelos.every((m: any) => m.descricao && m.exemplos.length > 0), "cada modelo vem com a orientação");
+assert.ok(escolhaA.modelos.every((m: any) => !("palavras_chave" in m)), "as palavras-chave não vão para o técnico");
+console.log("escolha do modelo: recomendado", escolhaA.recomendado ?? "nenhum");
 
-const modeloA: ModeloCompleto = await ok(tec1Token, "GET", `/modelos-apr/${encodeURIComponent(detA.os.modelo_apr_codigo)}/versoes/publicada`);
+// O técnico escolhe a APR 03 para a OS da atividade "Teste, manutenção e válvulas", qualquer que seja a recomendação.
+const CODIGO_A = "APR 03";
+const modeloA: ModeloCompleto = await ok(tec1Token, "GET", `/modelos-apr/${encodeURIComponent(CODIGO_A)}/versoes/publicada`);
 const publicados = (await ok(tec1Token, "GET", "/modelos-apr?publicados=true&tamanho=200")).modelos;
 assert.ok(publicados.length >= 8);
 
@@ -183,7 +186,7 @@ assert.ok(publicados.length >= 8);
   // o técnico não vê o que é eliminatório: o modelo dele não traz tipo, resposta bloqueante nem evidência
   assert.ok(modeloA.itens.every((i) => !("tipo" in i) && !("resposta_bloqueante" in i) && !("evidencia" in i)), "o modelo do técnico não traz a classificação");
   // com um item de alerta respondido com a resposta bloqueante: segue, marcado
-  const classeA = await classificacaoDe(detA.os.modelo_apr_codigo);
+  const classeA = await classificacaoDe(CODIGO_A);
   const alerta = [...classeA.values()].find((i) => i.tipo === "alerta" && i.resposta_bloqueante !== null)!;
   r = responderTudo(r, classeA, new Set([alerta.id]));
   assert.ok(resumoDe(r).completo);

@@ -102,8 +102,6 @@ export interface OsDetalhada {
   equipe: { id: string; nome: string; centro_trabalho: string; supervisor_id: string | null };
   justificativa_cancelamento: string | null;
   pdf_pronto: boolean;
-  /** Modelo de APR da atividade da OS; `null` quando a OS não tem atividade mapeada. */
-  modelo_apr_codigo: string | null;
 }
 
 export interface DetalheDaOs {

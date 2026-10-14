@@ -92,7 +92,7 @@ export interface DashboardGeral extends PeriodoResolvido {
   tempo: Pick<MedidaDeTempo, "execucoes" | "tempo_liquido_medio_min" | "pausa_media_min" | "proporcao_pausa">;
   interrupcoes: number;
   /** O que pede ação agora. Fora `execucoes_esquecidas`, é de gestão: `null` para quem não acompanha a equipe (técnico). */
-  pendencias: { a_exportar: number | null; sem_ciencia: number | null; execucoes_esquecidas: number; atividades_sem_modelo: number | null };
+  pendencias: { a_exportar: number | null; sem_ciencia: number | null; execucoes_esquecidas: number };
 }
 
 export interface DashboardOs extends PeriodoResolvido {

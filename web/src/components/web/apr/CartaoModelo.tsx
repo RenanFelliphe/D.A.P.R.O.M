@@ -6,7 +6,7 @@ import { rotas } from "@/lib/rotas";
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
-/** Cartão de um modelo na aba Modelos: código, título, versão em uso, rascunho e por onde as OS chegam a ele. */
+/** Cartão de um modelo na aba Modelos: código, título, versão em uso, rascunho e quanto já foi usado. */
 export function CartaoModelo({ grupo }: { grupo: GrupoModelo }) {
   const { emUso, rascunho } = grupo;
   const itens = (emUso ?? rascunho ?? grupo.versoes[0]!).itens_total;
@@ -22,7 +22,6 @@ export function CartaoModelo({ grupo }: { grupo: GrupoModelo }) {
       <span className="cm-titulo">{grupo.titulo}</span>
       <span className="cm-dados">
         <span>{plural(itens, "item", "itens")}</span>
-        <span className={grupo.atividadesTotal === 0 && emUso ? "cm-falta" : undefined}>{plural(grupo.atividadesTotal, "atividade", "atividades")}</span>
         <span>{plural(grupo.aprsTotal, "APR respondida", "APRs respondidas")}</span>
       </span>
       <span className="small">

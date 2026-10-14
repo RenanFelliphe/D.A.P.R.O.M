@@ -107,7 +107,6 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
             {rotuloDaSituacaoNoDaprom[o.no_daprom.situacao]}
           </Badge>
           {o.no_daprom.motivo && <span className="small" style={{ whiteSpace: "normal", maxWidth: 220 }}>{o.no_daprom.motivo}</span>}
-          {o.no_daprom.aviso && <span className="small" style={{ whiteSpace: "normal", maxWidth: 220 }}>{o.no_daprom.aviso}</span>}
         </span>
       ),
     },

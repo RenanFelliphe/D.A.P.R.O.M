@@ -17,6 +17,7 @@ import { obterEstado } from "./armazem";
 import { materiaisDoTreino, servicosDoTreino } from "./catalogo";
 import { diaDe, statusDerivado, type AlertaReg, type AprReg, type EstadoTreino, type ExecucaoReg, type ItemRegDoModelo, type ModeloReg, type OsReg, type UsuarioTreino } from "./dados";
 import { idTreino } from "./ids";
+import { orientacaoDoTreino, recomendarModelo } from "./recomendacao";
 import { dashboardDeEquipes, dashboardDeOs, dashboardGeral, meusResultados, periodoDoFiltro, resumoDasAprs } from "./indicadores";
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -361,7 +362,6 @@ function detalheDaOs(e: EstadoTreino, o: OsReg, agora: Date) {
       local_instalacao: { ...localDe(e, o) },
       equipe: { id: e.equipe.id, nome: e.equipe.nome, centro_trabalho: e.equipe.centro_trabalho, supervisor_id: e.equipe.supervisor_id },
       ciencia_por_nome: o.ciencia_por ? nomeDe(e, o.ciencia_por) : null,
-      modelo_apr_codigo: o.modelo_apr_codigo,
       pdf_pronto: pdfPronto(o, agora),
       execucao_aberta_ha_horas: horasAberta(e, o.id, agora),
       atrasada: atrasada(o, diaDe(agora)),
@@ -376,13 +376,13 @@ function detalheDaOs(e: EstadoTreino, o: OsReg, agora: Date) {
   };
 }
 
-/** O catálogo de treino, com o modelo de APR que as OS de cada serviço usam. */
-const catalogoDe = (e: EstadoTreino): ServicoDoCatalogo[] => servicosDoTreino((codigo) => e.os.find((o) => o.codigo_atividade === codigo)?.modelo_apr_codigo ?? null);
+/** O catálogo de treino (fixo). */
+const catalogoDe = (): ServicoDoCatalogo[] => servicosDoTreino();
 
 /** O serviço da OS no catálogo (`servico` do detalhe); nulo quando a OS não tem atividade. */
 function servicoDaOs(e: EstadoTreino, o: OsReg) {
   if (!o.codigo_atividade) return null;
-  const s = catalogoDe(e).find((x) => x.codigo === o.codigo_atividade);
+  const s = catalogoDe().find((x) => x.codigo === o.codigo_atividade);
   return s ? { codigo: s.codigo, descricao: s.descricao, materiais: s.materiais } : { codigo: o.codigo_atividade, descricao: o.tipo_atividade ?? o.codigo_atividade, materiais: [] };
 }
 
@@ -407,7 +407,6 @@ const resumoDoModelo = (e: EstadoTreino, m: ModeloReg) => ({
   rascunho: false,
   itens_total: m.itens.length,
   aprs_total: e.aprs.filter((a) => a.modelo_apr_id === m.id).length,
-  atividades_total: e.os.filter((o) => o.modelo_apr_codigo === m.codigo).length,
 });
 
 /** O técnico recebe o modelo sem `tipo`, `resposta_bloqueante` e `evidencia`: não pode saber o que é eliminatório. */
@@ -1280,6 +1279,19 @@ rota("GET", "/os", ({ e, q, agora }) => {
 });
 rota("GET", "/os/:id", ({ e, params, agora }) => ok(detalheDaOs(e, osPorId(e, params.id!), agora)));
 rota("GET", "/os/:id/aprs", ({ e, params }) => ok({ aprs: aprsApi(e, osPorId(e, params.id!).id) }));
+/** A escolha do modelo da APR: a versão mais recente de cada modelo, com a orientação, e o recomendado pela leitura da OS. */
+rota("GET", "/os/:id/modelos-apr", ({ e, params }) => {
+  const o = osPorId(e, params.id!);
+  const maisRecentes = [...e.modelos].sort((a, b) => a.codigo.localeCompare(b.codigo) || b.versao - a.versao).filter((m, i, todos) => todos.findIndex((x) => x.codigo === m.codigo) === i);
+  const { recomendado, encontradas } = recomendarModelo({ titulo: o.titulo, servico: servicoDaOs(e, o)?.descricao, descricao: o.descricao }, maisRecentes.map((m) => m.codigo));
+  return ok({
+    recomendado,
+    modelos: maisRecentes.map((m) => {
+      const { descricao, exemplos } = orientacaoDoTreino(m.codigo);
+      return { codigo: m.codigo, versao: m.versao, titulo: m.titulo, descricao, exemplos, encontradas: encontradas.get(m.codigo) ?? [] };
+    }),
+  });
+});
 rota("GET", "/os/:id/pdf", ({ e, params }) => {
   const o = osPorId(e, params.id!);
   if (o.status !== "encerrada") throw conflito("os_nao_encerrada", "A OS ainda não foi encerrada");
@@ -1350,7 +1362,18 @@ rota("GET", "/modelos-apr/:codigo", ({ e, params }) => {
   const codigo = decodeURIComponent(params.codigo!);
   const versoes = e.modelos.filter((m) => m.codigo === codigo).sort((a, b) => b.versao - a.versao);
   if (versoes.length === 0) throw naoEncontrado("Modelo não encontrado");
-  return ok({ codigo, titulo: versoes[0]!.titulo, arquivado_em: null, versoes: versoes.map((m) => resumoDoModelo(e, m)) });
+  const { palavrasChave, ...orientacao } = orientacaoDoTreino(codigo);
+  return ok({
+    codigo,
+    titulo: versoes[0]!.titulo,
+    arquivado_em: null,
+    orientacao: { codigo, ...orientacao, palavras_chave: palavrasChave, atualizada_em: null },
+    versoes: versoes.map((m) => resumoDoModelo(e, m)),
+  });
+});
+// A orientação, como os modelos, só o admin escreve.
+rota("PUT", "/modelos-apr/:codigo/orientacao", () => {
+  throw proibido();
 });
 rota("GET", "/modelos-apr/:codigo/versoes/:versao", ({ e, params }) => {
   const codigo = decodeURIComponent(params.codigo!);
@@ -1441,19 +1464,19 @@ rota("POST", "/eventos", ({ e, eu, corpo, agora }) => ok(processarEventos(e, eu,
 
 // ---- Catálogo de serviço (só leitura) ----------------------------------------------------------------------------
 
-rota("GET", "/catalogo/servicos", ({ e, q }) => {
+rota("GET", "/catalogo/servicos", ({ q }) => {
   const pag = paginacao(q);
   const semMateriais = booleano(q.sem_materiais, "sem_materiais");
   if (q.material_id && !REGEX_UUID.test(q.material_id)) throw invalido("validacao", "material_id: Identificador inválido");
-  const todos = catalogoDe(e)
+  const todos = catalogoDe()
     .filter((s) => !q.busca || contem([s.codigo, s.descricao], q.busca))
     .filter((s) => !semMateriais || s.materiais.length === 0)
     .filter((s) => !q.material_id || s.materiais.some((m) => m.material_id === q.material_id));
   return ok({ servicos: todos.slice(pag.de, pag.de + pag.tamanho), ...meta(pag, todos.length) });
 });
 
-rota("GET", "/catalogo/servicos/:codigo", ({ e, params }) => {
-  const s = catalogoDe(e).find((x) => x.codigo === params.codigo);
+rota("GET", "/catalogo/servicos/:codigo", ({ params }) => {
+  const s = catalogoDe().find((x) => x.codigo === params.codigo);
   if (!s) throw naoEncontrado("Serviço não encontrado");
   return ok(s);
 });

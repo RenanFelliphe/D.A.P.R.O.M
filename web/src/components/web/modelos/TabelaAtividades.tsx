@@ -12,24 +12,16 @@ interface TabelaAtividadesProps {
   tamanho: number;
   total: number;
   busca?: string;
-  semModelo: boolean;
-  /** Só as atividades ligadas a este modelo. */
-  modelo?: string;
-  /** Códigos de modelo com versão publicada. */
-  modelos: string[];
   podeEditar: boolean;
 }
 
-/** Tabela "atividade (código do plano do SAP) → modelo de APR", com busca, filtros por modelo e "sem modelo", e edição. */
-export function TabelaAtividades({ atividades, pagina, tamanho, total, busca, semModelo, modelo, modelos, podeEditar }: TabelaAtividadesProps) {
-  const consulta = { busca, sem_modelo: semModelo ? "true" : undefined, modelo };
-  // o filtro pode apontar para um modelo que não está mais publicado (link antigo): mantém a opção
-  const opcoesDoFiltro = modelo && !modelos.includes(modelo) ? [modelo, ...modelos] : modelos;
+/** Tabela das atividades (código do plano do SAP e descrição do serviço do catálogo), com busca e edição. */
+export function TabelaAtividades({ atividades, pagina, tamanho, total, busca, podeEditar }: TabelaAtividadesProps) {
+  const consulta = { busca };
   return (
     <div className="stack g16">
       <Notice tone="al" icon="info">
-        Os códigos e o critério de bloqueio da carga inicial são provisórios até a Segurança do Trabalho validar: o plano de manutenção está em revisão e os
-        códigos vão mudar. Atividades que o SAP trouxe e ainda não têm modelo aparecem em destaque.
+        Os códigos da carga inicial são provisórios até a Segurança do Trabalho validar: o plano de manutenção está em revisão e os códigos vão mudar.
       </Notice>
       <div className="row between wrap" style={{ alignItems: "flex-end" }}>
         <form method="get" action={rotas.web.atividades} className="filtros-lista">
@@ -37,48 +29,32 @@ export function TabelaAtividades({ atividades, pagina, tamanho, total, busca, se
             <label htmlFor="busca-atividade">Buscar</label>
             <input id="busca-atividade" name="busca" className="input" defaultValue={busca} placeholder="Código ou descrição" />
           </div>
-          <div className="field">
-            <label htmlFor="modelo-atividade">Modelo de APR</label>
-            <select id="modelo-atividade" name="modelo" className="select" defaultValue={modelo ?? ""}>
-              <option value="">Todos</option>
-              {opcoesDoFiltro.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          <label className="row g6 small" style={{ height: 36 }}>
-            <input type="checkbox" name="sem_modelo" value="true" defaultChecked={semModelo} />
-            Só sem modelo
-          </label>
           <button type="submit" className="btn btn-line btn-sm" style={{ height: 36 }}>
             Filtrar
           </button>
         </form>
-        {podeEditar && <NovaAtividade modelos={modelos} />}
+        {podeEditar && <NovaAtividade />}
       </div>
       <Panel style={{ gap: 12 }}>
         <TableWrap>
           <table className="tb">
-            <caption className="sr">Atividades e o modelo de APR de cada uma</caption>
+            <caption className="sr">Atividades do plano de manutenção</caption>
             <thead>
               <tr>
                 <th style={{ width: 200 }}>Código do plano</th>
                 <th>Descrição</th>
-                <th style={{ width: 150 }}>Modelo de APR</th>
                 {podeEditar && <th style={{ width: 170 }} />}
               </tr>
             </thead>
             <tbody>
               {atividades.length === 0 ? (
                 <tr>
-                  <td colSpan={podeEditar ? 4 : 3} className="muted">
-                    {semModelo ? "Nenhuma atividade sem modelo." : modelo ? `Nenhuma atividade ligada ao ${modelo}.` : "Nenhuma atividade encontrada."}
+                  <td colSpan={podeEditar ? 3 : 2} className="muted">
+                    Nenhuma atividade encontrada.
                   </td>
                 </tr>
               ) : (
-                atividades.map((a) => <LinhaAtividade key={a.codigo} atividade={a} modelos={modelos} podeEditar={podeEditar} />)
+                atividades.map((a) => <LinhaAtividade key={a.codigo} atividade={a} podeEditar={podeEditar} />)
               )}
             </tbody>
           </table>

@@ -68,7 +68,7 @@ export const OS_EM_EXECUCAO_DE_COLEGA = idTreino("", 5);
 export const OS_ENCERRADA_PELO_TECNICO = idTreino("", 6);
 export const OS_ENCERRADA_DE_COLEGA = idTreino("", 7);
 export const OS_CANCELADA = idTreino("", 8);
-/** Liberada sem modelo de APR mapeado: o técnico escolhe o modelo na etapa 1. */
+/** Liberada sem atividade do catálogo (sem lista de materiais); o modelo da APR o técnico escolhe, como em toda OS. */
 export const OS_SEM_MODELO = idTreino("", 9);
 
 /** Endereços da API fictícia no navegador (o handler `app/api/[...caminho]` atende). */

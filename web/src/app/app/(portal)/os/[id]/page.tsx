@@ -29,7 +29,6 @@ import { LinhaDoTempo } from "@/components/web/detalhe/LinhaDoTempo";
 import { CicloDaOs } from "@/components/web/preventivas/CicloDaOs";
 import { carregarDetalhe, carregarHistorico } from "@/data/detalhe";
 import { api, usuarioAtual } from "@/lib/api";
-import type { ModeloResumo } from "@/lib/apr";
 import { aprAprovadaDisponivel, execucaoAberta, type DetalheDaOs as DetalheDoCampo } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
 import { ehAdmin, ehSupervisor, equipesDoSupervisor, rotuloDoStatus, type Equipe } from "@/lib/tipos";
@@ -62,15 +61,9 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   // As ações de campo e o card da APR exigida usam os tipos do técnico, que são um recorte do detalhe completo.
   const campo = detalhe as unknown as DetalheDoCampo;
   const aberta = execucaoAberta(campo.execucoes);
-  // Versão publicada mais recente do modelo da atividade (a lista vem por código e versão decrescente).
-  const codigoDoModelo = os.modelo_apr_codigo ?? null;
-  const modelo =
-    executa && codigoDoModelo
-      ? ((await api<{ modelos: ModeloResumo[] }>("/modelos-apr", { consulta: { codigo: codigoDoModelo, publicados: true } })).modelos[0] ?? null)
-      : null;
   const painelDeCampo = executa && (
     <>
-      <AprExigidaCard modelo={modelo} codigoDoModelo={codigoDoModelo} aprs={campo.aprs} status={os.status} />
+      <AprExigidaCard aprs={campo.aprs} status={os.status} />
       <AcoesDaOs
         os={campo.os}
         usuarioId={usuario.id}

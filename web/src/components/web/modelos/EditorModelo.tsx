@@ -313,7 +313,7 @@ export function EditorModelo({ modelo, temPublicada }: { modelo: ModeloCompleto;
       <Notice tone="info" icon="info">
         {temPublicada
           ? `Você está editando o rascunho da v${modelo.versao}. A versão em uso continua valendo para as APRs novas até a publicação; as APRs já preenchidas ficam ligadas à versão que usaram.`
-          : "Modelo novo, ainda em rascunho: o técnico só o vê depois da publicação. Depois de publicar, ligue as atividades dele na aba Atividades para que as OS dessas atividades o usem."}
+          : "Modelo novo, ainda em rascunho: o técnico só o vê depois da publicação. Escreva a orientação acima para o sistema recomendá-lo nas OS que combinam com ele."}
       </Notice>
 
       {erro && (

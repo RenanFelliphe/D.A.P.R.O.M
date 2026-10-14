@@ -315,3 +315,89 @@
 .rb-blq h2 {
   color: #8E1F17
 }
+
+/*
+ * Janela das telas de campo (`JanelaSobreposta`): usa a aparência da `.dlg`, mas é uma camada comum, abaixo do tutorial
+ * do treino (`.tr-roteiro` 80, `.tr-raiz` 90), que continua clicável sobre ela.
+ */
+.janela-fundo {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(23, 33, 43, .5)
+}
+
+.janela {
+  display: flex;
+  flex-direction: column;
+  background: #fff
+}
+
+.janela .dlg-corpo {
+  min-height: 0
+}
+
+/* Escolha do modelo da APR: a janela com todos os modelos e o recomendado (pela leitura da OS) em destaque. */
+.dlg.dlg-modelos {
+  width: min(820px, calc(100vw - 32px))
+}
+
+.modelos-apr {
+  display: grid;
+  gap: 12px
+}
+
+.modelo-opcao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px
+}
+
+.modelo-opcao.recomendado {
+  background: var(--tint);
+  border: 2px solid var(--brand)
+}
+
+.modelo-opcao h3 {
+  font-size: 16px;
+  font-weight: 600
+}
+
+.modelo-opcao p {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink2)
+}
+
+.modelo-opcao ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink3)
+}
+
+.modelo-opcao .achado {
+  font-size: 13px;
+  color: var(--ink3)
+}
+
+.modelo-opcao .achado mark {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--mark);
+  color: var(--ink)
+}
+
+.modelo-opcao-acoes {
+  display: flex;
+  justify-content: flex-end
+}

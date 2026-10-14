@@ -24,7 +24,7 @@ const SERIES: SerieDoGrafico[] = [
 const EQUIPES_VISIVEIS = 8;
 const nomeDaUnidade = { dia: "dia", semana: "semana", mes: "mês" } as const;
 
-/** Respondidas (com a comparação), bloqueadas e a taxa, alertas registrados e as APRs sem modelo ligado à atividade. */
+/** Respondidas (com a comparação), bloqueadas e a taxa, e os alertas registrados. */
 function Contadores({ resumo, rotuloAnterior }: { resumo: ResumoDasAprs; rotuloAnterior: string }) {
   const { totais, anterior } = resumo;
   const taxaAnterior = anterior.aprs > 0 ? ` · ${rotuloAnterior}: ${porcentagem(anterior.bloqueadas, anterior.aprs)}%` : "";
@@ -51,19 +51,6 @@ function Contadores({ resumo, rotuloAnterior }: { resumo: ResumoDasAprs; rotuloA
           sub="respostas que avisam sem bloquear"
         />
       )}
-      <Kpi
-        label="Modelo escolhido pelo técnico"
-        marker={<Icon name="list" size={13} style={{ color: totais.sem_modelo_ligado > 0 ? "var(--al)" : "var(--ink3)" }} />}
-        value={totais.sem_modelo_ligado}
-        sub={
-          totais.sem_modelo_ligado > 0 ? (
-            <Link href={`${rotas.web.atividades}?sem_modelo=true`}>OS sem atividade ligada a um modelo</Link>
-          ) : (
-            "toda OS tinha o modelo ligado"
-          )
-        }
-        subStyle={totais.sem_modelo_ligado > 0 ? { fontWeight: 500 } : { color: "var(--enc)", fontWeight: 500 }}
-      />
     </div>
   );
 }

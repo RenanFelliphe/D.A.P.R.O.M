@@ -116,7 +116,7 @@ export function FormularioNovoModelo({ sugestao, existentes, modelos }: Formular
           {copiarDe
             ? `O rascunho começa com os itens, riscos, medidas e o PAE da versão em uso do ${copiarDe}; o ${copiarDe} não muda.`
             : "O rascunho começa vazio: os itens de verificação, os riscos e as medidas são adicionados no editor."}{" "}
-          O técnico só vê o modelo depois de publicado, e as OS só o usam quando a atividade delas estiver ligada a ele na aba Atividades.
+          O técnico só vê o modelo depois de publicado. Escreva a orientação na tela do modelo: é com ela que o técnico escolhe e que o sistema o recomenda.
         </Notice>
         {erro && (
           <Notice tone="blq" icon="alert">

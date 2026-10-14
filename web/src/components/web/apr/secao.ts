@@ -8,7 +8,7 @@ import { ehAdmin, type Usuario } from "@/lib/tipos";
  */
 export const editaModelos = (u: Pick<Usuario, "perfil">) => ehAdmin(u);
 
-/** Onde o modelo é usado (OS abertas de todas as equipes): de quem enxerga todas as OS. */
+/** Onde o modelo é usado (APRs de todas as equipes): de quem enxerga todas as OS. */
 export const veTodasAsEquipes = (u: Pick<Usuario, "perfil">) => ehAdmin(u);
 
 /** As abas da seção APR, também listadas como dropdown no menu. */

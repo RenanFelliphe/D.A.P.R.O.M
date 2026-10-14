@@ -130,7 +130,7 @@ export function FormularioApoio(p: FormularioApoioProps) {
       <Field
         label={
           <>
-            Atividade <Req>· define o modelo de APR</Req>
+            Atividade <Req>· define a lista de materiais</Req>
           </>
         }
         htmlFor={id("at")}
@@ -141,7 +141,6 @@ export function FormularioApoio(p: FormularioApoioProps) {
           {p.atividades.map((a) => (
             <option key={a.codigo} value={a.codigo}>
               {a.descricao}
-              {a.modelo_apr_codigo ? "" : " (sem modelo de APR)"}
             </option>
           ))}
         </select>

@@ -1122,11 +1122,6 @@
   color: var(--ink3)
 }
 
-.cm-falta {
-  color: var(--al);
-  font-weight: 600
-}
-
 details.excluidos > summary {
   cursor: pointer;
   font-size: 15px;

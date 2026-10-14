@@ -65,9 +65,9 @@ const itensDe = (linhas: Linha[]): MaterialDoServico[] =>
     return { material_id: m.id, codigo: m.codigo, descricao: m.descricao, unidade: m.unidade, categoria: m.categoria, ativo: m.ativo, quantidade, observacao: observacao ?? null, obrigatorio: obrigatorio ?? false, ordem: i + 1 };
   });
 
-/** Os serviços do catálogo de treino, por código, com o modelo de APR que cada OS de treino usa (`modeloDe`). */
-export function servicosDoTreino(modeloDe: (codigo: string) => string | null): ServicoDoCatalogo[] {
-  return SERVICOS.map((s) => ({ codigo: s.codigo, descricao: s.descricao, modelo_apr_codigo: modeloDe(s.codigo), provisorio: false, materiais: itensDe(s.linhas) }));
+/** Os serviços do catálogo de treino, por código. */
+export function servicosDoTreino(): ServicoDoCatalogo[] {
+  return SERVICOS.map((s) => ({ codigo: s.codigo, descricao: s.descricao, provisorio: false, materiais: itensDe(s.linhas) }));
 }
 
 /** Os materiais do catálogo de treino, com quantos serviços usam cada um. */

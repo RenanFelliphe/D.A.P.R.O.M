@@ -18,14 +18,14 @@ interface Linha {
   tipo: "" | "corretiva" | "preventiva";
   centro: string;
   status: "liberada" | "criada";
-  atividade: "qualquer" | "com_modelo" | "sem_modelo";
+  atividade: "qualquer" | "cadastrada" | "nova";
 }
 
 const nova = (chave: number, quantidade: number): Linha => ({ chave, quantidade, tipo: "", centro: "", status: "liberada", atividade: "qualquer" });
 
 /**
  * Criação aleatória em lotes (`POST /sap-simulado/gestao/ordens/aleatorias`): cada linha pede uma quantidade, com tipo, centro de
- * trabalho, status (liberada ou criada) e atividade (com modelo de APR, sem modelo ou qualquer uma). O início programado é sorteado nos
+ * trabalho, status (liberada ou criada) e atividade (cadastrada no DAPROM, nova ou qualquer uma). O início programado é sorteado nos
  * próximos N dias. No máximo 200 por envio: "10 preventivas liberadas para Serviços Especiais e 5 corretivas criadas para Instrumentação"
  * sai num envio só.
  */
@@ -40,7 +40,7 @@ export function FormularioOrdensAleatorias({ catalogo, aoConcluir }: { catalogo:
 
   const total = linhas.reduce((soma, l) => soma + (Number.isFinite(l.quantidade) ? l.quantidade : 0), 0);
   const excede = total > LIMITE;
-  const temModelo = catalogo.atividades.some((a) => a.com_modelo);
+  const temCadastrada = catalogo.atividades.length > 0;
   const mudar = (chave: number, parte: Partial<Linha>) => setLinhas((atual) => atual.map((l) => (l.chave === chave ? { ...l, ...parte } : l)));
 
   async function enviar(evento: FormEvent) {
@@ -69,7 +69,7 @@ export function FormularioOrdensAleatorias({ catalogo, aoConcluir }: { catalogo:
 
   return (
     <form onSubmit={enviar} className="stack g12">
-      <p className="small">Serviços, locais, números e datas são inventados. A atividade “com modelo” sai das do DAPROM que têm modelo de APR; “sem modelo” faz a OS entrar com o aviso “Atividade sem modelo de APR”.</p>
+      <p className="small">Serviços, locais, números e datas são inventados. A atividade “do DAPROM” é sorteada entre as cadastradas lá; a “nova” é um código que o DAPROM não conhece, e a leitura o cadastra.</p>
       <div className="stack g8">
         {linhas.map((l, i) => (
           <div key={l.chave} className="sim-lote sim-lote-ordem">
@@ -107,10 +107,10 @@ export function FormularioOrdensAleatorias({ catalogo, aoConcluir }: { catalogo:
               <span className="small">Atividade</span>
               <select className="input" value={l.atividade} onChange={(e) => mudar(l.chave, { atividade: e.target.value as Linha["atividade"] })} aria-label={`Atividade da linha ${i + 1}`}>
                 <option value="qualquer">Qualquer</option>
-                <option value="com_modelo" disabled={!temModelo}>
-                  Com modelo
+                <option value="cadastrada" disabled={!temCadastrada}>
+                  Do DAPROM (cadastrada)
                 </option>
-                <option value="sem_modelo">Sem modelo</option>
+                <option value="nova">Nova (o DAPROM não conhece)</option>
               </select>
             </label>
             <button type="button" className="ibtn del" aria-label={`Remover a linha ${i + 1}`} disabled={linhas.length === 1} onClick={() => setLinhas((atual) => atual.filter((x) => x.chave !== l.chave))}>

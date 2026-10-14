@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/Button";
 import { BotaoExcluir } from "@/components/web/BotaoExcluir";
 import type { Atividade } from "@/data/modelos";
 import { chamar } from "@/lib/cliente-api";
-import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
 
 /** `PUT /atividades/{codigo}`: o código do plano pode ter pontos, barras e espaços (`8.7.2/8.7.3`), então vai codificado. */
@@ -16,30 +14,23 @@ export const caminhoDaAtividade = (codigo: string) => `/atividades/${encodeURICo
 
 interface LinhaAtividadeProps {
   atividade: Atividade;
-  /** Códigos de modelo com versão publicada (a `api` só aceita esses). */
-  modelos: string[];
   podeEditar: boolean;
 }
 
-/** Linha da tabela "atividade → modelo"; para quem edita (admin), edita descrição, modelo e a marca de provisório no lugar. */
-export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividadeProps) {
+/** Linha da tabela de atividades; para quem edita (admin), edita a descrição e a marca de provisório no lugar. */
+export function LinhaAtividade({ atividade, podeEditar }: LinhaAtividadeProps) {
   const router = useRouter();
   const exibirAviso = useToast();
   const [editando, setEditando] = useState(false);
   const [descricao, setDescricao] = useState(atividade.descricao);
-  const [modelo, setModelo] = useState(atividade.modelo_apr_codigo ?? "");
   const [provisorio, setProvisorio] = useState(atividade.provisorio);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-
-  // o modelo atual pode ter deixado de ser publicado (ou nunca ter sido): mantém a opção para não perdê-lo sem querer
-  const opcoes = atividade.modelo_apr_codigo && !modelos.includes(atividade.modelo_apr_codigo) ? [atividade.modelo_apr_codigo, ...modelos] : modelos;
 
   function cancelar() {
     setEditando(false);
     setErro(null);
     setDescricao(atividade.descricao);
-    setModelo(atividade.modelo_apr_codigo ?? "");
     setProvisorio(atividade.provisorio);
   }
 
@@ -47,7 +38,7 @@ export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividad
     setOcupado(true);
     setErro(null);
     try {
-      await chamar("PUT", caminhoDaAtividade(atividade.codigo), { descricao: descricao.trim(), modelo_apr_codigo: modelo || null, provisorio });
+      await chamar("PUT", caminhoDaAtividade(atividade.codigo), { descricao: descricao.trim(), provisorio });
       exibirAviso(`Atividade ${atividade.codigo} salva.`);
       setEditando(false);
       router.refresh();
@@ -66,7 +57,7 @@ export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividad
 
   if (!editando) {
     return (
-      <tr className={atividade.modelo_apr_codigo ? undefined : "al"}>
+      <tr>
         <td className="mono">
           {atividade.codigo}
           {atividade.provisorio && (
@@ -79,9 +70,6 @@ export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividad
           )}
         </td>
         <td>{atividade.descricao}</td>
-        <td className="mono" style={{ color: atividade.modelo_apr_codigo ? "var(--brand)" : "var(--blq)", fontWeight: 600 }}>
-          {atividade.modelo_apr_codigo ? <Link href={rotas.web.modelo(atividade.modelo_apr_codigo)}>{atividade.modelo_apr_codigo}</Link> : "Sem modelo"}
-        </td>
         {podeEditar && (
           <td className="acoes-linha">
             <Button variant="line" sm style={{ height: 32 }} onClick={() => setEditando(true)}>
@@ -109,16 +97,6 @@ export function LinhaAtividade({ atividade, modelos, podeEditar }: LinhaAtividad
             {erro}
           </div>
         )}
-      </td>
-      <td>
-        <select className="select" aria-label="Modelo de APR" value={modelo} onChange={(e) => setModelo(e.target.value)}>
-          <option value="">Sem modelo</option>
-          {opcoes.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
       </td>
       <td className="acoes-linha">
         <span className="row g6" style={{ justifyContent: "flex-end", alignItems: "flex-start" }}>

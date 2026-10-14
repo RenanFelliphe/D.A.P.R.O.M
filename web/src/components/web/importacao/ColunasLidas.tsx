@@ -5,7 +5,7 @@ import { Panel } from "@/components/web/Panel";
 const obrigatorias = ["Ordem", "Tipo de ordem (YBA1 / YBA2 ou corretiva / preventiva)", "Título (texto breve)", "Centro de trabalho → equipe", "Local de instalação", "Início programado"];
 const opcionais = [
   "Nota e tipo de atividade",
-  "Código da atividade (define o modelo de APR)",
+  "Código da atividade (o serviço do catálogo, com a lista de materiais)",
   "Descrição, materiais e ferramentas",
   "Endereço, plus code e cliente do local",
   "Equipamento e prioridade",

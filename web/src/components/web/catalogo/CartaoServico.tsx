@@ -1,19 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import type { ServicoDoCatalogo } from "@/lib/catalogo";
-import { rotas } from "@/lib/rotas";
 import { EditorDoServico } from "./EditorDoServico";
 import { ListaDoServico } from "./ListaDoServico";
 
-/**
- * Um serviço do catálogo: o código e a descrição da atividade, o modelo de APR que ela usa e a lista do que o serviço
- * leva para o campo. O admin edita a lista aqui mesmo.
- */
+/** Um serviço do catálogo: o código e a descrição da atividade e a lista do que o serviço leva para o campo. O admin edita a lista aqui mesmo. */
 export function CartaoServico({ servico, podeEditar }: { servico: ServicoDoCatalogo; podeEditar: boolean }) {
   const [editando, setEditando] = useState(false);
   const total = servico.materiais.length;
@@ -35,18 +30,7 @@ export function CartaoServico({ servico, podeEditar }: { servico: ServicoDoCatal
           </span>
           <h2 style={{ fontSize: 15.5, fontWeight: 600, overflowWrap: "anywhere" }}>{servico.descricao}</h2>
           <span className="small" style={{ color: "var(--ink4)" }}>
-            {servico.modelo_apr_codigo ? (
-              podeEditar ? (
-                <>
-                  APR: <Link href={rotas.web.modelo(servico.modelo_apr_codigo)}>{servico.modelo_apr_codigo}</Link>
-                </>
-              ) : (
-                `APR: ${servico.modelo_apr_codigo}`
-              )
-            ) : (
-              "Sem modelo de APR"
-            )}{" "}
-            · {total === 0 ? "nenhum item" : total === 1 ? "1 item" : `${total} itens`}
+            {total === 0 ? "Nenhum item" : total === 1 ? "1 item" : `${total} itens`}
           </span>
         </div>
         {podeEditar && !editando && (

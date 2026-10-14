@@ -1,6 +1,9 @@
 /**
  * APR do técnico: tipos do modelo (da `api`), o rascunho que fica no navegador até a APR ser concluída e as regras
- * puras sobre ele (perguntas, evidência faltando, payload do evento).
+ * puras sobre ele (perguntas, evidência faltando, troca de modelo, payload do evento).
+ *
+ * O modelo é sempre o técnico quem escolhe (`GET /os/{id}/modelos-apr` traz os modelos e o recomendado pela leitura da OS),
+ * e ele pode trocá-lo no meio do preenchimento: as perguntas iguais guardam a resposta (`trocarModelo`).
  *
  * O técnico não sabe quais itens são eliminatórios: o modelo que ele recebe não traz o tipo, a resposta que bloqueia
  * nem a evidência do item. Quem diz se a APR passa é a `api` (`POST /aprs/avaliar`), depois que tudo foi respondido;
@@ -61,17 +64,6 @@ export interface Avaliacao {
   materiaisFaltando: MaterialFaltando[];
 }
 
-/** Resumo de um modelo (`GET /modelos-apr`). */
-export interface ModeloResumo {
-  id: string;
-  codigo: string;
-  versao: number;
-  titulo: string;
-  data_documento: string | null;
-  publicado_em: string | null;
-  itens_total: number;
-}
-
 /** Modelo completo (`GET /modelos-apr/{codigo}/versoes/{versao}`); o PAE não é usado aqui. */
 export interface ModeloCompleto {
   id: string;
@@ -82,6 +74,27 @@ export interface ModeloCompleto {
   publicado_em: string | null;
   riscos: RiscoDoModelo[];
   itens: ItemDoModelo[];
+}
+
+/** Um modelo na janela de escolha (`GET /os/{id}/modelos-apr`): a versão publicada mais recente, com a orientação. */
+export interface ModeloParaEscolher {
+  codigo: string;
+  versao: number;
+  titulo: string;
+  /** Que tipos de serviço o modelo atende (escrita pelo admin). */
+  descricao: string;
+  exemplos: string[];
+  /** As palavras-chave do modelo achadas na OS, como a OS as escreveu; vazio quando nenhuma. */
+  encontradas: string[];
+}
+
+/**
+ * A escolha do modelo da APR de uma OS: quem escolhe é sempre o técnico. `recomendado` é o modelo que mais combinou com
+ * a leitura da OS (nulo quando nenhum combinou ou quando mais de um empatou); a tela pede para conferir.
+ */
+export interface EscolhaDoModelo {
+  recomendado: string | null;
+  modelos: ModeloParaEscolher[];
 }
 
 /** O que do modelo o rascunho guarda: a versão exata que está sendo respondida. */
@@ -307,6 +320,80 @@ export function removerFotoDoMaterial(r: RascunhoApr, materialId: string): Rascu
 export function levarOsOpcionais(r: RascunhoApr, lista: MaterialDoServico[]): RascunhoApr {
   const novos = Object.fromEntries(lista.filter((m) => !m.obrigatorio && !conferenciaDoMaterial(r, m.material_id)).map((m) => [m.material_id, { levou: true }]));
   return { ...r, materiais: { ...r.materiais, ...novos } };
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Troca do modelo no meio do preenchimento
+// ---------------------------------------------------------------------------------------------------------------
+
+/** Texto comparável entre modelos: sem acento, maiúsculas nem pontuação. */
+const comparavel = (texto: string) =>
+  texto
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+const chaveDoRisco = (risco: RiscoDoModelo) => comparavel(risco.nome);
+
+/** Pergunta "igual" em outro modelo: mesma seção e mesmo texto; na medida preventiva, também o mesmo risco. */
+function chaveDaPergunta(modelo: ModeloDoRascunho, item: ItemDoModelo) {
+  const risco = item.risco_id ? modelo.riscos.find((r) => r.id === item.risco_id) : undefined;
+  return `${item.secao}|${risco ? chaveDoRisco(risco) : ""}|${comparavel(item.texto)}`;
+}
+
+/** Os riscos do modelo novo que têm o nome de um risco marcado no atual: já vêm marcados na troca. */
+export function riscosEquivalentes(atual: ModeloDoRascunho, marcados: string[], novo: ModeloDoRascunho): string[] {
+  const nomes = new Set(atual.riscos.filter((r) => marcados.includes(r.id)).map(chaveDoRisco));
+  return novo.riscos.filter((r) => nomes.has(chaveDoRisco(r))).map((r) => r.id);
+}
+
+export interface TrocaDeModelo {
+  rascunho: RascunhoApr;
+  /** Respostas que continuam: a pergunta existe igual no modelo novo. */
+  mantidas: number;
+  /** Respostas que se perdem: a pergunta não existe no modelo novo (ou é "NA" onde ele não aceita NA). */
+  perdidas: number;
+  /** Perguntas do modelo novo que ficam em branco. */
+  emBranco: number;
+}
+
+/**
+ * Troca o modelo do rascunho no meio do preenchimento. As perguntas iguais nos dois modelos (`chaveDaPergunta`) guardam a
+ * resposta e a observação; as demais ficam em branco. `riscos` são os riscos marcados no modelo novo (o técnico confere na
+ * troca). A conferência dos materiais fica (é do serviço da OS, não do modelo); qualquer validação anterior é apagada, e o
+ * checklist volta para a primeira pergunta sem resposta.
+ */
+export function trocarModelo(r: RascunhoApr, novo: ModeloDoRascunho, riscos: string[]): TrocaDeModelo {
+  const anteriores = perguntasDe(r.modelo, r.riscos).filter((i) => r.respostas[i.id]);
+  const porChave = new Map(anteriores.map((i) => [chaveDaPergunta(r.modelo, i), r.respostas[i.id]!]));
+  const perguntas = perguntasDe(novo, riscos);
+  const respostas: Record<string, RespostaDoRascunho> = {};
+  for (const item of perguntas) {
+    const anterior = porChave.get(chaveDaPergunta(novo, item));
+    if (anterior && (anterior.resposta !== "na" || item.permite_na)) respostas[item.id] = anterior;
+  }
+  const mantidas = Object.keys(respostas).length;
+  const primeiraEmBranco = perguntas.findIndex((i) => !respostas[i.id]);
+  return {
+    rascunho: {
+      ...r,
+      modelo: novo,
+      riscos,
+      respostas,
+      fotos: {},
+      documentos: {},
+      indice: Math.max(0, primeiraEmBranco),
+      modo: primeiraEmBranco === -1 && perguntas.length > 0 ? "revisao" : "pergunta",
+      concluidaEm: null,
+      avaliacao: null,
+      assinaturas: {},
+    },
+    mantidas,
+    perdidas: anteriores.length - mantidas,
+    emBranco: perguntas.length - mantidas,
+  };
 }
 
 /** Tira da APR quem não está presente (o técnico logado sempre fica); se saiu o responsável, o técnico logado assume. */

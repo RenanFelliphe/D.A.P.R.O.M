@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -10,12 +9,11 @@ import { Kpi } from "@/components/web/Panel";
 import { agruparModelos, type ResumoModelo } from "@/data/modelos";
 import { api, usuarioAtual } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
-import type { Paginacao } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Modelos de APR" };
 
 /**
- * Aba Modelos: um cartão por modelo (versão em uso, rascunho, atividades e APRs), os totais e os modelos excluídos.
+ * Aba Modelos: um cartão por modelo (versão em uso, rascunho e APRs), os totais e os modelos excluídos.
  * O supervisor lê; o administrador cria, edita e exclui.
  */
 export default async function ModelosPage({ searchParams }: PageProps<"/web/apr/modelos">) {
@@ -26,15 +24,15 @@ export default async function ModelosPage({ searchParams }: PageProps<"/web/apr/
 
   const { usuario } = await usuarioAtual();
   const podeEditar = editaModelos(usuario);
-  const [ativos, arquivados, semModelo] = await Promise.all([
+  const [ativos, arquivados] = await Promise.all([
     api<{ modelos: ResumoModelo[] }>("/modelos-apr", { consulta: { tamanho: 200 } }),
     api<{ modelos: ResumoModelo[] }>("/modelos-apr", { consulta: { arquivados: true, tamanho: 200 } }),
-    api<Paginacao>("/atividades", { consulta: { sem_modelo: true, tamanho: 1 } }),
   ]);
   const grupos = agruparModelos(ativos.modelos);
   const excluidos = agruparModelos(arquivados.modelos);
   const emUso = grupos.filter((g) => g.emUso).length;
   const rascunhos = grupos.filter((g) => g.rascunho).length;
+  const aprs = grupos.reduce((soma, g) => soma + g.aprsTotal, 0);
 
   return (
     <>
@@ -60,12 +58,7 @@ export default async function ModelosPage({ searchParams }: PageProps<"/web/apr/
           sub={rascunhos > 0 ? "aguardam publicação" : "nenhum pendente"}
           subStyle={rascunhos > 0 ? { color: "var(--al)", fontWeight: 500 } : undefined}
         />
-        <Kpi
-          label="Atividades sem modelo"
-          value={semModelo.total}
-          sub={semModelo.total > 0 ? <Link href={`${rotas.web.atividades}?sem_modelo=true`}>ligar a um modelo</Link> : "todas ligadas"}
-          subStyle={semModelo.total > 0 ? { fontWeight: 500 } : { color: "var(--enc)", fontWeight: 500 }}
-        />
+        <Kpi label="APRs respondidas" value={aprs} sub="nos modelos em uso" />
         <Kpi label="Excluídos" value={excluidos.length} sub="guardados para o histórico" />
       </div>
 

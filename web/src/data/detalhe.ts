@@ -21,8 +21,6 @@ export interface OsDetalhe {
   tipo: "preventiva" | "corretiva";
   tipo_atividade: string | null;
   codigo_atividade: string | null;
-  /** Modelo de APR que a atividade da OS usa; nulo quando a atividade não está ligada a um modelo (o técnico escolhe). */
-  modelo_apr_codigo: string | null;
   titulo: string;
   descricao: string | null;
   equipamento: string | null;

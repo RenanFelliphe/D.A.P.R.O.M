@@ -51,6 +51,9 @@ export const rotuloDoCampo: Record<string, string> = {
   supervisor_id: "Supervisor",
   centro_trabalho: "Centro de trabalho",
   descricao: "Descrição",
+  exemplos: "Exemplos de serviço",
+  palavras_chave: "Palavras-chave",
+  /** Só em registros antigos: a atividade escolhia o modelo da APR. */
   modelo_apr_codigo: "Modelo de APR",
   provisorio: "Provisória",
   motivo: "Motivo",
@@ -58,6 +61,7 @@ export const rotuloDoCampo: Record<string, string> = {
   versao: "Versão",
   copiar_de: "Copiado de",
   resultado: "Resultado",
+  /** Só em registros antigos: excluir o modelo passava as atividades dele para um substituto. */
   atividades_movidas: "Atividades movidas",
   substituto: "Modelo substituto",
   criadas: "Criadas",

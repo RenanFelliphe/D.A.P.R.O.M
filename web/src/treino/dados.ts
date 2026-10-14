@@ -60,7 +60,6 @@ export interface OsReg {
   tipo: "preventiva" | "corretiva";
   tipo_atividade: string | null;
   codigo_atividade: string | null;
-  modelo_apr_codigo: string | null;
   titulo: string;
   descricao: string | null;
   equipamento: string | null;
@@ -383,7 +382,6 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: "QMT-01 - Quadro de média tensão",
       tipo_atividade: "Inspeção termográfica",
       codigo_atividade: "PREV-TERMO-MT",
-      modelo_apr_codigo: MODELO_GUIADO.codigo,
       plano_manutencao: "PM-TRN-12M",
       item_manutencao: "IM-0001",
       prioridade: "Alto",
@@ -402,7 +400,6 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: "Poste P-114 - Cruzeta",
       tipo_atividade: "Manutenção em rede aérea",
       codigo_atividade: "COR-REDE-ALT",
-      modelo_apr_codigo: MODELO_BLOQUEIO.codigo,
       prioridade: "Alto",
       descricao:
         "Isolador de pino da fase B trincado, apontado pela inspeção de rotina. Trabalho em altura em poste de concreto, com rede de 13,8 kV na vizinhança: exige desligamento programado ou isolação da rede, cinto paraquedista e talabarte inspecionados.",
@@ -420,7 +417,6 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: "TR-02 - Transformador de potência",
       tipo_atividade: "Manutenção preventiva de transformador",
       codigo_atividade: "PREV-TRAFO",
-      modelo_apr_codigo: MODELO_GUIADO.codigo,
       plano_manutencao: "PM-TRN-06M",
       item_manutencao: "IM-0007",
       prioridade: "Muito alto",
@@ -438,7 +434,6 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: "RL-07 - Religador",
       tipo_atividade: "Manutenção em rede aérea",
       codigo_atividade: "COR-REDE-ALT",
-      modelo_apr_codigo: MODELO_BLOQUEIO.codigo,
       prioridade: "Alto",
       descricao: "A primeira APR foi bloqueada (talabarte com costura rompida). A OS volta à fila como pendente: refaça a APR depois de trocar o equipamento.",
       status_sap: "LIB",
@@ -454,7 +449,6 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: "CH-12 - Chave seccionadora",
       tipo_atividade: "Manutenção preventiva de chaves",
       codigo_atividade: "PREV-CHAVE",
-      modelo_apr_codigo: MODELO_GUIADO.codigo,
       plano_manutencao: "PM-TRN-12M",
       item_manutencao: "IM-0003",
       prioridade: "Médio",
@@ -472,7 +466,6 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: "PR-01 - Para-raios",
       tipo_atividade: "Inspeção visual",
       codigo_atividade: "PREV-VISUAL",
-      modelo_apr_codigo: MODELO_GUIADO.codigo,
       plano_manutencao: "PM-TRN-12M",
       item_manutencao: "IM-0011",
       prioridade: "Baixo",
@@ -490,7 +483,6 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: "Luminárias L-01 a L-08",
       tipo_atividade: "Iluminação pública",
       codigo_atividade: "COR-ILUM",
-      modelo_apr_codigo: MODELO_GUIADO.codigo,
       prioridade: "Baixo",
       descricao: "Oito luminárias apagadas na praça central.",
       status_sap: "ENC",
@@ -506,7 +498,6 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: null,
       tipo_atividade: "Poda",
       codigo_atividade: "COR-PODA",
-      modelo_apr_codigo: null,
       prioridade: "Médio",
       descricao: "Ordem aberta em duplicidade.",
       status_sap: "CANC",
@@ -526,9 +517,8 @@ function criarOs(agora: Date): OsReg[] {
       equipamento: "Iluminação externa",
       tipo_atividade: "Iluminação",
       codigo_atividade: null,
-      modelo_apr_codigo: null,
       prioridade: "Baixo",
-      descricao: "Sem modelo de APR mapeado para a atividade: o técnico escolhe o modelo na etapa 1 da APR.",
+      descricao: "Lâmpadas queimadas no pátio e na entrada da subestação. Trocar pelas de LED do almoxarifado e testar o fotocontrole.",
       status_sap: "LIB",
     },
   ];
@@ -540,7 +530,6 @@ function criarOs(agora: Date): OsReg[] {
     tipo: s.tipo,
     tipo_atividade: s.tipo_atividade ?? null,
     codigo_atividade: s.codigo_atividade ?? null,
-    modelo_apr_codigo: s.modelo_apr_codigo ?? null,
     titulo: s.titulo,
     descricao: s.descricao ?? null,
     equipamento: s.equipamento ?? null,

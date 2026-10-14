@@ -14,8 +14,8 @@ const LIVRE = "__livre__";
 
 /**
  * Cadastro manual e edição de uma ordem do SAP simulado (`POST` e `PATCH /sap-simulado/gestao/ordens`). O número vem sugerido e não muda
- * depois de criado; o status começa em `LIB IMPR` e aceita as opções prontas ou texto livre; o centro de trabalho e a atividade (que diz
- * se tem modelo de APR no DAPROM) saem de listas, e o local de instalação do catálogo ou digitado. Na edição, avisa o que o DAPROM fará.
+ * depois de criado; o status começa em `LIB IMPR` e aceita as opções prontas ou texto livre; o centro de trabalho e a atividade (as que
+ * o DAPROM já tem, ou outra digitada) saem de listas, e o local de instalação do catálogo ou digitado. Na edição, avisa o que o DAPROM fará.
  */
 export function FormularioOrdem({ ordem, catalogo, aoConcluir }: { ordem?: Ordem; catalogo: CatalogoDeOrdens; aoConcluir: () => void }) {
   const router = useRouter();
@@ -163,13 +163,13 @@ export function FormularioOrdem({ ordem, catalogo, aoConcluir }: { ordem?: Ordem
             <option value="">Sem atividade</option>
             {catalogo.atividades.map((a) => (
               <option key={a.codigo} value={a.codigo}>
-                {a.codigo} {a.com_modelo ? "· com modelo de APR" : "· sem modelo"}
+                {a.codigo} · {a.descricao}
               </option>
             ))}
             <option value={LIVRE}>Outra (digitar)…</option>
           </select>
           {atividadeEscolhida === LIVRE && <input className="input" aria-label="Código da atividade" value={atividade} onChange={(e) => setAtividade(e.target.value)} placeholder="Código da atividade" />}
-          {atividade && !atividadeDoCatalogo && <span className="small">Atividade que o DAPROM não conhece: a OS entra com o aviso “Atividade sem modelo de APR”.</span>}
+          {atividade && !atividadeDoCatalogo && <span className="small">Atividade que o DAPROM não conhece: a leitura a cadastra, com o título da ordem como descrição.</span>}
         </Field>
       </div>
       <div className="grade2">

@@ -76,7 +76,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "nova-apr",
     titulo: "Leia a OS e comece a APR",
     texto:
-      "A OS traz o local, os dados do SAP e as instruções do serviço, e diz qual modelo de APR a atividade exige: sem APR aprovada a execução não é liberada. Toque em “Nova APR” para preenchê-la.",
+      "A OS traz o local, os dados do SAP e as instruções do serviço. Sem APR aprovada a execução não é liberada. Toque em “Nova APR” para preenchê-la.",
     tarefa: "Toque em Nova APR.",
     alvo: "os-nova-apr",
     rota: exata(guiada.os),
@@ -86,11 +86,23 @@ export const passosDoTreino: PassoDoTreino[] = [
   },
   // ---- APR ----
   {
+    id: "apr-escolha",
+    titulo: "Escolha o modelo da APR",
+    texto: `A janela mostra todos os modelos de APR, cada um com os serviços que atende e exemplos. O sistema leu a OS e destacou a opção recomendada (aqui, o ${MODELO_GUIADO.codigo}), mas quem decide é você: confira se o modelo cobre o serviço e as condições do local e toque em “Selecionar”.`,
+    semAlvo: "Se a janela fechou, toque em “Escolher o modelo” (ou em “Trocar modelo”) para abri-la de novo.",
+    tarefa: "Selecione o modelo.",
+    alvo: "apr-modelo-recomendado",
+    rota: exata(guiada.apr),
+    ir: guiada.apr,
+    navegavel: true,
+    avanca: { aparece: "apr-riscos", rota: exata(guiada.checklist) },
+  },
+  {
     id: "apr-monte",
     titulo: "Monte a APR",
-    texto: `Confira o modelo (aqui, o ${MODELO_GUIADO.codigo}), marque os colegas presentes e os riscos da atividade: só as medidas dos riscos marcados viram perguntas. Depois toque em “Começar checklist”.`,
+    texto: "Marque os colegas presentes e os riscos da atividade: só as medidas dos riscos marcados viram perguntas. Se o modelo não servir, “Trocar modelo” abre a janela de novo (também dá para trocar no checklist). Depois toque em “Começar checklist”.",
     tarefa: "Toque em Começar checklist.",
-    alvo: "apr-modelo",
+    alvo: "apr-riscos",
     rota: exata(guiada.apr),
     ir: guiada.apr,
     navegavel: true,
@@ -205,7 +217,7 @@ export const passosDoTreino: PassoDoTreino[] = [
   {
     id: "bloqueio-nova-apr",
     titulo: "Uma APR de propósito errada",
-    texto: "Toque em “Nova APR”, monte do mesmo jeito e comece o checklist. Desta vez vamos responder uma pergunta de segurança do jeito que reprova.",
+    texto: `Toque em “Nova APR”, monte do mesmo jeito e comece o checklist. Aqui o serviço é no poste: confira se a recomendação é o ${MODELO_BLOQUEIO.codigo}, de trabalho em altura. Desta vez vamos responder uma pergunta de segurança do jeito que reprova.`,
     semAlvo: "Monte a APR como antes (modelo, participantes e riscos) e toque em “Começar checklist”.",
     tarefa: "Chegue ao checklist.",
     alvo: "os-nova-apr",

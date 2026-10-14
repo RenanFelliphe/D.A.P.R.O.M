@@ -16,8 +16,6 @@ export interface NoDaprom {
   situacao: SituacaoNoDaprom;
   /** Só em `ignorada`: o motivo que a leitura registrou. */
   motivo?: string;
-  /** Só quando a OS existe: "Atividade sem modelo de APR". */
-  aviso?: string;
 }
 
 export interface LocalDeInstalacao {
@@ -73,7 +71,8 @@ export interface CentroDoCatalogo {
 export interface CatalogoDeOrdens {
   centros_de_trabalho: CentroDoCatalogo[];
   locais: { codigo: string; endereco: string; plus_code: string; cliente: string | null }[];
-  atividades: { codigo: string; descricao: string; com_modelo: boolean }[];
+  /** As atividades que o DAPROM já tem cadastradas (o serviço do catálogo). */
+  atividades: { codigo: string; descricao: string }[];
   servicos: { titulo: string; descricao: string; tipo: "YBA1" | "YBA2"; prefixo: string }[];
   status_prontos: { codigo: string; rotulo: string }[];
   proximo_numero: string;

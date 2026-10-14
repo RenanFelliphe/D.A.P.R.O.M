@@ -262,9 +262,9 @@ function CartaoDaOs({ lida, ordem, marcada, podeCadastrarEquipe, aoMudar, aoMarc
             rotulo="Código da atividade"
             dica={
               atividadeMudou
-                ? "Código novo: se não estiver em Atividades, é cadastrado sem modelo para o admin ligar."
+                ? "Código novo: se não estiver em Atividades, é cadastrado com o título da OS como descrição."
                 : lida.atividade
-                  ? `Encontrada em Atividades pelo título${lida.atividade.com_modelo ? ", com modelo de APR" : ", ainda sem modelo de APR"}.`
+                  ? `Encontrada em Atividades pelo título: ${lida.atividade.descricao}.`
                   : "O PDF não traz o código; deixe em branco se não souber."
             }
           >

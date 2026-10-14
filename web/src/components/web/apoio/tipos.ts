@@ -9,10 +9,10 @@ export interface Local {
   critico: boolean;
 }
 
+/** Atividade do plano de manutenção: o serviço do catálogo (a lista de materiais) da OS. */
 export interface Atividade {
   codigo: string;
   descricao: string;
-  modelo_apr_codigo: string | null;
   provisorio: boolean;
 }
 

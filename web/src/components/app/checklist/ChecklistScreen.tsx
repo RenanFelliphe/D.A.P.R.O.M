@@ -13,6 +13,7 @@ import { NavegacaoChecklist } from "@/components/app/checklist/NavegacaoChecklis
 import { PerguntaCard } from "@/components/app/checklist/PerguntaCard";
 import { ProgressoChecklist } from "@/components/app/checklist/ProgressoChecklist";
 import { RevisaoApr } from "@/components/app/checklist/RevisaoApr";
+import { TrocaDeModelo } from "@/components/app/checklist/TrocaDeModelo";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
@@ -40,6 +41,7 @@ import {
   resumoDe,
   responder,
   retirarParticipante,
+  trocarModelo,
   voltar,
   voltarDaRevisao,
   type Avaliacao,
@@ -92,6 +94,7 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
   const [minhaAssinatura, setMinhaAssinatura] = useState<string | null>(null);
   const [validando, setValidando] = useState(false);
   const [concluindo, setConcluindo] = useState(false);
+  const [trocando, setTrocando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const resumo = useMemo(() => (rascunho ? resumoDe(rascunho) : null), [rascunho]);
@@ -224,6 +227,17 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
 
   return (
     <Screen>
+      {trocando && !travada && (
+        <TrocaDeModelo
+          osId={os.id}
+          rascunho={r}
+          aoTrocar={(novo, riscos) => {
+            atualizar((atual) => trocarModelo(atual, novo, riscos).rascunho);
+            setTrocando(false);
+          }}
+          aoFechar={() => setTrocando(false)}
+        />
+      )}
       <ChecklistCabecalho os={os} modelo={r.modelo} />
       <ProgressoChecklist titulo={titulo} secao={secao} respondidas={resumo.respondidas} total={total} />
       <Colunas
@@ -317,6 +331,11 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
                 {!revisando && !travada && (
                   <Button variant="line" sm block onClick={() => navegar(abrirRevisao)} data-treino="ck-revisar">
                     Ir para a revisão
+                  </Button>
+                )}
+                {!travada && (
+                  <Button variant="line" sm block onClick={() => setTrocando(true)} data-treino="ck-trocar-modelo">
+                    Trocar o modelo ({r.modelo.codigo})
                   </Button>
                 )}
                 <LinkButton variant="line" sm block href={rotas.app.os(os.id)}>

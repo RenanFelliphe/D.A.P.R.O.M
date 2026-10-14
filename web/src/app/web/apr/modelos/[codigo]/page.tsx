@@ -5,14 +5,15 @@ import { Badge } from "@/components/ui/Badge";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
 import { ExcluirModelo } from "@/components/web/apr/ExcluirModelo";
+import { OrientacaoDoModelo } from "@/components/web/apr/OrientacaoDoModelo";
 import { RestaurarModelo } from "@/components/web/apr/RestaurarModelo";
 import { editaModelos, veTodasAsEquipes } from "@/components/web/apr/secao";
 import { UsoDoModelo } from "@/components/web/apr/UsoDoModelo";
 import { EditorModelo } from "@/components/web/modelos/EditorModelo";
 import { VersoesModelo } from "@/components/web/modelos/VersoesModelo";
 import { VisaoModelo } from "@/components/web/modelos/VisaoModelo";
-import { agruparModelos, type DetalheModelo, type ModeloCompleto, type ResumoModelo, type UsoDoModelo as Uso } from "@/data/modelos";
-import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
+import type { DetalheModelo, ModeloCompleto, UsoDoModelo as Uso } from "@/data/modelos";
+import { apiOuNulo, usuarioAtual } from "@/lib/api";
 import { data } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 
@@ -28,8 +29,9 @@ function decodificar(valor: string) {
 }
 
 /**
- * Um modelo de APR: as versões, o editor do rascunho (admin) ou a versão em leitura, onde o
- * modelo é usado, e as ações de excluir e restaurar. `?versao=` escolhe a versão; sem ela, abre o rascunho ou a em uso.
+ * Um modelo de APR: as versões, a orientação para o técnico (o admin edita), o editor do rascunho (admin) ou a versão em
+ * leitura, onde o modelo é usado, e as ações de excluir e restaurar. `?versao=` escolhe a versão; sem ela, abre o rascunho
+ * ou a em uso.
  */
 export default async function ModeloPage({ params, searchParams }: PageProps<"/web/apr/modelos/[codigo]">) {
   const codigo = decodificar((await params).codigo);
@@ -45,16 +47,11 @@ export default async function ModeloPage({ params, searchParams }: PageProps<"/w
   const emUso = detalhe.versoes.find((v) => !v.rascunho);
   const escolhida = detalhe.versoes.find((v) => String(v.versao) === versaoPedida) ?? rascunho ?? emUso ?? detalhe.versoes[0]!;
 
-  const [modelo, uso, publicados] = await Promise.all([
+  const [modelo, uso] = await Promise.all([
     apiOuNulo<ModeloCompleto>(`${caminho}/versoes/${escolhida.versao}`),
     veTodasAsEquipes(usuario) ? apiOuNulo<Uso>(`${caminho}/uso`) : Promise.resolve(null),
-    podeEditar && !excluido ? api<{ modelos: ResumoModelo[] }>("/modelos-apr", { consulta: { publicados: true, tamanho: 200 } }) : Promise.resolve(null),
   ]);
-  const substitutos = agruparModelos(publicados?.modelos ?? [])
-    .filter((g) => g.codigo !== codigo)
-    .map((g) => ({ codigo: g.codigo, titulo: g.titulo }));
   const aprs = detalhe.versoes.reduce((soma, v) => soma + v.aprs_total, 0);
-  const atividades = emUso?.atividades_total ?? rascunho?.atividades_total ?? 0;
 
   return (
     <Screen>
@@ -81,30 +78,21 @@ export default async function ModeloPage({ params, searchParams }: PageProps<"/w
           </div>
           <h1>{detalhe.titulo}</h1>
           <span className="muted" style={{ fontSize: 14 }}>
-            {excluido
-              ? `Excluído em ${data(detalhe.arquivado_em)} · ${aprs} ${aprs === 1 ? "APR respondida" : "APRs respondidas"}`
-              : `${atividades} ${atividades === 1 ? "atividade ligada" : "atividades ligadas"} · ${aprs} ${aprs === 1 ? "APR respondida" : "APRs respondidas"}`}
+            {excluido ? `Excluído em ${data(detalhe.arquivado_em)} · ` : ""}
+            {`${aprs} ${aprs === 1 ? "APR respondida" : "APRs respondidas"}`}
           </span>
         </div>
         {podeEditar &&
           (excluido ? (
             <RestaurarModelo codigo={codigo} />
           ) : (
-            <ExcluirModelo
-              codigo={codigo}
-              publicado={Boolean(emUso)}
-              rascunho={rascunho?.versao}
-              aprs={aprs}
-              atividades={uso ? uso.atividades.length : atividades}
-              osAbertas={uso?.os_abertas.total ?? null}
-              substitutos={substitutos}
-            />
+            <ExcluirModelo codigo={codigo} publicado={Boolean(emUso)} rascunho={rascunho?.versao} aprs={aprs} />
           ))}
       </div>
 
       {excluido && (
         <Notice tone="al" icon="lock">
-          Este modelo foi excluído: não aparece para o técnico nem recebe atividades. As versões ficam guardadas porque APRs e PDFs apontam para elas.
+          Este modelo foi excluído: não aparece para o técnico nem é recomendado. As versões ficam guardadas porque APRs e PDFs apontam para elas.
           {podeEditar ? " Restaure para voltar a usá-lo." : ""}
         </Notice>
       )}
@@ -115,6 +103,7 @@ export default async function ModeloPage({ params, searchParams }: PageProps<"/w
           {uso && <UsoDoModelo uso={uso} />}
         </div>
         <div className="stack g16">
+          <OrientacaoDoModelo codigo={codigo} orientacao={detalhe.orientacao} podeEditar={podeEditar && !excluido} />
           {podeEditar && !excluido && (
             <Notice tone="al" icon="info">
               O critério de bloqueio da carga inicial (quais itens são eliminatórios e qual resposta bloqueia) é provisório até a Segurança do Trabalho validar.

@@ -45,7 +45,7 @@ interface DashboardGeralProps {
   alertasNaoLidos: number | null;
   /** O admin faz a baixa no SAP: só ele vê a pendência. */
   verExportacao: boolean;
-  /** Admin e supervisor: as pendências de gestão (ciência, alertas, atividades sem modelo). O técnico vê só as da equipe. */
+  /** Admin e supervisor: as pendências de gestão (ciência e alertas). O técnico vê só as da equipe. */
   acompanha: boolean;
   /** O filtro atual (`periodo=…&equipe_id=…`), para os links aos outros dashboards. */
   consulta: string;
@@ -78,10 +78,7 @@ export function DashboardGeral({ dados, rotuloAnterior, alertasNaoLidos, verExpo
       ? [{ icone: "download", total: pend.a_exportar ?? 0, texto: ["OS encerrada à espera da baixa no SAP", "OS encerradas à espera da baixa no SAP"], href: `${comFiltro(rotas.app.dashboardOs)}#exportacao`, acao: "Exportar" } satisfies ItemDeAtencao]
       : []),
     ...(acompanha
-      ? [
-          { icone: "bell", total: alertasNaoLidos ?? 0, texto: ["alerta não lido", "alertas não lidos"], href: rotas.web.alertas, acao: "Abrir alertas" } satisfies ItemDeAtencao,
-          { icone: "list", total: pend.atividades_sem_modelo ?? 0, texto: ["atividade sem modelo de APR", "atividades sem modelo de APR"], href: `${rotas.web.atividades}?sem_modelo=true`, acao: "Ligar a um modelo" } satisfies ItemDeAtencao,
-        ]
+      ? [{ icone: "bell", total: alertasNaoLidos ?? 0, texto: ["alerta não lido", "alertas não lidos"], href: rotas.web.alertas, acao: "Abrir alertas" } satisfies ItemDeAtencao]
       : []),
   ];
 

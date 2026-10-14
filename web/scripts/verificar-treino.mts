@@ -184,8 +184,13 @@ ok(`GET /os: ${lista.os.length} OS, ${JSON.stringify(lista.contagem_por_status)}
 
 // ---- OS guiada: detalhe, modelo, colegas, APR aprovada ------------------------------------------------------------
 const detalhe = await ler<any>("GET", `/os/${OS_GUIADA}`);
-assert.equal(detalhe.os.modelo_apr_codigo, MODELO_GUIADO.codigo);
+assert.equal("modelo_apr_codigo" in detalhe.os, false, "a OS não traz modelo: o técnico escolhe");
 assert.equal(detalhe.os.status, "liberada");
+const escolha = await ler<any>("GET", `/os/${OS_GUIADA}/modelos-apr`);
+assert.equal(escolha.recomendado, MODELO_GUIADO.codigo, "a leitura da OS guiada recomenda o modelo do tutorial");
+assert.ok(escolha.modelos.every((m: any) => m.descricao && m.exemplos.length > 0));
+assert.ok(escolha.modelos.find((m: any) => m.codigo === MODELO_GUIADO.codigo).encontradas.length > 0);
+assert.equal((await ler<any>("GET", `/os/${OS_BLOQUEIO}/modelos-apr`)).recomendado, MODELO_BLOQUEIO.codigo);
 const resumos = await ler<any>("GET", "/modelos-apr", undefined, { codigo: MODELO_GUIADO.codigo, publicados: "true" });
 assert.equal(resumos.modelos[0].codigo, MODELO_GUIADO.codigo);
 const modeloA = await ler<ModeloCompleto>("GET", `/modelos-apr/${MODELO_GUIADO.codigo}/versoes/publicada`);
@@ -411,7 +416,7 @@ ok("reiniciarTreino volta ao estado inicial");
   assert.equal(geral.carteira.em_execucao, 1);
   assert.equal(geral.carteira.pendentes, 1);
   assert.equal(geral.tempo.execucoes, 2);
-  assert.deepEqual(geral.pendencias, { a_exportar: null, sem_ciencia: null, execucoes_esquecidas: 0, atividades_sem_modelo: null });
+  assert.deepEqual(geral.pendencias, { a_exportar: null, sem_ciencia: null, execucoes_esquecidas: 0 });
 
   const os = await ler<any>("GET", "/indicadores/os", undefined, { periodo: "7d" });
   assert.equal(os.serie.length, 7);

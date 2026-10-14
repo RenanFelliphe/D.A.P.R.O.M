@@ -314,8 +314,8 @@ export function dashboardGeral(e: EstadoTreino, periodo: string, agora: Date): D
     aprs: contarAprs(aprs, p),
     tempo: { execucoes: tempo.execucoes, tempo_liquido_medio_min: tempo.tempo_liquido_medio_min, pausa_media_min: tempo.pausa_media_min, proporcao_pausa: tempo.proporcao_pausa },
     interrupcoes: interrupcoes(e, execucoes, porId, p, false).total,
-    // As pendências de gestão (baixa no SAP, ciência e atividade sem modelo) não são do técnico.
-    pendencias: { a_exportar: null, sem_ciencia: null, execucoes_esquecidas: execucoes.filter((x) => x.resultado === null && ms(x.inicio) < esquecida).length, atividades_sem_modelo: null },
+    // As pendências de gestão (baixa no SAP e ciência) não são do técnico.
+    pendencias: { a_exportar: null, sem_ciencia: null, execucoes_esquecidas: execucoes.filter((x) => x.resultado === null && ms(x.inicio) < esquecida).length },
   };
 }
 
@@ -399,7 +399,7 @@ export function meusResultados(e: EstadoTreino, eu: string, periodo: string, ago
 /** `GET /aprs/resumo`, sem os rankings de itens (eles revelariam o que é eliminatório: só o admin os vê). */
 export function resumoDasAprs(e: EstadoTreino, periodo: string, agora: Date): ResumoDasAprs {
   const p = resolverPeriodo(periodo, diaDe(agora));
-  const { porId, aprs } = escopo(e);
+  const { aprs } = escopo(e);
   const serie = p.faixas.map((f) => ({ ...f, aprovadas: 0, bloqueadas: 0 }));
   const totais = { aprovadas: 0, bloqueadas: 0 };
   const anterior = { aprovadas: 0, bloqueadas: 0 };
@@ -436,7 +436,6 @@ export function resumoDasAprs(e: EstadoTreino, periodo: string, agora: Date): Re
       aprs: totais.aprovadas + totais.bloqueadas,
       ...totais,
       alertas: null,
-      sem_modelo_ligado: doPeriodo.filter((a) => porId.get(a.os_id)?.modelo_apr_codigo === null).length,
     },
     anterior: { aprs: anterior.aprovadas + anterior.bloqueadas, bloqueadas: anterior.bloqueadas },
     serie,

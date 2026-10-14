@@ -86,8 +86,8 @@ export interface OsLidaDoPdf {
   existente: { id: string; status: OsStatus; origem: string } | null;
   /** A equipe do centro de trabalho lido (`null`: centro sem equipe cadastrada). */
   equipe: { id: string; nome: string } | null;
-  /** A atividade cadastrada que casou com o título. */
-  atividade: { codigo: string; com_modelo: boolean } | null;
+  /** A atividade cadastrada que casou com o título (o serviço do catálogo). */
+  atividade: { codigo: string; descricao: string } | null;
   /** Preventiva com plano: o intervalo que o plano já tem no sistema e o que o PDF trouxe (`null` na corretiva ou sem plano). */
   preventiva: { plano_id: string | null; intervalo_atual: Intervalo | null; intervalo_atual_descricao: string | null; intervalo_lido: Intervalo | null } | null;
 }

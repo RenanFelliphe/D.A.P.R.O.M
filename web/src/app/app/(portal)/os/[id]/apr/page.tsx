@@ -6,21 +6,15 @@ import { NovaAprScreen } from "@/components/app/nova-apr/NovaAprScreen";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
-import type { Colega, ModeloCompleto, ModeloResumo } from "@/lib/apr";
+import type { Colega, EscolhaDoModelo } from "@/lib/apr";
 import { execucaoAberta, rotuloDaOs, type DetalheDaOs } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
 
 export const metadata: Metadata = { title: "Nova APR" };
 
-/** Última versão publicada de cada modelo (a lista vem por código e versão decrescente). */
-function ultimasVersoes(modelos: ModeloResumo[]) {
-  const vistos = new Set<string>();
-  return modelos.filter((m) => !vistos.has(m.codigo) && vistos.add(m.codigo));
-}
-
 /**
- * Nova APR, etapa 1: modelo, participantes e riscos. O modelo é a versão publicada mais recente do `modelo_apr_codigo`
- * da OS; sem atividade mapeada, o técnico escolhe entre os publicados.
+ * Nova APR, etapa 1: modelo, participantes e riscos. O técnico escolhe o modelo entre os publicados (vale a versão
+ * publicada mais recente), numa janela que mostra o que cada um atende e o recomendado pela leitura da OS.
  */
 export default async function NovaAprPage({ params }: PageProps<"/app/os/[id]/apr">) {
   const { id } = await params;
@@ -57,13 +51,10 @@ export default async function NovaAprPage({ params }: PageProps<"/app/os/[id]/ap
   }
 
   const { usuario } = await usuarioAtual();
-  const codigo = os.modelo_apr_codigo ?? null;
-  const [{ usuarios }, modelo] = await Promise.all([
+  const [{ usuarios }, escolha] = await Promise.all([
     api<{ usuarios: Colega[] }>("/usuarios", { consulta: { equipe_id: os.equipe_id, tamanho: 200 } }),
-    codigo ? apiOuNulo<ModeloCompleto>(`/modelos-apr/${encodeURIComponent(codigo)}/versoes/publicada`) : Promise.resolve(null),
+    api<EscolhaDoModelo>(`/os/${id}/modelos-apr`),
   ]);
-  // Sem modelo mapeado (ou sem versão publicada dele), o técnico escolhe entre os publicados.
-  const publicados = modelo ? [] : ultimasVersoes((await api<{ modelos: ModeloResumo[] }>("/modelos-apr", { consulta: { publicados: true, tamanho: 200 } })).modelos);
 
   // O técnico logado sempre participa, mesmo que a lista da equipe não o traga; só o que a tela usa vai ao navegador.
   const resumo = ({ id, nome, matricula, cargo, perfil, assinatura_path }: Colega): Colega => ({ id, nome, matricula, cargo, perfil, assinatura_path });
@@ -76,9 +67,7 @@ export default async function NovaAprPage({ params }: PageProps<"/app/os/[id]/ap
         os={{ id: os.id, rotulo: rotuloDaOs(os), titulo: os.titulo, local: os.local_instalacao.codigo }}
         usuarioId={usuario.id}
         colegas={colegas}
-        modeloDaAtividade={modelo}
-        codigoMapeado={codigo}
-        modelosPublicados={publicados}
+        escolha={escolha}
       />
     </Screen>
   );
