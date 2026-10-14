@@ -65,6 +65,14 @@ export const usuario = pgTable(
     liberadoEm: instante(),
     /** Por que o admin recusou; só em `recusado`. */
     recusaMotivo: text(),
+    /** Quem não quer aparecer pelo nome no ranking da gamificação: os outros veem "Participante anônimo"; os pontos continuam valendo. */
+    rankingAnonimo: boolean().notNull().default(false),
+    /**
+     * A última patente de que a pessoa já foi avisada ("Nova patente") e a temporada em que foi avisada; o aviso volta quando a
+     * patente de agora é maior. Sem chave estrangeira de propósito: excluir uma patente não pode travar nem depender disto.
+     */
+    patenteAvisadaId: uuid(),
+    patenteAvisadaTemporada: text(),
   },
   (t) => [
     check("usuario_perfil_check", emLista(t.perfil, PERFIS)),

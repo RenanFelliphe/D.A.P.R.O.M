@@ -9,3 +9,4 @@ export * from "./apr";
 export * from "./execucao";
 export * from "./eventos";
 export * from "./impedimento";
+export * from "./gamificacao";
