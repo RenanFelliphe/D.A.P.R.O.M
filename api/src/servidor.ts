@@ -3,6 +3,8 @@ import { criarApp } from "./app";
 import { lerConfig } from "./config";
 import { conectar, migrarComTrava } from "./db/conexao";
 import { carregarDadosIniciais } from "./db/seed/carregar";
+import { preencherHistoricoDaGamificacao } from "./db/seed/gamificacao-historico";
+import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
 import { EmailEmMemoria, EmailSmtp } from "./servicos/email";
@@ -21,11 +23,22 @@ async function main() {
   const carga = await carregarDadosIniciais(db);
   if (carga.modelosCarregados.length > 0) console.log(`Carga inicial: ${carga.modelosCarregados.join(", ")}`);
 
+  // Implantação da gamificação: o extrato nasce do histórico já gravado (só enquanto o extrato está vazio, numa transação só:
+  // se falhar nada é gravado, a `api` sobe mesmo assim e a próxima subida tenta de novo).
+  try {
+    const historico = await preencherHistoricoDaGamificacao(db, new Date());
+    if (historico) console.log(`Gamificação: ${historico.lancamentos} lançamentos do histórico, ${historico.temporadasFechadas} temporadas fechadas, ${historico.conquistas} conquistas concedidas`);
+  } catch (erro) {
+    console.error("Gamificação: não foi possível preencher o histórico (nada foi gravado):", erro);
+  }
+
   const email = config.smtpUrl ? new EmailSmtp(config.smtpUrl, config.emailRemetente) : new EmailEmMemoria();
   if (!config.smtpUrl) console.warn("SMTP_URL vazio: os e-mails de alerta não serão enviados.");
 
   const armazenamento = new ArmazenamentoSupabase(config.supabaseUrl, config.supabaseServiceRoleKey);
   await armazenamento.garantirBuckets().catch((erro) => console.warn(`Buckets do Storage não verificados: ${erro.message}`));
+  // As imagens das patentes e das conquistas da carga inicial (as que o admin trocou não voltam).
+  await garantirImagensDaGamificacao(armazenamento).catch((erro) => console.warn(`Imagens da gamificação não verificadas: ${erro.message}`));
 
   const deps = {
     db,

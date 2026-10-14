@@ -25,6 +25,16 @@ describe("Dados de demonstração", () => {
     assert.ok(c.alertas! >= 4, `alertas: ${c.alertas}`);
   });
 
+  it("a gamificação tem extrato, ranking, patentes e conquistas depois da demonstração", async () => {
+    const [linha] = await amb.sql<{ n: number }>("select count(*)::int n from lancamento_pontos");
+    assert.ok(linha!.n >= 20, `lançamentos: ${linha!.n}`);
+    const regras = await amb.sql<{ regra: string }>("select distinct regra from lancamento_pontos");
+    for (const r of ["apr_completa", "execucao_concluida", "responsavel_apr", "ciencia_no_prazo", "assinatura_cadastrada"]) assert.ok(regras.some((x) => x.regra === r), `sem lançamentos de ${r}`);
+    assert.ok((await amb.sql("select 1 from conquista_usuario")).length >= 1);
+    const [tecnico] = await amb.sql<{ email: string }>("select email from usuario where perfil = 'tecnico' and assinatura_path is not null limit 1");
+    assert.ok(tecnico);
+  });
+
   it("cobre todos os estados do fluxo", async () => {
     const status = await amb.sql<{ status: string; n: number }>("select status, count(*)::int n from os group by status");
     const por = Object.fromEntries(status.map((s) => [s.status, s.n])) as Record<string, number>;

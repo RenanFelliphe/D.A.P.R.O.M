@@ -21,6 +21,7 @@ import { PASTA_MIGRACOES, type Db } from "./db/conexao";
 import { equipe, usuario, type Perfil } from "./db/schema";
 import { popularCatalogoDemo } from "./db/seed/catalogo-demo";
 import { carregarDadosIniciais } from "./db/seed/carregar";
+import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
 import type { Deps } from "./deps";
 import { executarLeitura } from "./servicos/leitura-sap";
 import { ArmazenamentoEmMemoria } from "./servicos/armazenamento";
@@ -83,6 +84,7 @@ async function main() {
 
   const assinaturaId = "00000000-0000-4000-8000-000000000001";
   await armazenamento.gravar("assinaturas", assinaturaId, PNG, "image/png");
+  console.log(`Gamificação: ${await garantirImagensDaGamificacao(armazenamento)} imagens de patentes e conquistas`);
 
   const logins: string[] = [];
   async function criar(matricula: string, nome: string, perfil: Perfil, centro: string | null, extra: { cargo?: string; email?: string } = {}) {

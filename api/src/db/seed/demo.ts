@@ -8,6 +8,7 @@ import { enfileirarTarefa } from "../../servicos/fila";
 import { verificarCiclos, type Intervalo } from "../../dominio/preventivas";
 import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
 import { popularCatalogoDemo } from "./catalogo-demo";
+import { preencherHistoricoDaGamificacao } from "./gamificacao-historico";
 import { documentoDemo } from "./documento-demo";
 import { assinaturaDemo, fotoDemo } from "./imagens-demo";
 
@@ -484,6 +485,12 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
       .onConflictDoNothing();
   }
   await verificarCiclos(db, real);
+
+  // ================= GAMIFICAÇÃO ====================================================================================
+  // APRs e execuções já pontuaram pelas regras da `api` (`processarEventos`); as ciências, as assinaturas e os intervalos do ciclo
+  // foram gravados direto, então o preenchimento do histórico (que não duplica o que já foi lançado) completa o extrato, fecha as
+  // temporadas passadas e concede as conquistas.
+  await preencherHistoricoDaGamificacao(db, real, { forcar: true });
 
   // ================= ALERTAS: parte já lida =========================================================================
   const lidos = await db.select({ id: alerta.id }).from(alerta).orderBy(alerta.criadoEm);
