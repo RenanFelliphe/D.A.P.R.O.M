@@ -56,7 +56,7 @@ export function rotasPreventivas(deps: Deps, { autenticar, exigirPerfil }: Auten
     const id = lerId(c);
     const dados = await lerCorpo(c, esquemaEdicaoDoPlano);
     const eu = c.get("usuario");
-    const { antes, depois, plano } = await editarPlano(deps.db, eu, id, dados, deps.agora());
+    const { antes, depois, plano, pontosGanhos, ganhos } = await editarPlano(deps.db, eu, id, dados, deps.agora());
     const mudancas = diferencas(antes, depois);
     const campos = Object.keys(mudancas);
     if (campos.length > 0) {
@@ -78,7 +78,7 @@ export function rotasPreventivas(deps: Deps, { autenticar, exigirPerfil }: Auten
       });
     }
     await verificarCiclos(deps.db, deps.agora(), [id]);
-    return responder(c, await detalharPlano(deps.db, eu, id, deps.agora()));
+    return responder(c, { ...(await detalharPlano(deps.db, eu, id, deps.agora())), pontosGanhos, ganhos });
   });
 
   return r;

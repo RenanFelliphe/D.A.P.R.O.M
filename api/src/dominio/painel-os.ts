@@ -31,6 +31,8 @@ import { enfileirarTarefa } from "../servicos/fila";
 import { buscaDeOs } from "./busca";
 import { servicoDaAtividade } from "./catalogo";
 import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
+import { ganhosDe } from "./lancamentos";
+import { pontuarCiencia } from "./pontuacao";
 import {
   condicaoEscopo,
   diaBr,
@@ -594,6 +596,8 @@ export async function darCiencia(db: Db, eu: UsuarioAutenticado, osId: string, a
 
     await tx.update(os).set({ cienciaPor: eu.id, cienciaEm: agora }).where(eq(os.id, osId));
     await enfileirarTarefa(tx as unknown as Db, "pdf_os", osId, agora);
-    return { cienciaEm: agora };
+    // Ciência no prazo (até 72 h depois do encerramento) pontua o supervisor, na mesma transação.
+    const ganhos = eu.perfil === "tecnico" ? await pontuarCiencia({ tx: tx as unknown as Db, agora }, osId, eu.id, agora) : [];
+    return { cienciaEm: agora, ...ganhosDe(ganhos, eu.id) };
   });
 }

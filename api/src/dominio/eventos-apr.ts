@@ -5,9 +5,11 @@ import { APR_FUNCOES, APR_RESPOSTAS, APR_RESULTADOS, apr, aprParticipante, aprRe
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas } from "./alertas";
 import { arquivoExigido } from "./evidencias";
+import { pontuarApr } from "./pontuacao";
 import {
   avisarConflitoDePlanejamento,
   carregarOsDoUsuario,
+  contextoDePontos,
   evidenciaPayload,
   exigirArquivosDasEvidencias,
   lerPayload,
@@ -136,6 +138,13 @@ const temOArquivoExigido = (item: { id: string; evidencia: string }, arquivos: {
 };
 const doPayload = (evidencias: EvidenciaPayload[]) => evidencias.map((e) => ({ itemId: e.item_id, tipo: e.tipo }));
 
+/** A APR bloqueada já tem a evidência de todos os itens reprovados (a observação e, se o item pede, a foto ou o PDF)? A pontuação espera por isso. */
+export async function aprEstaCompleta(db: Db, aprId: string): Promise<boolean> {
+  const reprovados = (await respostasGravadas(db, aprId)).filter((r) => r.reprovado);
+  const arquivos = await db.select({ itemId: evidencia.itemId, tipo: evidencia.tipo }).from(evidencia).where(eq(evidencia.aprId, aprId));
+  return reprovados.every((r) => !vazio(r.observacao) && temOArquivoExigido(r, arquivos));
+}
+
 /**
  * Completa a APR bloqueada na validação com a evidência dos itens reprovados: a observação de cada um e os arquivos
  * (fotos e PDFs). As respostas não mudam, e a APR que já tem a evidência completa não aceita mais nada. Online, a
@@ -170,6 +179,8 @@ async function completarEvidencia(ctx: Contexto, aprId: string, p: PayloadApr) {
       .values(p.evidencias.map((e) => linhaDeEvidencia(e, { aprId, itemId: e.item_id! })))
       .onConflictDoNothing();
   }
+  // A evidência completa é o que faz a APR bloqueada pontuar (sem ela, os pontos esperam).
+  ctx.saida.ganhos.push(...(await pontuarApr(contextoDePontos(ctx), aprId, ctx.evento.ocorridoEm, { evidenciaCompleta: await aprEstaCompleta(ctx.tx, aprId) })));
 }
 
 /**
@@ -237,6 +248,10 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
     await ctx.tx.insert(evidencia).values(p.evidencias.map((e) => linhaDeEvidencia(e, { aprId: p.id, itemId: e.item_id! })));
   }
   ctx.saida.aprs.push({ id: p.id, resultado });
+  // A aprovada pontua ao chegar com as assinaturas; a bloqueada, quando chega a evidência dos itens reprovados.
+  ctx.saida.ganhos.push(
+    ...(await pontuarApr(contextoDePontos(ctx), p.id, ctx.evento.ocorridoEm, { evidenciaCompleta: resultado === "aprovada" || (await aprEstaCompleta(ctx.tx, p.id)) })),
+  );
 
   if (resultado === "bloqueada") {
     const detalhe = reprovados

@@ -1,12 +1,16 @@
 import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
 import { ESTADOS_TREINAMENTO, equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
+import { resumoParaMe } from "../dominio/gamificacao-leituras";
+import { ganhosDe } from "../dominio/lancamentos";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
+import { pontuarAssinatura, pontuarTreinamento } from "../dominio/pontuacao";
 import { equipeParaApi, nomesDosCriadores, treinamentoParaApi, usuarioParaApi } from "../dominio/usuarios";
 import type { Autenticacao, Ambiente } from "../http/autenticacao";
-import { invalido } from "../http/erros";
+import { invalido, proibido } from "../http/erros";
 import { responder } from "../http/resposta";
 import { lerCorpo, uuid } from "../http/validacao";
 
@@ -23,7 +27,13 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
       ? await deps.db.select({ id: equipe.id, nome: equipe.nome }).from(equipe).where(inArray(equipe.id, eu.equipesSupervisionadas)).orderBy(equipe.nome)
       : [];
     const criadores = await nomesDosCriadores(deps.db, [u!]);
-    return responder(c, { usuario: usuarioParaApi(u!, { criadoPorNome: (u!.criadoPorId && criadores.get(u!.criadoPorId)) || null }), equipe: e ? equipeParaApi(e) : null, equipesSupervisionadas: supervisionadas });
+    return responder(c, {
+      usuario: { ...usuarioParaApi(u!, { criadoPorNome: (u!.criadoPorId && criadores.get(u!.criadoPorId)) || null }), rankingAnonimo: u!.rankingAnonimo },
+      equipe: e ? equipeParaApi(e) : null,
+      equipesSupervisionadas: supervisionadas,
+      /** A patente e os pontos da temporada para a barra superior; nulo para quem não joga (o admin). */
+      gamificacao: await resumoParaMe(deps, eu),
+    });
   });
 
   /**
@@ -33,12 +43,18 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
   r.put("/me/treinamento", autenticar({ permitirSenhaProvisoria: true, permitirPendente: true }), async (c) => {
     const eu = c.get("usuario");
     const { estado } = await lerCorpo(c, z.object({ estado: z.enum(ESTADOS_TREINAMENTO) }));
-    const [u] = await deps.db
-      .update(usuario)
-      .set({ treinamentoEstado: estado, treinamentoEm: estado === "nao_iniciado" ? null : deps.agora() })
-      .where(eq(usuario.id, eu.id))
-      .returning();
-    return responder(c, { treinamento: treinamentoParaApi(u!) });
+    const agora = deps.agora();
+    // Concluir o treino pontua o técnico (uma vez por conta), na mesma transação que grava o estado.
+    const { u, ganhos } = await deps.db.transaction(async (transacao) => {
+      const tx = transacao as unknown as Db;
+      const [linha] = await tx
+        .update(usuario)
+        .set({ treinamentoEstado: estado, treinamentoEm: estado === "nao_iniciado" ? null : agora })
+        .where(eq(usuario.id, eu.id))
+        .returning();
+      return { u: linha!, ganhos: estado === "concluido" && linha!.perfil === "tecnico" ? await pontuarTreinamento({ tx, agora }, eu.id, agora) : [] };
+    });
+    return responder(c, { treinamento: treinamentoParaApi(u), ...ganhosDe(ganhos, eu.id) });
   });
 
   /**
@@ -51,8 +67,23 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
     if (!(await deps.armazenamento.existe("assinaturas", arquivo_id))) {
       throw invalido("arquivo_inexistente", "Envie a imagem da assinatura antes (PUT /arquivos/{id})");
     }
-    await deps.db.update(usuario).set({ assinaturaPath: arquivo_id, assinaturaEm: deps.agora() }).where(eq(usuario.id, eu.id));
-    return responder(c, { assinaturaPath: arquivo_id });
+    const agora = deps.agora();
+    // Cadastrar a assinatura pontua o técnico uma vez por conta (refazer não pontua de novo).
+    const ganhos = await deps.db.transaction(async (transacao) => {
+      const tx = transacao as unknown as Db;
+      await tx.update(usuario).set({ assinaturaPath: arquivo_id, assinaturaEm: agora }).where(eq(usuario.id, eu.id));
+      return eu.perfil === "tecnico" ? pontuarAssinatura({ tx, agora }, eu.id, agora) : [];
+    });
+    return responder(c, { assinaturaPath: arquivo_id, ...ganhosDe(ganhos, eu.id) });
+  });
+
+  /** Quem não quer aparecer pelo nome no ranking da gamificação: os outros veem "Participante anônimo", e os pontos continuam valendo. */
+  r.put("/me/ranking-anonimo", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    if (eu.perfil !== "tecnico") throw proibido("O administrador não joga e não aparece no ranking");
+    const { anonimo } = await lerCorpo(c, z.object({ anonimo: z.boolean() }));
+    await deps.db.update(usuario).set({ rankingAnonimo: anonimo }).where(eq(usuario.id, eu.id));
+    return responder(c, { rankingAnonimo: anonimo });
   });
 
   /** Execuções do usuário ainda em andamento (`resultado` nulo), em qualquer OS: a tela de execução as usa para exigir a suspensão de uma esquecida de outro dia. */

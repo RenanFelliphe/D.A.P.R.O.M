@@ -5,6 +5,7 @@ import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid } from "../http/validacao";
 import { aplicarAprConcluida } from "./eventos-apr";
+import { ganhosDe, type ganhoParaApi } from "./lancamentos";
 import { ATRASO_OFFLINE_MS, RejeicaoEvento, rejeitar, type Contexto } from "./eventos-base";
 import {
   aplicarExecucaoCancelada,
@@ -45,6 +46,9 @@ export interface ResultadoDoEnvio {
   rejeitados: { id: string; codigo: string; mensagem: string }[];
   /** Ainda não dá para aplicar (arquivo ou evento anterior não chegou): ficam na fila do cliente. */
   pendentes: { id: string; codigo: string; mensagem: string }[];
+  /** Os pontos que o autor ganhou com os eventos confirmados desta chamada ("+N pontos"); reenviar um evento não pontua de novo. */
+  pontosGanhos: number;
+  ganhos: ReturnType<typeof ganhoParaApi>[];
 }
 
 async function despachar(ctx: Contexto, e: EventoRecebido) {
@@ -82,13 +86,13 @@ export async function processarEventos(
   recebidos: EventoRecebido[],
   opcoes: Pick<Contexto, "evidenciaDepois"> = {},
 ): Promise<ResultadoDoEnvio> {
-  const saida: ResultadoDoEnvio = { confirmados: [], alertas: [], aprs: [], os: [], rejeitados: [], pendentes: [] };
+  const saida: ResultadoDoEnvio = { confirmados: [], alertas: [], aprs: [], os: [], rejeitados: [], pendentes: [], pontosGanhos: 0, ganhos: [] };
   const osAfetadas = new Set<string>();
   const ordenados = [...recebidos].sort((a, b) => a.ocorrido_em.getTime() - b.ocorrido_em.getTime());
 
   for (const e of ordenados) {
     const recebidoEm = deps.agora();
-    const parcial: Contexto["saida"] = { alertas: [], aprs: [], osAfetadas: new Set() };
+    const parcial: Contexto["saida"] = { alertas: [], aprs: [], osAfetadas: new Set(), ganhos: [] };
     try {
       await deps.db.transaction(async (tx) => {
         const osDoEnvelope = e.os_id ?? (typeof e.payload.os_id === "string" ? e.payload.os_id : null);
@@ -133,6 +137,9 @@ export async function processarEventos(
       saida.alertas.push(...parcial.alertas);
       saida.aprs.push(...parcial.aprs);
       parcial.osAfetadas.forEach((id) => osAfetadas.add(id));
+      const meus = ganhosDe(parcial.ganhos, usuario.id);
+      saida.pontosGanhos += meus.pontosGanhos;
+      saida.ganhos.push(...meus.ganhos);
     } catch (erro) {
       if (!(erro instanceof RejeicaoEvento)) throw erro;
       (erro.situacao === "pendente" ? saida.pendentes : saida.rejeitados).push({ id: e.id, codigo: erro.codigo, mensagem: erro.message });

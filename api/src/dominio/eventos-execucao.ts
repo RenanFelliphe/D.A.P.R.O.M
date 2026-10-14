@@ -6,6 +6,7 @@ import { criarAlertas } from "./alertas";
 import {
   avisarConflitoDePlanejamento,
   carregarOsDoUsuario,
+  contextoDePontos,
   evidenciaPayload,
   exigirArquivosDasEvidencias,
   lerPayload,
@@ -15,6 +16,7 @@ import {
   type Contexto,
   type EvidenciaPayload,
 } from "./eventos-base";
+import { pontuarExecucao } from "./pontuacao";
 import { diaDe } from "./tempo";
 import { enfileirarTarefa } from "../servicos/fila";
 
@@ -183,6 +185,8 @@ export async function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
     ctx.saida.alertas.push(...(await criarAlertas(ctx.tx, { tipo: "execucao_duplicada", osId: e.osId, equipeId: ordem!.equipeId, detalhe: `OS ${ordem!.numeroOrdem ?? ordem!.titulo}: duas execuções encerradas; vale a primeira` })));
   } else {
     await enfileirarTarefa(ctx.tx, "pdf_os", e.osId);
+    // Vale a primeira encerrada: a segunda (duplicada) fica guardada, sem pontuar.
+    ctx.saida.ganhos.push(...(await pontuarExecucao(contextoDePontos(ctx), e.id, p.fim)));
   }
 
   // OS de apoio encerrada: a original continua pendente, mas o supervisor dela é avisado.
@@ -218,6 +222,8 @@ export async function aplicarExecucaoInterrompida(ctx: Contexto, bruto: unknown)
 
   const [ordem] = await ctx.tx.select().from(os).where(eq(os.id, e.osId));
   ctx.saida.alertas.push(...(await criarAlertas(ctx.tx, { tipo: "bloqueio", osId: e.osId, equipeId: ordem!.equipeId, detalhe: `Execução interrompida por risco: ${p.motivo!.trim()}` })));
+  // Interromper por risco vale o mesmo que encerrar: a segurança não custa pontos.
+  ctx.saida.ganhos.push(...(await pontuarExecucao(contextoDePontos(ctx), e.id, p.fim)));
 }
 
 const esquemaSuspensa = z.object({ execucao_id: uuid, fim: instanteIso });

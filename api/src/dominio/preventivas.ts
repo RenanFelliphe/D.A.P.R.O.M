@@ -17,7 +17,9 @@ import { equipesDoEscopo, podeSupervisionarEquipe, type UsuarioAutenticado } fro
 import { naoEncontrado, proibido } from "../http/erros";
 import { criarAlertas } from "./alertas";
 import { normalizar } from "./busca";
+import { ganhosDe } from "./lancamentos";
 import { dataDeReferencia, diaBr, diaNoFuso, FUSO } from "./painel-comum";
+import { pontuarIntervalo } from "./pontuacao";
 
 /*
  * Intervalo entre ciclos das preventivas. Cada plano de manutenção do SAP (plano + item) gera uma OS preventiva por ciclo;
@@ -525,24 +527,30 @@ export async function editarPlano(db: Db, eu: UsuarioAutenticado, id: string, da
   if (!antes || !veOPlano(eu, antes)) throw naoEncontrado("Plano de preventiva não encontrado");
   if (!podeEditarPlano(eu, antes)) throw proibido("Só o administrador e o supervisor da equipe definem o intervalo da preventiva");
 
-  await db
-    .update(planoPreventiva)
-    .set({
-      ...(dados.intervalo !== undefined && {
-        intervaloQuantidade: dados.intervalo?.quantidade ?? null,
-        intervaloUnidade: dados.intervalo?.unidade ?? null,
-      }),
-      ...(dados.base_do_ciclo !== undefined && { contarAPartir: dados.base_do_ciclo }),
-      ...(dados.antecedencia_dias !== undefined && { antecedenciaDias: dados.antecedencia_dias }),
-      ...(dados.ativo !== undefined && { ativo: dados.ativo }),
-      ...(dados.observacao !== undefined && { observacao: dados.observacao }),
-      atualizadoEm: agora,
-      atualizadoPor: eu.id,
-    })
-    .where(eq(planoPreventiva.id, id));
+  // Definir o intervalo de um plano que estava sem pontua o supervisor (na mesma transação que grava o intervalo).
+  const definiuAgora = dados.intervalo != null && antes.intervalo === null;
+  const ganhos = await db.transaction(async (transacao) => {
+    const tx = transacao as unknown as Db;
+    await tx
+      .update(planoPreventiva)
+      .set({
+        ...(dados.intervalo !== undefined && {
+          intervaloQuantidade: dados.intervalo?.quantidade ?? null,
+          intervaloUnidade: dados.intervalo?.unidade ?? null,
+        }),
+        ...(dados.base_do_ciclo !== undefined && { contarAPartir: dados.base_do_ciclo }),
+        ...(dados.antecedencia_dias !== undefined && { antecedenciaDias: dados.antecedencia_dias }),
+        ...(dados.ativo !== undefined && { ativo: dados.ativo }),
+        ...(dados.observacao !== undefined && { observacao: dados.observacao }),
+        atualizadoEm: agora,
+        atualizadoPor: eu.id,
+      })
+      .where(eq(planoPreventiva.id, id));
+    return definiuAgora && eu.perfil === "tecnico" ? pontuarIntervalo({ tx, agora }, id, eu.id, agora) : [];
+  });
 
   const depois = (await calcularPlanos(db, agora, [id])).planos[0]!;
-  return { antes: retrato(antes), depois: retrato(depois), plano: depois };
+  return { antes: retrato(antes), depois: retrato(depois), plano: depois, ...ganhosDe(ganhos, eu.id) };
 }
 
 /** Como o plano aparece na trilha e nos alertas: o título da última OS e o plano/item. */

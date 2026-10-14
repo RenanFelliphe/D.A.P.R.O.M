@@ -8,6 +8,7 @@ import { instanteIso, uuid, validar } from "../http/validacao";
 import type { Bucket } from "../servicos/armazenamento";
 import { criarAlertas } from "./alertas";
 import { bucketDaEvidencia } from "./evidencias";
+import type { ContextoDePontos, Ganho } from "./lancamentos";
 
 /** Um evento pode ser recusado para sempre (`rejeitado`) ou ficar na fila do cliente até a causa sumir (`pendente`). */
 export class RejeicaoEvento extends Error {
@@ -44,8 +45,12 @@ export interface Contexto {
    * dos itens reprovados chega depois, no `apr_concluida` da mesma APR.
    */
   evidenciaDepois?: boolean;
-  saida: { alertas: string[]; aprs: { id: string; resultado: string }[]; osAfetadas: Set<string> };
+  /** `ganhos`: os lançamentos de pontos que o evento gerou (de todos os participantes; a resposta devolve só os de quem enviou). */
+  saida: { alertas: string[]; aprs: { id: string; resultado: string }[]; osAfetadas: Set<string>; ganhos: Ganho[] };
 }
+
+/** O contexto da pontuação do evento: a mesma transação, com o relógio da `api` (o evento do aparelho pode estar com a hora errada). */
+export const contextoDePontos = (ctx: Contexto): ContextoDePontos => ({ tx: ctx.tx, agora: ctx.recebidoEm });
 
 export const evidenciaPayload = z
   .object({

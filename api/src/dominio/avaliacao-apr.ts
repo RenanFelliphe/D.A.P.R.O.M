@@ -48,7 +48,7 @@ export async function avaliarApr(deps: Deps, usuario: UsuarioAutenticado, bruto:
     evento: { id: randomUUID(), tipo: "apr_concluida", osId: p.os_id, ocorridoEm: agora },
     recebidoEm: agora,
     offline: false,
-    saida: { alertas: [], aprs: [], osAfetadas: new Set() },
+    saida: { alertas: [], aprs: [], osAfetadas: new Set(), ganhos: [] },
   };
   let reprovados: Awaited<ReturnType<typeof conferirApr>>["reprovados"];
   try {

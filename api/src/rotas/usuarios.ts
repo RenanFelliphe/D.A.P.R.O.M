@@ -1,10 +1,12 @@
 import { and, asc, desc, eq, inArray, ne, or, sql, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
 import { equipe, execucao, execucaoPausa, LIBERACOES, localInstalacao, os, PERFIS, usuario } from "../db/schema";
 import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeUsuarios, usuariosVisiveis } from "../dominio/busca";
+import { apagarGamificacaoDaPessoa } from "../dominio/lancamentos";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
 import { equipeParaApi, gerarSenhaInicial, nomesDosCriadores, usuarioParaApi } from "../dominio/usuarios";
 import { ehSupervisor, equipesDoEscopo, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
@@ -193,7 +195,11 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     if (eu.perfil !== "admin" && !pendenteDoSupervisor(eu, alvo)) throw proibido("Você só cancela o cadastro do técnico que criou e que ainda aguarda a liberação");
 
     try {
-      await deps.db.delete(usuario).where(eq(usuario.id, id));
+      // Os pontos e as conquistas (a assinatura e o treino pontuam já no cadastro) somem com a pessoa; o histórico de campo a protege.
+      await deps.db.transaction(async (tx) => {
+        await apagarGamificacaoDaPessoa(tx as unknown as Db, id);
+        await tx.delete(usuario).where(eq(usuario.id, id));
+      });
     } catch (erro) {
       if (codigoPostgres(erro) === "23503") {
         throw conflito("usuario_com_historico", "Este usuário tem histórico (APR, execução, assinatura, alerta ou equipe sob sua supervisão) e não pode ser removido. Desative-o.");
