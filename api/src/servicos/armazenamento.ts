@@ -1,8 +1,11 @@
 import { ErroApi } from "../http/erros";
 import { cabecalhosDeServico } from "./auth";
 
-/** `pdfs` guarda o PDF gerado de cada OS; `documentos`, os PDFs anexados como evidência (laudos, atestados). */
-export const BUCKETS = ["fotos", "assinaturas", "pdfs", "importacoes", "documentos"] as const;
+/**
+ * `pdfs` guarda o PDF gerado de cada OS; `documentos`, os PDFs anexados como evidência (laudos, atestados); `gamificacao`, as
+ * imagens das patentes e das conquistas.
+ */
+export const BUCKETS = ["fotos", "assinaturas", "pdfs", "importacoes", "documentos", "gamificacao"] as const;
 export type Bucket = (typeof BUCKETS)[number];
 
 /**
@@ -16,6 +19,8 @@ export interface Armazenamento {
   ler(bucket: Bucket, caminho: string): Promise<Uint8Array | null>;
   /** URL assinada de 10 minutos (padrão). */
   urlAssinada(bucket: Bucket, caminho: string, segundos?: number): Promise<string>;
+  /** Apaga o arquivo; sem efeito se ele não existe (a imagem trocada ou excluída de uma patente ou conquista). */
+  remover(bucket: Bucket, caminho: string): Promise<void>;
 }
 
 export class ArmazenamentoSupabase implements Armazenamento {
@@ -73,6 +78,12 @@ export class ArmazenamentoSupabase implements Armazenamento {
     return new Uint8Array(await r.arrayBuffer());
   }
 
+  async remover(bucket: Bucket, caminho: string) {
+    const r = await fetch(this.rota(bucket, caminho), { method: "DELETE", headers: this.cabecalhos() });
+    if (r.ok || r.status === 404 || r.status === 400) return;
+    throw new ErroApi(502, "armazenamento_indisponivel", "Não foi possível apagar o arquivo");
+  }
+
   async urlAssinada(bucket: Bucket, caminho: string, segundos = 600) {
     const r = await fetch(this.rota(bucket, caminho, "sign/"), {
       method: "POST",
@@ -107,5 +118,8 @@ export class ArmazenamentoEmMemoria implements Armazenamento {
   }
   async urlAssinada(bucket: Bucket, caminho: string, segundos = 600) {
     return `${this.baseUrl}/${bucket}/${caminho}?expira=${segundos}`;
+  }
+  async remover(bucket: Bucket, caminho: string) {
+    this.arquivos.delete(this.chave(bucket, caminho));
   }
 }

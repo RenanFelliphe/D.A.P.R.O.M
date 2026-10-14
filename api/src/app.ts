@@ -9,6 +9,7 @@ import { rotasBusca } from "./rotas/busca";
 import { rotasCatalogo } from "./rotas/catalogo";
 import { rotasEquipes } from "./rotas/equipes";
 import { rotasEventos } from "./rotas/eventos";
+import { rotasGamificacao } from "./rotas/gamificacao";
 import { rotasImpedimento } from "./rotas/impedimento";
 import { rotasMe } from "./rotas/me";
 import { rotasModelosApr } from "./rotas/modelos-apr";
@@ -48,6 +49,7 @@ export function criarApp(deps: Deps) {
   app.route("/", rotasPreventivas(deps, auth));
   app.route("/", rotasPdf(deps, auth));
   app.route("/", rotasAuditoria(deps, auth));
+  app.route("/", rotasGamificacao(deps, auth));
   if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps));
 
   return app;

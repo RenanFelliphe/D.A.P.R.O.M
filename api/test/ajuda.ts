@@ -73,14 +73,14 @@ export interface OpcoesReq {
   cabecalhos?: Record<string, string>;
 }
 
-export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean } = {}) {
+export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean; /** Quanto o token de acesso dura (padrão 1 h); os testes que avançam o relógio por dias precisam de mais. */ duracaoDoTokenSeg?: number } = {}) {
   const cliente = new PGlite();
   const db = drizzle(cliente, { casing: "snake_case" }) as unknown as Db;
   await migrate(drizzle(cliente, { casing: "snake_case" }), { migrationsFolder: PASTA_MIGRACOES });
   if (opcoes.comCarga) await carregarDadosIniciais(db);
 
   const relogio = { agora: opcoes.relogio ?? new Date() };
-  const auth = new AuthEmMemoria(SEGREDO_JWT, () => relogio.agora);
+  const auth = new AuthEmMemoria(SEGREDO_JWT, () => relogio.agora, opcoes.duracaoDoTokenSeg);
   const armazenamento = new ArmazenamentoEmMemoria();
   const email = new EmailEmMemoria();
   const sap = new SapEmMemoria();

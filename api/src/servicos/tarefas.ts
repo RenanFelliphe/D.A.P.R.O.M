@@ -4,6 +4,7 @@ import type { Deps } from "../deps";
 import { enfileirarTarefa } from "./fila";
 import { manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
 import { manipularLeituraSap } from "./leitura-sap";
+import { fecharTemporadasVencidas } from "../dominio/fechamento-temporada";
 import { verificarCiclos } from "../dominio/preventivas";
 
 type Tarefa = typeof tarefa.$inferSelect;
@@ -24,6 +25,8 @@ export const LIMITE_EM_ANDAMENTO_MIN = 10;
 const INTERVALO_EXECUTOR_MS = 5_000;
 /** De quanto em quanto tempo o ciclo das preventivas é conferido (os alertas são por dia: uma hora basta). */
 export const INTERVALO_CICLOS_MIN = 60;
+/** De quanto em quanto tempo as temporadas da gamificação que passaram da tolerância são fechadas. */
+export const INTERVALO_TEMPORADAS_MIN = 60;
 
 const minutos = (n: number) => n * 60_000;
 
@@ -125,6 +128,7 @@ export function iniciarTarefas(deps: Deps): () => void {
   let parado = false;
   let ultimoAgendamento = 0;
   let ultimaConferenciaDeCiclos = 0;
+  let ultimoFechamentoDeTemporadas = 0;
 
   async function rodada() {
     if (rodando || parado) return;
@@ -139,6 +143,11 @@ export function iniciarTarefas(deps: Deps): () => void {
       if (agora - ultimaConferenciaDeCiclos >= minutos(INTERVALO_CICLOS_MIN)) {
         ultimaConferenciaDeCiclos = agora;
         await verificarCiclos(deps.db, deps.agora());
+      }
+      if (agora - ultimoFechamentoDeTemporadas >= minutos(INTERVALO_TEMPORADAS_MIN)) {
+        ultimoFechamentoDeTemporadas = agora;
+        // Uma falha aqui não impede as tarefas da rodada; o fechamento tenta de novo na próxima hora.
+        await fecharTemporadasVencidas(deps.db, deps.agora()).catch((erro) => console.error("Falha ao fechar as temporadas da gamificação:", erro));
       }
       await executarTarefasPendentes(deps);
     } catch (erro) {
