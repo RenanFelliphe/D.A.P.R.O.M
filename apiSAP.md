@@ -1,6 +1,6 @@
 # API do SAP: tela do simulador — decisões de 14/10/2026
 
-> Registro do desenho da tela do simulador do SAP: o CRUD das ordens de manutenção no lado do "SAP", com criação manual e aleatória e alteração em massa, para demonstrar como as OS chegam ao DAPROM e como ele reage a cada mudança. A estrutura é a mesma da tela de funcionários ([apifuncionarios.md](apifuncionarios.md)).
+> Registro do desenho da tela do simulador do SAP: o CRUD das ordens de manutenção no lado do "SAP", com criação manual e aleatória e alteração em massa, para demonstrar como as OS chegam ao DAPROM e como ele reage a cada mudança. O SAP é simulado de propósito, para mostrar o fluxo final funcionando dentro da empresa. A estrutura é a mesma da tela de funcionários ([apifuncionarios.md](apifuncionarios.md)).
 >
 > **Situação:** implementado em 14/10/2026 (`api` e `web`). O simulador guarda as ordens no banco e tem a tela `/simulador/ordens`. As diferenças entre o que se decidiu e o que ficou estão na seção 14.
 >
@@ -41,7 +41,7 @@
 | Excluir uma ordem que o DAPROM já leu | Não pode. No SAP real uma ordem não some: ela é encerrada. A tela orienta a tirar o `LIB` do status, e o DAPROM cancela a OS na próxima leitura. A ordem que o DAPROM nunca leu, ou que ele ignorou, pode ser excluída. É a mesma regra do registro de funcionários: o que já está no DAPROM não se apaga. |
 | Ações em massa | Mudar o status SAP, mudar o centro de trabalho, reprogramar as datas e excluir. |
 | Sincronização em tempo real? | Não. O SAP real não avisa o DAPROM. A demonstração usa o "Ler agora" da própria tela, e a leitura automática continua a cada 15 minutos. |
-| As rotas `POST` e `PATCH` atuais do simulador | Passam para as rotas de gestão. O contrato fica só com as leituras, que é o que o SAP real oferece. |
+| As rotas `POST` e `PATCH` atuais do simulador | Passam para as rotas de gestão. O contrato fica só com as leituras. |
 
 ## 3. A ordem
 
@@ -227,7 +227,7 @@ Esta tela vem depois da tela de funcionários ([apifuncionarios.md](apifuncionar
 O que foi feito segue as seções acima. Estes pontos, que o desenho deixava abertos ou que mudaram ao implementar, valem daqui em diante:
 
 - **Tabela e carga:** `ordem_sap_simulada` (migração `0020`). Na subida com `SAP_SIMULADO=true` e a tabela vazia, entram as 11 ordens de `fixtures/sap/ordens.json` (cada uma com `alterada_em` igual à sua `criada_em`); com ordens já lá, nada é tocado. No modo local a carga é a da subida. A demonstração grava também as OS que cria, no fim da carga, com `LIB IMPR` nas liberadas, pendentes e em execução, `ENCE` nas encerradas e `CRTD` nas canceladas.
-- **Contrato:** só leitura, como o do SAP real. `POST` e `PATCH /sap-simulado/ordens` saíram (respondem `404`). A `criada_em` sai sempre em UTC (ISO).
+- **Contrato:** só leitura. `POST` e `PATCH /sap-simulado/ordens` saíram (respondem `404`). A `criada_em` sai sempre em UTC (ISO).
 - **Coluna "No DAPROM":** `no_daprom: {situacao, motivo?, aviso?}`. A `situacao` é `nao_lida`, `ignorada` (o `motivo` vem da leitura mais recente, entre as últimas 100 sem erro, que ignorou a ordem) ou o status da OS. Quando a OS existe e a atividade dela não tem modelo de APR, vem também o `aviso` "Atividade sem modelo de APR", que é o aviso que a leitura dá ao criar a OS. O selo `alterada_depois_da_leitura` compara a `alterada_em` com o início da última leitura sem erro; sem nenhuma leitura, toda ordem conta como alterada.
 - **Lista:** os filtros `tipo`, `centro_trabalho` e `no_daprom` e a busca (sem acento) valem juntos; `contagem` traz todas as ordens por situação no DAPROM, sem os filtros. Com o filtro `no_daprom`, a lista é filtrada antes de paginar.
 - **Catálogo:** os centros de trabalho são os do catálogo do simulador do RH (`SERV_ESP`, `INSTRUM`, `LAB_QUI` e três sem equipe) mais os das equipes que o admin criar, cada um dizendo a equipe que tem no DAPROM. As atividades vêm da tabela `atividade` com `com_modelo`.

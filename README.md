@@ -73,7 +73,7 @@ A arquitetura abaixo é a direção registrada na especificação; **não está 
 | Persistência e serviços gerenciados | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso mediado pela API |
 | Implantação | Coolify e Docker | Deploy das aplicações do monorepo |
 
-O monorepo tem as pastas `api`, `web` e `mobile`; `api` e `web` já têm Dockerfile e sobem juntos pelo `docker-compose.yml`, e o do `mobile` (que gera o APK) virá com o app. A integração SAP deve permitir alternar entre uma API simulada, com contrato compatível e dados fictícios, e a API real por configuração de endereço e credenciais. A planilha e o PDF da OS continuam sendo alternativas de leitura.
+O monorepo tem as pastas `api`, `web` e `mobile`; `api` e `web` já têm Dockerfile e sobem juntos pelo `docker-compose.yml`, e o do `mobile` (que gera o APK) virá com o app. A leitura do SAP e o registro de funcionários são simulados na própria `api`, com dados fictícios, para mostrar o fluxo final funcionando dentro da empresa. A planilha e o PDF da OS continuam sendo alternativas de leitura.
 
 A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramento deve poder ser exportado para baixa manual. MFA/SSO corporativo e associação de dispositivos também permanecem como decisões a validar antes de uma implantação real.
 

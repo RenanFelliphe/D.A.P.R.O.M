@@ -38,7 +38,7 @@ export interface Config {
   sapApiToken: string;
   sapSimulado: boolean;
   sapLeituraIntervaloMin: number;
-  /** Registro de funcionários (RH): simulado na própria api ou a API real da empresa (`apifuncionarios.md`). */
+  /** Registro de funcionários (RH): simulado na própria api (`apifuncionarios.md`). */
   rhSimulado: boolean;
   rhApiUrl: string;
   rhApiToken: string;

@@ -1,6 +1,6 @@
   # API de funcionários — decisões de 14/10/2026
 
-> Registro do desenho da API de funcionários: o registro geral dos funcionários da empresa, que o DAPROM consulta para cadastrar usuários e para saber de desligamentos. A empresa não forneceu a API de RH, então o DAPROM traz uma versão simulada, com uma tela própria para a demonstração. Este documento reúne o objetivo, as decisões, o contrato, as mudanças no cadastro, o desligamento, a tela do simulador, a proposta de dados e rotas e a ordem de implementação.
+> Registro do desenho da API de funcionários: o registro geral dos funcionários da empresa, que o DAPROM consulta para cadastrar usuários e para saber de desligamentos. A API de RH é simulada, com uma tela própria, para mostrar como o fluxo final funcionaria dentro da empresa. Este documento reúne o objetivo, as decisões, o contrato, as mudanças no cadastro, o desligamento, a tela do simulador, a proposta de dados e rotas e a ordem de implementação.
 >
 > **Situação:** implementado em 14/10/2026 (`api` e `web`). As diferenças entre o que se decidiu e o que ficou estão na seção 13.
 >
@@ -12,7 +12,7 @@
 - **O registro é a fonte dos dados pessoais.** No DAPROM, nome, e-mail, cargo e registro profissional deixam de ser digitados ou editados. O DAPROM decide só o perfil, a equipe, a liberação, se a conta está ativa e a senha.
 - **O desligamento vale em tempo real.** O registro avisa o DAPROM no momento do desligamento, e a conta é desativada em segundos. Uma vez por dia, uma leitura completa atualiza os dados e pega desligamentos cujo aviso não chegou.
 - **Com o registro fora do ar, o cadastro para.** É melhor recusar do que deixar entrar alguém que não foi conferido.
-- **É simulado, mas pode ser trocado.** O DAPROM fala com o registro por um cliente HTTP com endereço e token configuráveis, como já faz com o SAP. Para usar o registro real basta configurar, desde que ele ofereça a consulta e o aviso (seção 3).
+- **É simulado, de propósito.** O registro serve para mostrar como o fluxo final funcionaria dentro da empresa. O DAPROM fala com ele por um cliente HTTP, com endereço e token configuráveis, como faz com o SAP.
 - **A tela do simulador** fica em `/simulador/funcionarios`, só para o admin. Tem contador, criação manual e aleatória, tabela com seleção, ações em massa, "ver mais", editar e excluir.
 
 ---
@@ -76,7 +76,7 @@ Cada setor tem os seus cargos (Eletricista, Mecânico, Instrumentista, Técnico 
 
 ## 3. Contrato
 
-É o que o DAPROM usa do registro, e portanto o que a API real da empresa precisa oferecer. O contrato segue o formato do contrato do SAP (`snake_case`, paginação por `proxima_pagina`).
+É o que o DAPROM usa do registro. O contrato segue o formato do contrato do SAP (`snake_case`, paginação por `proxima_pagina`).
 
 **Consulta.** O DAPROM chama o registro com `Authorization: Bearer {RH_API_TOKEN}`:
 
@@ -91,7 +91,6 @@ Formato do funcionário: `{matricula, nome, email, cargo, centro_trabalho, setor
 
 - **O aviso não traz decisão, só a lista de matrículas a conferir.** O DAPROM consulta cada matrícula no registro e age pelo que a consulta responder. Assim, um aviso falso não desativa ninguém.
 - **O simulador avisa quando um funcionário passa a desligado**, seja pela edição, seja por uma ação em massa.
-- **Se a API real não oferecer o aviso,** fica só a leitura diária, e o desligamento pode levar até 24 horas para chegar ao DAPROM. Esse ponto precisa ser validado com a empresa (seção 11).
 
 ## 4. Cadastro no DAPROM
 
@@ -294,9 +293,7 @@ Com `RH_SIMULADO=true`, endereços e tokens ganham valores padrão, como acontec
 
 ## 12. Riscos e pontos em aberto
 
-- **Aviso na API real:** sem ele, o desligamento chega em até 24 horas. É preciso validar com a empresa, via Iago, se a API de RH avisa desligamentos.
-- **Formato real do registro:** os campos e o formato da matrícula da empresa são desconhecidos. O contrato da seção 3 é uma proposta, e o cliente HTTP isola a troca.
-- **LGPD:** o registro real tem dados pessoais. O DAPROM só copia nome, e-mail, cargo e CREA. O simulador usa apenas dados fictícios.
+- **LGPD:** o registro usa apenas dados fictícios. O DAPROM só copia nome, e-mail, cargo e CREA.
 - **Fora do escopo:**
   - alerta no sino quando a leitura diária falha;
   - mudar a equipe no DAPROM quando o setor muda no registro (a equipe é decisão do DAPROM; o setor só a sugere no cadastro);

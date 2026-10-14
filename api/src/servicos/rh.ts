@@ -1,6 +1,6 @@
 /**
- * Contrato da API do registro de funcionários (ver `apifuncionarios.md`, seção 3): o que o DAPROM consulta do RH da empresa. O
- * simulador do próprio back-end responde no mesmo formato, e o DAPROM não sabe se fala com ele ou com o RH de verdade.
+ * Contrato da API do registro de funcionários (ver `apifuncionarios.md`, seção 3): o que o DAPROM consulta do registro. O
+ * simulador do próprio back-end responde nesse formato.
  */
 export interface FuncionarioRh {
   matricula: string;

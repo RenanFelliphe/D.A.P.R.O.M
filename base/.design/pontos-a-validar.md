@@ -30,7 +30,7 @@
 | 6 | Como desfazer uma execução iniciada por engano? | 🔴 | Time + Iago | continua; existe pausar, mas não cancelar |
 | 24 | Técnico sem e-mail e o Supabase Auth | ✅ | Time | **resolvida em 11/10:** todos têm e-mail institucional e ele é o login |
 | 29 | A OS só executa depois de liberada no SAP | 🔴 | Iago | com a API, o status vem de lá |
-| 43 | Contrato da API real do SAP | 🔴 | Iago | **reformulada**: a API existe; falta o contrato |
+| 43 | Contrato da API do SAP | ✅ | Time | **resolvida em 14/10:** o protótipo usa a API simulada |
 | 7 | Execução iniciada e nunca encerrada | 🟡 | Time | agora há cronômetro e atividades de vários dias |
 | 8 | Validade da APR | 🟡 | Iago/Mario | **reformulada**: por sessão de execução |
 | 9 | Resposta "NA" em item eliminatório | 🟡 | Mario | igual |
@@ -105,10 +105,10 @@
 **Contexto:** na Reunião 1 a OS só podia ser executada depois de liberada pelo analista no SAP. A importação marca tudo como `liberada`. O Iago citou o status "liberada e impressa" (55:44).
 **Recomendação:** ler o status do SAP e só levar ao aplicativo as OS liberadas; as demais ficam de fora com o motivo registrado.
 
-### 43. Contrato da API real do SAP
+### 43. Contrato da API do SAP
 
-**Contexto:** o time decidiu simular a API com dados fictícios, no mesmo contrato da real, e trocar só o endereço e as credenciais. Falta o contrato: campos, autenticação, paginação, e **quem chama quem** (nosso back-end consulta, ou o SAP envia). Na Reunião 1 a API não existia; na 2 o time disse que existe, e o Iago não contrariou.
-**Recomendação:** o back-end consulta a API, com um adaptador. Pedir ao Iago o contrato e a planilha de 2025 que ele prometeu (45:21).
+**Contexto:** o time decidiu simular a API com dados fictícios, num contrato definido pelo projeto, para mostrar o fluxo final funcionando dentro da empresa.
+**Recomendação:** o back-end consulta a API simulada, com um adaptador. A planilha de 2025 que o Iago prometeu (45:21) segue útil para a planilha e para os dados fictícios (questão 54).
 
 ## 3. Detalhe das adotadas com impacto na demo (🟡)
 
@@ -356,7 +356,7 @@ Decidido em 12/10/2026 (já refletido na especificação):
 
 | Quem | O quê | Liga com |
 |---|---|---|
-| Iago | Planilha do SAP com o pacote de OS de 2025 | 43, 54 |
+| Iago | Planilha do SAP com o pacote de OS de 2025 | 54 |
 | Iago | Documento de arquitetura (SharePoint e Power Apps) | — |
 | Iago | Tabela de tipos de manutenção × APR (ainda não aprovada) | 52 |
 | Mario | Tabela de equipes | 54 |

@@ -54,7 +54,7 @@ const esquemaBusca = esquemaPaginacao.extend({ busca: z.string().trim().min(1).o
 /**
  * Simulador do registro de funcionários (RH), só montado com `RH_SIMULADO=true` (em `/rh-simulado`). Tem duas partes:
  * - **Contrato** (`GET /funcionarios`, `GET /funcionarios/{matricula}`), com `Authorization: Bearer <RH_API_TOKEN>`: o que o
- *   DAPROM lê, no formato da API real;
+ *   DAPROM lê;
  * - **Gestão** (`/gestao/...`), com o admin logado no DAPROM: o CRUD que a tela `/simulador/funcionarios` usa. Quando um
  *   funcionário passa a desligado, o simulador avisa o DAPROM (`enviarAviso`).
  * Os dados ficam na tabela `funcionario_simulado`, no banco do DAPROM. Ver `apifuncionarios.md`.

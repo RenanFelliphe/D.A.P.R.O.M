@@ -259,7 +259,7 @@ Decidido e implementado em 14/10/2026 (desenho completo em [apifuncionarios.md](
 `POST /rh/leituras` → `202` `{leitura_id}` — admin; o "Ler agora"
 `GET /rh/sincronizacao` → `200` `{ultima_leitura, configurado, leitura_hora}` — admin; `ultima_leitura`: `{id, origem, iniciada_em, concluida_em, conferidos, atualizados, desativados, erro, situacao}`, com `situacao` `concluida`, `falhou`, `tentando_de_novo` ou `em_andamento`
 
-O que o DAPROM lê do registro (o contrato, igual ao da API real que a empresa precisar oferecer), com `Authorization: Bearer {RH_API_TOKEN}`: `GET {RH_API_URL}/funcionarios/{matricula}` → `200` o funcionário ou `404`, e `GET {RH_API_URL}/funcionarios` `?pagina&tamanho` → `200` `{funcionarios[], proxima_pagina?}`. Funcionário: `{matricula, nome, email, cargo, centro_trabalho, setor, registro_profissional, situacao, data_admissao, data_nascimento, telefone, gestor_matricula, lotacao}`, com `situacao` `ativo`, `afastado` ou `desligado`. Sem CPF.
+O que o DAPROM lê do registro (o contrato do registro simulado), com `Authorization: Bearer {RH_API_TOKEN}`: `GET {RH_API_URL}/funcionarios/{matricula}` → `200` o funcionário ou `404`, e `GET {RH_API_URL}/funcionarios` `?pagina&tamanho` → `200` `{funcionarios[], proxima_pagina?}`. Funcionário: `{matricula, nome, email, cargo, centro_trabalho, setor, registro_profissional, situacao, data_admissao, data_nascimento, telefone, gestor_matricula, lotacao}`, com `situacao` `ativo`, `afastado` ou `desligado`. Sem CPF.
 
 **Simulador** (só com `RH_SIMULADO=true`, em `/rh-simulado`; os dados ficam na tabela `funcionario_simulado`, no banco do DAPROM, e não na memória): o contrato acima, e a gestão, que exige o admin logado e serve à tela `/simulador/funcionarios` da web:
 `GET /rh-simulado/gestao/funcionarios` `?busca&pagina&tamanho` (com `conta_no_daprom` de cada um e o contador por situação), `GET /rh-simulado/gestao/catalogo`, `POST /rh-simulado/gestao/funcionarios`, `POST /rh-simulado/gestao/funcionarios/aleatorios` `{lotes: [{quantidade, centro_trabalho?, cargo?, situacao?}]}` (no máximo 200 por envio), `PATCH` e `DELETE /rh-simulado/gestao/funcionarios/{matricula}` (a matrícula não muda; quem tem conta no DAPROM é desligado, não excluído) e `POST /rh-simulado/gestao/funcionarios/em-massa` `{matriculas[] ou todos_da_busca, acao: excluir|mudar_setor|mudar_situacao, valor?}` → `{afetados, recusados}`. Quando um funcionário passa a desligado, o simulador avisa o DAPROM. Carga inicial: um funcionário para cada usuário existente, mais uns 30 sem conta (modo local e demonstração); no banco publicado, `pnpm rh:carga-inicial`, que precisa rodar antes de a conferência ser ligada.
@@ -274,7 +274,7 @@ O contrato da API segue o que o SAP expõe; o simulador, que vive no próprio ba
 
 `GET {SAP_API_URL}/ordens` `?alteradas_desde&pagina&tamanho` com `Authorization: Bearer` → `200` `{ordens: [{numero_ordem, numero_nota, tipo_ordem, tipo_atividade, codigo_atividade, titulo, descricao, centro_trabalho, local_instalacao: {codigo, endereco, plus_code, cliente}, equipamento, prioridade, data_inicio_prog, data_fim_prog, status_sap, solicitante, criado_por, criada_em}], proxima_pagina?}`
 `GET {SAP_API_URL}/ordens/{numero_ordem}` → `200` a mesma ordem
-O contrato do simulador é só leitura, como o do SAP real. O que cria e muda ordens é a gestão do simulador, com o admin logado (serve à tela `/simulador/ordens` da web; ver [apiSAP.md](../../apiSAP.md)):
+O contrato do simulador é só leitura. O que cria e muda ordens é a gestão do simulador, com o admin logado (serve à tela `/simulador/ordens` da web; ver [apiSAP.md](../../apiSAP.md)):
 `GET /sap-simulado/gestao/ordens` `?busca&tipo&centro_trabalho&no_daprom&pagina&tamanho` → `200` `{ordens[], total, pagina, tamanho, contagem, total_geral}` — cada ordem traz `no_daprom` (`{situacao, motivo?, aviso?}`: `nao_lida`, `ignorada` com o motivo da leitura, ou o status da OS no DAPROM) e `alterada_depois_da_leitura`
 `GET /sap-simulado/gestao/catalogo` → centros de trabalho, locais, atividades (com `com_modelo`), serviços, status prontos e o próximo número livre
 `POST /sap-simulado/gestao/ordens` → `201` `{ordem}` (manual; `409` `ordem_duplicada`)
@@ -1028,7 +1028,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 39 | atraso conta a partir de `data_fim_prog`, senão de `data_inicio_prog` | time |
 | 40 e 51 | planilha de baixa com as colunas da aba `Encerradas`; o encerramento não atualiza o SAP por API | Iago |
 | 41 | aparelhos do piloto definidos antes do piloto | time |
-| 43 e 54 | adaptador de leitura da API, com simulador no mesmo contrato e fixtures a partir do PDF de exemplo, trocadas pela planilha de 2025 quando chegar | Iago |
+| 43 e 54 | adaptador de leitura da API, com simulador e fixtures a partir do PDF de exemplo, trocadas pela planilha de 2025 quando chegar | Iago |
 | 44 | perfil com assinatura e as OS encerradas do próprio técnico (60 dias) | time |
 | 45 | escaneamento e chatbot ficam fora do MVP; o catálogo de serviço, o intervalo entre ciclos das preventivas e a gamificação (pontos, patentes, ranking, conquistas e anonimato; ver [Gamificação](#gamificação)) foram feitos em 13/10/2026 | time |
 | 46 | evidência é foto, texto ou PDF, por item (o modelo diz o que é exigido); PDF a mais é sempre aceito e não substitui a foto exigida | time |

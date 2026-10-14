@@ -99,7 +99,7 @@ Tarefas em segundo plano (`pdf_os`, `email_alerta`, `leitura_sap`, `leitura_rh`,
 - Busca global (não está na especificação): `busca` procura, sem diferenciar maiúsculas nem acentos, no nome, matrícula, cargo, e-mail e CREA do usuário; no nome e centro de trabalho da equipe; e no número da ordem, título, código do local, número da nota e cliente da OS. Cada lista traz só o que tem o texto em algum desses campos. Regras em [`src/dominio/busca.ts`](src/dominio/busca.ts).
 
 - **Cadastro pelo registro de funcionários:** `POST /usuarios` recebe só `{matricula, email, perfil?, equipe_id?, senha_inicial}` (nome, cargo e CREA vêm do registro), `PATCH /usuarios/{id}` não aceita mais nome, e-mail, cargo nem CREA (`422`, e `403` para o supervisor, que só cancela o cadastro pendente) e há `POST /usuarios/{id}/atualizar-do-registro`. A migração `0019` cria `funcionario_simulado` e `leitura_rh`, as colunas `usuario.situacao_registro` e `registro_conferido_em`, os tipos de tarefa `leitura_rh` e `conferencia_rh`, a entidade de auditoria `rh` e deixa `auditoria.ator_id` aceitar nulo (o ator de sistema "Registro de funcionários"). A `leitura_rh` tem a coluna `dia`, com índice único, que garante uma leitura agendada por dia.
-- **O simulador do SAP passou para o banco:** a migração `0020` cria `ordem_sap_simulada`. `POST` e `PATCH /sap-simulado/ordens` saíram do contrato (o SAP real não os tem) e viraram a gestão em `/sap-simulado/gestao`.
+- **O simulador do SAP passou para o banco:** a migração `0020` cria `ordem_sap_simulada`. `POST` e `PATCH /sap-simulado/ordens` saíram do contrato e viraram a gestão em `/sap-simulado/gestao`.
 
 ## Não coberto
 

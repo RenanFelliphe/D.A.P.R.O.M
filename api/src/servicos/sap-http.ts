@@ -11,7 +11,7 @@ const esquemaOrdemUnica = z.record(z.string(), z.unknown());
 const TEMPO_LIMITE_MS = 30_000;
 
 /**
- * Cliente HTTP da API do SAP, real ou simulada (`/sap-simulado`): só muda o endereço e o token. Resposta fora do formato
+ * Cliente HTTP da API do SAP (a simulada, em `/sap-simulado`): endereço e token vêm da configuração. Resposta fora do formato
  * ou status de erro lança exceção; quem lê o SAP trata isso como "API fora do ar" e não grava nada.
  */
 export class ClienteSapHttp implements ClienteSap {

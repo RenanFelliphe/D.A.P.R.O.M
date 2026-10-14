@@ -25,7 +25,7 @@ const esquemaPagina = z.object({
 const TEMPO_LIMITE_MS = 30_000;
 
 /**
- * Cliente HTTP do registro de funcionários, real ou simulado (`/rh-simulado`): só muda o endereço e o token. Qualquer falha
+ * Cliente HTTP do registro de funcionários (o simulado, em `/rh-simulado`): endereço e token vêm da configuração. Qualquer falha
  * (rede, status de erro, corpo fora do formato) vira `RegistroIndisponivel`; só `404` na consulta de uma matrícula é resposta
  * ("não está no registro").
  */
