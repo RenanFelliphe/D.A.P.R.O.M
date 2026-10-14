@@ -7,7 +7,7 @@ import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { AVISO_DE_PENDENTE, ordemDosPerfis, type ModoUsuarios } from "@/data/usuarios";
 import { chamar } from "@/lib/cliente-api";
-import { rotuloDoPerfil, type Perfil, type Usuario } from "@/lib/tipos";
+import { rotuloDoPerfil, rotuloDaSituacaoRegistro, type Perfil, type SituacaoRegistro, type Usuario } from "@/lib/tipos";
 import { useToast } from "@/state/toast";
 
 /** Alfabeto das senhas iniciais da `api` (sem 0/O, 1/l/I), para o admin ditar sem confusão. */
@@ -25,68 +25,113 @@ export interface OpcaoEquipe {
   nome: string;
 }
 
+/** Resposta de `GET /rh/funcionarios/{matricula}?email=`: o que o registro de funcionários diz da pessoa. */
+interface PreviaDoCadastro {
+  funcionario: {
+    matricula: string;
+    nome: string;
+    cargo: string;
+    centro_trabalho: string;
+    setor: string;
+    registro_profissional: string | null;
+    situacao: SituacaoRegistro;
+  };
+  /** A equipe que o setor da pessoa sugere; `null` quando o setor não tem equipe no DAPROM. */
+  equipe_sugerida: OpcaoEquipe | null;
+  conta_existente: boolean;
+}
+
 interface FormularioUsuarioProps {
-  /** Sem `usuario`, cria; com ele, edita (`PATCH /usuarios/{id}`). */
+  /** Sem `usuario`, cadastra (consulta o registro e confirma); com ele, edita só o perfil e a equipe (`PATCH /usuarios/{id}`). */
   usuario?: Usuario;
   /** Admin: todas as equipes. Supervisor: só as que ele supervisiona. */
   equipes: OpcaoEquipe[];
-  /** Supervisor: só cadastra técnicos (sem campo de perfil, nasce pendente) e edita nome, cargo e registro dos pendentes que criou. */
+  /** Supervisor: só cadastra técnicos, na equipe do setor, e a conta nasce pendente. Não edita ninguém. */
   modo?: ModoUsuarios;
   aoConcluir: () => void;
 }
 
+const SOMENTE_LEITURA = { background: "var(--surface2)" } as const;
+
+/** Campo só de leitura: os dados pessoais vêm do registro de funcionários e não se digitam nem se editam aqui. */
+function DadoDoRegistro({ rotulo, valor, mono }: { rotulo: string; valor: string | null | undefined; mono?: boolean }) {
+  return (
+    <Field label={rotulo}>
+      <input className={mono ? "input mono" : "input"} value={valor || "—"} readOnly aria-readonly="true" style={SOMENTE_LEITURA} />
+    </Field>
+  );
+}
+
 /**
- * Formulário de usuário: cria (`POST /usuarios`) ou edita (`PATCH /usuarios/{id}`). O administrador define perfil e equipe; o
- * supervisor cadastra técnicos nas equipes dele e, ao salvar, vê a senha provisória (só desta vez) e o aviso de que o acesso geral
- * espera a liberação de um administrador.
+ * Cadastro e edição de usuário. O cadastro é em duas etapas, a partir do registro de funcionários: 1) a matrícula e o e-mail
+ * institucional são consultados (`GET /rh/funcionarios/{matricula}?email=`), e a prévia mostra nome, cargo, setor e CREA, que não se
+ * digitam; 2) o admin escolhe o perfil, confirma ou troca a equipe (já vem a do setor) e define a senha inicial. O supervisor não
+ * escolhe nada disso: cadastra técnico, na equipe do setor, e vê a senha provisória (só desta vez) e o aviso de que o acesso geral
+ * espera a liberação de um administrador. A edição (só do admin) muda o perfil e a equipe; o resto vem do registro.
  */
 export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir }: FormularioUsuarioProps) {
   const router = useRouter();
   const exibirAviso = useToast();
-  const editando = Boolean(usuario);
   const supervisor = modo === "supervisor";
+  const [previa, setPrevia] = useState<PreviaDoCadastro | null>(null);
   const [criado, setCriado] = useState<{ nome: string; email: string; senha: string } | null>(null);
-  const [nome, setNome] = useState(usuario?.nome ?? "");
   const [matricula, setMatricula] = useState("");
-  const [email, setEmail] = useState(usuario?.email ?? "");
+  const [email, setEmail] = useState("");
   const [perfil, setPerfil] = useState<Perfil>(usuario?.perfil ?? "tecnico");
-  // O supervisor com uma só equipe não escolhe: ela já vem marcada.
-  const [equipeId, setEquipeId] = useState(usuario?.equipe_id ?? (supervisor && equipes.length === 1 ? equipes[0]!.id : ""));
-  const [cargo, setCargo] = useState(usuario?.cargo ?? "");
-  const [registro, setRegistro] = useState(usuario?.registro_profissional ?? "");
+  const [equipeId, setEquipeId] = useState(usuario?.equipe_id ?? "");
   const [senha, setSenha] = useState(() => (supervisor && !usuario ? sugerirSenha() : ""));
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
-  async function enviar(evento: FormEvent) {
+  async function consultar(evento: FormEvent) {
     evento.preventDefault();
     setErro(null);
-    if (!editando && senha.length < 8) return setErro("A senha inicial precisa ter ao menos 8 caracteres");
-    if (supervisor && !editando && !equipeId) return setErro("Escolha a equipe do técnico");
-
-    const comum = {
-      nome: nome.trim(),
-      email: email.trim().toLowerCase(),
-      perfil,
-      equipe_id: equipeId || null,
-      cargo: cargo.trim() || null,
-      registro_profissional: registro.trim() || null,
-    };
     setOcupado(true);
     try {
-      if (usuario) {
-        // O supervisor só altera nome, cargo e registro profissional do pendente que cadastrou.
-        await chamar("PATCH", `/usuarios/${usuario.id}`, supervisor ? { nome: comum.nome, cargo: comum.cargo, registro_profissional: comum.registro_profissional } : comum);
-        exibirAviso("Usuário atualizado.");
-      } else if (supervisor) {
-        await chamar("POST", "/usuarios", { ...comum, perfil: "tecnico", matricula: matricula.trim(), senha_inicial: senha });
+      const resposta = await chamar<PreviaDoCadastro>("GET", `/rh/funcionarios/${encodeURIComponent(matricula.trim())}?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+      setPrevia(resposta);
+      setEquipeId(resposta.equipe_sugerida?.id ?? "");
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível consultar o registro de funcionários");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function confirmar(evento: FormEvent) {
+    evento.preventDefault();
+    if (!previa) return;
+    setErro(null);
+    if (senha.length < 8) return setErro("A senha inicial precisa ter ao menos 8 caracteres");
+    setOcupado(true);
+    try {
+      // A `api` consulta o registro de novo: os dados gravados são sempre os da consulta feita agora, não os da prévia.
+      const base = { matricula: previa.funcionario.matricula, email: email.trim().toLowerCase(), senha_inicial: senha };
+      if (supervisor) {
+        await chamar("POST", "/usuarios", { ...base, perfil: "tecnico" });
         router.refresh();
-        setCriado({ nome: comum.nome, email: comum.email, senha });
+        setCriado({ nome: previa.funcionario.nome, email: base.email, senha });
         return;
-      } else {
-        await chamar("POST", "/usuarios", { ...comum, matricula: matricula.trim(), senha_inicial: senha });
-        exibirAviso("Usuário criado. A pessoa define a própria senha no primeiro acesso.");
       }
+      await chamar("POST", "/usuarios", { ...base, perfil, equipe_id: equipeId || null });
+      exibirAviso("Usuário criado. A pessoa define a própria senha no primeiro acesso.");
+      router.refresh();
+      aoConcluir();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível cadastrar o usuário");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  async function salvarEdicao(evento: FormEvent) {
+    evento.preventDefault();
+    if (!usuario) return;
+    setErro(null);
+    setOcupado(true);
+    try {
+      await chamar("PATCH", `/usuarios/${usuario.id}`, { perfil, equipe_id: equipeId || null });
+      exibirAviso("Usuário atualizado.");
       router.refresh();
       aoConcluir();
     } catch (e) {
@@ -95,6 +140,12 @@ export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir
       setOcupado(false);
     }
   }
+
+  const mensagemDeErro = erro && (
+    <Notice tone="blq" icon="alert">
+      {erro}
+    </Notice>
+  );
 
   if (criado) {
     return (
@@ -120,31 +171,23 @@ export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir
     );
   }
 
-  const equipeUnica = supervisor && equipes.length === 1 ? equipes[0]! : null;
-  const nomeDaEquipe = equipes.find((e) => e.id === equipeId)?.nome ?? equipeUnica?.nome ?? "—";
-
-  return (
-    <form onSubmit={enviar} className="stack g12">
-      <Field label="Nome">
-        <input className="input" required value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="off" />
-      </Field>
-      <div className="grade2">
-        <Field label="Matrícula">
-          {editando ? (
-            <input className="input mono" value={usuario!.matricula} readOnly aria-readonly="true" style={{ background: "var(--surface2)" }} />
-          ) : (
-            <input className="input mono" required value={matricula} onChange={(e) => setMatricula(e.target.value)} autoComplete="off" placeholder="10482" />
-          )}
-        </Field>
-        {supervisor ? (
-          <Field label="E-mail institucional (é o login)">
-            {editando ? (
-              <input className="input" value={usuario?.email ?? "—"} readOnly aria-readonly="true" style={{ background: "var(--surface2)" }} />
-            ) : (
-              <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" placeholder="nome.sobrenome@empresa.com.br" />
-            )}
-          </Field>
-        ) : (
+  // ---- edição (só o admin): os dados pessoais são do registro; aqui só o perfil e a equipe ----
+  if (usuario) {
+    return (
+      <form onSubmit={salvarEdicao} className="stack g12">
+        <Notice tone="info" icon="info">
+          Nome, e-mail, cargo e registro profissional vêm do registro de funcionários e não se editam aqui. Para trazer o que mudou lá, use “Atualizar do registro”.
+        </Notice>
+        <DadoDoRegistro rotulo="Nome" valor={usuario.nome} />
+        <div className="grade2">
+          <DadoDoRegistro rotulo="Matrícula" valor={usuario.matricula} mono />
+          <DadoDoRegistro rotulo="E-mail institucional (é o login)" valor={usuario.email} />
+        </div>
+        <div className="grade2">
+          <DadoDoRegistro rotulo="Cargo" valor={usuario.cargo} />
+          <DadoDoRegistro rotulo="Registro profissional" valor={usuario.registro_profissional} />
+        </div>
+        <div className="grade2">
           <Field label="Perfil">
             <select className="input" value={perfil} onChange={(e) => setPerfil(e.target.value as Perfil)}>
               {ordemDosPerfis.map((p) => (
@@ -154,22 +197,9 @@ export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir
               ))}
             </select>
           </Field>
-        )}
-      </div>
-      <div className="grade2">
-        {!supervisor && (
-          <Field label="E-mail institucional (é o login)">
-            <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" placeholder="nome.sobrenome@empresa.com.br" />
-          </Field>
-        )}
-        {supervisor && (editando || equipeUnica) ? (
           <Field label="Equipe">
-            <input className="input" value={nomeDaEquipe} readOnly aria-readonly="true" style={{ background: "var(--surface2)" }} />
-          </Field>
-        ) : (
-          <Field label="Equipe">
-            <select className="input" required={supervisor} value={equipeId} onChange={(e) => setEquipeId(e.target.value)}>
-              <option value="">{supervisor ? "Escolha a equipe" : "Sem equipe"}</option>
+            <select className="input" value={equipeId} onChange={(e) => setEquipeId(e.target.value)}>
+              <option value="">Sem equipe</option>
               {equipes.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.nome}
@@ -177,45 +207,142 @@ export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir
               ))}
             </select>
           </Field>
-        )}
+        </div>
+        {mensagemDeErro}
+        <div className="row g8" style={{ justifyContent: "flex-end" }}>
+          <Button variant="line" sm onClick={aoConcluir} disabled={ocupado}>
+            Cancelar
+          </Button>
+          <Button variant="p" sm type="submit" disabled={ocupado}>
+            {ocupado ? "Salvando…" : "Salvar"}
+          </Button>
+        </div>
+      </form>
+    );
+  }
+
+  // ---- cadastro, etapa 1: consultar o registro ----
+  if (!previa) {
+    return (
+      <form onSubmit={consultar} className="stack g12">
+        <Notice tone="info" icon="info">
+          Só quem está no registro de funcionários da empresa vira usuário. Informe a matrícula e o e-mail institucional da pessoa: o nome, o cargo e o registro profissional vêm de lá.
+        </Notice>
+        <div className="grade2">
+          <Field label="Matrícula">
+            <input className="input mono" required value={matricula} onChange={(e) => setMatricula(e.target.value)} autoComplete="off" placeholder="100231" />
+          </Field>
+          <Field label="E-mail institucional (é o login)">
+            <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" placeholder="nome.sobrenome@empresa.com.br" />
+          </Field>
+        </div>
+        {mensagemDeErro}
+        <div className="row g8" style={{ justifyContent: "flex-end" }}>
+          <Button variant="line" sm onClick={aoConcluir} disabled={ocupado}>
+            Cancelar
+          </Button>
+          <Button variant="p" sm type="submit" disabled={ocupado}>
+            {ocupado ? "Consultando…" : "Consultar no registro"}
+          </Button>
+        </div>
+      </form>
+    );
+  }
+
+  // ---- cadastro, etapa 2: confirmar ----
+  const f = previa.funcionario;
+  const nomeDaEquipe = equipes.find((e) => e.id === equipeId)?.nome ?? previa.equipe_sugerida?.nome ?? "—";
+  return (
+    <form onSubmit={confirmar} className="stack g12">
+      <Notice tone="ok" icon="check">
+        Encontrado no registro de funcionários. Confira se é a pessoa certa antes de continuar.
+      </Notice>
+      <DadoDoRegistro rotulo="Nome" valor={f.nome} />
+      <div className="grade2">
+        <DadoDoRegistro rotulo="Matrícula" valor={f.matricula} mono />
+        <DadoDoRegistro rotulo="E-mail institucional (é o login)" valor={email.trim().toLowerCase()} />
       </div>
       <div className="grade2">
-        <Field label="Cargo (impresso sob a assinatura)">
-          <input className="input" value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Técnico em Elétrica" />
-        </Field>
-        <Field label="Registro profissional">
-          <input className="input" value={registro} onChange={(e) => setRegistro(e.target.value)} placeholder="CREA: ES-050003/D" />
-        </Field>
+        <DadoDoRegistro rotulo="Cargo" valor={f.cargo} />
+        <DadoDoRegistro rotulo="Registro profissional" valor={f.registro_profissional} />
       </div>
-      {!editando && (
-        <Field label="Senha inicial (mínimo 8 caracteres)">
-          <div className="row g8">
-            <input className="input mono grow" required minLength={8} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="off" />
-            <Button variant="line" sm onClick={() => setSenha(sugerirSenha())}>
-              Sugerir
+      <div className="grade2">
+        <DadoDoRegistro rotulo="Setor" valor={f.setor} />
+        <DadoDoRegistro rotulo="Situação no registro" valor={rotuloDaSituacaoRegistro[f.situacao]} />
+      </div>
+
+      {previa.conta_existente ? (
+        <>
+          <Notice tone="al" icon="alert">
+            Esta pessoa já tem conta no DAPROM. Procure-a na lista de usuários.
+          </Notice>
+          <div className="row g8" style={{ justifyContent: "flex-end" }}>
+            <Button variant="line" sm onClick={() => setPrevia(null)}>
+              Voltar
+            </Button>
+            <Button variant="p" sm onClick={aoConcluir}>
+              Fechar
             </Button>
           </div>
-          <span className="small">A pessoa troca essa senha no primeiro acesso. Anote-a para repassar: ela não aparece de novo.</span>
-        </Field>
+        </>
+      ) : (
+        <>
+          <div className="grade2">
+            {supervisor ? (
+              <Field label="Equipe (a do setor)">
+                <input className="input" value={nomeDaEquipe} readOnly aria-readonly="true" style={SOMENTE_LEITURA} />
+              </Field>
+            ) : (
+              <>
+                <Field label="Perfil">
+                  <select className="input" value={perfil} onChange={(e) => setPerfil(e.target.value as Perfil)}>
+                    {ordemDosPerfis.map((p) => (
+                      <option key={p} value={p}>
+                        {rotuloDoPerfil[p]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Equipe">
+                  <select className="input" value={equipeId} onChange={(e) => setEquipeId(e.target.value)}>
+                    <option value="">Sem equipe</option>
+                    {equipes.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nome}
+                        {e.id === previa.equipe_sugerida?.id ? " (a do setor)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {!previa.equipe_sugerida && <span className="small">O setor {f.setor} não tem equipe no DAPROM.</span>}
+                </Field>
+              </>
+            )}
+          </div>
+          <Field label="Senha inicial (mínimo 8 caracteres)">
+            <div className="row g8">
+              <input className="input mono grow" required minLength={8} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="off" />
+              <Button variant="line" sm onClick={() => setSenha(sugerirSenha())}>
+                Sugerir
+              </Button>
+            </div>
+            <span className="small">A pessoa troca essa senha no primeiro acesso. Anote-a para repassar: ela não aparece de novo.</span>
+          </Field>
+          {supervisor && (
+            <Notice tone="al" icon="clock">
+              {AVISO_DE_PENDENTE}
+            </Notice>
+          )}
+          {mensagemDeErro}
+          <div className="row g8" style={{ justifyContent: "flex-end" }}>
+            <Button variant="line" sm onClick={() => setPrevia(null)} disabled={ocupado}>
+              Voltar
+            </Button>
+            <Button variant="p" sm type="submit" disabled={ocupado}>
+              {ocupado ? "Cadastrando…" : supervisor ? "Cadastrar técnico" : "Criar usuário"}
+            </Button>
+          </div>
+        </>
       )}
-      {supervisor && !editando && (
-        <Notice tone="al" icon="clock">
-          {AVISO_DE_PENDENTE}
-        </Notice>
-      )}
-      {erro && (
-        <Notice tone="blq" icon="alert">
-          {erro}
-        </Notice>
-      )}
-      <div className="row g8" style={{ justifyContent: "flex-end" }}>
-        <Button variant="line" sm onClick={aoConcluir} disabled={ocupado}>
-          Cancelar
-        </Button>
-        <Button variant="p" sm type="submit" disabled={ocupado}>
-          {ocupado ? "Salvando…" : editando ? "Salvar" : supervisor ? "Cadastrar técnico" : "Criar usuário"}
-        </Button>
-      </div>
     </form>
   );
 }

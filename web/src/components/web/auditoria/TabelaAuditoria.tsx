@@ -112,7 +112,7 @@ export function TabelaAuditoria({ registros, filtros, pagina, tamanho, total }: 
                   <tr key={r.id}>
                     <td>{dataHora(r.em)}</td>
                     <td>
-                      <Link href={rotas.app.perfilDe(r.ator_id)}>{r.ator_nome}</Link>
+                      {r.ator_id ? <Link href={rotas.app.perfilDe(r.ator_id)}>{r.ator_nome}</Link> : <span title="Ação automática, sem uma pessoa por trás">{r.ator_nome}</span>}
                     </td>
                     <td>
                       <Badge tone="neu">{rotuloDaEntidade[r.entidade]}</Badge>

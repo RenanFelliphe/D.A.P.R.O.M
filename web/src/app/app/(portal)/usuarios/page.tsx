@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CartaoRegistro, type SincronizacaoDoRegistro } from "@/components/web/usuarios/CartaoRegistro";
 import { PerfilEquipe } from "@/components/perfil/PerfilEquipe";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
@@ -50,12 +51,14 @@ async function VisaoDoAdmin({ params }: { params: Consulta }) {
   const filtros = { equipe_id: um(params.equipe_id) || undefined, perfil: um(params.perfil) || undefined, ativo: um(params.ativo) || undefined, liberacao: um(params.liberacao) || undefined, busca: um(params.busca)?.trim() || undefined };
   const pagina = Math.max(1, Number.parseInt(um(params.pagina) ?? "1", 10) || 1);
 
-  const [lista, equipesApi, supervisores, pendentes] = await Promise.all([
+  const [lista, equipesApi, supervisores, pendentes, registro] = await Promise.all([
     api<{ usuarios: Usuario[] } & Paginacao>("/usuarios", { consulta: { ...filtros, pagina, tamanho: TAMANHO } }),
     api<{ equipes: Equipe[] }>("/equipes", { consulta: { tamanho: 200 } }),
     api<{ usuarios: Usuario[] }>("/usuarios", { consulta: { ativo: true, tamanho: 200 } }),
     // Cadastros de supervisores que esperam a liberação: destaque no topo (some quando o filtro já é só de pendentes).
     filtros.liberacao === "pendente" ? null : api<{ usuarios: Usuario[] } & Paginacao>("/usuarios", { consulta: { liberacao: "pendente", tamanho: 20 } }),
+    // A última leitura do registro de funcionários; sem ela a tela segue (o cartão só não aparece).
+    api<SincronizacaoDoRegistro>("/rh/sincronizacao").catch(() => null),
   ]);
   const nomes = new Map([...supervisores.usuarios, ...(pendentes?.usuarios ?? [])].map((u) => [u.id, u.nome]));
   // quantos técnicos ativos cada equipe tem (`total` de uma página de tamanho 1)
@@ -71,6 +74,7 @@ async function VisaoDoAdmin({ params }: { params: Consulta }) {
     <Screen>
       <CabecalhoUsuarios equipes={opcoesDeEquipe} />
       {pendentes && <PainelPendentes pendentes={pendentes.usuarios} total={pendentes.total} equipes={opcoesDeEquipe} nomes={nomes} />}
+      {registro && <CartaoRegistro inicial={registro} />}
       <TabelaUsuarios usuarios={lista.usuarios} equipes={opcoesDeEquipe} filtros={filtros} pagina={lista.pagina} tamanho={lista.tamanho} total={lista.total} />
       <div className="two eq">
         <ListaEquipes equipes={equipes} supervisores={supervisores.usuarios.map((s) => ({ id: s.id, nome: s.nome }))} />

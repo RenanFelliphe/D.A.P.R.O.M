@@ -36,6 +36,9 @@ export interface Usuario {
   /** Nome de quem cadastrou e o instante do cadastro: a tela de espera os mostra quando a `api` os devolve em `/me`. */
   criado_por_nome?: string | null;
   criado_em?: string | null;
+  /** O que o registro de funcionários diz da pessoa na última conferência; `null` até a primeira. `GET /usuarios` e `GET /usuarios/{id}` preenchem. */
+  situacao_registro?: SituacaoRegistro | null;
+  registro_conferido_em?: string | null;
   /** Quem não quer aparecer pelo nome no ranking da gamificação (os pontos continuam valendo); `GET /me` preenche. */
   ranking_anonimo?: boolean;
   /** A patente e os pontos da temporada para a barra superior; `GET /me` preenche, e é `null` para o admin (não joga). */
@@ -43,6 +46,16 @@ export interface Usuario {
 }
 
 export type Liberacao = "liberado" | "pendente" | "recusado";
+
+/** Situação da pessoa no registro de funcionários (RH); `fora_do_registro` é a matrícula que sumiu de lá. */
+export type SituacaoRegistro = "ativo" | "afastado" | "desligado" | "fora_do_registro";
+
+export const rotuloDaSituacaoRegistro: Record<SituacaoRegistro, string> = {
+  ativo: "Ativo no registro",
+  afastado: "Afastado",
+  desligado: "Desligado no registro",
+  fora_do_registro: "Fora do registro",
+};
 
 export const rotuloDaLiberacao: Record<Liberacao, string> = {
   liberado: "Liberado",

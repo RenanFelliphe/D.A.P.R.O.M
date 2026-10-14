@@ -12,6 +12,7 @@ export const entidadesDaAuditoria = [
   { valor: "patente", rotulo: "Patente" },
   { valor: "conquista", rotulo: "Conquista" },
   { valor: "regra_pontuacao", rotulo: "Pontos da tarefa" },
+  { valor: "rh", rotulo: "Registro de funcionários" },
 ] as const;
 
 export type EntidadeDaAuditoria = (typeof entidadesDaAuditoria)[number]["valor"];
@@ -22,7 +23,8 @@ export const rotuloDaEntidade: Record<EntidadeDaAuditoria, string> = Object.from
 export interface RegistroDeAuditoria {
   id: string;
   em: string;
-  ator_id: string;
+  /** `null` quando quem agiu foi um sistema (o registro de funcionários), e não uma pessoa. */
+  ator_id: string | null;
   ator_nome: string;
   /** `entidade.verbo`, ex.: `usuario.criar`. */
   acao: string;
@@ -44,6 +46,8 @@ export const rotuloDoCampo: Record<string, string> = {
   registro_profissional: "Registro profissional",
   ativo: "Ativo",
   matricula: "Matrícula",
+  situacao_registro: "Situação no registro",
+  email_no_registro: "E-mail no registro",
   supervisor_id: "Supervisor",
   centro_trabalho: "Centro de trabalho",
   descricao: "Descrição",

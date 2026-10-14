@@ -83,6 +83,10 @@ export const rotas = {
     /** Trilha de auditoria das ações de gestão (só o admin). */
     auditoria: "/web/auditoria",
   },
+  /** Telas dos sistemas da empresa que o DAPROM só lê e que são simulados (só o admin): o registro de funcionários e as ordens do SAP. */
+  simulador: {
+    funcionarios: "/simulador/funcionarios",
+  },
   doc: {
     /** PDF da OS executada, dentro do painel. */
     os: (id: string) => `/doc/os/${id}`,

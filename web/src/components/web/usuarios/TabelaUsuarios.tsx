@@ -3,10 +3,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Panel, TableWrap } from "@/components/web/Panel";
 import { PaginacaoLista } from "@/components/web/PaginacaoLista";
 import { opcoesDeLiberacao, ordemDosPerfis, type ModoUsuarios } from "@/data/usuarios";
+import { dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 import { rotuloDoPerfil, type Equipe, type Perfil, type Usuario } from "@/lib/tipos";
 import { AcoesUsuario } from "./AcoesUsuario";
 import { SeloLiberacao } from "./SeloLiberacao";
+import { SeloRegistro } from "./SeloRegistro";
 
 export interface FiltrosUsuarios {
   equipe_id?: string;
@@ -115,7 +117,7 @@ export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, to
               <th style={{ width: 90 }}>Matrícula</th>
               {!supervisor && <th>Perfil</th>}
               <th>Equipe</th>
-              <th style={{ width: supervisor ? 220 : 130 }}>{supervisor ? "Acesso" : "Situação"}</th>
+              <th style={{ width: supervisor ? 220 : 170 }}>{supervisor ? "Acesso" : "Situação"}</th>
               <th style={{ width: 56 }}>
                 <span className="sr">Ações</span>
               </th>
@@ -149,13 +151,18 @@ export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, to
                     </td>
                     <td>
                       {supervisor ? (
-                        <SeloLiberacao liberacao={u.liberacao} motivo={u.recusa_motivo} />
+                        <span className="stack g4" style={{ alignItems: "flex-start" }}>
+                          <SeloLiberacao liberacao={u.liberacao} motivo={u.recusa_motivo} />
+                          <SeloRegistro situacao={u.situacao_registro} />
+                        </span>
                       ) : (
                         <span className="stack g4" style={{ alignItems: "flex-start" }}>
                           <Badge tone={u.ativo ? "enc" : "neu"} style={{ padding: "1px 8px" }}>
                             {u.ativo ? "Ativo" : "Inativo"}
                           </Badge>
                           {u.liberacao && u.liberacao !== "liberado" && <SeloLiberacao liberacao={u.liberacao} motivo={u.recusa_motivo} />}
+                          <SeloRegistro situacao={u.situacao_registro} />
+                          {u.registro_conferido_em && <span className="small">Registro conferido em {dataHora(u.registro_conferido_em)}</span>}
                           {u.senha_provisoria && (
                             <Badge tone="al" style={{ padding: "1px 8px", fontSize: 11 }}>
                               Senha provisória

@@ -25,8 +25,8 @@ interface AcoesUsuarioProps {
 
 /**
  * Ações da linha do usuário, num menu de três pontos. Admin: liberar e recusar (pendente), editar, redefinir a senha (mostrada uma
- * única vez), desativar/reativar e remover; o recusado só pode ser excluído (isso libera e-mail e matrícula). Supervisor: editar
- * nome, cargo e registro e cancelar o cadastro, só dos pendentes que ele criou.
+ * única vez), atualizar do registro de funcionários, desativar/reativar (reativar só vale se o registro diz que a pessoa está ativa) e
+ * remover; o recusado só pode ser excluído (isso libera e-mail e matrícula). Supervisor: só cancelar o cadastro, dos pendentes que ele criou.
  */
 export function AcoesUsuario({ usuario, equipes, modo = "admin", meuId }: AcoesUsuarioProps) {
   const router = useRouter();
@@ -49,6 +49,31 @@ export function AcoesUsuario({ usuario, equipes, modo = "admin", meuId }: AcoesU
       router.refresh();
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível alterar a situação");
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  /** Copia do registro de funcionários nome, e-mail (o login), cargo e registro profissional, e grava a situação dela lá. */
+  async function atualizarDoRegistro() {
+    setOcupado(true);
+    setErro(null);
+    try {
+      const r = await chamar<{ situacao_registro: string; atualizado: boolean; desativado: boolean; recusado: boolean }>("POST", `/usuarios/${usuario.id}/atualizar-do-registro`);
+      exibirAviso(
+        r.desativado
+          ? `${usuario.nome} está desligado(a) no registro: a conta foi desativada.`
+          : r.recusado
+            ? `${usuario.nome} está desligado(a) no registro: o cadastro pendente foi recusado.`
+            : r.atualizado
+              ? `Dados de ${usuario.nome} atualizados do registro de funcionários.`
+              : r.situacao_registro === "ativo"
+                ? "Nada mudou: os dados já estão iguais aos do registro."
+                : "Situação no registro atualizada.",
+      );
+      router.refresh();
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : "Não foi possível atualizar do registro");
     } finally {
       setOcupado(false);
     }
@@ -92,16 +117,15 @@ export function AcoesUsuario({ usuario, equipes, modo = "admin", meuId }: AcoesU
   // Supervisor: só os pendentes que ele cadastrou têm ação; as demais linhas ficam sem menu.
   if (supervisor && !(pendente && meuId && usuario.criado_por_id === meuId)) return null;
 
+  // O supervisor não edita ninguém (nome, cargo e registro vêm do registro de funcionários): só cancela o cadastro pendente que fez.
   const itens = supervisor
-    ? [
-        { rotulo: "Editar", aoClicar: () => setJanela("editar") },
-        { rotulo: "Cancelar cadastro", aoClicar: () => setJanela("remover"), perigo: true },
-      ]
+    ? [{ rotulo: "Cancelar cadastro", aoClicar: () => setJanela("remover"), perigo: true }]
     : recusado
       ? [{ rotulo: "Excluir cadastro", aoClicar: () => setJanela("remover"), perigo: true }]
       : [
           ...(pendente ? [{ rotulo: "Liberar", aoClicar: liberar }, { rotulo: "Recusar…", aoClicar: () => setJanela("recusar") }] : []),
-          { rotulo: "Editar", aoClicar: () => setJanela("editar") },
+          { rotulo: "Editar perfil e equipe", aoClicar: () => setJanela("editar") },
+          { rotulo: "Atualizar do registro", aoClicar: atualizarDoRegistro },
           { rotulo: "Redefinir senha", aoClicar: () => setJanela("senha") },
           ...(pendente ? [] : [{ rotulo: usuario.ativo ? "Desativar" : "Reativar", aoClicar: alternarAtivo }]),
           { rotulo: "Remover", aoClicar: () => setJanela("remover"), perigo: true },
@@ -118,7 +142,7 @@ export function AcoesUsuario({ usuario, equipes, modo = "admin", meuId }: AcoesU
           {mensagemDeErro}
         </div>
       )}
-      {janela === "editar" && (
+      {janela === "editar" && !supervisor && (
         <JanelaModal titulo={`Editar ${usuario.nome}`} aoFechar={fechar}>
           <FormularioUsuario usuario={usuario} equipes={equipes} modo={modo} aoConcluir={fechar} />
         </JanelaModal>

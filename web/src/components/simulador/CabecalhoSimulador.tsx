@@ -1,0 +1,33 @@
+import Link from "next/link";
+import { Icon } from "@/components/ui/Icon";
+import { rotas } from "@/lib/rotas";
+import { AbasSecao, type AbaDaSecao } from "@/components/web/AbasSecao";
+
+/** As telas dos sistemas simulados: o registro de funcionários (RH); as ordens do SAP entram aqui quando a tela delas existir. */
+export const abasDoSimulador: AbaDaSecao[] = [
+  { href: rotas.simulador.funcionarios, rotulo: "Funcionários", icone: "users" },
+];
+
+/**
+ * Cabeçalho próprio da área dos sistemas simulados, fora da casca do DAPROM: é o que a empresa teria do lado dela (o RH e o
+ * SAP), com o visual de outro sistema e um link de volta ao DAPROM.
+ */
+export function CabecalhoSimulador({ abas = abasDoSimulador }: { abas?: AbaDaSecao[] }) {
+  return (
+    <header className="sim-cab">
+      <div className="sim-cab-topo">
+        <span className="sim-marca">
+          <Icon name="grid" size={18} />
+          Sistemas da empresa · simulados
+        </span>
+        <Link className="sim-voltar" href={rotas.app.lista}>
+          <Icon name="left" size={16} />
+          Voltar ao DAPROM
+        </Link>
+      </div>
+      <div className="sim-cab-abas">
+        <AbasSecao rotulo="Sistemas simulados" abas={abas} />
+      </div>
+    </header>
+  );
+}

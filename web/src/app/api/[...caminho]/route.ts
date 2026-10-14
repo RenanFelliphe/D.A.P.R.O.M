@@ -14,9 +14,21 @@ import { rotaSempreReal, usuarioDoTreino, usuarioReal } from "@/treino/sessao";
  * API fictícia (`treino/api-ficticia.ts`). Endereços próprios do treino, atendidos aqui: `POST /api/treino/reiniciar`
  * (recomeça o treino do usuário) e `GET /api/treino/arquivos/{id}` (imagens das fotos e assinaturas fictícias).
  */
+/**
+ * O que o navegador não alcança: os contratos dos simuladores (`/sap-simulado` e `/rh-simulado`, que falam com token de sistema e
+ * não de usuário) e o aviso do registro de funcionários (`/rh/avisos`). Só a gestão do simulador do RH, `/rh-simulado/gestao`, passa:
+ * ela exige o admin logado, e quem decide é a `api`.
+ */
+function rotaLiberada(caminho: string[]): boolean {
+  if (caminho[0] === "sap-simulado") return false;
+  if (caminho[0] === "rh-simulado") return caminho[1] === "gestao";
+  if (caminho[0] === "rh" && caminho[1] === "avisos") return false;
+  return true;
+}
+
 async function encaminhar(req: NextRequest, contexto: { params: Promise<{ caminho: string[] }> }) {
   const { caminho } = await contexto.params;
-  if (caminho[0] === "sap-simulado") return NextResponse.json({ erro: { codigo: "proibido", mensagem: "Rota indisponível" } }, { status: 403 });
+  if (!rotaLiberada(caminho)) return NextResponse.json({ erro: { codigo: "proibido", mensagem: "Rota indisponível" } }, { status: 403 });
 
   const token = (await cookies()).get(COOKIE_ACESSO)?.value;
   if (!token) return NextResponse.json({ erro: { codigo: "nao_autenticado", mensagem: "Sessão inválida ou expirada" } }, { status: 401 });
