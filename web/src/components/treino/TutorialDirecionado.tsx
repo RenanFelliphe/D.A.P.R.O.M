@@ -3,7 +3,9 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { textoDosPontosGanhos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
+import { useToast } from "@/state/toast";
 import { estadoDoTreino, gravarTreinamento, usePassoDoTreino } from "./estado";
 import { passosDoTreino, type PassoDoTreino } from "./passos";
 
@@ -146,6 +148,7 @@ const rotuloDoPasso = (indice: number) => `${indice + 1} de ${total}`;
 export function TutorialDirecionado({ pendente = false }: { pendente?: boolean }) {
   const pathname = usePathname();
   const roteador = useRouter();
+  const exibirAviso = useToast();
   const idTitulo = useId();
   const salvo = usePassoDoTreino();
   const indice = Math.min(salvo, total - 1);
@@ -260,7 +263,9 @@ export function TutorialDirecionado({ pendente = false }: { pendente?: boolean }
     setErro(null);
     setGravando(true);
     try {
-      await gravarTreinamento("concluido");
+      const pontos = textoDosPontosGanhos(await gravarTreinamento("concluido"));
+      // O aviso só aparece quando o técnico segue no treino livre; ao sair para o sistema real a barra e o aviso de conquista mostram os pontos.
+      if (pontos && destino === "livre") exibirAviso(`Treino concluído · ${pontos}`);
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Não foi possível salvar agora. Tente de novo.");
       setGravando(false);

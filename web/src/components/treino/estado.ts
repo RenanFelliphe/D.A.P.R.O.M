@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 import { COOKIE_TREINO_ADIADO, SESSAO_TREINO_MODO, SESSAO_TREINO_PASSO, type ModoDoTreino } from "@/lib/treino-comum";
 
 /**
@@ -65,8 +66,8 @@ export function adiarBoasVindas() {
   document.cookie = `${COOKIE_TREINO_ADIADO}=1; path=/; SameSite=Lax`;
 }
 
-/** Grava o estado do treinamento na `api` real (`/app/treino/estado`); lança com a mensagem a mostrar. */
-export async function gravarTreinamento(estado: "nao_iniciado" | "concluido" | "pulado") {
+/** Grava o estado do treinamento na `api` real (`/app/treino/estado`); lança com a mensagem a mostrar. Devolve os pontos que a conclusão deu. */
+export async function gravarTreinamento(estado: "nao_iniciado" | "concluido" | "pulado"): Promise<RespostaComPontos> {
   let resposta: Response;
   try {
     resposta = await fetch("/app/treino/estado", {
@@ -82,4 +83,5 @@ export async function gravarTreinamento(estado: "nao_iniciado" | "concluido" | "
     const dados = (await resposta.json().catch(() => ({}))) as { erro?: { mensagem?: string } };
     throw new Error(dados.erro?.mensagem ?? "Não foi possível salvar agora. Tente de novo.");
   }
+  return ((await resposta.json().catch(() => ({}))) as RespostaComPontos) ?? {};
 }

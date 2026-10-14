@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import { PontosGanhos } from "@/components/web/gamificacao/PontosGanhos";
 import { chamar } from "@/lib/cliente-api";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 import { rotas, urlDoPdf } from "@/lib/rotas";
 
 const TENTATIVAS = 10;
@@ -13,7 +15,7 @@ const TENTATIVAS = 10;
  * Tela de sucesso. A `api` gera o PDF em segundo plano: aqui a OS é consultada algumas vezes até o PDF ficar pronto e, enquanto
  * isso, o link já funciona (`GET /os/{id}/pdf` gera na hora se a OS está encerrada).
  */
-export function ExecucaoEncerrada({ osId, jaEncerrada }: { osId: string; jaEncerrada?: boolean }) {
+export function ExecucaoEncerrada({ osId, jaEncerrada, pontos }: { osId: string; jaEncerrada?: boolean; /** Os pontos que o encerramento acabou de dar ("+N pontos"). */ pontos?: RespostaComPontos | null }) {
   const [pronto, setPronto] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -44,6 +46,7 @@ export function ExecucaoEncerrada({ osId, jaEncerrada }: { osId: string; jaEncer
         {jaEncerrada ? "Esta OS já foi encerrada." : "A OS foi encerrada e o supervisor dá ciência no painel."}{" "}
         {pronto === false ? "O PDF está sendo gerado; ao abrir, ele é preparado na hora." : pronto ? "O PDF da OS está pronto." : ""}
       </Notice>
+      <PontosGanhos resposta={pontos} />
       <div className="row g8 wrap">
         <a className="btn btn-p" href={urlDoPdf(osId)} target="_blank" rel="noreferrer">
           <Icon name="file" size={18} />

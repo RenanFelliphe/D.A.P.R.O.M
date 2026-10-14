@@ -3,20 +3,24 @@
 import { useState } from "react";
 import { AssinaturaCanvas } from "@/components/ui/AssinaturaCanvas";
 import { Notice } from "@/components/ui/Notice";
+import { useAvisoDePontos } from "@/components/web/gamificacao/PontosGanhos";
 import { chamar, enviarArquivo, ErroCliente } from "@/lib/cliente-api";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 
 /**
  * Quem está logado e ainda não tem assinatura no perfil desenha na hora: a imagem sobe (`PUT /arquivos/{id}`) e vira a
  * assinatura do perfil (`PUT /me/assinatura`); vale para esta APR e para as próximas.
  */
 export function CadastrarAssinatura({ aoSalvar }: { aoSalvar: (arquivoId: string) => void }) {
+  const avisarPontos = useAvisoDePontos();
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvar(imagem: Blob) {
     setErro(null);
     try {
       const arquivoId = await enviarArquivo(imagem, "assinatura");
-      await chamar("PUT", "/me/assinatura", { arquivo_id: arquivoId });
+      const resposta = await chamar<RespostaComPontos>("PUT", "/me/assinatura", { arquivo_id: arquivoId });
+      avisarPontos(resposta);
       aoSalvar(arquivoId);
     } catch (e) {
       setErro(e instanceof ErroCliente ? e.message : "Não foi possível salvar a assinatura. Tente de novo.");

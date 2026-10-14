@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, Req } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { enviarEvento } from "@/lib/cliente-api";
+import { textoDosPontosGanhos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
 import { useAcao } from "./useAcao";
@@ -23,12 +24,14 @@ export function FormularioInterromper({ osId, execucaoId, onCancelar }: { osId: 
 
   const interromper = () =>
     executar(async () => {
-      await enviarEvento({
+      const resposta = await enviarEvento({
         tipo: "execucao_interrompida",
         os_id: osId,
         payload: { execucao_id: execucaoId, fim: new Date().toISOString(), motivo: motivo.trim(), evidencias: [...fotos.map(comoEvidencia), ...pdfs.map(pdfComoEvidencia)] },
       });
-      exibirAviso("Atividade interrompida — supervisor será avisado");
+      // Interromper por risco vale o mesmo que encerrar: a segurança não custa pontos.
+      const pontos = textoDosPontosGanhos(resposta);
+      exibirAviso(pontos ? `Atividade interrompida — supervisor será avisado · ${pontos}` : "Atividade interrompida — supervisor será avisado");
       router.push(rotas.app.lista);
     });
 

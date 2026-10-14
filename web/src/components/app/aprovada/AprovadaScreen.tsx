@@ -9,9 +9,11 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
+import { PontosGanhos } from "@/components/web/gamificacao/PontosGanhos";
 import { estaTravada, montarPayload, resumoDe, retirarParticipante, type Colega, type RascunhoApr } from "@/lib/apr";
 import { enviarEvento, ErroCliente, ErroDeEvento } from "@/lib/cliente-api";
 import { dataHora } from "@/lib/formatar";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
 import type { OsStatus } from "@/lib/tipos";
 import { useRascunhoApr } from "@/state/rascunho-apr";
@@ -45,6 +47,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
   const roteador = useRouter();
   const { rascunho, atualizar, descartar } = useRascunhoApr(os.id, usuarioId);
   const [recemRegistrada, setRecemRegistrada] = useState<AprRegistrada | null>(null);
+  const [pontos, setPontos] = useState<RespostaComPontos | null>(null);
   const [minhaAssinatura, setMinhaAssinatura] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -123,6 +126,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
     try {
       const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r) });
       const resultado = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
+      setPontos(resposta);
       descartar();
       if (resultado === "bloqueada") {
         // A `api` é quem decide: se ela bloqueou, vale o impedimento.
@@ -208,9 +212,12 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor 
         lateral={
           <PainelAcoes>
             {registrada ? (
-              <Notice tone="ok" icon="lock">
-                <strong>{os.rotulo} liberada para execução.</strong> A APR vale só para esta OS e para hoje. Para outra OS, outra APR.
-              </Notice>
+              <>
+                <Notice tone="ok" icon="lock">
+                  <strong>{os.rotulo} liberada para execução.</strong> A APR vale só para esta OS e para hoje. Para outra OS, outra APR.
+                </Notice>
+                <PontosGanhos resposta={pontos} />
+              </>
             ) : (
               <Notice tone="info" icon="info">
                 {enviando

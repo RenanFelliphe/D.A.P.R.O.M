@@ -8,6 +8,7 @@ import { Field, Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { enviarEvento } from "@/lib/cliente-api";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 import type { ParticipanteDaApr } from "./tempo";
 import { useAcao } from "./useAcao";
 
@@ -17,7 +18,8 @@ interface FormularioEncerrarProps {
   participantes: ParticipanteDaApr[];
   usuarioId: string;
   assinaturaDoUsuario: string | null;
-  onEncerrada: () => void;
+  /** Recebe a resposta do encerramento (com os `pontos_ganhos`). */
+  onEncerrada: (resposta: RespostaComPontos) => void;
   onCancelar: () => void;
 }
 
@@ -48,7 +50,7 @@ export function FormularioEncerrar({ osId, execucaoId, participantes, usuarioId,
 
   const encerrar = () =>
     executar(async () => {
-      await enviarEvento({
+      const resposta = await enviarEvento({
         tipo: "execucao_encerrada",
         os_id: osId,
         payload: {
@@ -59,7 +61,7 @@ export function FormularioEncerrar({ osId, execucaoId, participantes, usuarioId,
           assinaturas: participantes.map((p) => ({ usuario_id: p.usuario_id, assinada_em: assinadas[p.usuario_id] })),
         },
       });
-      onEncerrada();
+      onEncerrada(resposta);
     });
 
   return (

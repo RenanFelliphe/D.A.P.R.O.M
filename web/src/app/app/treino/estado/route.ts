@@ -23,6 +23,9 @@ export async function POST(req: NextRequest) {
       cache: "no-store",
     });
     if (!resposta.ok) return NextResponse.json({ erro: { codigo: "falhou", mensagem: "Não foi possível salvar agora. Tente de novo." } }, { status: 502 });
+    // Concluir o treino pontua o técnico (uma vez por conta): repassa o "+N pontos".
+    const dados = (await resposta.json().catch(() => null)) as { pontos_ganhos?: number; ganhos?: unknown[] } | null;
+    return NextResponse.json({ ok: true, pontos_ganhos: dados?.pontos_ganhos ?? 0, ganhos: dados?.ganhos ?? [] });
   } catch {
     return NextResponse.json({ erro: { codigo: "api_indisponivel", mensagem: "Servidor indisponível. Tente de novo." } }, { status: 502 });
   }

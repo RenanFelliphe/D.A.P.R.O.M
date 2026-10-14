@@ -7,12 +7,15 @@ import { AssinaturaCanvas } from "@/components/ui/AssinaturaCanvas";
 import { Button } from "@/components/ui/Button";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
 import { Notice } from "@/components/ui/Notice";
+import { useAvisoDePontos } from "@/components/web/gamificacao/PontosGanhos";
 import { chamar, enviarArquivo } from "@/lib/cliente-api";
 import { data } from "@/lib/formatar";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 
 /** Assinatura do perfil: mostra a atual e permite refazê-la. Vale só para as próximas: as já feitas guardam a imagem que usaram. */
 export function MinhaAssinatura({ assinaturaPath, assinaturaEm }: { assinaturaPath: string | null; assinaturaEm: string | null }) {
   const router = useRouter();
+  const avisarPontos = useAvisoDePontos();
   const [refazendo, setRefazendo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salva, setSalva] = useState(false);
@@ -21,7 +24,9 @@ export function MinhaAssinatura({ assinaturaPath, assinaturaEm }: { assinaturaPa
     setErro(null);
     try {
       const arquivoId = await enviarArquivo(imagem, "assinatura");
-      await chamar("PUT", "/me/assinatura", { arquivo_id: arquivoId });
+      const resposta = await chamar<RespostaComPontos>("PUT", "/me/assinatura", { arquivo_id: arquivoId });
+      // A primeira assinatura cadastrada pontua (uma vez por conta).
+      avisarPontos(resposta);
       setSalva(true);
       setRefazendo(false);
       router.refresh();

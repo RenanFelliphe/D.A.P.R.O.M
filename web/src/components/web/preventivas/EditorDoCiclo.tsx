@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { chamar, ErroCliente } from "@/lib/cliente-api";
+import { textoDosPontosGanhos, type RespostaComPontos } from "@/lib/gamificacao";
 import { descreverIntervalo, rotuloDaBase, type BaseDoCiclo, type DetalheDoPlano, type Intervalo, type PlanoPreventiva } from "@/lib/preventivas";
 import { useToast } from "@/state/toast";
 import { CampoIntervalo } from "./CampoIntervalo";
@@ -39,14 +40,17 @@ export function EditorDoCiclo({ plano, aoSalvar, aoCancelar }: EditorDoCicloProp
     setErro(null);
     setSalvando(true);
     try {
-      const detalhe = await chamar<DetalheDoPlano>("PUT", `/preventivas/${plano.id}`, {
+      const detalhe = await chamar<DetalheDoPlano & RespostaComPontos>("PUT", `/preventivas/${plano.id}`, {
         intervalo,
         base_do_ciclo: baseDoCiclo,
         antecedencia_dias: dias,
         ativo,
         observacao: observacao.trim() || null,
       });
-      exibirAviso(intervalo ? `Ciclo salvo: ${descreverIntervalo(intervalo)}` : "Ciclo salvo sem intervalo");
+      // Definir o intervalo de um plano que estava sem pontua o supervisor.
+      const pontos = textoDosPontosGanhos(detalhe);
+      const salvo = intervalo ? `Ciclo salvo: ${descreverIntervalo(intervalo)}` : "Ciclo salvo sem intervalo";
+      exibirAviso(pontos ? `${salvo} · ${pontos}` : salvo);
       aoSalvar(detalhe);
     } catch (falha) {
       setErro(falha instanceof ErroCliente ? falha.message : "Servidor indisponível. Tente de novo.");

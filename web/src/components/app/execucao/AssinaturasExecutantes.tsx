@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
+import { useAvisoDePontos } from "@/components/web/gamificacao/PontosGanhos";
 import { chamar, enviarArquivo } from "@/lib/cliente-api";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 import type { ParticipanteDaApr } from "./tempo";
 import { mensagemDoErro } from "./useAcao";
 
@@ -25,13 +27,15 @@ interface AssinaturasExecutantesProps {
 
 /** Assinaturas de todos os participantes da APR: cada um confirma com a assinatura que tem no perfil. */
 export function AssinaturasExecutantes({ participantes, usuarioId, minhaAssinatura, onMinhaAssinatura, confirmadas, onAlternar, desabilitado }: AssinaturasExecutantesProps) {
+  const avisarPontos = useAvisoDePontos();
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvarMinha(imagem: Blob) {
     setErro(null);
     try {
       const arquivoId = await enviarArquivo(imagem, "assinatura");
-      await chamar("PUT", "/me/assinatura", { arquivo_id: arquivoId });
+      const resposta = await chamar<RespostaComPontos>("PUT", "/me/assinatura", { arquivo_id: arquivoId });
+      avisarPontos(resposta);
       onMinhaAssinatura(arquivoId);
     } catch (e) {
       setErro(mensagemDoErro(e));

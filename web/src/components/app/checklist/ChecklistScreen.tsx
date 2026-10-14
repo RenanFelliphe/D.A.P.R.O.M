@@ -41,6 +41,7 @@ import {
   type RascunhoApr,
   type Resposta,
 } from "@/lib/apr";
+import { useAvisoDePontos } from "@/components/web/gamificacao/PontosGanhos";
 import { chamar, enviarEvento, ErroCliente, ErroDeEvento, novoId } from "@/lib/cliente-api";
 import { miniaturaDe, posicaoAtual } from "@/lib/foto-local";
 import { rotas } from "@/lib/rotas";
@@ -73,6 +74,7 @@ function mensagemDeErro(erro: unknown) {
  */
 export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps) {
   const roteador = useRouter();
+  const avisarPontos = useAvisoDePontos();
   const { rascunho, atualizar, descartar } = useRascunhoApr(os.id, usuarioId);
   const [minhaAssinatura, setMinhaAssinatura] = useState<string | null>(null);
   const [validando, setValidando] = useState(false);
@@ -174,6 +176,8 @@ export function ChecklistScreen({ os, usuarioId, colegas }: ChecklistScreenProps
     try {
       const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r) });
       const resultado = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
+      // A APR bloqueada pontua quando chega a evidência (a segurança não custa pontos): "+N pontos".
+      avisarPontos(resposta);
       descartar();
       roteador.push(resultado === "aprovada" ? rotas.app.os(os.id) : rotas.app.bloqueio(os.id));
     } catch (e) {

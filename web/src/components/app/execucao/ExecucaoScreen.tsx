@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
 
 interface ExecucaoScreenProps {
@@ -22,12 +23,16 @@ interface ExecucaoScreenProps {
 /** Execução da OS: escolhe o que mostrar conforme a situação que a `api` informa (ver `situacao.ts`). */
 export function ExecucaoScreen({ os, usuario, situacao }: ExecucaoScreenProps) {
   const [encerrada, setEncerrada] = useState(false);
+  const [pontos, setPontos] = useState<RespostaComPontos | null>(null);
   const emPausa = situacao.tipo === "em_andamento" && situacao.execucao.pausas.some((p) => !p.fim);
 
   let corpo;
-  if (encerrada) corpo = <ExecucaoEncerrada osId={os.id} />;
+  if (encerrada) corpo = <ExecucaoEncerrada osId={os.id} pontos={pontos} />;
   else if (situacao.tipo === "esquecida") corpo = <SuspenderEsquecida execucao={situacao.execucao} />;
-  else if (situacao.tipo === "em_andamento") corpo = <ExecucaoEmAndamento os={os} usuario={usuario} situacao={situacao} onEncerrada={() => setEncerrada(true)} />;
+  else if (situacao.tipo === "em_andamento") corpo = <ExecucaoEmAndamento os={os} usuario={usuario} situacao={situacao} onEncerrada={(resposta) => {
+          setPontos(resposta);
+          setEncerrada(true);
+        }} />;
   else if (situacao.tipo === "iniciar") corpo = <IniciarExecucao osId={os.id} apr={situacao.apr} />;
   else if (situacao.tipo === "outra_pessoa")
     corpo = (

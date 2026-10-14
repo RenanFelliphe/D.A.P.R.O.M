@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { enviarEvento, novoId } from "@/lib/cliente-api";
+import type { RespostaComPontos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
 import type { Situacao } from "./situacao";
@@ -26,7 +27,7 @@ interface Props {
   os: { id: string; numero_ordem: string | null; titulo: string; local: string };
   usuario: { id: string; assinatura_path: string | null };
   situacao: Extract<Situacao, { tipo: "em_andamento" }>;
-  onEncerrada: () => void;
+  onEncerrada: (resposta: RespostaComPontos) => void;
 }
 
 /**
