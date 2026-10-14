@@ -44,12 +44,30 @@ export interface ResultadoDemo {
 
 const BR = 3 * 3600_000; // America/Sao_Paulo é UTC−3, sem horário de verão desde 2019
 
+/**
+ * Os instantes de um cenário "agora" (cada um, minutos antes de `agora`), todos no mesmo dia de Brasília: a `api` só aceita a
+ * execução no dia da APR. Quando o cenário atravessaria a meia-noite, ele passa a começar logo depois dela ou, se assim
+ * terminaria depois de `agora`, fica inteiro no dia anterior; a distância entre os instantes não muda.
+ */
+export function noMesmoDia(agora: Date, minutosAtras: number[]): Date[] {
+  const hoje = new Date(agora.getTime() - BR);
+  const meiaNoite = Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()) + BR;
+  const instantes = minutosAtras.map((min) => agora.getTime() - min * 60_000);
+  const [primeiro, ultimo] = [Math.min(...instantes), Math.max(...instantes)];
+  let ajuste = 0;
+  if (primeiro < meiaNoite && ultimo >= meiaNoite) {
+    ajuste = meiaNoite + 60_000 - primeiro;
+    if (ultimo + ajuste > agora.getTime()) ajuste = meiaNoite - 60_000 - ultimo;
+  }
+  return instantes.map((t) => new Date(t + ajuste));
+}
+
 export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const { db } = depsOriginais;
   const [existente] = await db.select({ id: os.id }).from(os).where(like(os.numeroOrdem, `${PREFIXO_ORDEM}%`)).limit(1);
   if (existente) return { jaPopulado: true, usuariosCriados: [], contagem: {} };
 
-  const real = new Date();
+  const real = depsOriginais.agora();
   const relogio = { t: real };
   const deps: Deps = { ...depsOriginais, agora: () => relogio.t };
 
@@ -456,15 +474,18 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   await executar(tec2, id, apr, [tec2, tec5], { inicio: em(1, 10, 15), resultado: "aberta", duracaoMin: 0 });
 
   // ================= EM EXECUÇÃO AGORA ==============================================================================
+  // Logo depois da meia-noite, a APR e o início não podem cair em dias diferentes (`noMesmoDia`).
   // 11. em andamento (tec1 + tec2), iniciada há ~75 min
   id = await criarOs({ tipo: "preventiva", titulo: "Tratamento em corrosão e pintura", equipamento: "Tubulação TB-09", local: L.vv, prioridade: "Médio", inicio: 0, fim: -1, atividade: ativ[2], ciclo: { intervalo: { quantidade: 1, unidade: "ano" } } });
-  apr = await aprovar(tec1, id, apr02, dupla, minutosAtras(95), { riscos: 2 });
-  await executar(tec1, id, apr, dupla, { inicio: minutosAtras(80), resultado: "aberta", duracaoMin: 0 });
+  const [aprEmAndamento, inicioEmAndamento] = noMesmoDia(real, [95, 80]);
+  apr = await aprovar(tec1, id, apr02, dupla, aprEmAndamento!, { riscos: 2 });
+  await executar(tec1, id, apr, dupla, { inicio: inicioEmAndamento!, resultado: "aberta", duracaoMin: 0 });
 
-  // 12. em pausa (almoço) neste momento (instrumentação)
+  // 12. em pausa (almoço) neste momento (instrumentação); a pausa começa 60 min depois do início (55 min atrás)
   id = await criarOs({ tipo: "preventiva", titulo: "Medição: calibração de transmissor de pressão", equipamento: "Transmissor PT-101", local: L.cari, equipe: equipes.INSTRUM, prioridade: "Médio", inicio: 0, fim: 0, ciclo: { intervalo: { quantidade: 1, unidade: "trimestre" }, base: "programacao" } });
-  apr = await aprovar(tec3, id, apr01, duplaI, minutosAtras(130));
-  await executar(tec3, id, apr, duplaI, { inicio: minutosAtras(115), resultado: "pausada", pausa: [60, 90], duracaoMin: 0 });
+  const [aprEmPausa, inicioEmPausa] = noMesmoDia(real, [130, 115, 55]);
+  apr = await aprovar(tec3, id, apr01, duplaI, aprEmPausa!);
+  await executar(tec3, id, apr, duplaI, { inicio: inicioEmPausa!, resultado: "pausada", pausa: [60, 90], duracaoMin: 0 });
 
   // ================= LIBERADAS ======================================================================================
   // atrasada sem justificativa, atrasada com reprogramação (justificada), no prazo, futuras, críticas e de outras equipes

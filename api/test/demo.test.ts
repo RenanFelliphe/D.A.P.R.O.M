@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { popularDemo, type ResultadoDemo } from "../src/db/seed/demo";
+import { noMesmoDia, popularDemo, type ResultadoDemo } from "../src/db/seed/demo";
 import { executarTarefasPendentes } from "../src/servicos/tarefas";
 import { criarAmbiente, type Ambiente } from "./ajuda";
 
@@ -100,4 +100,38 @@ describe("Dados de demonstração", () => {
     assert.equal(de_novo.jaPopulado, true);
     assert.equal((await amb.sql<{ n: number }>("select count(*)::int n from os"))[0]!.n, antes);
   });
+});
+
+describe("Dados de demonstração logo depois da meia-noite", () => {
+  const diaEmBrasilia = (d: Date) => new Date(d.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+
+  it("os cenários de agora ficam num dia só, a qualquer hora, sem passar de agora e com os mesmos intervalos", () => {
+    const meiaNoite = Date.UTC(2026, 9, 14, 3); // 14/10/2026, 00:00 em Brasília
+    for (let minuto = 0; minuto < 24 * 60; minuto++) {
+      const agora = new Date(meiaNoite + minuto * 60_000);
+      for (const passos of [[95, 80], [130, 115, 55]]) {
+        const instantes = noMesmoDia(agora, passos);
+        assert.equal(new Set(instantes.map(diaEmBrasilia)).size, 1, `${agora.toISOString()}: ${passos.join(", ")}`);
+        assert.ok(instantes.every((t) => t <= agora), `${agora.toISOString()}: depois de agora`);
+        for (let i = 1; i < passos.length; i++) assert.equal(instantes[i]!.getTime() - instantes[i - 1]!.getTime(), (passos[i - 1]! - passos[i]!) * 60_000);
+      }
+    }
+  });
+
+  // 01:25 e 01:58: a APR do cenário "em andamento" e a do "em pausa" cairiam no dia anterior ao do início da execução.
+  for (const hora of ["04:25", "04:58"]) {
+    it(`a carga completa roda às ${hora} UTC (${Number(hora.slice(0, 2)) - 3}h${hora.slice(3)} em Brasília)`, async () => {
+      const amb = await criarAmbiente({ comCarga: true, relogio: new Date(`2026-10-14T${hora}:00Z`) });
+      try {
+        const r = await popularDemo(amb.deps);
+        assert.equal(r.jaPopulado, false);
+        const abertas = await amb.sql<{ apr: string; inicio: string }>(
+          "select to_char(a.concluida_em at time zone 'America/Sao_Paulo', 'YYYY-MM-DD') apr, to_char(e.inicio at time zone 'America/Sao_Paulo', 'YYYY-MM-DD') inicio from execucao e join apr a on a.id = e.apr_id",
+        );
+        assert.ok(abertas.length >= 11 && abertas.every((x) => x.apr === x.inicio), JSON.stringify(abertas));
+      } finally {
+        await amb.fechar();
+      }
+    });
+  }
 });
