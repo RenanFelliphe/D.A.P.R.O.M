@@ -48,6 +48,15 @@ export const REGRAS: Record<RegraCodigo, DescricaoDaRegra> = {
     quando: "Junto com a APR completa, aprovada ou bloqueada.",
     limite: "Uma por pessoa, por OS.",
   },
+  preventiva_concluida: {
+    nome: "Preventiva concluída",
+    descricao: "Concluir uma OS preventiva: a preventiva vale o dobro da corretiva.",
+    pontos: 10,
+    grupo: "Bônus da OS",
+    quem: "Todos os participantes da APR que amparou a execução, na OS preventiva, inclusive quem interrompeu por risco.",
+    quando: "Junto com a execução concluída (encerrada ou interrompida), quando a OS é preventiva. Se o administrador mudar o valor da execução concluída, convém mudar este para manter o dobro.",
+    limite: "Uma por pessoa, por OS.",
+  },
   preventiva_em_dia: {
     nome: "Preventiva em dia",
     descricao: "Encerrar a preventiva dentro do prazo, ou com atraso justificado.",
@@ -146,6 +155,7 @@ export const ORDEM_DAS_REGRAS: RegraCodigo[] = [
   "apr_completa",
   "execucao_concluida",
   "responsavel_apr",
+  "preventiva_concluida",
   "preventiva_em_dia",
   "local_critico",
   "resgate",
@@ -169,7 +179,7 @@ export const NAO_PONTUAM: { o_que: string; por_que: string }[] = [
   { o_que: "Reprogramar e abrir OS de apoio (supervisor)", por_que: "São decisões de planejamento; pontuar empurraria a decisão. Reprogramar ainda torna o atraso justificado." },
   { o_que: "Ciência depois de 72 horas", por_que: "O ponto é pela ciência em dia." },
   { o_que: "Entrar no sistema todo dia", por_que: "Não é trabalho." },
-  { o_que: "Formulário de inspeção da preventiva", por_que: "A estrutura ainda não está definida; pode virar bônus quando estiver." },
+  { o_que: "Checklist de inspeção da preventiva", por_que: "Ele é obrigatório para encerrar a OS, então um bônus pontuaria o encerramento duas vezes. O incentivo às preventivas está na tarefa \"Preventiva concluída\"." },
   { o_que: "Ações do administrador", por_que: "O administrador não joga: não pontua e não aparece no ranking." },
 ];
 

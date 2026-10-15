@@ -301,7 +301,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
 
       assert.deepEqual(Object.keys(por("4001")).sort(), [
         "atrasada", "ciencia_em", "data_fim_prog", "data_inicio_prog", "equipamento", "equipe_id", "equipe_nome", "execucao_aberta_ha_horas",
-        "id", "local_instalacao", "numero_nota", "numero_ordem", "pdf_pronto", "prioridade", "status", "tipo", "titulo",
+        "id", "local_instalacao", "numero_nota", "numero_ordem", "pdf_pronto", "prioridade", "responsavel", "status", "tipo", "titulo",
       ]);
       assert.equal(por("4001").titulo, "Inspeção de retificador");
       assert.equal(por("4001").equipamento, "Retificador 1");
@@ -367,17 +367,17 @@ describe("Painel: quadro, detalhe e ciência", () => {
 
     it("contagem_por_status ignora o filtro de status e respeita os demais e o escopo", async () => {
       const todas = await amb.esperar(200, "GET", "/os", { como: supA });
-      assert.deepEqual(todas.contagem_por_status, { liberada: 3, pendente: 1, em_execucao: 2, encerrada: 1, cancelada: 0 });
+      assert.deepEqual(todas.contagem_por_status, { liberada: 3, pendente: 1, em_execucao: 2, encerrada: 1, cancelada: 0, devolvida: 0 });
 
       const soPendentes = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { status: "pendente" } });
       assert.equal(soPendentes.total, 1);
       assert.deepEqual(soPendentes.contagem_por_status, todas.contagem_por_status);
 
       const soCorretivas = await amb.esperar(200, "GET", "/os", { como: admin, consulta: { tipo: "corretiva", status: "liberada" } });
-      assert.deepEqual(soCorretivas.contagem_por_status, { liberada: 1, pendente: 1, em_execucao: 0, encerrada: 0, cancelada: 0 });
+      assert.deepEqual(soCorretivas.contagem_por_status, { liberada: 1, pendente: 1, em_execucao: 0, encerrada: 0, cancelada: 0, devolvida: 0 });
 
       const equipeBcontagem = await amb.esperar(200, "GET", "/os", { como: supB });
-      assert.deepEqual(equipeBcontagem.contagem_por_status, { liberada: 1, pendente: 0, em_execucao: 0, encerrada: 0, cancelada: 0 });
+      assert.deepEqual(equipeBcontagem.contagem_por_status, { liberada: 1, pendente: 0, em_execucao: 0, encerrada: 0, cancelada: 0, devolvida: 0 });
     });
 
     it("exportada separa as OS já exportadas para o SAP das que ainda não foram (pré-visualização da exportação)", async () => {
@@ -415,7 +415,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
     it("devolve o detalhe completo: OS, serviço do catálogo, APRs, execuções, alertas, reprogramações e linha do tempo", async () => {
       // Só o admin vê o que é eliminatório e o que é alerta (tipo, evidência, resposta bloqueante, alerta marcado).
       const c = await amb.esperar(200, "GET", `/os/${osPendente.id}`, { como: admin });
-      assert.deepEqual(Object.keys(c).sort(), ["alertas", "aprs", "execucoes", "linha_do_tempo", "os", "reprogramacoes", "servico"]);
+      assert.deepEqual(Object.keys(c).sort(), ["alertas", "aprs", "checklist_inspecao", "execucoes", "linha_do_tempo", "os", "reprogramacoes", "servico"]);
 
       assert.equal(c.os.id, osPendente.id);
       assert.equal(c.os.numero_ordem, "4003");
@@ -962,7 +962,7 @@ describe("Painel: exportação para o SAP", () => {
     assert.equal(ainda!.exportadaSapEm, null, "uma exportação recusada não marca nada");
   });
 
-  it("gera o .xlsx com as 3 abas, as colunas e as linhas esperadas", async () => {
+  it("gera o .xlsx com as 4 abas, as colunas e as linhas esperadas", async () => {
     const r = await amb.req("POST", "/exportacoes/sap", { como: admin });
     assert.equal(r.status, 200);
     assert.equal(r.cabecalhos.get("content-type"), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -970,7 +970,7 @@ describe("Painel: exportação para o SAP", () => {
     assert.equal(r.cabecalhos.get("x-mensagem"), null);
 
     const livro = await lerPlanilha(r.corpo);
-    assert.deepEqual(livro.worksheets.map((a) => a.name), ["Encerradas", "Sem ordem SAP", "Impedimentos"]);
+    assert.deepEqual(livro.worksheets.map((a) => a.name), ["Encerradas", "Sem ordem SAP", "Impedimentos", "Devolvidas"]);
 
     const enc = linhasDaAba(livro, "Encerradas");
     assert.deepEqual(enc.cabecalho, [
@@ -1046,7 +1046,7 @@ describe("Painel: exportação para o SAP", () => {
     assert.match(r.cabecalhos.get("content-disposition") ?? "", /^attachment/);
 
     const livro = await lerPlanilha(r.corpo);
-    assert.deepEqual(livro.worksheets.map((a) => a.name), ["Encerradas", "Sem ordem SAP", "Impedimentos"]);
+    assert.deepEqual(livro.worksheets.map((a) => a.name), ["Encerradas", "Sem ordem SAP", "Impedimentos", "Devolvidas"]);
     const enc = linhasDaAba(livro, "Encerradas");
     assert.equal(enc.cabecalho.length, 12);
     assert.deepEqual(enc.linhas, []);

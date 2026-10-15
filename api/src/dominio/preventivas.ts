@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
 import {
@@ -17,6 +17,7 @@ import { equipesDoEscopo, podeSupervisionarEquipe, type UsuarioAutenticado } fro
 import { naoEncontrado, proibido } from "../http/erros";
 import { criarAlertas } from "./alertas";
 import { normalizar } from "./busca";
+import { esquemaChecklist, perguntasDosPlanos, salvarChecklist, type Pergunta } from "./checklist-inspecao";
 import { ganhosDe } from "./lancamentos";
 import { dataDeReferencia, diaBr, diaNoFuso, FUSO } from "./painel-comum";
 import { pontuarIntervalo } from "./pontuacao";
@@ -27,7 +28,7 @@ import { pontuarIntervalo } from "./pontuacao";
  * aproxima (`preventiva_proxima`, a `antecedencia_dias` do vencimento) e quando vence sem OS nova do plano
  * (`preventiva_vencida`). Um alerta de cada tipo por ciclo: o vencimento já avisado fica gravado no plano.
  *
- * O próximo ciclo é contado a partir da última OS do plano (a de início programado mais recente, sem as canceladas):
+ * O próximo ciclo é contado a partir da última OS do plano (a de início programado mais recente, sem as canceladas e as devolvidas):
  * - `execucao`: do dia em que ela foi encerrada; enquanto ela não é executada, o ciclo está "aguardando execução";
  * - `programacao`: da data programada dela, siga ela aberta ou não (o calendário fixo do plano).
  * Uma OS nova do plano (o ciclo seguinte que chegou do SAP) passa a ser a última e a contagem recomeça.
@@ -246,6 +247,8 @@ export interface PlanoCalculado {
   atualizadoEm: Date;
   alertaProximoPara: string | null;
   alertaVencidoPara: string | null;
+  /** O checklist de inspeção do plano, na ordem (`inspecao-preventivas.md`). */
+  checklist: Pergunta[];
 }
 
 const intervaloDe = (p: Pick<LinhaDoPlano, "intervaloQuantidade" | "intervaloUnidade">): Intervalo | null =>
@@ -254,7 +257,7 @@ const intervaloDe = (p: Pick<LinhaDoPlano, "intervaloQuantidade" | "intervaloUni
 const chaveTexto = (plano: string, item: string | null) => `${plano}\u0000${item ?? ""}`;
 
 /** O ciclo de um plano no dia `hoje`, dadas as OS dele (as mais recentes primeiro). */
-export function calcularCiclo(p: LinhaDoPlano, osDoPlano: OsDoCiclo[], hoje: string): PlanoCalculado {
+export function calcularCiclo(p: LinhaDoPlano, osDoPlano: OsDoCiclo[], hoje: string, checklist: Pergunta[] = []): PlanoCalculado {
   const intervalo = intervaloDe(p);
   const ultima = osDoPlano[0] ?? null;
 
@@ -310,13 +313,14 @@ export function calcularCiclo(p: LinhaDoPlano, osDoPlano: OsDoCiclo[], hoje: str
     atualizadoEm: p.atualizadoEm,
     alertaProximoPara: p.alertaProximoPara,
     alertaVencidoPara: p.alertaVencidoPara,
+    checklist,
   };
 }
 
 /** Dia (São Paulo) do encerramento da OS: a execução encerrada mais recente dela. */
 const encerradaEm = sql<string | null>`(select to_char(max(${execucao.fim}) at time zone ${FUSO}, 'YYYY-MM-DD') from ${execucao} where ${execucao.osId} = ${os.id} and ${execucao.resultado} = 'encerrada')`;
 
-/** As OS preventivas (sem as canceladas) dos planos, agrupadas pela chave plano + item, das mais recentes às mais antigas. */
+/** As OS preventivas (sem as canceladas e as devolvidas) dos planos, agrupadas pela chave plano + item, das mais recentes às mais antigas. */
 async function osDosPlanos(db: Db, planos: LinhaDoPlano[]): Promise<Map<string, OsDoCiclo[]>> {
   const grupos = new Map<string, OsDoCiclo[]>();
   if (planos.length === 0) return grupos;
@@ -341,7 +345,7 @@ async function osDosPlanos(db: Db, planos: LinhaDoPlano[]): Promise<Map<string, 
     .from(os)
     .innerJoin(equipe, eq(equipe.id, os.equipeId))
     .innerJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
-    .where(and(eq(os.tipo, "preventiva"), ne(os.status, "cancelada"), isNotNull(os.planoManutencao), inArray(sql`btrim(${os.planoManutencao})`, codigos)));
+    .where(and(eq(os.tipo, "preventiva"), notInArray(os.status, ["cancelada", "devolvida"]), isNotNull(os.planoManutencao), inArray(sql`btrim(${os.planoManutencao})`, codigos)));
   for (const { planoManutencao, itemManutencao, ...o } of linhas) {
     const chave = chaveDoPlano(planoManutencao, itemManutencao);
     if (!chave) continue;
@@ -362,11 +366,12 @@ export async function calcularPlanos(db: Db, agora: Date, ids?: string[]): Promi
     .from(planoPreventiva)
     .where(ids ? inArray(planoPreventiva.id, ids) : undefined);
   const grupos = await osDosPlanos(db, linhas);
+  const perguntas = await perguntasDosPlanos(db, linhas.map((p) => p.id));
   const osPorPlano = new Map<string, OsDoCiclo[]>();
   const planos = linhas.map((p) => {
     const lista = grupos.get(chaveTexto(p.planoManutencao, p.itemManutencao)) ?? [];
     osPorPlano.set(p.id, lista);
-    return calcularCiclo(p, lista, hoje);
+    return calcularCiclo(p, lista, hoje, perguntas.get(p.id) ?? []);
   });
   return { hoje, planos, osPorPlano };
 }
@@ -378,7 +383,7 @@ function veOPlano(eu: UsuarioAutenticado, p: PlanoCalculado): boolean {
   return p.equipe !== null && escopo.includes(p.equipe.id);
 }
 
-/** Quem define o intervalo: o admin e o supervisor da equipe do plano. */
+/** Quem define o intervalo e o checklist de inspeção: o admin e o supervisor da equipe do plano. */
 export const podeEditarPlano = (eu: UsuarioAutenticado, p: Pick<PlanoCalculado, "equipe">) =>
   eu.perfil === "admin" || (p.equipe !== null && podeSupervisionarEquipe(eu, p.equipe.id));
 
@@ -411,7 +416,10 @@ export async function listarPlanos(db: Db, eu: UsuarioAutenticado, f: FiltrosDos
   return {
     hoje,
     contagem: { ...contagem, total: visiveis.length },
-    planos: lista.map((p) => ({ ...semControle(p), podeEditar: podeEditarPlano(eu, p) })),
+    planos: lista.map((p) => {
+      const { checklist, ...resto } = semControle(p);
+      return { ...resto, totalPerguntas: checklist.length, podeEditar: podeEditarPlano(eu, p) };
+    }),
   };
 }
 
@@ -498,6 +506,8 @@ export const esquemaEdicaoDoPlano = z.object({
   base_do_ciclo: z.enum(CICLO_BASES).optional(),
   antecedencia_dias: z.number().int("Use um número inteiro de dias").min(0, "A antecedência não pode ser negativa").max(365, "No máximo 365 dias").optional(),
   ativo: z.boolean().optional(),
+  /** O checklist de inspeção inteiro, na ordem: a lista recebida passa a ser a do plano (ver `salvarChecklist`). */
+  checklist: esquemaChecklist.optional(),
   observacao: z
     .string()
     .trim()
@@ -508,13 +518,14 @@ export const esquemaEdicaoDoPlano = z.object({
 });
 export type EdicaoDoPlano = z.infer<typeof esquemaEdicaoDoPlano>;
 
-/** Os campos que a auditoria compara. */
+/** Os campos que a auditoria compara (o checklist entra como a lista dos textos, na ordem). */
 const retrato = (p: PlanoCalculado) => ({
   intervalo: p.intervaloDescricao,
   base_do_ciclo: p.baseDoCiclo,
   antecedencia_dias: p.antecedenciaDias,
   ativo: p.ativo,
   observacao: p.observacao,
+  checklist: p.checklist.map((c) => c.texto),
 });
 
 /**
@@ -525,7 +536,7 @@ export async function editarPlano(db: Db, eu: UsuarioAutenticado, id: string, da
   const { planos } = await calcularPlanos(db, agora, [id]);
   const antes = planos[0];
   if (!antes || !veOPlano(eu, antes)) throw naoEncontrado("Plano de preventiva não encontrado");
-  if (!podeEditarPlano(eu, antes)) throw proibido("Só o administrador e o supervisor da equipe definem o intervalo da preventiva");
+  if (!podeEditarPlano(eu, antes)) throw proibido("Só o administrador e o supervisor da equipe definem o intervalo e o checklist da preventiva");
 
   // Definir o intervalo de um plano que estava sem pontua o supervisor (na mesma transação que grava o intervalo).
   const definiuAgora = dados.intervalo != null && antes.intervalo === null;
@@ -546,6 +557,7 @@ export async function editarPlano(db: Db, eu: UsuarioAutenticado, id: string, da
         atualizadoPor: eu.id,
       })
       .where(eq(planoPreventiva.id, id));
+    if (dados.checklist !== undefined) await salvarChecklist(tx, id, dados.checklist);
     return definiuAgora && eu.perfil === "tecnico" ? pontuarIntervalo({ tx, agora }, id, eu.id, agora) : [];
   });
 

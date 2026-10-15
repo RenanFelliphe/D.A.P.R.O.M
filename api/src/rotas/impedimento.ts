@@ -4,6 +4,7 @@ import type { Deps } from "../deps";
 import { ALERTA_TIPOS } from "../db/schema";
 import { registrarAuditoria, rotuloDaOs } from "../dominio/auditoria";
 import { listarAlertas, marcarComoLido } from "../dominio/impedimento-alertas";
+import { devolverOs, liberarReserva, reservarOs } from "../dominio/atribuicao-os";
 import { cancelarOsDeApoio, reprogramarOs } from "../dominio/impedimento-os";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { invalido } from "../http/erros";
@@ -25,7 +26,7 @@ const dataValida = dataIso.refine((v) => {
   return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v);
 }, "Data inexistente");
 
-/** Ações do supervisor sobre uma OS (reprogramar, cancelar a de apoio) e a caixa de alertas. */
+/** Ações do supervisor sobre uma OS (reprogramar, reservar a uma pessoa, devolver ao SAP, cancelar a de apoio) e a caixa de alertas. */
 export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
@@ -59,6 +60,58 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     const resultado = await cancelarOsDeApoio(deps.db, eu, id, motivo, deps.agora());
     const rotulo = await rotuloDaOs(deps.db, id);
     await registrarAuditoria(deps.db, eu, { entidade: "os", verbo: "cancelar", entidadeId: id, alvo: rotulo, resumo: `Cancelou a ${rotulo}`, detalhes: { justificativa: motivo } });
+    return responder(c, resultado);
+  });
+
+  /**
+   * Atribuição individual: o supervisor da equipe reserva a OS a uma pessoa (ou troca o responsável). A OS continua no
+   * quadro da equipe, com a marca, e só o responsável inicia a APR e a execução.
+   */
+  r.put("/os/:id/responsavel", autenticar(), async (c) => {
+    const id = lerId(c);
+    const dados = await lerCorpo(c, z.object({ usuario_id: uuid }));
+    const eu = c.get("usuario");
+    const { mudou, anteriorId, ...resultado } = await reservarOs(deps.db, eu, id, dados.usuario_id, deps.agora());
+    if (mudou) {
+      const rotulo = await rotuloDaOs(deps.db, id);
+      await registrarAuditoria(deps.db, eu, {
+        entidade: "os",
+        verbo: "reservar",
+        entidadeId: id,
+        alvo: rotulo,
+        resumo: `Reservou a ${rotulo} para ${resultado.responsavel.nome}`,
+        detalhes: { responsavel_id: dados.usuario_id, responsavel_anterior_id: anteriorId },
+      });
+    }
+    return responder(c, resultado);
+  });
+
+  /** Tira a reserva: a OS volta a ser da equipe toda. */
+  r.delete("/os/:id/responsavel", autenticar(), async (c) => {
+    const id = lerId(c);
+    const eu = c.get("usuario");
+    const { responsavelAnteriorId, ...resultado } = await liberarReserva(deps.db, eu, id);
+    const rotulo = await rotuloDaOs(deps.db, id);
+    await registrarAuditoria(deps.db, eu, {
+      entidade: "os",
+      verbo: "liberar_reserva",
+      entidadeId: id,
+      alvo: rotulo,
+      resumo: `Liberou a ${rotulo} para a equipe toda`,
+      detalhes: { responsavel_anterior_id: responsavelAnteriorId },
+    });
+    return responder(c, resultado);
+  });
+
+  /** Devolve a OS ao SAP com a justificativa do supervisor da equipe; ela vai na próxima planilha de baixa. */
+  r.post("/os/:id/devolver", autenticar(), async (c) => {
+    const id = lerId(c);
+    const dados = await lerCorpo(c, z.object({ justificativa }));
+    const motivo = justificativaObrigatoria(dados.justificativa);
+    const eu = c.get("usuario");
+    const resultado = await devolverOs(deps.db, eu, id, motivo, deps.agora());
+    const rotulo = await rotuloDaOs(deps.db, id);
+    await registrarAuditoria(deps.db, eu, { entidade: "os", verbo: "devolver", entidadeId: id, alvo: rotulo, resumo: `Devolveu a ${rotulo} ao SAP`, detalhes: { justificativa: motivo } });
     return responder(c, resultado);
   });
 

@@ -2,6 +2,7 @@ import { and, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { apr, aprParticipante, atividade, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
 import { materiaisDosServicos } from "./catalogo";
+import { checklistsDasOs } from "./checklist-inspecao";
 import { semClassificacao } from "./modelo-apr-banco";
 import { modelosParaEscolher, recomendarModelo } from "./recomendacao-apr";
 import { usuarioParaApi } from "./usuarios";
@@ -11,7 +12,7 @@ const DIAS_DE_HISTORICO = 60;
 /**
  * Snapshot da equipe para o modo offline (Eventos, tabela "Dados do snapshot"): as OS `liberada`, `pendente` e
  * `em_execucao` da equipe, as `encerrada` do próprio técnico dos últimos 60 dias, com o resumo das APRs e execuções de
- * cada uma e a escolha do modelo da APR (o recomendado pela leitura da OS e o que cada modelo achou nela), os modelos
+ * cada uma, o checklist de inspeção do plano das preventivas e a escolha do modelo da APR (o recomendado pela leitura da OS e o que cada modelo achou nela), os modelos
  * publicados com a orientação (mais as versões que as APRs do snapshot usaram), a tabela de atividades (com os
  * materiais de cada serviço do catálogo), os locais dessas OS e os usuários da equipe. No MVP é sempre completo: o
  * `cursor` devolvido é só o instante da geração.
@@ -62,6 +63,8 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
   const riscos = ids.length ? await db.select().from(riscoModeloApr).where(inArray(riscoModeloApr.modeloAprId, ids)) : [];
   const itens = ids.length ? await db.select().from(itemModeloApr).where(inArray(itemModeloApr.modeloAprId, ids)) : [];
 
+  const checklists = await checklistsDasOs(db, ordens);
+
   const equipe = await db.select().from(usuario).where(and(eq(usuario.equipeId, usuarioLogado.equipeId), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")));
 
   // A escolha do modelo offline: a orientação de cada modelo e, em cada OS, o recomendado e o que cada modelo achou nela.
@@ -74,7 +77,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
   };
 
   return {
-    os: ordens.map((o) => ({ ...o, escolhaDoModelo: escolhaDe(o) })),
+    os: ordens.map((o) => ({ ...o, escolhaDoModelo: escolhaDe(o), checklistInspecao: checklists.get(o.id) ?? [] })),
     aprs: aprs.map((a) => ({ ...a, participantes: participantes.filter((p) => p.aprId === a.id).map(({ usuarioId, funcao }) => ({ usuarioId, funcao })) })),
     execucoes: execucoes.map((e) => ({ ...e, pausas: pausas.filter((p) => p.execucaoId === e.id) })),
     locais,

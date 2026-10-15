@@ -1,4 +1,4 @@
-import { and, asc, between, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, asc, between, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { os, reprogramacao, temporada, temporadaEquipe, temporadaUsuario } from "../db/schema";
 import { conferirTodos } from "./conquistas";
@@ -22,7 +22,7 @@ async function equipeImpecavel(db: Db, equipeId: string, inicio: string, fim: st
   const preventivas = await db
     .select({ id: os.id, status: os.status, inicio: os.dataInicioProg, fim: os.dataFimProg })
     .from(os)
-    .where(and(eq(os.tipo, "preventiva"), eq(os.equipeId, equipeId), ne(os.status, "cancelada"), between(os.dataInicioProg, inicio, fim)));
+    .where(and(eq(os.tipo, "preventiva"), eq(os.equipeId, equipeId), notInArray(os.status, ["cancelada", "devolvida"]), between(os.dataInicioProg, inicio, fim)));
   if (preventivas.length === 0) return false;
   const reprogramadas = new Set(
     (await db.select({ osId: reprogramacao.osId }).from(reprogramacao).where(inArray(reprogramacao.osId, preventivas.map((p) => p.id)))).map((r) => r.osId),

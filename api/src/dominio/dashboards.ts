@@ -180,9 +180,9 @@ export async function dashboardDeOs(db: Db, eu: UsuarioAutenticado, f: FiltroDoD
     encerradas(db, filtroOs, p),
     db
       .select({
-        total: contarSe(sql`${os.status} <> 'cancelada'`),
-        corretivas: contarSe(sql`${os.status} <> 'cancelada' and ${os.tipo} = 'corretiva'`),
-        preventivas: contarSe(sql`${os.status} <> 'cancelada' and ${os.tipo} = 'preventiva'`),
+        total: contarSe(sql`${os.status} not in ('cancelada', 'devolvida')`),
+        corretivas: contarSe(sql`${os.status} not in ('cancelada', 'devolvida') and ${os.tipo} = 'corretiva'`),
+        preventivas: contarSe(sql`${os.status} not in ('cancelada', 'devolvida') and ${os.tipo} = 'preventiva'`),
         canceladas: contarSe(sql`${os.status} = 'cancelada'`),
       })
       .from(os)

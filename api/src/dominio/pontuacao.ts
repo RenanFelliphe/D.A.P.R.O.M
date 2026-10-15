@@ -100,8 +100,9 @@ async function tentativasAnteriores(c: ContextoDePontos, e: { id: string; osId: 
 }
 
 /**
- * Execução concluída (encerrada com as assinaturas ou interrompida por risco), com os bônus da OS: local crítico, resgate,
- * apoio a outra equipe e, quando a preventiva fecha em dia, preventiva em dia (que vai também a quem interrompeu por risco).
+ * Execução concluída (encerrada com as assinaturas ou interrompida por risco), com os bônus da OS: preventiva concluída (a
+ * preventiva vale o dobro da corretiva, também para quem interrompeu por risco), local crítico, resgate, apoio a outra equipe e,
+ * quando a preventiva fecha em dia, preventiva em dia (que vai também a quem interrompeu por risco).
  * Quem recebe é todo participante da APR que amparou a execução. `quando` é o fim da execução.
  */
 export async function pontuarExecucao(c: ContextoDePontos, execucaoId: string, quando: Date): Promise<Ganho[]> {
@@ -133,6 +134,7 @@ export async function pontuarExecucao(c: ContextoDePontos, execucaoId: string, q
 
   for (const p of participantes) {
     dar(p.usuarioId, "execucao_concluida", "execucao");
+    if (e.tipo === "preventiva") dar(p.usuarioId, "preventiva_concluida", "preventiva_concluida");
     if (e.critico) dar(p.usuarioId, "local_critico", "local_critico");
     if (e.origem === "apoio") dar(p.usuarioId, "apoio", "apoio");
   }

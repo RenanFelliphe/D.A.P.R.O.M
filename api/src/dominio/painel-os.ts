@@ -28,6 +28,7 @@ import { conflito, naoEncontrado, proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { enfileirarTarefa } from "../servicos/fila";
 import { buscaDeOs } from "./busca";
+import { checklistsDasOs } from "./checklist-inspecao";
 import { materiaisDasAprs } from "./apr-materiais";
 import { servicoDaAtividade } from "./catalogo";
 import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
@@ -110,6 +111,7 @@ const pesoDaPrioridade = sql`case lower(${os.prioridade}) when 'muito alto' then
 /** O quadro de OS, por prioridade (padrão) ou por data limite; em ambos, local crítico, número e id desempatam. */
 export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosOs, agora: Date) {
   const hoje = diaNoFuso(agora);
+  const responsavel = alias(usuario, "responsavel_usuario");
   const onde = condicoesDoQuadro(eu, filtros, true);
   const { limit, offset } = limiteEDeslocamento(filtros);
 
@@ -133,10 +135,13 @@ export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosO
       dataFimProg: os.dataFimProg,
       pdfPath: os.pdfPath,
       cienciaEm: os.cienciaEm,
+      responsavelId: os.responsavelId,
+      responsavelNome: responsavel.nome,
     })
     .from(os)
     .innerJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
     .innerJoin(equipe, eq(equipe.id, os.equipeId))
+    .leftJoin(responsavel, eq(responsavel.id, os.responsavelId))
     .where(onde)
     .orderBy(
       ...(filtros.ordem === "data_limite"
@@ -183,6 +188,8 @@ export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosO
       dataFimProg: l.dataFimProg,
       pdfPronto: l.pdfPath !== null,
       cienciaEm: l.cienciaEm,
+      /** A pessoa para quem o supervisor reservou a OS (atribuição individual); `null` = a OS é da equipe toda. */
+      responsavel: l.responsavelId && l.responsavelNome ? { id: l.responsavelId, nome: l.responsavelNome } : null,
       execucaoAbertaHaHoras: abertas.get(l.id) ?? null,
       atrasada: estaAtrasada(l, hoje),
     })),
@@ -194,6 +201,9 @@ export async function listarOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosO
 /** A OS e o que o usuário pode saber dela: quem não vê a equipe da OS recebe `404`, como se não existisse. */
 export async function osVisivel(db: Db, eu: UsuarioAutenticado, osId: string) {
   const cienciaPor = alias(usuario, "ciencia_por_usuario");
+  const responsavel = alias(usuario, "responsavel_usuario");
+  const reservadaPor = alias(usuario, "reservada_por_usuario");
+  const devolvidaPor = alias(usuario, "devolvida_por_usuario");
   const [linha] = await db
     .select({
       os,
@@ -202,11 +212,17 @@ export async function osVisivel(db: Db, eu: UsuarioAutenticado, osId: string) {
       equipeCentro: equipe.centroTrabalho,
       equipeSupervisorId: equipe.supervisorId,
       cienciaPorNome: cienciaPor.nome,
+      responsavelNome: responsavel.nome,
+      reservadaPorNome: reservadaPor.nome,
+      devolvidaPorNome: devolvidaPor.nome,
     })
     .from(os)
     .innerJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
     .innerJoin(equipe, eq(equipe.id, os.equipeId))
     .leftJoin(cienciaPor, eq(cienciaPor.id, os.cienciaPor))
+    .leftJoin(responsavel, eq(responsavel.id, os.responsavelId))
+    .leftJoin(reservadaPor, eq(reservadaPor.id, os.reservadaPor))
+    .leftJoin(devolvidaPor, eq(devolvidaPor.id, os.devolvidaPor))
     .where(eq(os.id, osId));
   if (!linha || !podeVerEquipe(eu, linha.os.equipeId)) throw naoEncontrado("OS não encontrada");
   return linha;
@@ -418,11 +434,11 @@ async function carregarExecucoes(db: Db, osId: string) {
 
 /** Detalhe da OS: dados do SAP, o serviço do catálogo, APRs, execuções, alertas, reprogramações e a linha do tempo que une tudo. */
 export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, agora: Date) {
-  const { os: o, local, equipeNome, equipeCentro, equipeSupervisorId, cienciaPorNome } = await osVisivel(db, eu, osId);
+  const { os: o, local, equipeNome, equipeCentro, equipeSupervisorId, cienciaPorNome, responsavelNome, reservadaPorNome, devolvidaPorNome } = await osVisivel(db, eu, osId);
 
   const equipeAnterior = alias(equipe, "equipe_anterior");
   const equipeNova = alias(equipe, "equipe_nova");
-  const [servico, aprs, execucoes, alertas, reprogramacoes, abertas, [suspeitos]] = await Promise.all([
+  const [servico, aprs, execucoes, alertas, reprogramacoes, abertas, [suspeitos], checklists] = await Promise.all([
     o.codigoAtividade ? servicoDaAtividade(db, o.codigoAtividade) : null,
     carregarAprs(db, osId, eu.perfil === "admin"),
     carregarExecucoes(db, osId),
@@ -466,9 +482,19 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
       .select({ n: sql<number>`count(*)::int` })
       .from(eventoCampo)
       .where(and(eq(eventoCampo.osId, osId), sql`${eventoCampo.ocorridoEm} > ${eventoCampo.recebidoEm}`)),
+    checklistsDasOs(db, [o]),
   ]);
 
-  const linhaDoTempo = montarLinhaDoTempo({ aprs, execucoes, alertas, reprogramacoes, cienciaEm: o.cienciaEm, cienciaPorNome });
+  const linhaDoTempo = montarLinhaDoTempo({
+    aprs,
+    execucoes,
+    alertas,
+    reprogramacoes,
+    cienciaEm: o.cienciaEm,
+    cienciaPorNome,
+    reserva: o.reservadaEm && responsavelNome ? { em: o.reservadaEm, responsavelNome, porNome: reservadaPorNome } : null,
+    devolucao: o.devolvidaEm ? { em: o.devolvidaEm, porNome: devolvidaPorNome, justificativa: o.justificativaDevolucao } : null,
+  });
 
   return {
     os: {
@@ -476,6 +502,12 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
       localInstalacao: local,
       equipe: { id: o.equipeId, nome: equipeNome, centroTrabalho: equipeCentro, supervisorId: equipeSupervisorId },
       cienciaPorNome,
+      /** Atribuição individual: a pessoa para quem a OS está reservada e quem a reservou; `null` = a OS é da equipe toda. */
+      responsavel: o.responsavelId && responsavelNome ? { id: o.responsavelId, nome: responsavelNome, reservadaPorNome, reservadaEm: o.reservadaEm } : null,
+      /** O apêndice da OS devolvida: quem devolveu, quando e a justificativa (que vai na planilha de baixa). */
+      devolucao: o.devolvidaEm
+        ? { em: o.devolvidaEm, porNome: devolvidaPorNome, justificativa: o.justificativaDevolucao, exportadaEm: o.devolucaoExportadaEm }
+        : null,
       pdfPronto: o.pdfPath !== null,
       execucaoAbertaHaHoras: abertas.get(osId) ?? null,
       atrasada: estaAtrasada(o, diaNoFuso(agora)),
@@ -486,6 +518,8 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
      * tem atividade. O modelo de APR fica de fora: o técnico o escolhe a cada APR (`GET /os/{id}/modelos-apr`).
      */
     servico: servico ? { codigo: servico.codigo, descricao: servico.descricao, materiais: servico.materiais } : null,
+    /** O checklist de inspeção do plano da OS preventiva, na ordem; vazio quando a OS não tem (corretiva, plano sem perguntas). */
+    checklistInspecao: checklists.get(o.id) ?? [],
     aprs,
     execucoes,
     alertas,
@@ -519,6 +553,8 @@ function montarLinhaDoTempo(d: {
   }[];
   cienciaEm: Date | null;
   cienciaPorNome: string | null;
+  reserva: { em: Date; responsavelNome: string; porNome: string | null } | null;
+  devolucao: { em: Date; porNome: string | null; justificativa: string | null } | null;
 }) {
   const itens: { em: Date; tipo: string; descricao: string }[] = [];
 
@@ -550,6 +586,16 @@ function montarLinhaDoTempo(d: {
       em: r.criadaEm,
       tipo: "reprogramacao",
       descricao: `Reprogramada de ${diaBr(r.dataAnterior)} para ${diaBr(r.dataNova)} por ${r.usuarioNome}${trocaEquipe}: ${r.justificativa}`,
+    });
+  }
+  if (d.reserva) {
+    itens.push({ em: d.reserva.em, tipo: "reserva", descricao: `Reservada para ${d.reserva.responsavelNome}${d.reserva.porNome ? ` por ${d.reserva.porNome}` : ""}` });
+  }
+  if (d.devolucao) {
+    itens.push({
+      em: d.devolucao.em,
+      tipo: "devolucao",
+      descricao: `Devolvida ao SAP${d.devolucao.porNome ? ` por ${d.devolucao.porNome}` : ""}${d.devolucao.justificativa ? `: ${d.devolucao.justificativa}` : ""}`,
     });
   }
   if (d.cienciaEm) itens.push({ em: d.cienciaEm, tipo: "ciencia", descricao: `Ciência do supervisor${d.cienciaPorNome ? ` ${d.cienciaPorNome}` : ""}` });

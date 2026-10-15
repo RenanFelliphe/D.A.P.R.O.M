@@ -15,6 +15,7 @@ export const REGRA_CODIGOS = [
   "responsavel_apr",
   "execucao_concluida",
   "preventiva_em_dia",
+  "preventiva_concluida",
   "local_critico",
   "resgate",
   "apoio",
@@ -64,7 +65,7 @@ export type CriterioDeEquipe = (typeof CRITERIOS_DE_EQUIPE)[number];
 /** Os critérios que escolhem uma patente como meta (os demais têm só a quantidade). */
 export const CRITERIOS_DE_PATENTE = ["patente", "patente_da_equipe"] as const;
 
-/** Uma tarefa que pontua e o valor que o admin definiu. A carga inicial (migração) traz as 13, com os valores da seção 2. */
+/** Uma tarefa que pontua e o valor que o admin definiu. A carga inicial (migração) traz as 14, com os valores da seção 2. */
 export const regraPontuacao = pgTable(
   "regra_pontuacao",
   {

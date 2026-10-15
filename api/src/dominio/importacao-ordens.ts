@@ -284,10 +284,15 @@ async function atualizarOrdem(db: Db, ctx: Contexto, existente: typeof os.$infer
   const localId = await localDaOrdem(db, ctx, ordem.local_instalacao);
   const ativ = existente.codigoAtividade ? null : await atividadeDaOrdem(db, ctx, ordem);
 
-  // Só colunas de planejamento: nunca status, execução, equipe, ciência nem PDF.
+  // A OS devolvida volta ao quadro quando o SAP a traz de novo (o planejador corrigiu a ordem): é a resposta à devolução. O PDF
+  // é a foto de quando a OS foi impressa e não a traz de volta. A justificativa antiga fica na trilha de auditoria.
+  const volta = existente.status === "devolvida" && ctx.origem !== "pdf";
+
+  // Só colunas de planejamento: nunca execução, equipe, ciência, PDF nem a reserva; o status só muda para trazer de volta a devolvida.
   await db
     .update(os)
     .set({
+      ...(volta && { status: "liberada" as const, devolvidaEm: null, devolvidaPor: null, justificativaDevolucao: null, devolucaoExportadaEm: null }),
       titulo: ordem.titulo,
       ...(ordem.descricao !== undefined && { descricao: ordem.descricao }),
       ...(ordem.equipamento !== undefined && { equipamento: ordem.equipamento }),

@@ -13,6 +13,7 @@ export const ALERTA_TIPOS = [
   "falha_importacao",
   "preventiva_proxima",
   "preventiva_vencida",
+  "inspecao_com_pendencia",
 ] as const;
 export type AlertaTipo = (typeof ALERTA_TIPOS)[number];
 

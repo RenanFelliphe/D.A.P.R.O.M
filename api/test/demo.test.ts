@@ -94,6 +94,21 @@ describe("Dados de demonstração", () => {
     assert.deepEqual(tipos, ["preventiva_proxima", "preventiva_vencida"]);
   });
 
+  it("os planos de preventiva têm checklist de inspeção e as execuções dele o trazem preenchido, uma com item não marcado e o alerta", async () => {
+    const planos = await amb.sql<{ plano_manutencao: string; perguntas: number }>(
+      "select p.plano_manutencao, count(q.id)::int perguntas from plano_preventiva p join plano_preventiva_pergunta q on q.plano_id = p.id group by p.id, p.plano_manutencao order by 1",
+    );
+    assert.ok(planos.some((p) => p.plano_manutencao === "10573" && p.perguntas === 6), "o retificador tem o checklist do exemplo da OS 4019821");
+    assert.ok(planos.length >= 2);
+    const execucoes = await amb.sql<{ dados_inspecao: { itens: { marcado: boolean | null }[] } }>("select dados_inspecao from execucao e join os o on o.id = e.os_id where e.resultado = 'encerrada' and o.plano_manutencao = any($1)", [planos.map((p) => p.plano_manutencao)]);
+    assert.ok(execucoes.length >= 3);
+    assert.ok(execucoes.every((e) => e.dados_inspecao.itens.every((i) => i.marcado !== null)));
+    assert.ok(execucoes.some((e) => e.dados_inspecao.itens.some((i) => i.marcado === false)));
+    const avisos = await amb.sql<{ detalhe: string }>("select detalhe from alerta where tipo = 'inspecao_com_pendencia'");
+    assert.ok(avisos.length >= 1);
+    assert.match(avisos[0]!.detalhe, /gaxeta/);
+  });
+
   it("rodar de novo não duplica nada", async () => {
     const antes = (await amb.sql<{ n: number }>("select count(*)::int n from os"))[0]!.n;
     const de_novo = await popularDemo(amb.deps);

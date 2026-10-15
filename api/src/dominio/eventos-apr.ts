@@ -10,6 +10,7 @@ import { pontuarApr } from "./pontuacao";
 import {
   avisarConflitoDePlanejamento,
   carregarOsDoUsuario,
+  conferirReserva,
   contextoDePontos,
   evidenciaPayload,
   exigirArquivosDasEvidencias,
@@ -63,6 +64,7 @@ const reprovou = (item: { tipo: string; respostaBloqueante: string | null }, res
  */
 export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadApr, "evidencias" | "resultado">) {
   const { os: ordem, mudou } = await carregarOsDoUsuario(ctx, osId);
+  const desvio = await conferirReserva(ctx, ordem);
 
   // Conflitos de estado: online recusam; vindo da fila offline, aplicam e viram alerta (Decisão-chave 2).
   const abertas = (await ctx.tx.select({ resultado: execucao.resultado, executorId: execucao.executorId }).from(execucao).where(eq(execucao.osId, ordem.id))).filter((e) => e.resultado === null);
@@ -91,6 +93,13 @@ export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadAp
   if (new Set(p.riscos).size !== p.riscos.length) throw rejeitar("risco_repetido", "Risco marcado repetido");
   if (p.riscos.some((r) => !idsDeRisco.has(r))) throw rejeitar("risco_invalido", "Risco que não pertence ao modelo da APR");
   const marcados = new Set(p.riscos);
+  // Na OS reservada, o responsável da APR é a pessoa designada pelo supervisor.
+  const responsavelDaApr = p.participantes.find((x) => x.funcao === "responsavel")!.usuario_id;
+  let divergencia = desvio;
+  if (ordem.responsavelId && responsavelDaApr !== ordem.responsavelId) {
+    if (!ctx.offline) throw rejeitar("responsavel_reservado", "Esta OS está reservada: o responsável da APR é a pessoa que o supervisor designou");
+    divergencia ??= "o responsável da APR não era o responsável reservado da OS";
+  }
 
   const itens = await ctx.tx.select().from(itemModeloApr).where(eq(itemModeloApr.modeloAprId, modelo.id));
   const itemPorId = new Map(itens.map((i) => [i.id, i]));
@@ -115,7 +124,7 @@ export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadAp
   const { linhas: materiais, faltando: materiaisFaltando } = await conferirMateriais(ctx, ordem.codigoAtividade, p.materiais);
 
   const reprovados = itens.filter((i) => reprovou(i, respostaPorItem.get(i.id)?.resposta)).sort((a, b) => a.ordem - b.ordem);
-  return { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados, materiais, materiaisFaltando };
+  return { ordem, mudou, desvio: divergencia, abertas, modelo, pessoas, respostaPorItem, reprovados, materiais, materiaisFaltando };
 }
 
 /** Respostas gravadas de uma APR, com o item do modelo; `reprovado` diz se o item reprovou a APR. */
@@ -213,7 +222,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
     return;
   }
 
-  const { ordem, mudou, abertas, modelo, pessoas, respostaPorItem, reprovados, materiais, materiaisFaltando } = await conferirApr(ctx, osId, p);
+  const { ordem, mudou, desvio, abertas, modelo, pessoas, respostaPorItem, reprovados, materiais, materiaisFaltando } = await conferirApr(ctx, osId, p);
   ctx.saida.osAfetadas.add(ordem.id);
 
   // Item reprovado: exige observação e, se o item pede foto ou PDF, ao menos um arquivo desse tipo. O aparelho só conhece
@@ -279,6 +288,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   }
   if (mudou) await avisarConflitoDePlanejamento(ctx, ordem, "a APR foi aplicada depois que o planejamento mudou (equipe ou data)");
   if (ordem.status === "cancelada") await avisarConflitoDePlanejamento(ctx, ordem, "a APR foi aplicada numa OS cancelada");
+  if (desvio) await avisarConflitoDePlanejamento(ctx, ordem, `a APR foi aplicada, mas ${desvio}`);
   if (abertas.length > 0 || ordem.status === "encerrada") {
     ctx.saida.alertas.push(...(await criarAlertas(ctx.tx, { tipo: "execucao_duplicada", osId: ordem.id, equipeId: ordem.equipeId, detalhe: `OS ${ordem.numeroOrdem ?? ordem.titulo}: APR registrada enquanto a OS já estava ${abertas.length > 0 ? "em execução" : "encerrada"}` })));
   }

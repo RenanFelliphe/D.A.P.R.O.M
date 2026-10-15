@@ -213,6 +213,50 @@ function assinaturas(c: Cursor, d: DadosPdf, lista: Assinante[]) {
 const cargoERegistro = (u: { cargo: string | null; registro: string | null; matricula?: string }) =>
   [u.cargo, u.registro ? `CREA ${u.registro}` : null, u.matricula ? `Mat. ${u.matricula}` : null].filter(Boolean).join(" · ");
 
+interface ItemDaInspecao {
+  pergunta: string;
+  marcado: boolean | null;
+  observacao: string | null;
+}
+
+/** Os itens do checklist de inspeção (`{ itens: [...] }`), ou `null` quando o dado não tem esse formato (a inspeção sem estrutura, de antes do checklist). */
+function itensDaInspecao(bruto: unknown): ItemDaInspecao[] | null {
+  const itens = (bruto as { itens?: unknown } | null)?.itens;
+  if (!Array.isArray(itens)) return null;
+  return itens.filter((i): i is ItemDaInspecao => Boolean(i) && typeof i === "object" && typeof (i as ItemDaInspecao).pergunta === "string");
+}
+
+/**
+ * O checklist de inspeção da preventiva: uma linha por pergunta, com a caixa marcada ou vazia (a fonte do PDF não tem "☑", então
+ * a caixa é "[X]" e "[  ]"; "[?]" é a pergunta que ficou sem resposta) e a observação; o item não marcado sai em destaque. A
+ * inspeção sem estrutura (de antes do checklist) continua saindo como pares de campo e valor.
+ */
+function inspecao(c: Cursor, bruto: unknown) {
+  if (!bruto || typeof bruto !== "object" || Object.keys(bruto).length === 0) return;
+  const itens = itensDaInspecao(bruto);
+  if (!itens) {
+    const texto = Object.entries(bruto as Record<string, unknown>)
+      .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`)
+      .join("\n");
+    linhaDeCelulas(c, [{ fracao: 1, rotulo: "FORMULÁRIO DE INSPEÇÃO", valor: texto }], 7);
+    return;
+  }
+  if (itens.length === 0) return;
+  faixa(c, "CHECKLIST DE INSPEÇÃO", 7.5);
+  const caixa = 26;
+  for (const item of itens) {
+    const observacao = item.observacao?.trim();
+    linhaDeTabela(
+      c,
+      [
+        { largura: caixa, texto: item.marcado === null ? "[?]" : item.marcado ? "[X]" : "[  ]", negrito: true },
+        { largura: c.largura - caixa, texto: [item.pergunta, item.marcado === null ? "Não respondida." : null, observacao ? `Obs.: ${observacao}` : null].filter(Boolean).join("\n") },
+      ],
+      { fundo: item.marcado === false ? COR.reprovado : item.marcado === null ? COR.alerta : undefined, respiro: 3, minimo: 9.5 },
+    );
+  }
+}
+
 /** Página 2: a ordem, a execução, as assinaturas e as fotos. Devolve o texto do rodapé. */
 export function paginaOs(c: Cursor, d: DadosPdf, geradoEm: Date): string {
   const o = d.os;
@@ -265,13 +309,7 @@ export function paginaOs(c: Cursor, d: DadosPdf, geradoEm: Date): string {
     linhaDeCelulas(c, [{ fracao: 1, rotulo: "TRECHOS ANTERIORES (o tempo líquido acima soma todos os trechos)", valor: datas }]);
   }
   linhaDeCelulas(c, [{ fracao: 1, rotulo: "DESCRIÇÃO DA ATIVIDADE EXECUTADA", valor: d.principal.descricaoAtividade ?? "" }], 8);
-  const inspecao = d.principal.dadosInspecao;
-  if (inspecao && typeof inspecao === "object" && Object.keys(inspecao).length > 0) {
-    const texto = Object.entries(inspecao as Record<string, unknown>)
-      .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`)
-      .join("\n");
-    linhaDeCelulas(c, [{ fracao: 1, rotulo: "FORMULÁRIO DE INSPEÇÃO", valor: texto }], 7);
-  }
+  inspecao(c, d.principal.dadosInspecao);
   c.y += 4;
 
   faixa(c, "ASSINATURAS");

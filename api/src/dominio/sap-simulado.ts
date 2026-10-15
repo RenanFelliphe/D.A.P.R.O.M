@@ -338,7 +338,7 @@ export const esquemaListaDeOrdens = z.object({
   tipo: z.enum(["YBA1", "YBA2"]).optional(),
   centro_trabalho: z.string().trim().min(1).optional(),
   no_daprom: z
-    .enum(["nao_lida", "ignorada", "liberada", "pendente", "em_execucao", "encerrada", "cancelada"])
+    .enum(["nao_lida", "ignorada", "liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"])
     .optional(),
   pagina: z.coerce.number().int().min(1).default(1),
   tamanho: z.coerce.number().int().min(1).max(200).default(50),
@@ -360,7 +360,7 @@ export async function listarOrdens(db: Db, f: z.infer<typeof esquemaListaDeOrden
   const ultimaLeitura = await ultimaLeituraConcluida(db);
   const todas = await db.select({ numero: ordemSapSimulada.numeroOrdem }).from(ordemSapSimulada);
   const situacoesDeTodas = await situacoesNoDaprom(db, todas.map((t) => t.numero));
-  const contagem: Record<string, number> = { nao_lida: 0, ignorada: 0, liberada: 0, pendente: 0, em_execucao: 0, encerrada: 0, cancelada: 0 };
+  const contagem: Record<string, number> = { nao_lida: 0, ignorada: 0, liberada: 0, pendente: 0, em_execucao: 0, encerrada: 0, cancelada: 0, devolvida: 0 };
   for (const s of situacoesDeTodas.values()) contagem[s.situacao] = (contagem[s.situacao] ?? 0) + 1;
 
   const onde = condicoes(f);

@@ -49,8 +49,8 @@ export function rotasPreventivas(deps: Deps, { autenticar, exigirPerfil }: Auten
   });
 
   /**
-   * Define o intervalo (`{quantidade, unidade}` ou `null`), de onde o ciclo é contado, a antecedência do aviso, a pausa e a
-   * observação. Só os campos enviados mudam. Depois confere o ciclo: o vencimento novo pode pedir um alerta já.
+   * Define o intervalo (`{quantidade, unidade}` ou `null`), de onde o ciclo é contado, a antecedência do aviso, a pausa, a
+   * observação e o checklist de inspeção (a lista inteira de perguntas, na ordem). Só os campos enviados mudam. Depois confere o ciclo: o vencimento novo pode pedir um alerta já.
    */
   r.put("/preventivas/:id", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
     const id = lerId(c);
@@ -73,7 +73,9 @@ export function rotasPreventivas(deps: Deps, { autenticar, exigirPerfil }: Auten
             ? plano.intervaloDescricao
               ? `Definiu o intervalo da preventiva ${rotulo}: ${plano.intervaloDescricao}`
               : `Tirou o intervalo da preventiva ${rotulo}`
-            : `Editou o ciclo da preventiva ${rotulo} (${campos.join(", ")})`,
+            : "checklist" in mudancas && campos.length === 1
+              ? `Editou o checklist de inspeção da preventiva ${rotulo} (${plano.checklist.length} ${plano.checklist.length === 1 ? "pergunta" : "perguntas"})`
+              : `Editou o ciclo da preventiva ${rotulo} (${campos.join(", ")})`,
         detalhes: mudancas,
       });
     }

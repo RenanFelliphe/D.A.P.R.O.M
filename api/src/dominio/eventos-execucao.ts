@@ -3,9 +3,11 @@ import { z } from "zod";
 import { PAUSA_MOTIVOS, apr, aprParticipante, evidencia, execucao, execucaoAssinatura, execucaoPausa, os, usuario } from "../db/schema";
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas } from "./alertas";
+import { MAX_OBSERVACAO_DO_ITEM, checklistsDasOs, type DadosDeInspecao, type ItemRespondido } from "./checklist-inspecao";
 import {
   avisarConflitoDePlanejamento,
   carregarOsDoUsuario,
+  conferirReserva,
   contextoDePontos,
   evidenciaPayload,
   exigirArquivosDasEvidencias,
@@ -75,6 +77,7 @@ export async function aplicarExecucaoIniciada(ctx: Contexto, osIdEnvelope: strin
 
   const { os: ordem, mudou } = await carregarOsDoUsuario(ctx, osId);
   ctx.saida.osAfetadas.add(ordem.id);
+  const desvio = await conferirReserva(ctx, ordem);
 
   const [a] = await ctx.tx.select().from(apr).where(eq(apr.id, p.apr_id));
   if (!a) throw adiar("apr_ausente", "A APR ainda não foi recebida");
@@ -106,6 +109,7 @@ export async function aplicarExecucaoIniciada(ctx: Contexto, osIdEnvelope: strin
   }
   if (mudou) await avisarConflitoDePlanejamento(ctx, ordem, "a execução começou depois que o planejamento mudou (equipe ou data)");
   if (ordem.status === "cancelada") await avisarConflitoDePlanejamento(ctx, ordem, "a execução começou numa OS cancelada");
+  if (desvio) await avisarConflitoDePlanejamento(ctx, ordem, `a execução começou, mas ${desvio}`);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -139,11 +143,53 @@ export async function aplicarPausaEncerrada(ctx: Contexto, bruto: unknown) {
 
 // ---------------------------------------------------------------------------------------------------------------
 
+/** As respostas do checklist de inspeção, por pergunta; o texto da pergunta quem copia é o servidor. */
+const esquemaInspecao = z.object({
+  itens: z.array(z.object({ pergunta_id: uuid, marcado: z.boolean(), observacao: z.string().trim().max(MAX_OBSERVACAO_DO_ITEM).nullable().optional() })),
+});
+
+/**
+ * O checklist de inspeção do encerramento de uma OS preventiva cujo plano tem perguntas. O servidor confere as respostas com o
+ * checklist atual do plano: toda pergunta precisa de resposta (`checklist_incompleto`) e a não marcada pede observação
+ * (`observacao_obrigatoria`); a pergunta marcada aceita observação opcional. Da fila offline o aparelho decidiu sem conhecer o
+ * que mudou, então a pergunta sem resposta é aceita e fica registrada como não respondida. Devolve o que a execução guarda
+ * (a pergunta é copiada como estava) e os itens não marcados, que avisam o supervisor. Sem checklist no plano, o
+ * `dados_inspecao` segue como veio.
+ */
+async function conferirInspecao(ctx: Contexto, ordem: typeof os.$inferSelect, bruto: unknown): Promise<{ dados: unknown; naoMarcados: ItemRespondido[] }> {
+  const perguntas = (await checklistsDasOs(ctx.tx, [ordem])).get(ordem.id);
+  if (!perguntas) return { dados: bruto ?? null, naoMarcados: [] };
+  const enviado = bruto == null ? null : lerPayload(esquemaInspecao, bruto);
+  const respostas = new Map<string, z.infer<typeof esquemaInspecao>["itens"][number]>();
+  for (const item of enviado?.itens ?? []) if (!respostas.has(item.pergunta_id)) respostas.set(item.pergunta_id, item);
+
+  const itens: ItemRespondido[] = perguntas.map((p) => {
+    const r = respostas.get(p.id);
+    if (!r) {
+      if (!ctx.offline) throw rejeitar("checklist_incompleto", `Responda todas as perguntas do checklist de inspeção (falta: "${p.texto}")`);
+      return { pergunta: p.texto, marcado: null, observacao: null };
+    }
+    const observacao = r.observacao?.trim() || null;
+    if (!r.marcado && !observacao) throw rejeitar("observacao_obrigatoria", `Explique na observação o item não marcado: "${p.texto}"`);
+    return { pergunta: p.texto, marcado: r.marcado, observacao };
+  });
+  const dados: DadosDeInspecao = { itens };
+  return { dados, naoMarcados: itens.filter((i) => i.marcado === false) };
+}
+
+/** O aviso do sino: a OS, o plano e cada item não marcado com a observação. */
+function detalheDaInspecao(ordem: typeof os.$inferSelect, naoMarcados: ItemRespondido[]): string {
+  const plano = [ordem.planoManutencao, ordem.itemManutencao].filter(Boolean);
+  const onde = plano.length > 0 ? ` (plano ${ordem.planoManutencao}${ordem.itemManutencao ? `, item ${ordem.itemManutencao}` : ""})` : "";
+  const itens = naoMarcados.map((i) => `"${i.pergunta}": ${i.observacao}`).join("; ");
+  return `OS ${ordem.numeroOrdem ?? ordem.titulo}${onde}: inspeção encerrada com ${naoMarcados.length === 1 ? "1 item não marcado" : `${naoMarcados.length} itens não marcados`}. ${itens}`;
+}
+
 const esquemaEncerrada = z.object({
   execucao_id: uuid,
   fim: instanteIso,
   descricao_atividade: z.string().nullable().optional(),
-  /** Leituras do formulário de inspeção das preventivas (estrutura em aberto, questão 57). */
+  /** O checklist de inspeção das preventivas (`{ itens: [{ pergunta_id, marcado, observacao? }] }`); sem checklist no plano, segue como veio. */
   dados_inspecao: z.unknown().optional(),
   evidencias: z.array(evidenciaPayload).default([]),
   assinaturas: z.array(z.object({ usuario_id: uuid, assinada_em: instanteIso.optional() })).default([]),
@@ -151,7 +197,8 @@ const esquemaEncerrada = z.object({
 
 /**
  * `execucao_encerrada`: descrição, ao menos uma foto e a assinatura de todos os participantes da APR. Documentos em PDF
- * (laudo, relatório de medição) podem acompanhar as fotos, mas não as substituem.
+ * (laudo, relatório de medição) podem acompanhar as fotos, mas não as substituem. A OS preventiva cujo plano tem checklist de
+ * inspeção só encerra com ele respondido (`conferirInspecao`); item não marcado não bloqueia, avisa o supervisor.
  */
 export async function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
   const p = lerPayload(esquemaEncerrada, bruto);
@@ -169,16 +216,17 @@ export async function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
   conferirArquivos(p.evidencias);
   const semAssinatura = participantes.find((x) => !x.assinaturaPath);
   if (semAssinatura) throw rejeitar("assinatura_ausente", `${semAssinatura.nome} ainda não cadastrou a assinatura no perfil`);
+  const [ordem] = await ctx.tx.select().from(os).where(eq(os.id, e.osId));
+  const inspecao = await conferirInspecao(ctx, ordem!, p.dados_inspecao);
   await exigirArquivosDasEvidencias(ctx, p.evidencias);
 
   await fecharPausaAberta(ctx, e.id, p.fim);
-  await ctx.tx.update(execucao).set({ fim: p.fim, resultado: "encerrada", descricaoAtividade: p.descricao_atividade!.trim(), dadosInspecao: p.dados_inspecao ?? null }).where(eq(execucao.id, e.id));
+  await ctx.tx.update(execucao).set({ fim: p.fim, resultado: "encerrada", descricaoAtividade: p.descricao_atividade!.trim(), dadosInspecao: inspecao.dados }).where(eq(execucao.id, e.id));
   await ctx.tx.insert(execucaoAssinatura).values(
     participantes.map((x) => ({ execucaoId: e.id, usuarioId: x.usuarioId, assinaturaPath: x.assinaturaPath!, assinadaEm: p.assinaturas.find((a) => a.usuario_id === x.usuarioId)?.assinada_em ?? p.fim })),
   );
   await gravarEvidencias(ctx, e.id, p.evidencias);
 
-  const [ordem] = await ctx.tx.select().from(os).where(eq(os.id, e.osId));
   const [outra] = await ctx.tx.select({ id: execucao.id }).from(execucao).where(and(eq(execucao.osId, e.osId), eq(execucao.resultado, "encerrada"), ne(execucao.id, e.id)));
   if (outra) {
     // Vale a primeira encerrada; a segunda fica guardada com um alerta.
@@ -187,6 +235,10 @@ export async function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
     await enfileirarTarefa(ctx.tx, "pdf_os", e.osId);
     // Vale a primeira encerrada: a segunda (duplicada) fica guardada, sem pontuar.
     ctx.saida.ganhos.push(...(await pontuarExecucao(contextoDePontos(ctx), e.id, p.fim)));
+  }
+
+  if (inspecao.naoMarcados.length > 0) {
+    ctx.saida.alertas.push(...(await criarAlertas(ctx.tx, { tipo: "inspecao_com_pendencia", osId: e.osId, equipeId: ordem!.equipeId, detalhe: detalheDaInspecao(ordem!, inspecao.naoMarcados) })));
   }
 
   // OS de apoio encerrada: a original continua pendente, mas o supervisor dela é avisado.

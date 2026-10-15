@@ -7,7 +7,7 @@ import { processarEventos } from "../../dominio/eventos";
 import type { UsuarioAutenticado } from "../../http/autenticacao";
 import { enfileirarTarefa } from "../../servicos/fila";
 import { verificarCiclos, type Intervalo } from "../../dominio/preventivas";
-import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
+import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, planoPreventivaPergunta, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
 import { popularCatalogoDemo } from "./catalogo-demo";
 import { espelharOsDoSapNoSimulador } from "./ordens-sap";
 import { carregarRegistroDosUsuarios } from "./registro-rh";
@@ -26,6 +26,24 @@ import { assinaturaDemo, fotoDemo } from "./imagens-demo";
  */
 
 const PREFIXO_ORDEM = "5100";
+
+/** O checklist de inspeção do retificador (plano 10573, item 10603), a partir do exemplo da OS 4019821. */
+const CHECKLIST_DO_RETIFICADOR = [
+  "Tensão de entrada (Vac) dentro da faixa?",
+  "Tensão de saída (Vcc) dentro da faixa?",
+  "Telemetria funcionando?",
+  "Fusíveis e DPS íntegros?",
+  "Bornes reapertados?",
+  "Gabinete limpo e sem corrosão?",
+];
+
+/** O checklist de inspeção do plano das válvulas de bloqueio. */
+const CHECKLIST_DE_VALVULA = [
+  "A válvula aciona sem esforço excessivo?",
+  "Sem vazamento na gaxeta e nas conexões?",
+  "Indicador de posição íntegro?",
+  "Lubrificação feita?",
+];
 
 type Item = typeof itemModeloApr.$inferSelect;
 type Risco = typeof riscoModeloApr.$inferSelect;
@@ -220,11 +238,16 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     solicitante?: string | null;
     origem?: "sap" | "planilha" | "apoio";
     apoioDe?: string;
-    /** Plano da preventiva (sem ele, um plano próprio) e o intervalo entre ciclos (sem ele, o plano fica sem intervalo). */
-    ciclo?: { plano?: string; item?: string; intervalo?: Intervalo; base?: CicloBase };
+    /**
+     * Plano da preventiva (sem ele, um plano próprio), o intervalo entre ciclos (sem ele, o plano fica sem intervalo) e o checklist
+     * de inspeção (as perguntas, na ordem; o plano é gravado na primeira OS que o traz, para o encerramento já pedir o checklist).
+     */
+    ciclo?: { plano?: string; item?: string; intervalo?: Intervalo; base?: CicloBase; checklist?: string[] };
   }
   /** Os planos das preventivas criadas: gravados no fim, com o intervalo de cada um. */
   const ciclos = new Map<string, { plano: string; item: string; intervalo?: Intervalo; base?: CicloBase }>();
+  /** As perguntas dos planos que têm checklist, por plano/item: o encerramento das OS deles responde a todas. */
+  const perguntasDosPlanos = new Map<string, { id: string; texto: string }[]>();
   let proximoPlano = 10_800;
   const criarOs = async (d: DadosOs) => {
     const tipo = d.tipo ?? "corretiva";
@@ -234,7 +257,19 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
       const plano = d.ciclo?.plano ?? String(proximoPlano++);
       const item = d.ciclo?.item ?? String(Number(plano) + 200);
       ciclo = { plano, item };
-      ciclos.set(`${plano}/${item}`, { ...ciclos.get(`${plano}/${item}`), ...d.ciclo, plano, item });
+      const { checklist, ...regras } = d.ciclo ?? {};
+      ciclos.set(`${plano}/${item}`, { ...ciclos.get(`${plano}/${item}`), ...regras, plano, item });
+      if (checklist && !perguntasDosPlanos.has(`${plano}/${item}`)) {
+        const [criado] = await db
+          .insert(planoPreventiva)
+          .values({ planoManutencao: plano, itemManutencao: item, intervaloQuantidade: regras.intervalo?.quantidade ?? null, intervaloUnidade: regras.intervalo?.unidade ?? null, contarAPartir: regras.base ?? "execucao" })
+          .returning({ id: planoPreventiva.id });
+        const perguntas = await db
+          .insert(planoPreventivaPergunta)
+          .values(checklist.map((texto, posicao) => ({ planoId: criado!.id, texto, posicao })))
+          .returning({ id: planoPreventivaPergunta.id, texto: planoPreventivaPergunta.texto, posicao: planoPreventivaPergunta.posicao });
+        perguntasDosPlanos.set(`${plano}/${item}`, perguntas.sort((a, b) => a.posicao - b.posicao).map(({ id, texto }) => ({ id, texto })));
+      }
     }
     const [o] = await db
       .insert(os)
@@ -361,8 +396,23 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     descricao?: string;
     resultado?: "encerrada" | "suspensa" | "interrompida" | "aberta" | "pausada";
     motivo?: string;
+    /** O checklist de inspeção da preventiva: por padrão tudo marcado; `naoMarcados` e `observacoes` (pela posição da pergunta) mudam isso. */
+    checklist?: { naoMarcados?: Record<number, string>; observacoes?: Record<number, string> };
+    /** A inspeção sem estrutura, de antes do checklist (só para OS cujo plano não tem checklist). */
     inspecao?: Record<string, unknown>;
   }
+  /** O `dados_inspecao` do encerramento: as respostas ao checklist do plano da OS, quando ele tem; senão, a inspeção sem estrutura. */
+  const dadosDaInspecao = async (osId: string, o: OpcoesExecucao) => {
+    const [ordem] = await db.select({ plano: os.planoManutencao, item: os.itemManutencao }).from(os).where(eq(os.id, osId));
+    const perguntas = ordem?.plano ? perguntasDosPlanos.get(`${ordem.plano}/${ordem.item}`) : undefined;
+    if (!perguntas) return o.inspecao ?? null;
+    return {
+      itens: perguntas.map((p, i) => {
+        const naoMarcado = o.checklist?.naoMarcados?.[i];
+        return { pergunta_id: p.id, marcado: naoMarcado === undefined, observacao: naoMarcado ?? o.checklist?.observacoes?.[i] ?? null };
+      }),
+    };
+  };
   const executar = async (u: UsuarioAutenticado, osId: string, aprId: string, participantes: UsuarioAutenticado[], o: OpcoesExecucao) => {
     const exId = randomUUID();
     const t = (min: number) => new Date(o.inicio.getTime() + min * 60_000);
@@ -383,7 +433,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
         execucao_id: exId,
         fim: fim.toISOString(),
         descricao_atividade: o.descricao ?? "Atividade executada conforme o procedimento; equipamento testado e liberado para operação.",
-        dados_inspecao: o.inspecao ?? null,
+        dados_inspecao: await dadosDaInspecao(osId, o),
         evidencias,
         assinaturas: participantes.map((p) => ({ usuario_id: p.id, assinada_em: fim.toISOString() })),
       }, fim);
@@ -407,7 +457,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
 
   // ================= ENCERRADAS (históricas, para indicadores, histórico e PDF) =====================================
   // 0. o ciclo anterior do retificador (mensal), 48 dias atrás: o histórico do plano mostra dois ciclos
-  let id = await criarOs({ tipo: "preventiva", titulo: "1.2 - Inspeção Funcional de Retificador", equipamento: "Retificador de proteção catódica RTF-03", local: L.erp, prioridade: "Alto", inicio: 49, fim: 47, atividade: ativ[3], ciclo: { plano: "10573", item: "10603", intervalo: { quantidade: 1, unidade: "mes" } } });
+  let id = await criarOs({ tipo: "preventiva", titulo: "1.2 - Inspeção Funcional de Retificador", equipamento: "Retificador de proteção catódica RTF-03", local: L.erp, prioridade: "Alto", inicio: 49, fim: 47, atividade: ativ[3], ciclo: { plano: "10573", item: "10603", intervalo: { quantidade: 1, unidade: "mes" }, checklist: CHECKLIST_DO_RETIFICADOR } });
   let apr = await aprovar(tec1, id, apr03, dupla, em(48, 8, 5), { riscos: 3 });
   await executar(tec1, id, apr, dupla, { inicio: em(48, 8, 20), duracaoMin: 185, fotos: 2, descricao: "Inspeção funcional do ciclo anterior: tensões dentro da faixa e bornes reapertados." });
   await darCiencia(id, sup1, em(47, 9, 0));
@@ -416,7 +466,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   id = await criarOs({ tipo: "preventiva", titulo: "1.2 - Inspeção Funcional de Retificador", equipamento: "Retificador de proteção catódica RTF-03", local: L.erp, prioridade: "Alto", inicio: 19, fim: 18, atividade: ativ[3], ciclo: { plano: "10573", item: "10603", intervalo: { quantidade: 1, unidade: "mes" } } });
   apr = await aprovar(tec1, id, apr03, dupla, em(18, 8, 5), { riscos: 3, avisoNoAlerta: true, observacao: "Acesso pela portaria lateral; EPI completo conferido." });
   await executar(tec1, id, apr, dupla, { inicio: em(18, 8, 20), duracaoMin: 200, pausa: [90, 105], fotos: 3, descricao: "Inspeção funcional concluída: tensões de entrada e saída dentro da faixa, fusíveis e DPS íntegros, bornes reapertados.",
-    inspecao: { horimetro: 18420, tensao_entrada_vac: 221, tensao_saida_vcc: 24.6 },
+    checklist: { observacoes: { 0: "Tensão de entrada: 221 Vac", 1: "Tensão de saída: 24,6 Vcc; horímetro: 18.420 h" } },
     documentos: [{ nome: "relatorio-medicao-RTF-03.pdf", titulo: "Relatório de medição - Retificador RTF-03", linhas: ["Tensão de entrada: 221 Vac", "Tensão de saída: 24,6 Vcc", "Tensão de shunt: 48 mV", "Horímetro: 18.420 h", "Resultado: dentro da faixa de operação."] }],
   });
   await darCiencia(id, sup1, em(17, 9, 30));
@@ -427,10 +477,16 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   await executar(tec2, id, apr, [tec2, tec5], { inicio: em(14, 7, 55), duracaoMin: 135, fotos: 2, descricao: "Caixa de válvula desobstruída com sucção; acionamento da válvula testado e tampa recolocada." });
   await darCiencia(id, sup1, em(13, 10, 0));
 
-  // 3. preventiva, válvulas, 9 dias atrás, sem ciência (aguarda o supervisor)
-  id = await criarOs({ tipo: "preventiva", titulo: "Teste, manutenção e válvulas", equipamento: "Válvula de bloqueio VB-12", local: L.gua, prioridade: "Médio", inicio: 10, fim: 9, atividade: ativ[2], ciclo: { intervalo: { quantidade: 1, unidade: "semana" } } });
+  // 3. preventiva, válvulas, 9 dias atrás, sem ciência (aguarda o supervisor); o checklist volta com um item não marcado (e o alerta)
+  id = await criarOs({ tipo: "preventiva", titulo: "Teste, manutenção e válvulas", equipamento: "Válvula de bloqueio VB-12", local: L.gua, prioridade: "Médio", inicio: 10, fim: 9, atividade: ativ[2], ciclo: { intervalo: { quantidade: 1, unidade: "semana" }, checklist: CHECKLIST_DE_VALVULA } });
   apr = await aprovar(tec1, id, apr02, trio, em(9, 8, 0), { riscos: 2 });
-  await executar(tec1, id, apr, trio, { inicio: em(9, 8, 15), duracaoMin: 240, pausa: [120, 150], fotos: 2 });
+  await executar(tec1, id, apr, trio, {
+    inicio: em(9, 8, 15),
+    duracaoMin: 240,
+    pausa: [120, 150],
+    fotos: 2,
+    checklist: { naoMarcados: { 1: "Gotejamento leve na gaxeta; reaperto feito, acompanhar no próximo ciclo." } },
+  });
 
   // 4. corretiva, manômetro, 6 dias atrás, sem ciência
   id = await criarOs({ titulo: "Troca de manômetro com leitura inconsistente", equipamento: "Manômetro MN-0452", local: L.cari, prioridade: "Alto", inicio: 7, fim: 6 });

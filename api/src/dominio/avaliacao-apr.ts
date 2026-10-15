@@ -13,7 +13,7 @@ import { RejeicaoEvento, type Contexto } from "./eventos-base";
 /** A recusa da APR como erro HTTP: a OS que o técnico não vê não existe para ele, e o conflito de estado é `409`. */
 function comoErroHttp(codigo: string, mensagem: string) {
   if (codigo === "os_inexistente" || codigo === "fora_da_equipe") return naoEncontrado("OS não encontrada");
-  if (codigo === "os_em_execucao" || codigo === "os_encerrada") return conflito(codigo, mensagem);
+  if (codigo === "os_em_execucao" || codigo === "os_encerrada" || codigo === "os_reservada" || codigo === "os_devolvida") return conflito(codigo, mensagem);
   return invalido(codigo, mensagem);
 }
 

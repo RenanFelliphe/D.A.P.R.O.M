@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { EVIDENCIA_TIPOS, os, reprogramacao, type EventoTipo } from "../db/schema";
+import { EVIDENCIA_TIPOS, os, reprogramacao, usuario, type EventoTipo } from "../db/schema";
 import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid, validar } from "../http/validacao";
@@ -116,6 +116,26 @@ export async function carregarOsDoUsuario(ctx: Contexto, osId: string) {
 
   const mudou = linha.equipeId !== ctx.usuario.equipeId || historico.some((h) => h.criadaEm > ctx.evento.ocorridoEm);
   return { os: linha, mudou };
+}
+
+/**
+ * A OS reservada a uma pessoa (atribuição individual) só tem APR e execução do responsável, e a OS devolvida ao SAP não
+ * recebe mais nada. Online o evento é recusado; vindo da fila offline (o aparelho decidiu sem saber da reserva ou da
+ * devolução) ele é aplicado e a função devolve o motivo para virar alerta ao supervisor (Decisão-chave 2).
+ */
+export async function conferirReserva(ctx: Contexto, o: typeof os.$inferSelect): Promise<string | null> {
+  if (o.status === "devolvida") {
+    if (!ctx.offline) throw rejeitar("os_devolvida", "Esta OS foi devolvida ao SAP pelo supervisor");
+    return "o evento chegou depois de a OS ser devolvida ao SAP";
+  }
+  if (o.responsavelId && o.responsavelId !== ctx.usuario.id) {
+    if (!ctx.offline) {
+      const [responsavel] = await ctx.tx.select({ nome: usuario.nome }).from(usuario).where(eq(usuario.id, o.responsavelId));
+      throw rejeitar("os_reservada", `Esta OS está reservada para ${responsavel?.nome ?? "outra pessoa da equipe"}`);
+    }
+    return "o evento foi feito por quem não era o responsável reservado da OS";
+  }
+  return null;
 }
 
 /** `conflito_planejamento`: o evento foi aplicado, mas o planejamento já tinha mudado, ou a OS já estava cancelada. */

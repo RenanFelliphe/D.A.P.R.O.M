@@ -25,6 +25,7 @@ const COLUNAS_EXECUCAO = [
 const COLUNAS_ENCERRADAS = ["numero_ordem", ...COLUNAS_EXECUCAO] as const;
 const COLUNAS_SEM_ORDEM = ["titulo", "equipe", ...COLUNAS_EXECUCAO] as const;
 const COLUNAS_IMPEDIMENTOS = ["numero_ordem", "titulo", "equipe", "motivo", "desde"] as const;
+const COLUNAS_DEVOLVIDAS = ["numero_ordem", "titulo", "equipe", "justificativa", "devolvida_por", "devolvida_em"] as const;
 
 type Linha = Record<string, string | number | null>;
 
@@ -35,15 +36,16 @@ function adicionarAba(livro: ExcelJS.Workbook, nome: string, colunas: readonly s
   for (const l of linhas) aba.addRow(l);
 }
 
-/** Resultado de `exportarParaSap`: o arquivo, e se havia alguma OS nova (nas abas `Encerradas` e `Sem ordem SAP`). */
+/** Resultado de `exportarParaSap`: o arquivo, e quantas OS novas havia (nas abas `Encerradas`, `Sem ordem SAP` e `Devolvidas`). */
 export interface Exportacao {
   planilha: Buffer;
   novas: number;
 }
 
 /**
- * Planilha de baixa do SAP, com 3 abas. Numa só transação: lê as encerradas ainda não exportadas, monta a
- * planilha e marca `exportada_sap_em` (um erro ao montar o arquivo desfaz a marcação). A ciência não segura nada.
+ * Planilha de baixa do SAP, com 4 abas. Numa só transação: lê as encerradas e as devolvidas ainda não exportadas, monta a
+ * planilha e as marca (`exportada_sap_em` e `devolucao_exportada_em`; um erro ao montar o arquivo desfaz a marcação). A
+ * ciência não segura nada. A aba `Devolvidas` leva a justificativa que o supervisor escreveu: é por ela que o SAP corrige a ordem.
  */
 export async function exportarParaSap(db: Db, painelUrl: string, agora: Date): Promise<Exportacao> {
   return db.transaction(async (tx) => {
@@ -121,14 +123,57 @@ export async function exportarParaSap(db: Db, painelUrl: string, agora: Date): P
     }
 
     const impedimentos = await linhasDeImpedimento(tdb);
+    const devolvidas = await linhasDeDevolvida(tdb, agora);
 
     const livro = new ExcelJS.Workbook();
     adicionarAba(livro, "Encerradas", COLUNAS_ENCERRADAS, comNumero);
     adicionarAba(livro, "Sem ordem SAP", COLUNAS_SEM_ORDEM, semNumero);
     adicionarAba(livro, "Impedimentos", COLUNAS_IMPEDIMENTOS, impedimentos);
+    adicionarAba(livro, "Devolvidas", COLUNAS_DEVOLVIDAS, devolvidas);
     const planilha = Buffer.from(await livro.xlsx.writeBuffer());
-    return { planilha, novas: encerradas.length };
+    return { planilha, novas: encerradas.length + devolvidas.length };
   });
+}
+
+/**
+ * As OS `devolvida` que ainda não saíram na planilha, com a justificativa do supervisor. Cada uma sai uma vez: a mesma
+ * transação as marca como exportadas (duas exportações simultâneas não repetem a devolução).
+ */
+async function linhasDeDevolvida(db: Db, agora: Date): Promise<Linha[]> {
+  const devolvidaPor = alias(usuario, "devolvida_por_usuario");
+  const candidatas = await db
+    .select({
+      id: os.id,
+      numeroOrdem: os.numeroOrdem,
+      titulo: os.titulo,
+      equipeNome: equipe.nome,
+      justificativa: os.justificativaDevolucao,
+      devolvidaEm: os.devolvidaEm,
+      devolvidaPorNome: devolvidaPor.nome,
+    })
+    .from(os)
+    .innerJoin(equipe, eq(equipe.id, os.equipeId))
+    .leftJoin(devolvidaPor, eq(devolvidaPor.id, os.devolvidaPor))
+    .where(and(eq(os.status, "devolvida"), isNull(os.devolucaoExportadaEm)))
+    .orderBy(asc(os.numeroOrdem), asc(os.id))
+    .for("update", { of: os });
+  if (candidatas.length === 0) return [];
+  const marcadas = await db
+    .update(os)
+    .set({ devolucaoExportadaEm: agora })
+    .where(and(inArray(os.id, candidatas.map((c) => c.id)), isNull(os.devolucaoExportadaEm), eq(os.status, "devolvida")))
+    .returning({ id: os.id });
+  const confirmadas = new Set(marcadas.map((m) => m.id));
+  return candidatas
+    .filter((c) => confirmadas.has(c.id))
+    .map((c) => ({
+      numero_ordem: c.numeroOrdem,
+      titulo: c.titulo,
+      equipe: c.equipeNome,
+      justificativa: c.justificativa ?? "",
+      devolvida_por: c.devolvidaPorNome ?? "",
+      devolvida_em: c.devolvidaEm ? dataHoraBr(c.devolvidaEm) : "",
+    }));
 }
 
 /**

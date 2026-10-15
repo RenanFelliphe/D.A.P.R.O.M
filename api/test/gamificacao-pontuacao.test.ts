@@ -71,15 +71,15 @@ describe("Gamificação: pontuação (seção 2)", () => {
     assert.equal(await c.pontosDe(a.id), antes);
   });
 
-  it("preventiva em dia em local crítico: bônus de local crítico e de preventiva em dia (35 e 30)", async () => {
+  it("preventiva em dia em local crítico: o dobro da corretiva e os bônus de local crítico e de preventiva em dia (45 e 40)", async () => {
     voltarAoRelogio();
     const a = await c.tecnico();
     const b = await c.tecnico();
     const o = await c.novaOs({ tipo: "preventiva", critico: true, dataInicioProg: "2026-10-12", dataFimProg: "2026-10-20" });
     await c.servico(a, o.id, [a, b]);
-    assert.deepEqual(await c.regrasDe(a.id), ["apr_completa", "execucao_concluida", "local_critico", "preventiva_em_dia", "responsavel_apr"]);
-    assert.equal(await c.pontosDe(a.id), 10 + 10 + 5 + 5 + 5);
-    assert.equal(await c.pontosDe(b.id), 10 + 10 + 5 + 5);
+    assert.deepEqual(await c.regrasDe(a.id), ["apr_completa", "execucao_concluida", "local_critico", "preventiva_concluida", "preventiva_em_dia", "responsavel_apr"]);
+    assert.equal(await c.pontosDe(a.id), 10 + 10 + 10 + 5 + 5 + 5);
+    assert.equal(await c.pontosDe(b.id), 10 + 10 + 10 + 5 + 5);
   });
 
   it("preventiva atrasada sem justificativa não ganha o bônus; com reprogramação (atraso justificado) ganha", async () => {
@@ -88,21 +88,38 @@ describe("Gamificação: pontuação (seção 2)", () => {
     const atrasada = await c.novaOs({ tipo: "preventiva", dataInicioProg: "2026-10-09", dataFimProg: "2026-10-12" });
     await c.servico(a, atrasada.id);
     assert.equal((await c.regrasDe(a.id)).includes("preventiva_em_dia"), false);
-    assert.equal(await c.pontosDe(a.id), 25);
+    assert.equal(await c.pontosDe(a.id), 35, "a preventiva concluída vale 10 a mais, mesmo atrasada");
 
     const justificada = await c.novaOs({ tipo: "preventiva", dataInicioProg: "2026-10-09", dataFimProg: "2026-10-12" });
     await c.amb.db.insert(reprogramacao).values({ osId: justificada.id, usuarioId: c.admin.id, dataAnterior: "2026-10-09", dataNova: "2026-10-12", justificativa: "Aguardando liberação do cliente" });
     await c.servico(a, justificada.id);
-    assert.equal(await c.pontosDe(a.id), 25 + 30);
+    assert.equal(await c.pontosDe(a.id), 35 + 40);
     assert.ok((await c.regrasDe(a.id)).filter((r) => r === "preventiva_em_dia").length === 1);
   });
 
-  it("a corretiva não ganha o bônus de preventiva em dia, mesmo no prazo", async () => {
+  it("a corretiva não ganha o bônus de preventiva em dia, mesmo no prazo, nem o de preventiva concluída", async () => {
     voltarAoRelogio();
     const a = await c.tecnico();
     const o = await c.novaOs({ tipo: "corretiva", dataFimProg: "2026-10-20" });
     await c.servico(a, o.id);
     assert.equal((await c.regrasDe(a.id)).includes("preventiva_em_dia"), false);
+    assert.equal((await c.regrasDe(a.id)).includes("preventiva_concluida"), false);
+  });
+
+  it("preventiva concluída: o dobro da corretiva para todos os participantes, uma por pessoa, por OS", async () => {
+    voltarAoRelogio();
+    const a = await c.tecnico();
+    const b = await c.tecnico();
+    const o = await c.novaOs({ tipo: "preventiva", dataInicioProg: "2026-10-01", dataFimProg: "2026-10-02" });
+    const { daExecucao } = await c.servico(a, o.id, [a, b]);
+    const concluida = (u: { id: string }) => c.extrato(u.id).then((l) => l.filter((x) => x.regra === "preventiva_concluida"));
+    assert.deepEqual((await concluida(a)).map((l) => [l.pontos, l.chave]), [[10, `preventiva_concluida:${o.id}`]]);
+    assert.equal((await concluida(b)).length, 1);
+    assert.ok(daExecucao.ganhos.some((g: { regra: string }) => g.regra === "preventiva_concluida"));
+    // Atrasada sem justificativa: não ganha "em dia", mas a preventiva concluída vale do mesmo jeito.
+    assert.equal((await c.regrasDe(a.id)).includes("preventiva_em_dia"), false);
+    // Corretiva vale 20 (APR + execução) e a preventiva, 10 a mais.
+    assert.equal(await c.pontosDe(b.id), 10 + 10 + 10);
   });
 
   it("APR bloqueada só pontua quando chega a evidência; refazer a APR e encerrar vale o mesmo que fazer de uma vez", async () => {
@@ -136,17 +153,17 @@ describe("Gamificação: pontuação (seção 2)", () => {
     const { aprId } = await c.apr(a, o.id, [a, b]);
     const execId = await c.iniciar(a, o.id, aprId);
     await c.interromper(a, execId);
-    assert.equal(await c.pontosDe(a.id), 10 + 5 + 10, "APR + responsável + execução (interrompida)");
-    assert.equal(await c.pontosDe(b.id), 10 + 10);
+    assert.equal(await c.pontosDe(a.id), 10 + 5 + 10 + 10, "APR + responsável + execução (interrompida) + preventiva concluída: parar não custa pontos");
+    assert.equal(await c.pontosDe(b.id), 10 + 10 + 10);
     assert.equal((await c.regrasDe(a.id)).includes("preventiva_em_dia"), false, "ainda não fechou");
 
     c.amb.relogio.agora = new Date(AGORA.getTime() + DIA);
     await c.servico(outro, o.id);
-    assert.deepEqual(await c.regrasDe(outro.id), ["apr_completa", "execucao_concluida", "preventiva_em_dia", "responsavel_apr", "resgate"].sort());
-    assert.equal(await c.pontosDe(outro.id), 10 + 5 + 10 + 5 + 5, "inclui o resgate (5)");
+    assert.deepEqual(await c.regrasDe(outro.id), ["apr_completa", "execucao_concluida", "preventiva_concluida", "preventiva_em_dia", "responsavel_apr", "resgate"].sort());
+    assert.equal(await c.pontosDe(outro.id), 10 + 5 + 10 + 10 + 5 + 5, "inclui o resgate (5)");
     // Quem interrompeu também recebe o bônus de preventiva em dia: parar não custa pontos.
-    assert.equal(await c.pontosDe(a.id), 10 + 5 + 10 + 5);
-    assert.equal(await c.pontosDe(b.id), 10 + 10 + 5);
+    assert.equal(await c.pontosDe(a.id), 10 + 5 + 10 + 10 + 5);
+    assert.equal(await c.pontosDe(b.id), 10 + 10 + 10 + 5);
     voltarAoRelogio();
   });
 

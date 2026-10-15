@@ -155,6 +155,20 @@
       "when": 1792004853383,
       "tag": "0021_modelo_escolhido_pelo_tecnico",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1792091030198,
+      "tag": "0022_atribuicao_e_devolucao_de_os",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792097668264,
+      "tag": "0023_checklist_de_inspecao",
+      "breakpoints": true
     }
   ]
 }

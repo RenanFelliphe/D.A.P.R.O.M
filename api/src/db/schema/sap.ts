@@ -5,7 +5,11 @@ import { atividade } from "./modelos-apr";
 import { equipe, usuario } from "./usuarios";
 
 export const OS_TIPOS = ["corretiva", "preventiva"] as const;
-export const OS_STATUS = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada"] as const;
+/**
+ * `devolvida`: o supervisor a devolveu ao SAP com uma justificativa (erro na ordem). Sai do quadro da equipe, como a
+ * `cancelada`, e a justificativa vai na planilha de baixa; só o SAP a traz de volta, ao alterar a ordem.
+ */
+export const OS_STATUS = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"] as const;
 /**
  * A OS entra pela leitura do SAP (API), pela planilha exportada do SAP ou pelo PDF da OS impressa pelo SAP; só a de apoio
  * nasce no sistema, ligada à OS que ela destrava.
@@ -88,6 +92,19 @@ export const os = pgTable(
     canceladaEm: instante(),
     canceladaPor: uuid().references(() => usuario.id),
     justificativaCancelamento: text(),
+    /**
+     * Atribuição individual: a pessoa da equipe para quem o supervisor reservou a OS. A OS continua no quadro da equipe,
+     * mas só ela inicia a APR e a execução. Nula = a OS é da equipe toda (o padrão). A leitura do SAP não mexe aqui.
+     */
+    responsavelId: uuid().references(() => usuario.id),
+    reservadaPor: uuid().references(() => usuario.id),
+    reservadaEm: instante(),
+    /** Devolução ao SAP (status `devolvida`): quem devolveu, quando e a justificativa, que vai na planilha de baixa. */
+    devolvidaEm: instante(),
+    devolvidaPor: uuid().references(() => usuario.id),
+    justificativaDevolucao: text(),
+    /** Quando a devolução foi na planilha de baixa; nulo enquanto ainda não saiu. */
+    devolucaoExportadaEm: instante(),
     /** Cursor do snapshot do modo offline; atualizado por gatilho. */
     atualizadaEm: instante().notNull().defaultNow(),
   },
@@ -104,6 +121,15 @@ export const os = pgTable(
       "os_cancelamento_justificado",
       sql`${t.canceladaPor} is null or (${t.canceladaEm} is not null and nullif(btrim(${t.justificativaCancelamento}), '') is not null)`,
     ),
+    check(
+      "os_reserva_completa",
+      sql`(${t.responsavelId} is null) = (${t.reservadaPor} is null) and (${t.responsavelId} is null) = (${t.reservadaEm} is null)`,
+    ),
+    check(
+      "os_devolucao_justificada",
+      sql`(${t.devolvidaPor} is null) = (${t.devolvidaEm} is null) and (${t.devolvidaPor} is null or nullif(btrim(${t.justificativaDevolucao}), '') is not null)`,
+    ),
+    check("os_devolvida_registrada", sql`${t.status} <> 'devolvida' or ${t.devolvidaEm} is not null`),
     check("os_pdf_completo", sql`(${t.pdfPath} is null) = (${t.pdfEm} is null)`),
     index("os_equipe_status_idx").on(t.equipeId, t.status),
     index("os_local_idx").on(t.localInstalacaoId),
@@ -116,6 +142,9 @@ export const os = pgTable(
     index("os_origem_idx").on(t.osOrigemId).where(sql`${t.osOrigemId} is not null`),
     // Fila de exportação para o SAP: encerradas ainda não exportadas.
     index("os_a_exportar_idx").on(t.id).where(sql`${t.status} = 'encerrada' and ${t.exportadaSapEm} is null`),
+    // ...e as devolvidas que ainda não saíram na planilha.
+    index("os_devolvida_a_exportar_idx").on(t.id).where(sql`${t.status} = 'devolvida' and ${t.devolucaoExportadaEm} is null`),
+    index("os_responsavel_idx").on(t.responsavelId).where(sql`${t.responsavelId} is not null`),
   ],
 ).enableRLS();
 
