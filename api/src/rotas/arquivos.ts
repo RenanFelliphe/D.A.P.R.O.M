@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Deps } from "../deps";
-import { apr, aprMaterial, aprParticipante, evidencia, execucao, execucaoAssinatura, os, usuario } from "../db/schema";
+import { apr, aprParticipante, evidencia, execucao, execucaoAssinatura, os, usuario } from "../db/schema";
 import { podeVerEquipe, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
 import { ErroApi, invalido, naoEncontrado, proibido } from "../http/erros";
 import { responder } from "../http/resposta";
@@ -46,16 +46,6 @@ async function localizar(deps: Deps, id: string): Promise<{ bucket: Bucket; equi
     .limit(1);
   if (daApr) return { bucket: bucketDaEvidencia(daApr.tipo), equipeId: daApr.equipeId };
 
-  // Foto do material que o técnico comprovou ao fechar a APR: também pertence à APR.
-  const [doMaterial] = await deps.db
-    .select({ equipeId: os.equipeId })
-    .from(aprMaterial)
-    .innerJoin(apr, eq(apr.id, aprMaterial.aprId))
-    .innerJoin(os, eq(os.id, apr.osId))
-    .where(eq(aprMaterial.fotoPath, id))
-    .limit(1);
-  if (doMaterial) return { bucket: "fotos", equipeId: doMaterial.equipeId };
-
   const [doPerfil] = await deps.db.select({ equipeId: usuario.equipeId, donoId: usuario.id }).from(usuario).where(eq(usuario.assinaturaPath, id)).limit(1);
   if (doPerfil) return { bucket: "assinaturas", ...doPerfil };
 
@@ -89,8 +79,8 @@ const podeLer = (u: UsuarioAutenticado, alvo: { equipeId: string | null; donoId?
 export function rotasArquivos(deps: Deps, { autenticar }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
-  // Um usuário desativado ainda envia a fila offline pendente, e os arquivos vêm antes dos eventos.
-  r.put("/arquivos/:id", autenticar({ permitirDesativado: true }), async (c) => {
+  // Um usuário desativado ou ausente ainda envia a fila offline pendente (do que fez antes), e os arquivos vêm antes dos eventos.
+  r.put("/arquivos/:id", autenticar({ permitirDesativado: true, permitirAusente: true }), async (c) => {
     const id = lerId(c);
     const form = await c.req.parseBody().catch(() => null);
     const arquivo = form?.arquivo;

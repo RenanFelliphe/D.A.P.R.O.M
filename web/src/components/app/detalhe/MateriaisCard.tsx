@@ -11,7 +11,7 @@ export function MateriaisCard({ servico }: { servico: ServicoDaOs | null }) {
   return (
     <div className="card stack g8" data-treino="os-materiais">
       <div className="row between" style={{ gap: 12, alignItems: "baseline" }}>
-        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Materiais e ferramentas</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 600 }}>Materiais recomendados</h2>
         {servico && (
           <Link className="small" href={`${rotas.app.catalogo}?busca=${encodeURIComponent(servico.codigo)}`}>
             Ver no catálogo
@@ -20,7 +20,7 @@ export function MateriaisCard({ servico }: { servico: ServicoDaOs | null }) {
       </div>
       {!servico ? (
         <p className="muted" style={{ fontSize: 13.5 }}>
-          Esta OS não tem serviço do catálogo. Confira os materiais nas instruções.
+          Esta OS não tem serviço do catálogo, então não há materiais recomendados. Confira as instruções.
         </p>
       ) : servico.materiais.length === 0 ? (
         <p className="muted" style={{ fontSize: 13.5 }}>
@@ -29,14 +29,9 @@ export function MateriaisCard({ servico }: { servico: ServicoDaOs | null }) {
       ) : (
         <>
           <span className="small" style={{ color: "var(--ink4)" }}>
-            Previsto para o serviço {servico.descricao}, por execução.
+            Recomendado para o serviço {servico.descricao}, por execução. É só para consulta: leve o que a situação no local pedir.
           </span>
           <ListaDoServico materiais={servico.materiais} />
-          {servico.materiais.some((m) => m.obrigatorio) && (
-            <span className="small" style={{ color: "var(--ink3)" }}>
-              Os itens obrigatórios exigem uma foto do item ao concluir a APR. Sem a foto, ou sem o item, a APR fica bloqueada.
-            </span>
-          )}
         </>
       )}
     </div>

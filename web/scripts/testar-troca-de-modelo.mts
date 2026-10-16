@@ -61,7 +61,7 @@ function rascunhoRespondido(m: ModeloDoRascunho, riscos: string[], resposta: (i:
   const apr01 = modelo("APR 01");
   const apr03 = modelo("APR 03");
   const marcados01 = [riscoPorNome(apr01, "Insolação"), riscoPorNome(apr01, "Áreas molhadas"), riscoPorNome(apr01, "Separador de flange")];
-  const r = { ...rascunhoRespondido(apr01, marcados01), avaliacao: { resultado: "aprovada" as const, reprovados: [], materiaisFaltando: [] }, concluidaEm: "2026-10-14T10:00:00Z" };
+  const r = { ...rascunhoRespondido(apr01, marcados01), avaliacao: { resultado: "aprovada" as const, reprovados: [] }, concluidaEm: "2026-10-14T10:00:00Z" };
 
   const equivalentes = riscosEquivalentes(apr01, marcados01, apr03);
   assert.deepEqual(equivalentes.sort(), [riscoPorNome(apr03, "Insolação"), riscoPorNome(apr03, "Áreas molhadas")].sort(), "risco que o modelo novo não tem sai");

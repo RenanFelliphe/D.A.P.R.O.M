@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { faltouComprovar } from "@/lib/catalogo";
 import { dataHora } from "@/lib/formatar";
 import { aprAprovadaDisponivel, type AprDaOs, type ExecucaoDaOs } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
@@ -17,13 +16,7 @@ export function HistoricoAprs({ aprs, execucoes, osId }: { aprs: AprDaOs[]; exec
       <div className="list-box">
         {[...aprs].reverse().map((apr) => {
           const aprovada = apr.resultado === "aprovada";
-          const faltando = apr.materiais.filter(faltouComprovar).length;
-          const motivo = [
-            apr.itens_reprovados.length > 0 ? `${apr.itens_reprovados.length} item(ns) reprovado(s)` : null,
-            faltando > 0 ? `${faltando} material(is) obrigatório(s) sem comprovação` : null,
-          ]
-            .filter((m) => m !== null)
-            .join(" e ");
+          const motivo = `${apr.itens_reprovados.length} item(ns) reprovado(s)`;
           return (
             <div key={apr.id} className="list-row" style={{ minHeight: 56, flexWrap: "wrap" }}>
               <Badge tone={aprovada ? "enc" : "blq"}>{aprovada ? "Aprovada" : "Bloqueada"}</Badge>

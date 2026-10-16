@@ -122,7 +122,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "ck-validar",
     titulo: "Revise e valide",
     texto:
-      "Responda o que falta e toque em “Ir para a revisão” (na última pergunta, “Revisar e concluir”). Na revisão, confira os materiais do serviço: toque em “Levei os itens opcionais” e, no item marcado como obrigatório, envie uma foto dele (sem a foto, ou sem o item, a APR fica bloqueada). A revisão lista o que ficou pendente; estando tudo pronto, toque em “Concluir e validar”: é aí que o sistema confere as respostas e diz se a APR foi aprovada. Depois de validada, a APR não muda mais.",
+      "Responda o que falta e toque em “Ir para a revisão” (na última pergunta, “Revisar e concluir”). Na revisão, os materiais recomendados do serviço aparecem só como lembrete: não pedem resposta nem foto. A revisão lista o que ficou pendente; estando tudo pronto, toque em “Concluir e validar”: é aí que o sistema confere as respostas e diz se a APR foi aprovada. Depois de validada, a APR não muda mais.",
     semAlvo: "Na revisão, confira a lista e toque em “Concluir e validar”.",
     tarefa: "Valide a APR.",
     alvo: "ck-revisar",

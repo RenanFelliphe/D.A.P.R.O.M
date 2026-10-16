@@ -56,27 +56,8 @@ export interface MaterialDoServico {
   /** Quantidade prevista por execução, na unidade do material; nula = conforme a necessidade. */
   quantidade: number | null;
   observacao: string | null;
-  /** Obrigatório: exige a foto do item ao concluir a APR; sem ela, ou sem o item, a APR é bloqueada. */
-  obrigatorio: boolean;
   ordem: number;
 }
-
-/**
- * Um item da conferência de materiais numa APR já registrada (`materiais[]` da APR): se o técnico o levou e a foto do item
- * em mãos. `obrigatorio` é o que a lista do serviço dizia na hora da APR.
- */
-export interface MaterialDaApr {
-  material_id: string;
-  descricao: string;
-  unidade: string;
-  categoria: CategoriaMaterial;
-  obrigatorio: boolean;
-  levou: boolean;
-  foto: { foto_path: string; capturada_em: string; latitude: number | null; longitude: number | null } | null;
-}
-
-/** O item obrigatório que não ficou comprovado (não levado, ou levado sem a foto): é o que bloqueia a APR. */
-export const faltouComprovar = (m: Pick<MaterialDaApr, "obrigatorio" | "levou" | "foto">) => m.obrigatorio && !(m.levou && m.foto !== null);
 
 /** Um serviço do catálogo: a atividade e a lista do que ela usa. */
 export interface ServicoDoCatalogo {

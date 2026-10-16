@@ -1564,7 +1564,7 @@ details.excluidos > summary {
 
 .editor-material {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
   padding: 8px 0;
@@ -1582,7 +1582,6 @@ details.excluidos > summary {
   }
 
   .editor-material > .em-obs,
-  .editor-material > .em-obrig,
   .editor-material > .em-acoes {
     grid-column: 1 / -1
   }

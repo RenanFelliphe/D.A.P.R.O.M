@@ -34,9 +34,6 @@ const MATERIAIS: { codigo: string; descricao: string; unidade: string; categoria
 
 type Linha = [codigoDoMaterial: string, quantidade: number | null, observacao?: string];
 
-/** Os itens que exigem a foto na APR (o detector de gases e o respirador): o resto da lista só é conferido. */
-const OBRIGATORIOS = new Set(["DEMO-103", "DEMO-204"]);
-
 /** Listas por serviço (código da atividade da carga inicial, o mesmo que as OS de exemplo trazem). */
 const LISTAS: Record<string, Linha[]> = {
   Medição: [["DEMO-104", 1], ["DEMO-105", 1], ["DEMO-103", 1, "Conferir a calibração antes de sair"], ["DEMO-004", 2, "Para relacrar o medidor"], ["DEMO-201", 1], ["DEMO-202", 1]],
@@ -58,7 +55,7 @@ const LISTAS: Record<string, Linha[]> = {
     ["DEMO-006", 3.6],
     ["DEMO-007", 0.9],
     ["DEMO-010", 1],
-    ["DEMO-204", 1, "Obrigatório durante a pintura"],
+    ["DEMO-204", 1, "Usar durante a pintura"],
     ["DEMO-201", 1],
     ["DEMO-202", 1],
   ],
@@ -90,7 +87,6 @@ export async function popularCatalogoDemo(db: Db, extras: (string | null)[] = []
         materialId: porCodigo.get(m)!,
         quantidade,
         observacao: observacao ?? null,
-        obrigatorio: OBRIGATORIOS.has(m),
         ordem: i + 1,
       })),
     );

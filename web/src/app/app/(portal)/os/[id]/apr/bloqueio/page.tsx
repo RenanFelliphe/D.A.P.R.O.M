@@ -5,10 +5,8 @@ import { ItemReprovadoCard } from "@/components/app/bloqueio/ItemReprovadoCard";
 import { NotasBloqueio } from "@/components/app/bloqueio/NotasBloqueio";
 import { LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { MateriaisDaApr } from "@/components/ui/MateriaisDaApr";
 import { Screen } from "@/components/ui/Screen";
 import { apiOuNulo } from "@/lib/api";
-import { faltouComprovar } from "@/lib/catalogo";
 import { dataHora } from "@/lib/formatar";
 import { rotuloDaOs, type DetalheDaOs } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
@@ -33,13 +31,7 @@ export default async function BloqueioPage({ params, searchParams }: PageProps<"
 
   const itens = apr.itens_reprovados;
   const varios = itens.length > 1;
-  const materiaisFaltando = apr.materiais.filter(faltouComprovar).length;
-  const motivos = [
-    itens.length > 0 ? `${itens.length} ${varios ? "itens reprovaram" : "item reprovou"}` : null,
-    materiaisFaltando > 0 ? `${materiaisFaltando} ${materiaisFaltando > 1 ? "materiais obrigatórios sem comprovação" : "material obrigatório sem comprovação"}` : null,
-  ]
-    .filter((m) => m !== null)
-    .join(" e ");
+  const motivos = `${itens.length} ${varios ? "itens reprovaram" : "item reprovou"}`;
 
   return (
     <Screen>
@@ -77,12 +69,6 @@ export default async function BloqueioPage({ params, searchParams }: PageProps<"
                 <ItemReprovadoCard key={item.item_id} item={item} numero={i + 1} />
               ))}
             </div>
-            {apr.materiais.length > 0 && (
-              <div className="card stack g8">
-                <span className="lbl">Materiais do serviço</span>
-                <MateriaisDaApr materiais={apr.materiais} />
-              </div>
-            )}
             {apr.observacao_geral && (
               <div className="card stack g6">
                 <span className="lbl">Observações</span>

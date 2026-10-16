@@ -5,10 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { PainelAcoes, Colunas } from "@/components/app/AppChrome";
 import { AssinaturasFaltando } from "@/components/app/checklist/AssinaturasFaltando";
 import { ChecklistCabecalho } from "@/components/app/checklist/ChecklistCabecalho";
-import { ConferenciaDeMateriais } from "@/components/app/checklist/ConferenciaDeMateriais";
 import { ObservacaoNaCard } from "@/components/app/checklist/EvidenciaCard";
 import { EvidenciaDosReprovados } from "@/components/app/checklist/EvidenciaDosReprovados";
 import { GradePerguntas } from "@/components/app/checklist/GradePerguntas";
+import { MateriaisRecomendados } from "@/components/app/checklist/MateriaisRecomendados";
 import { NavegacaoChecklist } from "@/components/app/checklist/NavegacaoChecklist";
 import { PerguntaCard } from "@/components/app/checklist/PerguntaCard";
 import { ProgressoChecklist } from "@/components/app/checklist/ProgressoChecklist";
@@ -24,20 +24,14 @@ import {
   adicionarFoto,
   avancar,
   avisoAoDescartar,
-  conferirMaterial,
   estaTravada,
   faltaObservacaoNa,
-  fotografarMaterial,
   irPara,
-  levarOsOpcionais,
-  materiaisPendentes,
   montarAvaliacao,
   montarPayload,
-  obrigatoriosNaoLevados,
   observar,
   removerDocumento,
   removerFoto,
-  removerFotoDoMaterial,
   resumoDe,
   responder,
   retirarParticipante,
@@ -61,7 +55,7 @@ interface ChecklistScreenProps {
   os: { id: string; rotulo: string; titulo: string; local: string };
   usuarioId: string;
   colegas: Colega[];
-  /** A lista de materiais do serviço da OS (catálogo), conferida na revisão; vazia quando a OS não tem serviço ou lista. */
+  /** A lista de materiais do serviço da OS (catálogo), mostrada na revisão como recomendação; vazia quando a OS não tem serviço ou lista. */
   materiais: MaterialDoServico[];
 }
 
@@ -69,8 +63,6 @@ interface ChecklistScreenProps {
 interface RespostaDaAvaliacao {
   resultado: Avaliacao["resultado"];
   reprovados: { item_id: string; texto: string; evidencia: EvidenciaDoItem }[];
-  /** Os materiais obrigatórios que não ficaram comprovados (a foto do item em mãos). */
-  materiais_faltando: { material_id: string; descricao: string; levou: boolean }[];
 }
 
 /** Texto para o usuário de qualquer falha ao enviar o evento. */
@@ -82,10 +74,9 @@ function mensagemDeErro(erro: unknown) {
 
 /**
  * Checklist da APR: responde-se tudo, em qualquer ordem, e só se valida no fim. Todas as perguntas têm a mesma cara: o
- * técnico não sabe quais são eliminatórias. Na revisão ele também confere os materiais do serviço (o obrigatório pede a
- * foto do item). Ao validar, a `api` diz o resultado: aprovada segue para as assinaturas; reprovada (item eliminatório
- * ou material obrigatório sem comprovação) já fica registrada como bloqueada, trava as respostas e pede a evidência dos
- * itens que reprovaram. O rascunho vive no navegador até a APR ser concluída (na bloqueada, até a evidência ser enviada).
+ * técnico não sabe quais são eliminatórias. Na revisão ele vê os materiais recomendados do serviço, só para consulta. Ao
+ * validar, a `api` diz o resultado: aprovada segue para as assinaturas; reprovada (item eliminatório) já fica registrada
+ * como bloqueada, trava as respostas e pede a evidência dos itens que reprovaram. O rascunho vive no navegador até a APR ser concluída (na bloqueada, até a evidência ser enviada).
  */
 export function ChecklistScreen({ os, usuarioId, colegas, materiais }: ChecklistScreenProps) {
   const roteador = useRouter();
@@ -98,8 +89,6 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
   const [erro, setErro] = useState<string | null>(null);
 
   const resumo = useMemo(() => (rascunho ? resumoDe(rascunho) : null), [rascunho]);
-  const pendentesDeMaterial = rascunho ? materiaisPendentes(rascunho, materiais).length : 0;
-  const obrigatoriosFora = rascunho ? obrigatoriosNaoLevados(rascunho, materiais).length : 0;
   const modo = rascunho?.modo;
   const travada = rascunho ? estaTravada(rascunho) : false;
 
@@ -162,13 +151,6 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
     atualizar((atual) => adicionarFoto(atual, itemId, { id: novoId(), arquivoId: foto.arquivoId, capturadaEm: new Date().toISOString(), miniatura, ...(posicao ?? {}) }));
   }
 
-  /** A foto do material obrigatório muda o resultado da APR: invalida uma validação anterior, como uma resposta. */
-  async function aoFotoDoMaterial(materialId: string, foto: { arquivoId: string; previa: string }) {
-    const [miniatura, posicao] = await Promise.all([miniaturaDe(foto.previa), posicaoAtual()]);
-    URL.revokeObjectURL(foto.previa);
-    alterar((atual) => fotografarMaterial(atual, materialId, { id: novoId(), arquivoId: foto.arquivoId, capturadaEm: new Date().toISOString(), miniatura, ...(posicao ?? {}) }));
-  }
-
   function aoPdfEnviado(itemId: string, pdf: { arquivoId: string; nome: string }) {
     // Como a foto, o PDF não muda as respostas.
     atualizar((atual) => adicionarDocumento(atual, itemId, { id: novoId(), arquivoId: pdf.arquivoId, nome: pdf.nome, capturadaEm: new Date().toISOString() }));
@@ -183,11 +165,10 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
     setValidando(true);
     try {
       const concluidaEm = new Date().toISOString();
-      const resultado = await chamar<RespostaDaAvaliacao>("POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }, materiais));
+      const resultado = await chamar<RespostaDaAvaliacao>("POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }));
       const avaliacao: Avaliacao = {
         resultado: resultado.resultado,
         reprovados: resultado.reprovados.map((x) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })),
-        materiaisFaltando: (resultado.materiais_faltando ?? []).map((x) => ({ materialId: x.material_id, descricao: x.descricao, levou: x.levou })),
       };
       atualizar((atual) => ({ ...atual, concluidaEm, assinaturas: {}, avaliacao }));
       if (avaliacao.resultado === "aprovada") roteador.push(rotas.app.aprovada(os.id));
@@ -203,7 +184,7 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
     setErro(null);
     setConcluindo(true);
     try {
-      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r, materiais) });
+      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r) });
       const resultado = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
       // A APR bloqueada pontua quando chega a evidência (a segurança não custa pontos): "+N pontos".
       avisarPontos(resposta);
@@ -266,21 +247,7 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
               validando={validando}
               erro={erro}
               semAssinatura={semAssinatura.length}
-              materiaisPendentes={pendentesDeMaterial}
-              obrigatoriosNaoLevados={obrigatoriosFora}
-              materiais={
-                materiais.length > 0 ? (
-                  <ConferenciaDeMateriais
-                    materiais={materiais}
-                    conferencia={r.materiais ?? {}}
-                    aoConferir={(materialId, levou) => alterar((atual) => conferirMaterial(atual, materialId, levou))}
-                    aoFotoEnviada={aoFotoDoMaterial}
-                    aoRemoverFoto={(materialId) => alterar((atual) => removerFotoDoMaterial(atual, materialId))}
-                    aoLevarOsOpcionais={() => alterar((atual) => levarOsOpcionais(atual, materiais))}
-                    aoErro={setErro}
-                  />
-                ) : null
-              }
+              materiais={materiais.length > 0 ? <MateriaisRecomendados materiais={materiais} /> : null}
               assinaturas={
                 <AssinaturasFaltando
                   semAssinatura={semAssinatura}

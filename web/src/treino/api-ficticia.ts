@@ -11,7 +11,7 @@
  * calculados sobre a massa em memória (`treino/indicadores.ts`). Qualquer endereço que o campo não usa responde
  * `404 indisponivel_no_treino`.
  */
-import type { CategoriaMaterial, ServicoDoCatalogo } from "../lib/catalogo";
+import type { ServicoDoCatalogo } from "../lib/catalogo";
 import type { Usuario } from "../lib/tipos";
 import { obterEstado } from "./armazem";
 import { materiaisDoTreino, servicosDoTreino } from "./catalogo";
@@ -175,7 +175,7 @@ function osResumo(e: EstadoTreino, o: OsReg, agora: Date) {
   };
 }
 
-const STATUS_OS = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada"] as const;
+const STATUS_OS = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"] as const;
 const PESO_PRIORIDADE: Record<string, number> = { "muito alto": 4, alto: 3, médio: 2, medio: 2, baixo: 1 };
 
 interface FiltrosOs {
@@ -263,20 +263,6 @@ function aprsApi(e: EstadoTreino, osId: string) {
           .sort((x, y) => x.funcao.localeCompare(y.funcao) || x.nome.localeCompare(y.nome)),
         riscos: modelo.riscos.filter((r) => a.riscos.includes(r.id)).map((r) => ({ id: r.id, classificacao: r.classificacao, nome: r.nome })),
         respostas: completas,
-        materiais: (a.materiais ?? [])
-          .map((m) => {
-            const cadastro = descricaoDoMaterial(e, m.material_id);
-            return {
-              material_id: m.material_id,
-              descricao: cadastro?.descricao ?? "Material",
-              unidade: cadastro?.unidade ?? "un",
-              categoria: (cadastro?.categoria ?? "material") as CategoriaMaterial,
-              obrigatorio: m.obrigatorio,
-              levou: m.levou,
-              foto: m.foto ? { foto_path: m.foto.arquivo_id, capturada_em: m.foto.capturada_em, latitude: m.foto.latitude, longitude: m.foto.longitude } : null,
-            };
-          })
-          .sort((x, y) => Number(y.obrigatorio) - Number(x.obrigatorio) || x.descricao.localeCompare(y.descricao)),
         itens_reprovados: completas
           .filter((r) => r.reprovado)
           .map((r) => ({
@@ -589,29 +575,6 @@ const campoLista = (o: Record<string, unknown>, c: string, obrigatorio = false):
   return v;
 };
 
-/** Um item da conferência dos materiais, como o aparelho envia: o material, se levou e a foto (só de quem levou). */
-interface MaterialDaAprLido {
-  material_id: string;
-  levou: boolean;
-  foto: { arquivo_id: string; capturada_em: Date; latitude: number | null; longitude: number | null } | null;
-}
-function lerMateriais(o: Record<string, unknown>): MaterialDaAprLido[] {
-  return campoLista(o, "materiais").map((bruto, i) => {
-    const x = obj(bruto);
-    if (typeof x.levou !== "boolean") invalidoNoPayload(`materiais.${i}.levou`, "Informe true ou false");
-    let foto: MaterialDaAprLido["foto"] = null;
-    if (x.foto !== undefined && x.foto !== null) {
-      const f = obj(x.foto);
-      const lat = f.latitude ?? null;
-      const lon = f.longitude ?? null;
-      if ((lat !== null && typeof lat !== "number") || (lon !== null && typeof lon !== "number")) invalidoNoPayload(`materiais.${i}.foto`, "Informe latitude e longitude numéricas");
-      if ((lat === null) !== (lon === null)) invalidoNoPayload(`materiais.${i}.foto`, "Informe latitude e longitude juntas");
-      foto = { arquivo_id: campoUuid(f, "arquivo_id")!, capturada_em: campoInstante(f, "capturada_em")!, latitude: lat as number | null, longitude: lon as number | null };
-    }
-    return { material_id: campoUuid(x, "material_id")!, levou: x.levou, foto };
-  });
-}
-
 interface Evidencia {
   id: string;
   arquivo_id?: string;
@@ -713,7 +676,6 @@ function lerApr(bruto: unknown) {
       return { item_id: campoUuid(x, "item_id")!, resposta: resposta as "sim" | "nao" | "na", observacao: campoTexto(x, "observacao"), respondida_em: campoInstante(x, "respondida_em", false) };
     }),
     evidencias: lerEvidencias(p),
-    materiais: lerMateriais(p),
     observacaoGeral: campoTexto(p, "observacao_geral"),
     concluidaEm: campoInstante(p, "concluida_em")!,
   };
@@ -765,55 +727,8 @@ function conferirApr(ctx: Contexto, osId: string, p: AprLida) {
   const faltando = modelo.itens.filter((i) => (i.secao === "verificacao" || marcados.has(i.risco_id!)) && !respostaPorItem.has(i.id));
   if (faltando.length > 0) throw rejeitar("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
 
-  // Os materiais do serviço: o obrigatório sem a foto do item bloqueia a APR, como um item reprovado.
-  const { linhas: materiais, faltando: materiaisFaltando } = conferirMateriais(ctx, ordem, p.materiais);
-
   const reprovados = modelo.itens.filter((i) => reprovou(i, respostaPorItem.get(i.id)?.resposta)).sort((a, b) => a.ordem - b.ordem);
-  return { ordem, modelo, respostaPorItem, reprovados, materiais, materiaisFaltando };
-}
-
-/** Um item obrigatório que não ficou comprovado: `levou` diz se o técnico o levou mas não mandou a foto. */
-interface MaterialFaltando {
-  material_id: string;
-  descricao: string;
-  levou: boolean;
-}
-
-/**
- * Confere a lista enviada contra a lista do serviço da OS (`conferirMateriais` da `api`): cada material é da lista e
- * aparece uma vez, só quem levou tem foto, e a foto já subiu. O obrigatório que não veio, ou veio sem foto, é `faltando`.
- */
-function conferirMateriais(ctx: Contexto, ordem: OsReg, enviados: MaterialDaAprLido[]) {
-  const lista = servicoDaOs(ctx.e, ordem)?.materiais ?? [];
-  const daLista = new Map(lista.map((m) => [m.material_id, m]));
-  const vistos = new Set<string>();
-  const linhas: NonNullable<AprReg["materiais"]> = [];
-  for (const m of enviados) {
-    if (vistos.has(m.material_id)) throw rejeitar("material_repetido", "Material conferido mais de uma vez");
-    vistos.add(m.material_id);
-    const item = daLista.get(m.material_id);
-    if (!item) throw rejeitar("material_invalido", "Material que não pertence ao serviço da OS");
-    if (m.foto && !m.levou) throw rejeitar("foto_sem_material", `Foto de um material que não foi levado: ${item.descricao}`);
-    linhas.push({
-      material_id: item.material_id,
-      obrigatorio: item.obrigatorio,
-      levou: m.levou,
-      foto: m.foto ? { arquivo_id: m.foto.arquivo_id, capturada_em: m.foto.capturada_em.toISOString(), latitude: m.foto.latitude, longitude: m.foto.longitude } : null,
-    });
-  }
-  // O obrigatório que nem foi conferido conta como não levado.
-  for (const item of lista) if (item.obrigatorio && !vistos.has(item.material_id)) linhas.push({ material_id: item.material_id, obrigatorio: true, levou: false, foto: null });
-  for (const l of linhas) if (l.foto) exigirArquivo(ctx, l.foto.arquivo_id);
-  return { linhas, faltando: faltandoDe(ctx.e, linhas) };
-}
-
-const descricaoDoMaterial = (e: EstadoTreino, id: string) => materiaisDoTreino(e.criadoEm).find((m) => m.id === id);
-
-/** Os obrigatórios de uma conferência que não ficaram comprovados (não levados, ou levados sem a foto). */
-function faltandoDe(e: EstadoTreino, linhas: NonNullable<AprReg["materiais"]>): MaterialFaltando[] {
-  return linhas
-    .filter((l) => l.obrigatorio && !(l.levou && l.foto))
-    .map((l) => ({ material_id: l.material_id, descricao: descricaoDoMaterial(e, l.material_id)?.descricao ?? "Material", levou: l.levou }));
+  return { ordem, modelo, respostaPorItem, reprovados };
 }
 
 /** Os itens que reprovaram uma APR já gravada, na ordem do modelo. */
@@ -865,7 +780,7 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
     return;
   }
 
-  const { ordem, modelo, respostaPorItem, reprovados, materiais, materiaisFaltando } = conferirApr(ctx, osId, p);
+  const { ordem, modelo, respostaPorItem, reprovados } = conferirApr(ctx, osId, p);
   ctx.saida.osAfetadas.add(ordem.id);
 
   // Item reprovado: exige observação e, se o item pede foto ou PDF, ao menos um desse tipo (na validação, a evidência chega depois).
@@ -876,7 +791,7 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
   if (semEvidencia.length > 0 && !ctx.evidenciaDepois) throw rejeitar("evidencia_faltando", `Falta evidência em ${semEvidencia.length} item(ns)`);
   for (const ev of p.evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
 
-  const resultado = reprovados.length > 0 || materiaisFaltando.length > 0 ? "bloqueada" : "aprovada";
+  const resultado = reprovados.length > 0 ? "bloqueada" : "aprovada";
   const concluidaEm = p.concluidaEm;
   const registro: AprReg = {
     id: p.id,
@@ -890,7 +805,6 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
     riscos: p.riscos,
     respostas: p.respostas.map((r) => ({ item_id: r.item_id, resposta: r.resposta, observacao: vazio(r.observacao) ? null : r.observacao!.trim(), respondida_em: (r.respondida_em ?? concluidaEm).toISOString() })),
     evidencias: p.evidencias.map(evidenciaDaApr),
-    materiais,
   };
   e.aprs.push(registro);
   ctx.saida.aprs.push({ id: p.id, resultado });
@@ -900,12 +814,7 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
       const observacao = respostaPorItem.get(i.id)!.observacao?.trim();
       return observacao ? `${i.texto} — ${observacao}` : i.texto;
     });
-    const motivos = [
-      reprovados.length > 0 ? `${reprovados.length} item(ns) reprovado(s)` : null,
-      materiaisFaltando.length > 0 ? `${materiaisFaltando.length} material(is) obrigatório(s) sem comprovação` : null,
-    ].filter((m) => m !== null);
-    const detalhe = [...itens, ...materiaisFaltando.map((m) => `${m.descricao} — ${m.levou ? "sem foto" : "não levou"}`)].join("; ");
-    criarAlerta(ctx, ordem.id, "bloqueio", `APR bloqueada (${motivos.join(" e ")}): ${detalhe}`);
+    criarAlerta(ctx, ordem.id, "bloqueio", `APR bloqueada (${reprovados.length} item(ns) reprovado(s)): ${itens.join("; ")}`);
   }
 }
 
@@ -1510,10 +1419,9 @@ function recusaDaAvaliacao(erro: Rejeicao) {
   return invalido(erro.codigo, erro.message);
 }
 
-const resultadoDaAvaliacao = (reprovados: ItemRegDoModelo[], materiaisFaltando: MaterialFaltando[]) => ({
-  resultado: reprovados.length > 0 || materiaisFaltando.length > 0 ? "bloqueada" : "aprovada",
+const resultadoDaAvaliacao = (reprovados: ItemRegDoModelo[]) => ({
+  resultado: reprovados.length > 0 ? "bloqueada" : "aprovada",
   reprovados: reprovados.map((i) => ({ item_id: i.id, texto: i.texto, evidencia: i.evidencia })),
-  materiais_faltando: materiaisFaltando,
 });
 
 /**
@@ -1530,7 +1438,7 @@ rota("POST", "/aprs/avaliar", ({ e, eu, corpo, agora }) => {
     const existente = e.aprs.find((a) => a.id === p.id);
     if (existente) {
       if (existente.os_id !== osId || existente.preenchida_por !== eu.id) throw conflito("apr_existente", "Esta APR já foi registrada");
-      return ok(resultadoDaAvaliacao(reprovadosGravados(e, existente), faltandoDe(e, existente.materiais ?? [])));
+      return ok(resultadoDaAvaliacao(reprovadosGravados(e, existente)));
     }
     const ctx: Contexto = {
       e,
@@ -1540,12 +1448,12 @@ rota("POST", "/aprs/avaliar", ({ e, eu, corpo, agora }) => {
       saida: { alertas: [], aprs: [], osAfetadas: new Set() },
       evidenciaDepois: true,
     };
-    const { ordem, reprovados, materiaisFaltando } = conferirApr(ctx, osId, p);
-    if (reprovados.length > 0 || materiaisFaltando.length > 0) {
+    const { ordem, reprovados } = conferirApr(ctx, osId, p);
+    if (reprovados.length > 0) {
       aplicarAprConcluida(ctx, osId, { ...bruto, evidencias: [] });
       ordem.status = statusDerivado(e, ordem);
     }
-    return ok(resultadoDaAvaliacao(reprovados, materiaisFaltando));
+    return ok(resultadoDaAvaliacao(reprovados));
   } catch (erro) {
     if (erro instanceof Rejeicao) throw recusaDaAvaliacao(erro);
     throw erro;

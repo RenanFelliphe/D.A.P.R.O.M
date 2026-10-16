@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { alerta, apr, aprResposta, equipe, evidencia, execucao, itemModeloApr, localInstalacao, os, usuario } from "../db/schema";
 import type { Deps } from "../deps";
-import { materiaisFaltandoDaAprGravada, rotuloDoFaltando, type MaterialFaltando } from "../dominio/apr-materiais";
 import { bucketDaEvidencia } from "../dominio/evidencias";
 import { dataHoraBr } from "./pdf-formato";
 
@@ -66,11 +65,9 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
 
   let tecnicoId = aprDoAlerta?.preenchidaPor ?? null;
   const reprovados: Reprovado[] = [];
-  let materiaisFaltando: MaterialFaltando[] = [];
   let interrupcao: { motivo: string; anexos: Anexo[] } | null = null;
 
   if (aprDoAlerta) {
-    materiaisFaltando = await materiaisFaltandoDaAprGravada(db, aprDoAlerta.id);
     const [interrompida] = await db
       .select()
       .from(execucao)
@@ -126,10 +123,6 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
       r.anexos.forEach((x) => linhas.push(`   ${x.rotulo}: ${x.url}`));
     });
   }
-  if (materiaisFaltando.length > 0) {
-    linhas.push("", "Materiais obrigatórios sem comprovação:");
-    materiaisFaltando.forEach((m, i) => linhas.push(`${i + 1}. ${rotuloDoFaltando(m)}`));
-  }
   linhas.push("", `Abrir no painel: ${link}`);
 
   const li = (s: string) => `<li>${s}</li>`;
@@ -149,9 +142,6 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
       ? `<p><strong>Itens reprovados:</strong></p><ol>${reprovados
           .map((r) => li(`${escaparHtml(r.texto)}${r.observacao ? `<br>Observação: ${escaparHtml(r.observacao)}` : ""}${r.anexos.length ? `<br>${links(r.anexos)}` : ""}`))
           .join("")}</ol>`
-      : "",
-    materiaisFaltando.length > 0
-      ? `<p><strong>Materiais obrigatórios sem comprovação:</strong></p><ol>${materiaisFaltando.map((m) => li(escaparHtml(rotuloDoFaltando(m)))).join("")}</ol>`
       : "",
     `<p><a href="${escaparHtml(link)}">Abrir a OS no painel</a></p>`,
   ].join("\n");

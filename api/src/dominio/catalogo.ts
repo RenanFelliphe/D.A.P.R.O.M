@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { MATERIAL_CATEGORIAS, aprMaterial, atividade, atividadeMaterial, material, type MaterialCategoria } from "../db/schema";
+import { MATERIAL_CATEGORIAS, atividade, atividadeMaterial, material, type MaterialCategoria } from "../db/schema";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
 import { contar, limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { textoObrigatorio, uuid } from "../http/validacao";
@@ -23,8 +23,6 @@ export interface MaterialDoServico {
   ativo: boolean;
   quantidade: number | null;
   observacao: string | null;
-  /** Exige a foto do item na APR; sem ela, ou sem o item, a APR é bloqueada. */
-  obrigatorio: boolean;
   ordem: number;
 }
 
@@ -134,8 +132,6 @@ export async function excluirMaterial(db: Db, id: string) {
       `"${atual.descricao}" está em ${atual.servicosTotal} serviço(s) e não pode ser excluído. Tire-o desses serviços ou desative-o.`,
     );
   }
-  const [conferido] = await db.select({ aprId: aprMaterial.aprId }).from(aprMaterial).where(eq(aprMaterial.materialId, id)).limit(1);
-  if (conferido) throw conflito("material_em_uso", `"${atual.descricao}" já foi conferido em APRs e não pode ser excluído. Desative-o.`);
   await db.delete(material).where(eq(material.id, id));
   return atual;
 }
@@ -157,7 +153,6 @@ export async function materiaisDosServicos(db: Db, codigos: string[]): Promise<M
       ativo: material.ativo,
       quantidade: atividadeMaterial.quantidade,
       observacao: atividadeMaterial.observacao,
-      obrigatorio: atividadeMaterial.obrigatorio,
       ordem: atividadeMaterial.ordem,
     })
     .from(atividadeMaterial)
@@ -212,17 +207,15 @@ export const esquemaMateriaisDoServico = z.object({
         /** Na unidade do material; nula = conforme a necessidade. */
         quantidade: z.number().positive().max(999_999_999).nullable().optional(),
         observacao: z.string().trim().max(200).nullable().optional(),
-        /** Obrigatório: o técnico comprova com uma foto que está com o item, senão a APR é bloqueada. */
-        obrigatorio: z.boolean().optional(),
       }),
     )
     .max(MAX_MATERIAIS_POR_SERVICO),
 });
 export type MateriaisDoServicoEntrada = z.infer<typeof esquemaMateriaisDoServico>;
 
-/** Como um item aparece na trilha de auditoria: "Luva de vaqueta (2 par)" ou "Detector de gás (1 un, obrigatório)". */
-const rotuloDoItem = (i: { descricao: string; unidade: string; quantidade: number | null; obrigatorio: boolean }) =>
-  `${i.descricao} (${i.quantidade === null ? "conforme a necessidade" : `${i.quantidade} ${i.unidade}`}${i.obrigatorio ? ", obrigatório" : ""})`;
+/** Como um item aparece na trilha de auditoria: "Luva de vaqueta (2 par)" ou "Detector de gás (conforme a necessidade)". */
+const rotuloDoItem = (i: { descricao: string; unidade: string; quantidade: number | null }) =>
+  `${i.descricao} (${i.quantidade === null ? "conforme a necessidade" : `${i.quantidade} ${i.unidade}`})`;
 
 /**
  * Troca a lista inteira de materiais do serviço pela enviada, na ordem enviada. Material desativado só fica se já estava
@@ -251,7 +244,6 @@ export async function salvarMateriaisDoServico(db: Db, codigo: string, entrada: 
           materialId: m.material_id,
           quantidade: m.quantidade ?? null,
           observacao: m.observacao ? m.observacao : null,
-          obrigatorio: m.obrigatorio ?? false,
           ordem: i + 1,
         })),
       );
@@ -259,8 +251,8 @@ export async function salvarMateriaisDoServico(db: Db, codigo: string, entrada: 
     const atuais = (await materiaisDosServicos(tx, [codigo])).get(codigo) ?? [];
     const antes = anteriores.map(rotuloDoItem);
     const depois = atuais.map(rotuloDoItem);
-    const mudou = JSON.stringify(anteriores.map(({ materialId, quantidade, observacao, obrigatorio }) => [materialId, quantidade, observacao, obrigatorio])) !==
-      JSON.stringify(atuais.map(({ materialId, quantidade, observacao, obrigatorio }) => [materialId, quantidade, observacao, obrigatorio]));
+    const mudou = JSON.stringify(anteriores.map(({ materialId, quantidade, observacao }) => [materialId, quantidade, observacao])) !==
+      JSON.stringify(atuais.map(({ materialId, quantidade, observacao }) => [materialId, quantidade, observacao]));
     return { servico: { ...servico, materiais: atuais }, mudou, antes, depois };
   });
 }

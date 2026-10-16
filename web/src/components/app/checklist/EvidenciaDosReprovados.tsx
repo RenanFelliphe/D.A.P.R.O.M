@@ -2,7 +2,7 @@ import { EvidenciaCard } from "@/components/app/checklist/EvidenciaCard";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
-import { documentosDe, materiaisFaltandoDe, reprovadosSemEvidencia, type FotoDoRascunho, type RascunhoApr } from "@/lib/apr";
+import { documentosDe, reprovadosSemEvidencia, type FotoDoRascunho, type RascunhoApr } from "@/lib/apr";
 
 interface EvidenciaDosReprovadosProps {
   rascunho: RascunhoApr;
@@ -37,7 +37,6 @@ export function EvidenciaDosReprovados({
   erro,
 }: EvidenciaDosReprovadosProps) {
   const reprovados = rascunho.avaliacao?.reprovados ?? [];
-  const materiais = materiaisFaltandoDe(rascunho);
   const varios = reprovados.length > 1;
   const faltando = reprovadosSemEvidencia(rascunho);
   const fotosDe = (itemId: string): FotoDoRascunho[] => rascunho.fotos[itemId] ?? [];
@@ -50,13 +49,7 @@ export function EvidenciaDosReprovados({
         </span>
         <div className="stack g4">
           <h2>
-            {reprovados.length === 0
-              ? materiais.length > 1
-                ? "Materiais obrigatórios sem comprovação"
-                : "Material obrigatório sem comprovação"
-              : varios
-                ? `${reprovados.length} itens reprovaram`
-                : "Um item reprovou"}
+            {varios ? `${reprovados.length} itens reprovaram` : "Um item reprovou"}
           </h2>
           <p>
             A atividade está impedida: a APR ficou registrada como bloqueada, a OS está pendente e o supervisor foi avisado.
@@ -70,20 +63,6 @@ export function EvidenciaDosReprovados({
           </p>
         </div>
       </div>
-
-      {materiais.length > 0 && (
-        <section className="card stack g6" aria-label="Materiais obrigatórios sem comprovação" data-treino="ck-materiais-faltando">
-          <strong style={{ fontSize: 14 }}>{materiais.length > 1 ? "Materiais obrigatórios sem comprovação" : "Material obrigatório sem comprovação"}</strong>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14 }}>
-            {materiais.map((m) => (
-              <li key={m.materialId}>
-                {m.descricao} · <b style={{ color: "var(--blq)" }}>{m.levou ? "levado, mas sem a foto do item" : "não levado"}</b>
-              </li>
-            ))}
-          </ul>
-          <p className="muted">Com {materiais.length > 1 ? "os itens" : "o item"} em mãos, faça uma nova APR e envie a foto.</p>
-        </section>
-      )}
 
       {reprovados.map((item) => (
         <EvidenciaCard

@@ -6,7 +6,7 @@
 //
 //   cd api && node --import tsx ../web/scripts/verificar-treino.mts
 import assert from "node:assert/strict";
-import { adicionarFoto, conferirMaterial, doModeloCompleto, fotografarMaterial, montarAvaliacao, montarPayload, novoRascunho, observar, perguntasDe, responder, type ModeloCompleto, type RascunhoApr } from "../src/lib/apr";
+import { adicionarFoto, doModeloCompleto, montarAvaliacao, montarPayload, novoRascunho, observar, perguntasDe, responder, type ModeloCompleto, type RascunhoApr } from "../src/lib/apr";
 import { arquivoDoTreino, responderTreino } from "../src/treino/api-ficticia";
 import { reiniciarTreino } from "../src/treino/armazem";
 import { COLEGAS_TREINO, COLEGA_SEM_ASSINATURA, MODELO_BLOQUEIO, MODELO_GUIADO, OS_BLOQUEIO, OS_GUIADA, idTreino } from "../src/treino/ids";
@@ -67,34 +67,17 @@ function preencher(osId: string, modelo: ModeloCompleto, riscos: string[], parti
  * `POST /aprs/avaliar` com a APR do rascunho, como a tela faz: devolve o rascunho concluído, com o que a `api` disse
  * (aprovada ou bloqueada). A bloqueada já fica registrada.
  */
-async function avaliar(r: RascunhoApr, lista?: any[]): Promise<RascunhoApr> {
+async function avaliar(r: RascunhoApr): Promise<RascunhoApr> {
   const concluidaEm = new Date().toISOString();
-  const res = await ler<any>("POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }, lista));
+  const res = await ler<any>("POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }));
   return {
     ...r,
     concluidaEm,
     avaliacao: {
       resultado: res.resultado,
       reprovados: res.reprovados.map((x: any) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })),
-      materiaisFaltando: res.materiais_faltando.map((x: any) => ({ materialId: x.material_id, descricao: x.descricao, levou: x.levou })),
     },
   };
-}
-
-/**
- * A conferência dos materiais do serviço, como a revisão faz: levou tudo e fotografou o obrigatório. `semFoto` deixa o
- * obrigatório sem a foto; `naoLevou` diz que não o levou.
- */
-async function conferirTudo(r: RascunhoApr, lista: any[], opcoes: { semFoto?: boolean; naoLevou?: boolean } = {}) {
-  for (const m of lista) {
-    if (m.obrigatorio && opcoes.naoLevou) {
-      r = conferirMaterial(r, m.material_id, false);
-      continue;
-    }
-    r = conferirMaterial(r, m.material_id, true);
-    if (m.obrigatorio && !opcoes.semFoto) r = fotografarMaterial(r, m.material_id, { id: crypto.randomUUID(), arquivoId: await subirFoto(), capturadaEm: new Date().toISOString() });
-  }
-  return r;
 }
 
 let passos = 0;
@@ -102,62 +85,25 @@ const ok = (texto: string) => console.log(`ok ${++passos} - ${texto}`);
 
 reiniciarTreino(eu.id);
 
-// ---- Materiais do serviço: o obrigatório sem comprovação bloqueia a APR (depois a OS guiada volta ao começo) ------------
+// ---- Materiais recomendados: só consulta, não há conferência nem bloqueio (depois a OS guiada volta ao começo) -----------
 {
   const det = await ler<any>("GET", `/os/${OS_GUIADA}`);
   const lista: any[] = det.servico.materiais;
-  assert.deepEqual(lista.filter((m) => m.obrigatorio).map((m) => m.descricao), ["Vestimenta antichama"], "a OS guiada tem um item obrigatório");
+  assert.ok(lista.some((m) => m.descricao === "Vestimenta antichama"), "a vestimenta antichama continua na lista da OS guiada, como recomendação");
+  assert.ok(lista.every((m) => !("obrigatorio" in m)), "nenhum item da lista é obrigatório");
   const modelo = await ler<ModeloCompleto>("GET", `/modelos-apr/${MODELO_GUIADO.codigo}/versoes/publicada`);
   const dupla = [{ usuarioId: eu.id, funcao: "responsavel" as const }, { usuarioId: COLEGAS_TREINO.carlos.id, funcao: "executor" as const }];
-  const base = () => preencher(OS_GUIADA, modelo, [], dupla);
 
-  // Conferência malformada: recusada antes do resultado, sem registrar nada.
-  const corpo = montarAvaliacao({ ...(await conferirTudo(base(), lista)), concluidaEm: new Date().toISOString() }, lista) as any;
-  const recusa = async (materiais: object[], codigo: string) => {
-    const r = await chamar("POST", "/aprs/avaliar", { ...corpo, materiais });
-    assert.equal(r.status, 422, JSON.stringify(r.corpo));
-    assert.equal((r.corpo as any).erro.codigo, codigo);
-  };
-  await recusa([{ material_id: crypto.randomUUID(), levou: true }], "material_invalido");
-  await recusa([{ material_id: lista[0].material_id, levou: true }, { material_id: lista[0].material_id, levou: false }], "material_repetido");
-  await recusa([{ material_id: lista[0].material_id, levou: false, foto: { arquivo_id: await subirFoto(), capturada_em: new Date().toISOString() } }], "foto_sem_material");
-  await recusa([{ material_id: lista[0].material_id, levou: true, foto: { arquivo_id: crypto.randomUUID(), capturada_em: new Date().toISOString() } }], "arquivo_ausente");
-  assert.equal((await ler<any>("GET", `/os/${OS_GUIADA}`)).aprs.length, 0);
-  ok("conferência dos materiais malformada: recusada antes do resultado");
-
-  // Com a foto do obrigatório a APR passa e não é gravada; sem a foto, ou sem o item, é bloqueada na hora.
-  const boa = await avaliar(await conferirTudo(base(), lista), lista);
+  // Sem conferência nenhuma a APR passa; quem ainda manda `materiais` (aparelho antigo) não é recusado nem bloqueado.
+  const boa = await avaliar(preencher(OS_GUIADA, modelo, [], dupla));
   assert.equal(boa.avaliacao?.resultado, "aprovada");
-  assert.deepEqual(boa.avaliacao?.materiaisFaltando, []);
+  assert.deepEqual(boa.avaliacao?.reprovados, []);
+  const antigo = { ...(montarAvaliacao({ ...preencher(OS_GUIADA, modelo, [], dupla), concluidaEm: new Date().toISOString() }) as any), materiais: [{ material_id: crypto.randomUUID(), levou: false }] };
+  const r = await chamar("POST", "/aprs/avaliar", antigo);
+  assert.equal(r.status, 200, JSON.stringify(r.corpo));
+  assert.equal((r.corpo as any).resultado, "aprovada");
   assert.equal((await ler<any>("GET", `/os/${OS_GUIADA}`)).aprs.length, 0, "a aprovada só é registrada pelo apr_concluida");
-
-  const semFoto = await avaliar(await conferirTudo(base(), lista, { semFoto: true }), lista);
-  assert.equal(semFoto.avaliacao?.resultado, "bloqueada");
-  assert.deepEqual(semFoto.avaliacao?.reprovados, []);
-  assert.deepEqual(semFoto.avaliacao?.materiaisFaltando.map((m) => [m.descricao, m.levou]), [["Vestimenta antichama", true]]);
-  const aposBloqueio = await ler<any>("GET", `/os/${OS_GUIADA}`);
-  assert.equal(aposBloqueio.os.status, "pendente");
-  assert.equal(aposBloqueio.aprs.length, 1);
-  assert.deepEqual(aposBloqueio.aprs[0].itens_reprovados, []);
-  assert.deepEqual(aposBloqueio.aprs[0].materiais.filter((m: any) => m.obrigatorio && (!m.levou || !m.foto)).map((m: any) => m.descricao), ["Vestimenta antichama"]);
-  assert.ok(
-    aposBloqueio.alertas.some((a: any) => a.tipo === "bloqueio" && /material\(is\) obrigatório\(s\) sem comprovação\): Vestimenta antichama — sem foto/.test(a.detalhe)),
-    "o supervisor é avisado",
-  );
-  // Validar de novo a mesma APR devolve o que ficou gravado.
-  const deNovo = await ler<any>("POST", "/aprs/avaliar", montarAvaliacao({ ...semFoto, avaliacao: null }, lista));
-  assert.equal(deNovo.resultado, "bloqueada");
-  assert.deepEqual(deNovo.materiais_faltando.map((m: any) => m.descricao), ["Vestimenta antichama"]);
-  // O evento da mesma APR só confirma: não há evidência a completar.
-  const confirmada = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(semFoto, lista) as any, semFoto.eventoId));
-  assert.equal(confirmada.rejeitados.length, 0, JSON.stringify(confirmada));
-  assert.equal(confirmada.aprs[0].resultado, "bloqueada");
-  ok("material obrigatório sem a foto: APR bloqueada na hora, OS pendente e alerta ao supervisor");
-
-  const naoLevou = await avaliar(await conferirTudo(base(), lista, { naoLevou: true }), lista);
-  assert.equal(naoLevou.avaliacao?.resultado, "bloqueada");
-  assert.deepEqual(naoLevou.avaliacao?.materiaisFaltando.map((m) => [m.descricao, m.levou]), [["Vestimenta antichama", false]]);
-  ok("material obrigatório não levado: APR bloqueada");
+  ok("materiais recomendados: sem conferência e sem bloqueio por material");
 
   reiniciarTreino(eu.id);
 }
@@ -207,27 +153,23 @@ ok("GET /os/{id}, /modelos-apr e /usuarios da OS guiada");
   ok("participante sem assinatura: a validação recusa (assinatura_ausente)");
 }
 
-const listaGuiada: any[] = detalhe.servico.materiais;
 const rascunho = {
-  ...(await avaliar(
-    await conferirTudo(preencher(OS_GUIADA, modeloA, [modeloA.riscos[0]!.id], [{ usuarioId: eu.id, funcao: "responsavel" }, { usuarioId: COLEGAS_TREINO.carlos.id, funcao: "executor" }]), listaGuiada),
-    listaGuiada,
-  )),
+  ...(await avaliar(preencher(OS_GUIADA, modeloA, [modeloA.riscos[0]!.id], [{ usuarioId: eu.id, funcao: "responsavel" }, { usuarioId: COLEGAS_TREINO.carlos.id, funcao: "executor" }]))),
   concluidaEm: new Date().toISOString(),
 };
 assert.equal(rascunho.avaliacao?.resultado, "aprovada");
-const aprovada = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(rascunho, listaGuiada) as any, rascunho.eventoId));
+const aprovada = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(rascunho) as any, rascunho.eventoId));
 assert.equal(aprovada.rejeitados.length, 0, JSON.stringify(aprovada));
 assert.equal(aprovada.aprs[0].resultado, "aprovada");
 assert.equal(aprovada.os[0].status, "liberada");
 ok("apr_concluida aprovada na OS guiada");
 
 // Reenviar o mesmo evento só confirma.
-const repetida = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(rascunho, listaGuiada) as any, rascunho.eventoId));
+const repetida = await enviar(evento("apr_concluida", OS_GUIADA, montarPayload(rascunho) as any, rascunho.eventoId));
 assert.equal(repetida.confirmados.length, 1);
 const aprGuiada = (await ler<any>("GET", `/os/${OS_GUIADA}`)).aprs;
 assert.equal(aprGuiada.length, 1);
-assert.deepEqual(aprGuiada[0].materiais.map((m: any) => [m.descricao, m.obrigatorio, m.levou, m.foto !== null]).slice(0, 1), [["Vestimenta antichama", true, true, true]], "o histórico traz a conferência e a foto do obrigatório");
+assert.equal("materiais" in aprGuiada[0], false, "a APR não guarda mais conferência de materiais");
 ok("reenvio do mesmo evento é idempotente");
 
 // ---- Execução: iniciar, pausar, encerrar -------------------------------------------------------------------------

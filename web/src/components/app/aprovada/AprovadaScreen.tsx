@@ -11,7 +11,6 @@ import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
 import { PontosGanhos } from "@/components/web/gamificacao/PontosGanhos";
 import { estaTravada, montarPayload, resumoDe, retirarParticipante, type Colega, type RascunhoApr } from "@/lib/apr";
-import type { MaterialDoServico } from "@/lib/catalogo";
 import { enviarEvento, ErroCliente, ErroDeEvento } from "@/lib/cliente-api";
 import { dataHora } from "@/lib/formatar";
 import type { RespostaComPontos } from "@/lib/gamificacao";
@@ -32,8 +31,6 @@ interface AprovadaScreenProps {
   usuarioId: string;
   colegas: Colega[];
   registrada: AprRegistrada | null;
-  /** A lista de materiais do serviço da OS: só os itens que ainda estão nela vão na conferência do evento. */
-  materiais: MaterialDoServico[];
 }
 
 function mensagemDeErro(erro: unknown) {
@@ -46,7 +43,7 @@ function mensagemDeErro(erro: unknown) {
  * APR aprovada. Enquanto o evento não foi enviado, cada participante confirma a assinatura do perfil; ao confirmar o
  * último, a APR é registrada (`apr_concluida`) e a execução é liberada.
  */
-export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor, materiais }: AprovadaScreenProps) {
+export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor }: AprovadaScreenProps) {
   const roteador = useRouter();
   const { rascunho, atualizar, descartar } = useRascunhoApr(os.id, usuarioId);
   const [recemRegistrada, setRecemRegistrada] = useState<AprRegistrada | null>(null);
@@ -127,7 +124,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada: doServidor,
     setEnviando(true);
     setErro(null);
     try {
-      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r, materiais) });
+      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r) });
       const resultado = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
       setPontos(resposta);
       descartar();

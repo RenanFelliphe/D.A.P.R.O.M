@@ -101,13 +101,6 @@ export interface AprReg {
   respostas: { item_id: string; resposta: "sim" | "nao" | "na"; observacao: string | null; respondida_em: string }[];
   /** Fotos e PDFs dos itens reprovados; sem `tipo`, é foto (a massa inicial só tem fotos). */
   evidencias: { id: string; arquivo_id: string; item_id: string; capturada_em: string; latitude: number | null; longitude: number | null; tipo?: "foto" | "pdf"; nome?: string | null }[];
-  /** A conferência dos materiais do serviço; ausente na massa inicial e nas sessões gravadas antes de existir a conferência. */
-  materiais?: {
-    material_id: string;
-    obrigatorio: boolean;
-    levou: boolean;
-    foto: { arquivo_id: string; capturada_em: string; latitude: number | null; longitude: number | null } | null;
-  }[];
 }
 
 export interface FotoReg {

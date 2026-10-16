@@ -169,6 +169,13 @@
       "when": 1792097668264,
       "tag": "0023_checklist_de_inspecao",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792113112416,
+      "tag": "0024_materiais_recomendados",
+      "breakpoints": true
     }
   ]
 }

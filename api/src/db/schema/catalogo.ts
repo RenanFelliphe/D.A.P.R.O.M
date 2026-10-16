@@ -47,11 +47,6 @@ export const atividadeMaterial = pgTable(
       .references(() => material.id),
     /** Quantidade prevista por execução, na unidade do material; nula = conforme a necessidade. */
     quantidade: numeric({ precision: 12, scale: 3, mode: "number" }),
-    /**
-     * Obrigatório: o técnico comprova que está com o item (uma foto dele) ao fechar a APR; sem a foto, ou sem o item, a APR
-     * fica bloqueada. Os demais itens só são conferidos ("levei" ou "não levei").
-     */
-    obrigatorio: boolean().notNull().default(false),
     /** Ex.: "só se houver vazamento". */
     observacao: text(),
     ordem: integer().notNull(),

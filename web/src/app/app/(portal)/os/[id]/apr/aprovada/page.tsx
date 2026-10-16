@@ -16,7 +16,7 @@ export default async function AprovadaPage({ params }: PageProps<"/app/os/[id]/a
   const { id } = await params;
   const detalhe = await apiOuNulo<DetalheDaOs>(`/os/${id}`);
   if (!detalhe) notFound();
-  const { os, aprs, execucoes, servico } = detalhe;
+  const { os, aprs, execucoes } = detalhe;
 
   const [{ usuario }, { usuarios }] = await Promise.all([
     usuarioAtual(),
@@ -39,7 +39,6 @@ export default async function AprovadaPage({ params }: PageProps<"/app/os/[id]/a
       os={{ id: os.id, rotulo: rotuloDaOs(os), titulo: os.titulo, local: os.local_instalacao.codigo, status: os.status }}
       usuarioId={usuario.id}
       colegas={colegas}
-      materiais={servico?.materiais ?? []}
       registrada={
         registrada && {
           modelo: registrada.modelo,
