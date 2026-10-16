@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AcessoRecusado } from "@/components/aguardando/AcessoRecusado";
 import { FaixaDeAusencia } from "@/components/ausencia/FaixaDeAusencia";
+import { FaixaDeRepresentacao } from "@/components/representacao/FaixaDeRepresentacao";
 import { FaixaDoTreino } from "@/components/treino/FaixaDoTreino";
 import { TreinoRaiz } from "@/components/treino/TreinoRaiz";
 import type { Alerta } from "@/components/web/alertas/tipos";
@@ -117,6 +118,8 @@ export async function Casca({ children }: { children: ReactNode }) {
     >
       {/* O ausente só visualiza: a faixa avisa até quando e leva ao pedido de fim antecipado e à confirmação do retorno. */}
       {!admin && liberado && ausencia && <FaixaDeAusencia ausencia={ausencia} eu={{ id: usuario.id, nome: usuario.nome, assinaturaPath: usuario.assinatura_path }} supervisor={supervisor} />}
+      {/* O representante no comando da equipe (o supervisor está ausente ou parado) sabe de qual e por quê. */}
+      {!admin && liberado && !treino && <FaixaDeRepresentacao equipes={usuario.equipes_representadas ?? []} />}
       {children}
       {gamificacao && gamificacao.avisos_pendentes > 0 && <AvisoConquista />}
       {!admin && <TreinoRaiz emTreino={treino} primeiroAcesso={primeiroAcesso} pendente={pendente} />}

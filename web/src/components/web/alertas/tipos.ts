@@ -19,7 +19,9 @@ export type TipoDeAlerta =
   | "ausencia_fim_respondido"
   | "ausencia_alterada"
   | "ausencia_vencida"
-  | "ausencia_cancelada";
+  | "ausencia_cancelada"
+  | "representacao_iniciada"
+  | "representacao_encerrada";
 
 export interface Alerta {
   id: string;
@@ -42,6 +44,8 @@ export interface Alerta {
   usuario_alvo_id: string | null;
   usuario_alvo_nome: string | null;
   ausencia_equipe_id: string | null;
+  /** Só nos alertas da representação (`representacao_*`): a equipe cujo representante assumiu ou devolveu o comando. */
+  representacao_equipe_id: string | null;
   detalhe: string;
   email_enviado_em: string | null;
   lido_em: string | null;
@@ -66,6 +70,8 @@ export const TIPOS_DE_ALERTA: TipoDeAlerta[] = [
   "ausencia_alterada",
   "ausencia_vencida",
   "ausencia_cancelada",
+  "representacao_iniciada",
+  "representacao_encerrada",
 ];
 
 export const rotuloDoTipo: Record<TipoDeAlerta, string> = {
@@ -86,10 +92,15 @@ export const rotuloDoTipo: Record<TipoDeAlerta, string> = {
   ausencia_alterada: "Ausência alterada",
   ausencia_vencida: "Ausência vencida",
   ausencia_cancelada: "Pedido de ausência cancelado",
+  representacao_iniciada: "Representante assumiu a equipe",
+  representacao_encerrada: "Supervisão devolvida ao supervisor",
 };
 
 /** Alerta da ausência de um usuário: não tem OS e leva ao perfil (do ausente) ou à equipe (do supervisor). */
 export const ehDeAusencia = (a: Pick<Alerta, "tipo">) => a.tipo.startsWith("ausencia_");
+
+/** Alerta da representação da equipe (o representante assumiu ou devolveu o comando): não tem OS e leva à equipe. */
+export const ehDeRepresentacao = (a: Pick<Alerta, "tipo">) => a.tipo.startsWith("representacao_");
 
 /** Alerta do ciclo das preventivas (próximo ou vencido): aponta para o plano e para a última OS dele. */
 export const ehDeCiclo = (a: Pick<Alerta, "tipo">) => a.tipo === "preventiva_proxima" || a.tipo === "preventiva_vencida";
@@ -106,6 +117,7 @@ export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; u
   if (a.tipo === "falha_importacao") return { icone: "alert", urgente: true };
   if (a.tipo === "preventiva_vencida" || a.tipo === "ausencia_vencida") return { icone: "clock", urgente: true };
   if (a.tipo.startsWith("ausencia_")) return { icone: "cal", urgente: false };
+  if (a.tipo.startsWith("representacao_")) return { icone: "users", urgente: false };
   if (a.tipo === "preventiva_proxima") return { icone: "clock", urgente: false };
   if (a.tipo === "inspecao_com_pendencia") return { icone: "clip", urgente: false };
   return { icone: "refresh", urgente: false };
@@ -119,6 +131,7 @@ export const metodoDaFalha = (origem: Alerta["importacao_origem"]) =>
 export function referenciaDoAlerta(a: Alerta): { codigo: string | null; texto: string } {
   if (a.tipo === "falha_importacao") return { codigo: null, texto: metodoDaFalha(a.importacao_origem) };
   if (ehDeAusencia(a)) return { codigo: null, texto: a.usuario_alvo_nome ?? "Ausência" };
+  if (ehDeRepresentacao(a)) return { codigo: null, texto: a.detalhe };
   return { codigo: a.numero_ordem ?? "OS de apoio", texto: a.titulo ?? "" };
 }
 

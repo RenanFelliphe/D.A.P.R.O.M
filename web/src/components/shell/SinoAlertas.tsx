@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { aparenciaDoAlerta, referenciaDoAlerta, rotuloDoAlerta, type Alerta } from "@/components/web/alertas/tipos";
+import { aparenciaDoAlerta, ehDeRepresentacao, referenciaDoAlerta, rotuloDoAlerta, type Alerta } from "@/components/web/alertas/tipos";
 import { chamar } from "@/lib/cliente-api";
 import { diaMes, hora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
@@ -83,7 +83,7 @@ export function SinoAlertas({ naoLidos, recentes, gestao }: SinoAlertasProps) {
                 const referencia = referenciaDoAlerta(a);
                 return (
                   <li key={a.id}>
-                    <Link href={gestao ? `${rotas.web.alertas}?alerta=${a.id}` : `${rotas.app.perfil}#ausencias`} className={a.lido_em === null ? "sino-item novo" : "sino-item"} onClick={() => abrir(a)}>
+                    <Link href={ehDeRepresentacao(a) && a.representacao_equipe_id ? `${rotas.app.equipe(a.representacao_equipe_id)}#representante` : gestao ? `${rotas.web.alertas}?alerta=${a.id}` : `${rotas.app.perfil}#ausencias`} className={a.lido_em === null ? "sino-item novo" : "sino-item"} onClick={() => abrir(a)}>
                       <span className={urgente ? "ic red" : "ic blue"}>
                         <Icon name={icone} size={16} />
                       </span>

@@ -1,6 +1,7 @@
 /** Tipos das respostas da `api` que várias telas usam (os demais ficam junto da tela que os consome). Chaves em snake_case, como a `api` devolve. */
 
 import type { AusenciaDaPessoa } from "@/lib/ausencia";
+import type { EquipeRepresentada, RepresentacaoDaEquipe } from "@/lib/representacao";
 import type { ResumoDaBarra } from "@/lib/gamificacao";
 
 /** Só técnico e administrador. Supervisor não é perfil: é quem a equipe aponta (`equipes_supervisionadas` de `GET /me`) e sempre é técnico. */
@@ -24,6 +25,8 @@ export interface Usuario {
   assinatura_em: string | null;
   /** Equipes de que a pessoa é supervisora (qualquer perfil). Só `GET /me` preenche. */
   equipes_supervisionadas?: { id: string; nome: string }[];
+  /** As equipes que a pessoa representa agora (o supervisor está ausente ou parado há 3 dias); cada uma também entra em `equipes_supervisionadas`. Só `GET /me` preenche. */
+  equipes_representadas?: EquipeRepresentada[];
   /** Situação do treinamento do técnico (Campo de treino); `GET /me` preenche. O admin não tem treinamento. */
   treinamento?: Treinamento;
   /** Liberação do acesso geral. Técnico cadastrado por supervisor nasce `pendente` até um admin liberar; `recusado` não entra. Ausente (API antiga) vale `liberado`. */
@@ -77,6 +80,9 @@ export interface Equipe {
   nome: string;
   centro_trabalho: string;
   supervisor_id: string | null;
+  /** Quem substitui o supervisor, e a representação em vigor (`null` enquanto o supervisor responde pela equipe). */
+  representante_id?: string | null;
+  representacao?: RepresentacaoDaEquipe | null;
 }
 
 /** `devolvida`: o supervisor a devolveu ao SAP com uma justificativa (erro na ordem); sai do quadro, como a `cancelada`. */

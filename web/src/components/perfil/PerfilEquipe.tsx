@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Trilha } from "@/components/app/AppChrome";
 import { AusenciasDaEquipe, BotaoRegistrarAusencia, type PessoaDaEquipe } from "@/components/ausencia/AusenciasDaEquipe";
 import { SeloDeAusencia } from "@/components/ausencia/SeloDeAusencia";
+import { RepresentanteDaEquipe } from "@/components/representacao/RepresentanteDaEquipe";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Screen } from "@/components/ui/Screen";
@@ -13,6 +14,7 @@ import type { ContagemPorStatus, OsDoQuadro } from "@/data/quadro";
 import { apiOuNulo, usuarioAtual } from "@/lib/api";
 import type { Ausencia, AusenciaDaPessoa } from "@/lib/ausencia";
 import { dataDoDia } from "@/lib/formatar";
+import type { RepresentacaoDaEquipe } from "@/lib/representacao";
 import { ordemDosStatus } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
 import { ehAdmin, ehSupervisor, iniciaisDe, rotuloDoPerfil, rotuloDoStatus, type Equipe, type Perfil } from "@/lib/tipos";
@@ -21,6 +23,9 @@ import { ehAdmin, ehSupervisor, iniciaisDe, rotuloDoPerfil, rotuloDoStatus, type
 interface EquipeDaApi {
   equipe: Equipe;
   supervisor: { id: string; nome: string; matricula: string; cargo: string | null; ausencia: AusenciaDaPessoa | null } | null;
+  /** Quem substitui o supervisor, e a representação em vigor (o supervisor está ausente ou parado). */
+  representante?: { id: string; nome: string; matricula: string } | null;
+  representacao?: RepresentacaoDaEquipe | null;
   membros: { id: string; nome: string; matricula: string; cargo: string | null; perfil: Perfil; ativo: boolean; ausencia: AusenciaDaPessoa | null }[];
   contagem_por_status: ContagemPorStatus;
   total_os: number;
@@ -51,6 +56,10 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
   const gestao = ehAdmin(eu) || ehSupervisor(eu);
   // As ausências da equipe são de quem a supervisiona (que responde e registra) e do admin (que só consulta); no campo de treino a rota não existe.
   const supervisaEquipe = eu.equipes_supervisionadas?.some((e) => e.id === equipe.id) ?? false;
+  // Quem designa o representante: o supervisor da equipe (não o representante no comando) e o admin; ausente só visualiza.
+  const representaEquipe = eu.equipes_representadas?.some((e) => e.id === equipe.id) ?? false;
+  const podeDesignar = !minhaAusencia && (ehAdmin(eu) || (supervisaEquipe && !representaEquipe));
+  const candidatos = membros.filter((m) => m.ativo && m.perfil === "tecnico" && m.id !== supervisor?.id).map((m) => ({ id: m.id, nome: m.nome }));
   const ausencias = supervisaEquipe || ehAdmin(eu) ? (await apiOuNulo<{ ausencias: Ausencia[] }>("/ausencias", { consulta: { equipe_id: equipe.id, abertas: true, tamanho: 100 } }))?.ausencias ?? null : null;
   const quemAge = { id: eu.id, assinaturaPath: eu.assinatura_path, ausente: Boolean(minhaAusencia) };
   // A quem o supervisor registra a ausência: os técnicos ativos da equipe e ele mesmo.
@@ -171,6 +180,10 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
             )}
           </section>
 
+          {dados.representante !== undefined && (
+            <RepresentanteDaEquipe equipeId={equipe.id} representante={dados.representante ?? null} representacao={dados.representacao ?? null} candidatos={candidatos} podeDesignar={podeDesignar} />
+          )}
+
           <BlocoDaEquipe dados={gamificacao} />
 
           <section className="panel" aria-labelledby="membros-da-equipe">
@@ -187,6 +200,7 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
                         <strong style={{ fontSize: 14 }}>
                           {m.nome}
                           {!m.ativo && <span className="small"> · inativo</span>} <SeloDeAusencia ausencia={m.ausencia} />
+                          {m.id === dados.representante?.id && <Badge tone="neu" style={{ padding: "1px 8px", fontSize: 11 }}>Representante</Badge>}
                         </strong>
                         <span className="small">
                           {m.cargo ?? rotuloDoPerfil[m.perfil]} · mat. {m.matricula}

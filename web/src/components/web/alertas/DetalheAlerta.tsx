@@ -11,9 +11,10 @@ import { DecisoesDaOs } from "./DecisoesDaOs";
 import { CausaDoBloqueio } from "./DetalheBloqueio";
 import { DetalheCicloPreventiva } from "./DetalheCicloPreventiva";
 import { DetalheAusencia } from "./DetalheAusencia";
+import { DetalheRepresentacao } from "./DetalheRepresentacao";
 import { DetalheFalhaImportacao } from "./DetalheFalhaImportacao";
 import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
-import { ehDeAusencia, ehDeCiclo, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
+import { ehDeAusencia, ehDeCiclo, ehDeRepresentacao, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
 
 interface DetalheAlertaProps {
   alerta: Alerta;
@@ -30,6 +31,8 @@ interface DetalheAlertaProps {
 export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }: DetalheAlertaProps) {
   // A ausência de um usuário não tem OS: o supervisor responde na equipe.
   if (ehDeAusencia(alerta)) return <DetalheAusencia alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
+  // O representante que assumiu a equipe (ou a devolveu) também não tem OS.
+  if (ehDeRepresentacao(alerta)) return <DetalheRepresentacao alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   // A falha de importação não tem OS: detalhe próprio.
   if (alerta.tipo === "falha_importacao" || !alerta.os_id) return <DetalheFalhaImportacao alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   // O do ciclo das preventivas fala do plano, não de uma decisão sobre a OS.
