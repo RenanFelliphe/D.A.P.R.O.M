@@ -54,7 +54,15 @@ export const treinamentoParaApi = (u: Pick<LinhaUsuario, "treinamentoEstado" | "
   em: u.treinamentoEm,
 });
 
-export const equipeParaApi = (e: LinhaEquipe) => ({ id: e.id, nome: e.nome, centroTrabalho: e.centroTrabalho, supervisorId: e.supervisorId });
+export const equipeParaApi = (e: LinhaEquipe) => ({
+  id: e.id,
+  nome: e.nome,
+  centroTrabalho: e.centroTrabalho,
+  supervisorId: e.supervisorId,
+  /** Quem substitui o supervisor, e desde quando (e por quê) ele está no comando; `null` enquanto o supervisor responde pela equipe. */
+  representanteId: e.representanteId,
+  representacao: e.representacaoDesde && e.representacaoMotivo ? { desde: e.representacaoDesde, motivo: e.representacaoMotivo } : null,
+});
 
 const ALFABETO = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 

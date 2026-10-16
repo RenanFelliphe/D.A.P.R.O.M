@@ -3,6 +3,7 @@ import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify } from "jose";
 import type { MiddlewareHandler } from "hono";
 import type { Deps } from "../deps";
 import { ausencia, equipe, usuario, type Perfil } from "../db/schema";
+import { equipesComRepresentacaoGravada, INTERVALO_DA_ATIVIDADE_MIN, representacoesEmVigor, sincronizarRepresentacao } from "../dominio/representacao";
 import { diaDe, dataBr } from "../dominio/tempo";
 import { ErroApi, naoAutenticado, proibido } from "./erros";
 
@@ -13,8 +14,14 @@ export interface UsuarioAutenticado {
   email: string;
   perfil: Perfil;
   equipeId: string | null;
-  /** Equipes de que a pessoa é supervisora (`equipe.supervisor_id`); todo supervisor é técnico. */
+  /**
+   * Equipes em que a pessoa exerce a supervisão: as que ela supervisiona (`equipe.supervisor_id`; todo supervisor é técnico) e as
+   * que ela representa agora, porque o supervisor está ausente ou parado (`equipesRepresentadas`). É por aqui que passa toda
+   * permissão de supervisão.
+   */
   equipesSupervisionadas: string[];
+  /** As equipes em que a pessoa está no comando como representante do supervisor (um subconjunto de `equipesSupervisionadas`). */
+  equipesRepresentadas: string[];
   ativo: boolean;
   senhaProvisoria: boolean;
   assinaturaPath: string | null;
@@ -31,8 +38,11 @@ export type Ambiente = { Variables: { usuario: UsuarioAutenticado } };
 /** Só o administrador enxerga todas as equipes (técnico, supervisor ou não, só vê as suas). */
 export const veTodasAsEquipes = (u: UsuarioAutenticado) => u.perfil === "admin";
 
-/** Supervisor de ao menos uma equipe (`equipe.supervisor_id`): é um técnico com as ações de supervisão nas equipes que supervisiona. */
+/** Supervisor de ao menos uma equipe (`equipe.supervisor_id`) ou representante no comando de uma: é um técnico com as ações de supervisão nas equipes que supervisiona. */
 export const ehSupervisor = (u: UsuarioAutenticado) => u.equipesSupervisionadas.length > 0;
+
+/** Supervisor de verdade (o titular de uma equipe), não o representante: só ele registra a própria ausência. */
+export const ehSupervisorTitular = (u: UsuarioAutenticado) => u.equipesSupervisionadas.some((id) => !u.equipesRepresentadas.includes(id));
 
 /** Equipes que a pessoa enxerga: `null` quando vê todas; senão a própria e as que supervisiona. */
 export function equipesDoEscopo(u: UsuarioAutenticado): string[] | null {
@@ -111,7 +121,17 @@ export function criarAutenticacao(deps: Deps) {
       throw new ErroApi(403, "senha_provisoria", "Defina sua senha antes de continuar");
     }
 
-    const supervisionadas = await deps.db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, linha.id));
+    // Quem usa o sistema está ativo: o supervisor que voltou a usá-lo, depois de dias parado, retoma a equipe do representante na hora.
+    const agora = deps.agora();
+    if (agora.getTime() - linha.ultimaAtividadeEm.getTime() >= INTERVALO_DA_ATIVIDADE_MIN * 60_000) {
+      await deps.db.update(usuario).set({ ultimaAtividadeEm: agora }).where(eq(usuario.id, linha.id));
+      const comRepresentacao = await equipesComRepresentacaoGravada(deps.db, linha.id);
+      if (comRepresentacao.length > 0) await sincronizarRepresentacao(deps.db, agora, comRepresentacao);
+    }
+
+    const titulares = await deps.db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, linha.id));
+    // Representante: o supervisor da equipe está ausente ou parado há dias, e esta pessoa responde por ela até ele voltar.
+    const representadas = (await representacoesEmVigor(deps.db, agora, { representanteId: linha.id })).map((r) => r.equipeId);
 
     // Ausente: confirmada, já começada e ainda não encerrada (em curso, ou vencida até o retorno ser confirmado).
     const hoje = diaDe(deps.agora());
@@ -132,7 +152,8 @@ export function criarAutenticacao(deps: Deps) {
       email: linha.email,
       perfil: linha.perfil,
       equipeId: linha.equipeId,
-      equipesSupervisionadas: supervisionadas.map((e) => e.id),
+      equipesSupervisionadas: [...titulares.map((e) => e.id), ...representadas],
+      equipesRepresentadas: representadas,
       ativo: linha.ativo,
       senhaProvisoria: linha.senhaProvisoria,
       assinaturaPath: linha.assinaturaPath,

@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type MiddlewareHandler } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import {
@@ -16,6 +16,7 @@ import {
   recusarAusencia,
   responderFimDaAusencia,
 } from "../dominio/ausencia-atos";
+import { sincronizarRepresentacao } from "../dominio/representacao";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { esquemaPaginacao, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
@@ -35,6 +36,15 @@ const assinado = z.object({ assinar: z.literal(true, { error: "Confirme a assina
  */
 export function rotasAusencias(deps: Deps, { autenticar }: Autenticacao) {
   const r = new Hono<Ambiente>();
+
+  // A ausência do supervisor é o que faz o representante assumir (e o retorno dele é o que devolve a equipe): depois de qualquer
+  // ato que deu certo, a representação é conferida na hora, sem esperar a tarefa de hora em hora.
+  const conferirRepresentacao: MiddlewareHandler<Ambiente> = async (c, proximo) => {
+    await proximo();
+    if (c.req.method !== "GET" && c.res.status < 400) await sincronizarRepresentacao(deps.db, deps.agora());
+  };
+  r.use("/ausencias", conferirRepresentacao);
+  r.use("/ausencias/*", conferirRepresentacao);
 
   /**
    * As minhas ausências e as das equipes que supervisiono (o admin vê todas). Filtros: `usuario_id`, `equipe_id`, `situacao`

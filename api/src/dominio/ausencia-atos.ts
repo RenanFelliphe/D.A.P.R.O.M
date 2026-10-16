@@ -3,7 +3,7 @@ import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
 import { ausencia, ausenciaAto, equipe, usuario, type AusenciaFormaDeEncerramento } from "../db/schema";
 import type { Deps } from "../deps";
-import { ehSupervisor, type UsuarioAutenticado } from "../http/autenticacao";
+import { ehSupervisorTitular, type UsuarioAutenticado } from "../http/autenticacao";
 import { ErroApi, conflito, invalido, naoEncontrado, proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { registrarAuditoria } from "./auditoria";
@@ -103,6 +103,10 @@ function exigirSupervisorDaEquipe(eu: UsuarioAutenticado, a: LinhaAusencia) {
   // A própria ausência do supervisor, que ele registrou, é dele mesmo: não depende da equipe em que ela foi gravada.
   const propria = a.origem === "propria" && a.usuarioId === eu.id;
   if (!propria && !eu.equipesSupervisionadas.includes(a.equipeId)) throw proibido("Só o supervisor da equipe faz isto");
+  // A ausência que o supervisor registrou para si é só dele: o representante, que assume a equipe, não age sobre ela.
+  if (a.origem === "propria" && a.usuarioId !== eu.id) throw proibido("A ausência do supervisor só ele altera");
+  // Ninguém responde ao próprio pedido: o representante que pede ausência espera o supervisor voltar.
+  if (a.usuarioId === eu.id && !propria) throw proibido("Você não responde ao seu próprio pedido de ausência");
   // O supervisor ausente não age pela equipe: só cuida da própria ausência.
   if (eu.ausencia && a.usuarioId !== eu.id) throw new ErroApi(403, "usuario_ausente", "Você está ausente: só a sua própria ausência pode ser alterada por você");
 }
@@ -271,12 +275,15 @@ export async function pedirOuRegistrarAusencia(deps: Deps, eu: UsuarioAutenticad
     let equipeId: string;
     if (deOutra) {
       if (!pessoa.equipeId || !eu.equipesSupervisionadas.includes(pessoa.equipeId)) throw proibido("Só o supervisor da equipe registra a ausência de outra pessoa");
+      // A ausência do supervisor é registrada por ele mesmo; é ela que faz o representante assumir.
+      const [daEquipe] = await tx.select({ supervisorId: equipe.supervisorId }).from(equipe).where(eq(equipe.id, pessoa.equipeId));
+      if (daEquipe?.supervisorId === pessoa.id) throw proibido("A ausência do supervisor é registrada por ele mesmo");
       if (pessoa.perfil !== "tecnico" || !pessoa.ativo || pessoa.liberacao !== "liberado") throw invalido("usuario_invalido", "A ausência é de um técnico ativo da equipe");
       origem = "supervisor";
       equipeId = pessoa.equipeId;
-    } else if (ehSupervisor(eu)) {
+    } else if (ehSupervisorTitular(eu)) {
       origem = "propria";
-      equipeId = pessoa.equipeId ?? eu.equipesSupervisionadas[0]!;
+      equipeId = pessoa.equipeId ?? eu.equipesSupervisionadas.find((e) => !eu.equipesRepresentadas.includes(e))!;
     } else {
       origem = "pedido";
       if (!pessoa.equipeId) throw conflito("sem_equipe", "Você não está em uma equipe: não há supervisor para responder ao pedido");

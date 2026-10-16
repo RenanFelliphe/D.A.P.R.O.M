@@ -33,6 +33,7 @@ import { EmailEmMemoria } from "./servicos/email";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
+import { garantirRepresentantes } from "./dominio/representacao";
 
 const PORTA = Number(process.env.PORT ?? 3333);
 const SENHA = "daprom123";
@@ -126,6 +127,7 @@ async function main() {
   await criar("tec3", "Tomás Técnico", "tecnico", "INSTRUM", { cargo: "Técnico em Instrumentação" });
   await db.update(equipe).set({ supervisorId: sup1 }).where(eq(equipe.id, equipes.SERV_ESP!));
   await db.update(equipe).set({ supervisorId: sup2 }).where(eq(equipe.id, equipes.INSTRUM!));
+  await garantirRepresentantes(db);
 
   // O SAP simulado: as ordens de exemplo (o modo local recomeça igual a cada subida).
   console.log(`SAP simulado: ${await carregarOrdensDeExemplo(db)} ordens de exemplo`);

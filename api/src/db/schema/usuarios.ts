@@ -21,6 +21,13 @@ export type Liberacao = (typeof LIBERACOES)[number];
 export const SITUACOES_REGISTRO = ["ativo", "afastado", "desligado", "fora_do_registro"] as const;
 export type SituacaoRegistro = (typeof SITUACOES_REGISTRO)[number];
 
+/**
+ * Por que o representante está no comando da equipe: o supervisor está ausente (ausência registrada, em curso ou vencida) ou
+ * ficou `DIAS_SEM_ATIVIDADE` dias sem fazer nada no sistema (ver `dominio/representacao.ts`).
+ */
+export const MOTIVOS_DA_REPRESENTACAO = ["ausencia", "inatividade"] as const;
+export type MotivoDaRepresentacao = (typeof MOTIVOS_DA_REPRESENTACAO)[number];
+
 /** `equipe.supervisorId` e `usuario.equipeId` se referenciam; o Drizzle cria a segunda chave depois das duas tabelas. */
 export const equipe = pgTable(
   "equipe",
@@ -31,8 +38,22 @@ export const equipe = pgTable(
     centroTrabalho: text().notNull().unique(),
     /** Destinatário dos alertas; sem supervisor, vão aos administradores ativos. */
     supervisorId: uuid().references((): AnyPgColumn => usuario.id),
+    /**
+     * Quem substitui o supervisor quando ele se ausenta: um membro ativo e liberado da própria equipe, que não é o supervisor.
+     * Toda equipe com gente tem um (a `api` escolhe quando falta); fica nulo só na equipe sem membro elegível.
+     */
+    representanteId: uuid().references((): AnyPgColumn => usuario.id),
+    /** Desde quando o representante está no comando; nulo enquanto o supervisor responde pela equipe. Gravado pela `api` para avisar uma vez só. */
+    representacaoDesde: instante(),
+    representacaoMotivo: text({ enum: MOTIVOS_DA_REPRESENTACAO }),
   },
-  (t) => [index("equipe_supervisor_idx").on(t.supervisorId)],
+  (t) => [
+    check("equipe_representacao_completa", sql`(${t.representacaoDesde} is null) = (${t.representacaoMotivo} is null)`),
+    check("equipe_representacao_motivo_check", emLista(t.representacaoMotivo, MOTIVOS_DA_REPRESENTACAO)),
+    check("equipe_representante_diferente", sql`${t.representanteId} is null or ${t.supervisorId} is null or ${t.representanteId} <> ${t.supervisorId}`),
+    index("equipe_supervisor_idx").on(t.supervisorId),
+    index("equipe_representante_idx").on(t.representanteId),
+  ],
 ).enableRLS();
 
 export const usuario = pgTable(
@@ -80,6 +101,11 @@ export const usuario = pgTable(
     /** O que o registro de funcionários diz desta pessoa na última conferência; nulo até a primeira. */
     situacaoRegistro: text({ enum: SITUACOES_REGISTRO }),
     registroConferidoEm: instante(),
+    /**
+     * A última vez que a pessoa usou o sistema (qualquer chamada autenticada, anotada no máximo a cada poucos minutos). Quando o
+     * supervisor passa `DIAS_SEM_ATIVIDADE` dias sem nenhuma, o representante da equipe assume.
+     */
+    ultimaAtividadeEm: instante().notNull().defaultNow(),
   },
   (t) => [
     check("usuario_perfil_check", emLista(t.perfil, PERFIS)),

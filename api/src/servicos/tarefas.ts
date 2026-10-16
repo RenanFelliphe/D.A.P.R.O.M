@@ -6,6 +6,7 @@ import { manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
 import { manipularLeituraSap } from "./leitura-sap";
 import { fecharTemporadasVencidas } from "../dominio/fechamento-temporada";
 import { conferirAusencias } from "../dominio/ausencia";
+import { garantirRepresentantes, sincronizarRepresentacao } from "../dominio/representacao";
 import { verificarCiclos } from "../dominio/preventivas";
 import { agendarLeituraDiariaRh, manipularConferenciaRh, manipularLeituraRh } from "../dominio/rh";
 
@@ -165,6 +166,10 @@ export function iniciarTarefas(deps: Deps): () => void {
         ultimaConferenciaDeAusencias = agora;
         // Idempotente: a subida e a rodada não repetem nada. Uma falha aqui não impede as tarefas da rodada.
         await conferirAusencias(deps.db, deps.agora()).catch((erro) => console.error("Falha ao conferir as ausências:", erro));
+        // Depois das ausências (o início aplicado vale para o representante): toda equipe com representante e quem responde por ela.
+        await garantirRepresentantes(deps.db)
+          .then(() => sincronizarRepresentacao(deps.db, deps.agora()))
+          .catch((erro) => console.error("Falha ao conferir os representantes das equipes:", erro));
       }
       if (agora - ultimoFechamentoDeTemporadas >= minutos(INTERVALO_TEMPORADAS_MIN)) {
         ultimoFechamentoDeTemporadas = agora;

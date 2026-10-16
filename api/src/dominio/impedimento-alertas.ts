@@ -34,6 +34,8 @@ const colunas = {
   usuarioAlvoNome: alvoDaAusencia.nome,
   /** A equipe da ausência (é nela que o supervisor responde). */
   ausenciaEquipeId: ausencia.equipeId,
+  /** Só nos alertas da representação (`representacao_*`): a equipe cujo representante assumiu ou devolveu o comando. */
+  representacaoEquipeId: alerta.equipeId,
   detalhe: alerta.detalhe,
   emailEnviadoEm: alerta.emailEnviadoEm,
   lidoEm: alerta.lidoEm,

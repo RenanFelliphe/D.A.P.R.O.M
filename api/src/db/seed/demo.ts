@@ -4,6 +4,7 @@ import type { Deps } from "../../deps";
 import { emailDoNome, gerarSenhaInicial } from "../../dominio/usuarios";
 import { processarEventos } from "../../dominio/eventos";
 import { avisarAusencia, conferirAusencias } from "../../dominio/ausencia";
+import { garantirRepresentantes } from "../../dominio/representacao";
 import { dataBr, somarDias } from "../../dominio/tempo";
 import type { UsuarioAutenticado } from "../../http/autenticacao";
 import { enfileirarTarefa } from "../../servicos/fila";
@@ -118,7 +119,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
       await db.update(usuario).set({ assinaturaPath: id, assinaturaEm: deps.agora() }).where(eq(usuario.id, u.id));
       u.assinaturaPath = id;
     }
-    return { id: u.id, nome: u.nome, matricula: u.matricula, email: u.email, perfil: u.perfil, equipeId: u.equipeId, equipesSupervisionadas: (await db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, u.id))).map((e) => e.id), ativo: u.ativo, senhaProvisoria: u.senhaProvisoria, assinaturaPath: u.assinaturaPath, ausencia: null } satisfies UsuarioAutenticado;
+    return { id: u.id, nome: u.nome, matricula: u.matricula, email: u.email, perfil: u.perfil, equipeId: u.equipeId, equipesSupervisionadas: (await db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, u.id))).map((e) => e.id), equipesRepresentadas: [], ativo: u.ativo, senhaProvisoria: u.senhaProvisoria, assinaturaPath: u.assinaturaPath, ausencia: null } satisfies UsuarioAutenticado;
   };
   const garantir = async (matricula: string, nome: string, perfil: Perfil, centro: string | null, cargo: string | null = null) => {
     let u = await carregarUsuario(matricula);
@@ -153,6 +154,8 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const adm = await garantir("adm", "Ana Administradora", "admin", null);
   await db.update(equipe).set({ supervisorId: sup1.id }).where(and(eq(equipe.id, equipes.SERV_ESP!), sql`${equipe.supervisorId} is null`));
   await db.update(equipe).set({ supervisorId: sup2.id }).where(and(eq(equipe.id, equipes.INSTRUM!), sql`${equipe.supervisorId} is null`));
+  // Toda equipe tem quem represente o supervisor (o técnico mais antigo da equipe que não é ele).
+  await garantirRepresentantes(db);
 
   // O registro de funcionários simulado ganha o funcionário de cada usuário (e uns 30 sem conta, para demonstrar o cadastro).
   if (deps.config.rhSimulado) await carregarRegistroDosUsuarios(db, { aleatorios: 30, agora: real });

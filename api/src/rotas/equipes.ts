@@ -7,10 +7,11 @@ import { ausenciaDaPessoaParaApi, ausentesEm } from "../dominio/ausencia";
 import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeEquipes, equipesVisiveis } from "../dominio/busca";
 import { listarOs } from "../dominio/painel-os";
+import { garantirRepresentantes, motivoDeNaoPoderRepresentar, rotuloDoMotivo, sincronizarRepresentacao } from "../dominio/representacao";
 import { diaDe } from "../dominio/tempo";
 import { equipeParaApi } from "../dominio/usuarios";
 import { podeVerEquipe, type Autenticacao, type Ambiente } from "../http/autenticacao";
-import { codigoPostgres, conflito, invalido, naoEncontrado } from "../http/erros";
+import { codigoPostgres, conflito, invalido, naoEncontrado, proibido } from "../http/erros";
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
@@ -52,17 +53,21 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
   r.patch("/equipes/:id", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ nome: textoObrigatorio.optional(), supervisor_id: uuid.nullable().optional() }));
-    const [atual] = await deps.db.select({ id: equipe.id, nome: equipe.nome, supervisorId: equipe.supervisorId }).from(equipe).where(eq(equipe.id, id));
+    const [atual] = await deps.db.select({ id: equipe.id, nome: equipe.nome, supervisorId: equipe.supervisorId, representanteId: equipe.representanteId }).from(equipe).where(eq(equipe.id, id));
     if (!atual) throw naoEncontrado("Equipe não encontrada");
     await exigirSupervisor(deps, dados.supervisor_id);
+    // O novo supervisor não pode ser o representante da própria equipe: se era, a função passa a outro (abaixo).
+    const eraORepresentante = !!dados.supervisor_id && dados.supervisor_id === atual.representanteId;
 
     await deps.db
       .update(equipe)
       .set({
         ...(dados.nome !== undefined && { nome: dados.nome }),
         ...(dados.supervisor_id !== undefined && { supervisorId: dados.supervisor_id }),
+        ...(eraORepresentante && { representanteId: null, representacaoDesde: null, representacaoMotivo: null }),
       })
       .where(eq(equipe.id, id));
+    if (dados.supervisor_id !== undefined) await garantirRepresentantes(deps.db, [id]);
     const mudancas = diferencas({ nome: atual.nome, supervisor_id: atual.supervisorId }, { nome: dados.nome, supervisor_id: dados.supervisor_id });
     if (Object.keys(mudancas).length > 0) {
       await registrarAuditoria(deps.db, c.get("usuario"), {
@@ -75,6 +80,41 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
       });
     }
     return responder(c, {});
+  });
+
+  /**
+   * Designa o representante da equipe: um técnico ativo e liberado dela, que não é o supervisor. É ele quem assume a supervisão
+   * quando o supervisor se ausenta (ausência registrada) ou fica 3 dias sem usar o sistema. Só o supervisor titular da equipe e o
+   * admin designam; o representante no comando não troca o próprio representante. A equipe nunca fica sem representante: a
+   * `api` escolhe um quando o atual deixa de servir (desativado, mudou de equipe ou virou o supervisor).
+   */
+  r.put("/equipes/:id/representante", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    const id = lerId(c);
+    const { usuario_id } = await lerCorpo(c, z.object({ usuario_id: uuid }));
+    const [atual] = await deps.db.select().from(equipe).where(eq(equipe.id, id));
+    if (!atual || !podeVerEquipe(eu, id)) throw naoEncontrado("Equipe não encontrada");
+    const titular = eu.equipesSupervisionadas.includes(id) && !eu.equipesRepresentadas.includes(id);
+    if (eu.perfil !== "admin" && !titular) throw proibido("Só o supervisor da equipe ou o administrador designa o representante");
+    const motivoRecusa = await motivoDeNaoPoderRepresentar(deps.db, id, usuario_id);
+    if (motivoRecusa) throw invalido("representante_invalido", motivoRecusa);
+
+    if (atual.representanteId !== usuario_id) {
+      await deps.db.update(equipe).set({ representanteId: usuario_id, representacaoDesde: null, representacaoMotivo: null }).where(eq(equipe.id, id));
+      // Se a equipe já está nas mãos de um representante, o novo assume e é avisado.
+      await sincronizarRepresentacao(deps.db, deps.agora(), [id]);
+      const [novo] = await deps.db.select({ nome: usuario.nome }).from(usuario).where(eq(usuario.id, usuario_id));
+      await registrarAuditoria(deps.db, eu, {
+        entidade: "equipe",
+        verbo: "designar_representante",
+        entidadeId: id,
+        alvo: atual.nome,
+        resumo: `Designou ${novo?.nome ?? "um técnico"} como representante da equipe ${atual.nome}`,
+        detalhes: { representante_id: { de: atual.representanteId, para: usuario_id } },
+      });
+    }
+    const [e] = await deps.db.select().from(equipe).where(eq(equipe.id, id));
+    return responder(c, { equipe: equipeParaApi(e!) });
   });
 
   /**
@@ -180,7 +220,13 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
     // O selo "Ausente até DD/MM" de cada membro.
     const ausentes = await ausentesEm(deps.db, [...membros.map((m) => m.id), ...(supervisor ? [supervisor.id] : [])], diaDe(deps.agora()));
 
-    return responder(c, { equipe: equipeParaApi(e), supervisor: supervisor ? { ...supervisor, ausencia: ausenciaDaPessoaParaApi(ausentes.get(supervisor.id)) } : null, membros: membros.map((m) => ({ ...m, ausencia: ausenciaDaPessoaParaApi(ausentes.get(m.id)) })), contagemPorStatus, totalOs: total, osRecentes: itens });
+    // O representante (que assume quando o supervisor se ausenta) e, se já assumiu, desde quando e por quê.
+    const representante = membros.find((m) => m.id === e.representanteId);
+    const representacao = e.representacaoDesde && e.representacaoMotivo
+      ? { desde: e.representacaoDesde, motivo: e.representacaoMotivo, rotulo: rotuloDoMotivo(e.representacaoMotivo, ausentes.get(e.supervisorId ?? "")?.retorno) }
+      : null;
+
+    return responder(c, { equipe: equipeParaApi(e), supervisor: supervisor ? { ...supervisor, ausencia: ausenciaDaPessoaParaApi(ausentes.get(supervisor.id)) } : null, representante: representante ? { id: representante.id, nome: representante.nome, matricula: representante.matricula } : null, representacao, membros: membros.map((m) => ({ ...m, ausencia: ausenciaDaPessoaParaApi(ausentes.get(m.id)) })), contagemPorStatus, totalOs: total, osRecentes: itens });
   });
 
   return r;

@@ -17,6 +17,7 @@ import { codigoPostgres, conflito, invalido, naoEncontrado, proibido } from "../
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { booleanoDaConsulta, emailInstitucional, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
+import { garantirRepresentantes } from "../dominio/representacao";
 import { senhaNova } from "./auth";
 
 /** Identificação definitiva da pessoa na empresa; não é o login (o login é o e-mail institucional). */
@@ -107,6 +108,8 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       resumo: admin ? `Cadastrou o usuário ${nome} (${dados.perfil})` : `Cadastrou o técnico ${nome}, que aguarda a liberação`,
       detalhes: { matricula: funcionario.matricula, perfil: admin ? dados.perfil : "tecnico", equipe_id: equipeId },
     });
+    // A equipe que ainda não tinha quem represente o supervisor ganha o primeiro técnico liberado.
+    await garantirRepresentantes(deps.db);
     return responder(c, { id: conta.id }, 201);
   });
 
@@ -157,6 +160,9 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
         ...(reativando && { situacaoRegistro: "ativo" as const, registroConferidoEm: deps.agora() }),
       })
       .where(eq(usuario.id, id));
+
+    // Quem saiu da equipe, foi desativado ou mudou de perfil não pode continuar como representante: a equipe ganha outro.
+    await garantirRepresentantes(deps.db);
 
     // Desativar bloqueia a `api` na hora; o Supabase só é revogado depois que a fila offline pendente subir
     // (ver `POST /eventos`). Reativar desfaz uma revogação anterior.
@@ -239,6 +245,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     const id = lerId(c);
     const eu = c.get("usuario");
     const nome = await decidirPendente(id, { liberacao: "liberado", liberadoPorId: eu.id, liberadoEm: deps.agora() });
+    await garantirRepresentantes(deps.db);
     await registrarAuditoria(deps.db, eu, { entidade: "usuario", verbo: "liberar", entidadeId: id, alvo: nome, resumo: `Liberou o acesso de ${nome}` });
     return responder(c, {});
   });

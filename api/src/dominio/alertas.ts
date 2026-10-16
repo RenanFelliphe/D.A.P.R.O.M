@@ -1,20 +1,21 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { alerta, equipe, importacao, usuario, type AlertaTipo } from "../db/schema";
 import { enfileirarTarefa } from "../servicos/fila";
 
 /**
- * Quem recebe os alertas de uma equipe: o supervisor ativo dela; sem supervisor (ou desativado), todos os administradores
- * ativos (Impedimento, item 1).
+ * Quem recebe os alertas de uma equipe: o supervisor ativo dela e, enquanto o representante está no comando (o supervisor
+ * ausente ou parado), também o representante; sem ninguém disso, todos os administradores ativos (Impedimento, item 1).
  */
 export async function destinatariosDaEquipe(db: Db, equipeId: string): Promise<{ id: string; email: string | null }[]> {
-  const [e] = await db.select({ supervisorId: equipe.supervisorId }).from(equipe).where(eq(equipe.id, equipeId));
-  if (e?.supervisorId) {
-    const [sup] = await db
-      .select({ id: usuario.id, email: usuario.email })
-      .from(usuario)
-      .where(and(eq(usuario.id, e.supervisorId), eq(usuario.ativo, true)));
-    if (sup) return [sup];
+  const [e] = await db
+    .select({ supervisorId: equipe.supervisorId, representanteId: equipe.representanteId, representacaoDesde: equipe.representacaoDesde })
+    .from(equipe)
+    .where(eq(equipe.id, equipeId));
+  const ids = [e?.supervisorId, e?.representacaoDesde ? e.representanteId : null].filter((id): id is string => !!id);
+  if (ids.length > 0) {
+    const responsaveis = await db.select({ id: usuario.id, email: usuario.email }).from(usuario).where(and(inArray(usuario.id, ids), eq(usuario.ativo, true)));
+    if (responsaveis.length > 0) return responsaveis;
   }
   return db.select({ id: usuario.id, email: usuario.email }).from(usuario).where(and(eq(usuario.perfil, "admin"), eq(usuario.ativo, true)));
 }

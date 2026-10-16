@@ -7,6 +7,7 @@ import { conflito, ErroApi, invalido } from "../http/erros";
 import { enfileirarTarefa } from "../servicos/fila";
 import type { FuncionarioRh } from "../servicos/rh";
 import { diferencas, registrarAuditoria, type Ator } from "./auditoria";
+import { garantirRepresentantes } from "./representacao";
 
 /** Quem aparece na auditoria quando a mudança veio do registro de funcionários e não de uma pessoa (`ator_id` nulo). */
 export const ATOR_REGISTRO: Ator = { id: null, nome: "Registro de funcionários" };
@@ -183,6 +184,9 @@ export async function aplicarConferencia(deps: Deps, u: LinhaUsuario, funcionari
       }
     }
   }
+
+  // Quem perdeu o acesso não pode ser o representante da equipe: a equipe ganha outro.
+  if (desativado || recusado) await garantirRepresentantes(db);
 
   // Mudança de situação sem efeito no acesso (ex.: virou afastado) também fica registrada, para o admin saber.
   if (!desativado && !recusado && u.situacaoRegistro && u.situacaoRegistro !== situacao && !perdeAcesso(situacao)) {

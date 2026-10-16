@@ -5,6 +5,7 @@ import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
 import { ESTADOS_TREINAMENTO, ausencia, equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
 import { ausenciaDaPessoaParaApi, ausenciaVigenteDe } from "../dominio/ausencia";
+import { representacoesEmVigor, rotuloDoMotivo } from "../dominio/representacao";
 import { resumoParaMe } from "../dominio/gamificacao-leituras";
 import { ganhosDe } from "../dominio/lancamentos";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
@@ -28,6 +29,16 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
     const supervisionadas = eu.equipesSupervisionadas.length
       ? await deps.db.select({ id: equipe.id, nome: equipe.nome }).from(equipe).where(inArray(equipe.id, eu.equipesSupervisionadas)).orderBy(equipe.nome)
       : [];
+    // As equipes em que a pessoa está no comando agora, como representante do supervisor (a faixa "Você responde pela equipe X").
+    const representadas = eu.equipesRepresentadas.length
+      ? await deps.db
+          .select({ id: equipe.id, nome: equipe.nome, supervisorNome: usuario.nome, desde: equipe.representacaoDesde, motivo: equipe.representacaoMotivo })
+          .from(equipe)
+          .innerJoin(usuario, eq(usuario.id, equipe.supervisorId))
+          .where(inArray(equipe.id, eu.equipesRepresentadas))
+          .orderBy(equipe.nome)
+      : [];
+    const emVigor = await representacoesEmVigor(deps.db, deps.agora(), { representanteId: eu.id });
     const criadores = await nomesDosCriadores(deps.db, [u!]);
     // A ausência que está valendo (a faixa "Você está ausente até DD/MM" e a tela de retorno): os dados dela e o que está em andamento.
     const vigente = await ausenciaVigenteDe(deps.db, eu.id, diaDe(deps.agora()));
@@ -39,6 +50,15 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
         : null,
       equipe: e ? equipeParaApi(e) : null,
       equipesSupervisionadas: supervisionadas,
+      /** As equipes que a pessoa representa agora (o supervisor está ausente ou parado); cada uma já entra em `equipesSupervisionadas`. */
+      equipesRepresentadas: representadas.map((e) => ({
+        id: e.id,
+        nome: e.nome,
+        supervisorNome: e.supervisorNome,
+        desde: e.desde,
+        motivo: e.motivo ?? emVigor.find((v) => v.equipeId === e.id)?.motivo ?? null,
+        rotulo: rotuloDoMotivo(e.motivo ?? emVigor.find((v) => v.equipeId === e.id)?.motivo ?? "ausencia"),
+      })),
       /** A patente e os pontos da temporada para a barra superior; nulo para quem não joga (o admin). */
       gamificacao: await resumoParaMe(deps, eu),
     });

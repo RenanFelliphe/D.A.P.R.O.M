@@ -19,6 +19,9 @@ export const ALERTA_TIPOS_DE_AUSENCIA = [
   "ausencia_cancelada",
 ] as const;
 
+/** Os avisos de que o representante assumiu a equipe ou de que o supervisor voltou: apontam para a equipe. */
+export const ALERTA_TIPOS_DE_REPRESENTACAO = ["representacao_iniciada", "representacao_encerrada"] as const;
+
 export const ALERTA_TIPOS = [
   "bloqueio",
   "conflito_planejamento",
@@ -29,6 +32,7 @@ export const ALERTA_TIPOS = [
   "preventiva_vencida",
   "inspecao_com_pendencia",
   ...ALERTA_TIPOS_DE_AUSENCIA,
+  ...ALERTA_TIPOS_DE_REPRESENTACAO,
 ] as const;
 export type AlertaTipo = (typeof ALERTA_TIPOS)[number];
 
@@ -52,6 +56,8 @@ export const alerta = pgTable(
     ausenciaId: uuid().references(() => ausencia.id),
     /** A pessoa da ausência, nos mesmos alertas. */
     usuarioAlvoId: uuid().references(() => usuario.id),
+    /** Só nos alertas da representação da equipe (`representacao_*`). */
+    equipeId: uuid().references(() => equipe.id),
     /** Alerta de OS: supervisor da equipe; sem supervisor, um alerta por administrador ativo. Falha de importação: ver `dominio/alertas.ts`. */
     destinatarioId: uuid()
       .notNull()
@@ -65,7 +71,7 @@ export const alerta = pgTable(
     check("alerta_tipo_check", emLista(t.tipo, ALERTA_TIPOS)),
     check(
       "alerta_alvo",
-      sql`(${t.tipo} = 'falha_importacao' and ${t.importacaoId} is not null and ${t.osId} is null and ${t.ausenciaId} is null) or (${emLista(t.tipo, ALERTA_TIPOS_DE_AUSENCIA)} and ${t.ausenciaId} is not null and ${t.osId} is null and ${t.importacaoId} is null) or (${t.tipo} <> 'falha_importacao' and not ${emLista(t.tipo, ALERTA_TIPOS_DE_AUSENCIA)} and ${t.osId} is not null and ${t.importacaoId} is null and ${t.ausenciaId} is null)`,
+      sql`(${t.tipo} = 'falha_importacao' and ${t.importacaoId} is not null and ${t.osId} is null and ${t.ausenciaId} is null and ${t.equipeId} is null) or (${emLista(t.tipo, ALERTA_TIPOS_DE_AUSENCIA)} and ${t.ausenciaId} is not null and ${t.osId} is null and ${t.importacaoId} is null and ${t.equipeId} is null) or (${emLista(t.tipo, ALERTA_TIPOS_DE_REPRESENTACAO)} and ${t.equipeId} is not null and ${t.osId} is null and ${t.importacaoId} is null and ${t.ausenciaId} is null) or (${t.tipo} <> 'falha_importacao' and not ${emLista(t.tipo, ALERTA_TIPOS_DE_AUSENCIA)} and not ${emLista(t.tipo, ALERTA_TIPOS_DE_REPRESENTACAO)} and ${t.osId} is not null and ${t.importacaoId} is null and ${t.ausenciaId} is null and ${t.equipeId} is null)`,
     ),
     check("alerta_alvo_da_ausencia", sql`(${t.ausenciaId} is null) = (${t.usuarioAlvoId} is null)`),
     check(
