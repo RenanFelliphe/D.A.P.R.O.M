@@ -30,7 +30,8 @@ import { chamar, ErroCliente } from "@/lib/cliente-api";
 import { gravarRascunho, useRascunhoApr } from "@/state/rascunho-apr";
 
 interface NovaAprScreenProps {
-  os: { id: string; rotulo: string; titulo: string; local: string };
+  /** `reservada`: o supervisor reservou a OS a quem está aplicando a APR, que é o responsável e não o troca. */
+  os: { id: string; rotulo: string; titulo: string; local: string; reservada?: boolean };
   usuarioId: string;
   colegas: Colega[];
   /** Os modelos publicados, com a orientação e o recomendado pela leitura da OS (`GET /os/{id}/modelos-apr`). */
@@ -155,7 +156,7 @@ export function NovaAprScreen({ os, usuarioId, colegas, escolha }: NovaAprScreen
                 {erro}
               </Notice>
             )}
-            <ParticipantesApr equipe={equipe} usuarioId={usuarioId} marcados={marcados} responsavelId={responsavelId} aoAlternar={alternarParticipante} aoTornarResponsavel={setResponsavelId} />
+            <ParticipantesApr equipe={equipe} usuarioId={usuarioId} marcados={marcados} responsavelId={responsavelId} aoAlternar={alternarParticipante} aoTornarResponsavel={os.reservada ? undefined : setResponsavelId} />
             {modelo && <RiscosApr riscos={modelo.riscos} itens={modelo.itens} marcados={riscos} aoAlternar={alternarRisco} />}
           </>
         }

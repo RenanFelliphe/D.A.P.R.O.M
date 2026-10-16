@@ -3,7 +3,9 @@ import { DocumentosAnexados } from "@/components/ui/DocumentosAnexados";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
 import { Panel } from "@/components/web/Panel";
 import type { ExecucaoDaOs } from "@/data/detalhe";
+import { itensDaInspecao } from "@/lib/checklist-inspecao";
 import { dataHora, duracao, hora } from "@/lib/formatar";
+import { ChecklistDaExecucao } from "./ChecklistDaExecucao";
 import { FotosDaEvidencia } from "./FotosDaEvidencia";
 
 const rotuloMedida = { color: "var(--ink4)" } as const;
@@ -31,6 +33,7 @@ function Medida({ rotulo, valor }: { rotulo: string; valor: string }) {
 
 function ExecucaoCartao({ execucao: e, numero, total }: { execucao: ExecucaoDaOs; numero: number; total: number }) {
   const r = e.resultado ? resultado[e.resultado] : null;
+  const inspecao = itensDaInspecao(e.dados_inspecao);
   const totalMin = e.fim ? (new Date(e.fim).getTime() - new Date(e.inicio).getTime()) / 60_000 : null;
   return (
     <div className="stack g12" style={{ padding: 14, borderRadius: 10, background: "#fff", border: "1px solid var(--line)" }}>
@@ -89,6 +92,8 @@ function ExecucaoCartao({ execucao: e, numero, total }: { execucao: ExecucaoDaOs
           <p style={{ fontSize: 14.5 }}>{e.descricao_atividade}</p>
         </div>
       )}
+
+      {inspecao && inspecao.length > 0 && <ChecklistDaExecucao itens={inspecao} />}
 
       <FotosDaEvidencia fotos={e.fotos} descricao="Foto da execução" />
       <DocumentosAnexados documentos={e.documentos ?? []} />

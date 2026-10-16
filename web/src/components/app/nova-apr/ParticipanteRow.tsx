@@ -12,7 +12,8 @@ interface ParticipanteRowProps {
   /** Variação de cor do avatar. */
   avatar?: "av2" | "av3";
   aoAlternar: () => void;
-  aoTornarResponsavel: () => void;
+  /** Ausente quando o responsável é fixo: o botão "Tornar responsável" some. */
+  aoTornarResponsavel?: () => void;
 }
 
 /** Linha de participante: checkbox, avatar, nome/matrícula e papel (responsável ou executor). */
@@ -40,9 +41,11 @@ export function ParticipanteRow({ colega, voce, marcado, responsavel, avatar, ao
             <Badge tone="neu" style={{ color: "var(--ink)", fontWeight: 600 }}>
               Executor
             </Badge>
-            <Button variant="ghost" sm onClick={aoTornarResponsavel}>
-              Tornar responsável
-            </Button>
+            {aoTornarResponsavel && (
+              <Button variant="ghost" sm onClick={aoTornarResponsavel}>
+                Tornar responsável
+              </Button>
+            )}
           </>
         ))}
     </div>

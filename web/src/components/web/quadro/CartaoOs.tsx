@@ -7,8 +7,11 @@ import { dataDoDia, diaMes } from "@/lib/formatar";
 import { OS_BLOQUEIO, OS_GUIADA } from "@/treino/ids";
 import { rotas } from "@/lib/rotas";
 
-/** Cartão de OS do quadro; leva ao detalhe da OS. A ciência e o PDF das encerradas só interessam à gestão. */
-export function CartaoOs({ os, gestao }: { os: OsDoQuadro; gestao: boolean }) {
+/**
+ * Cartão de OS do quadro; leva ao detalhe da OS. A ciência e o PDF das encerradas só interessam à gestão. A OS que o supervisor
+ * reservou a uma pessoa continua no quadro da equipe, com a marca de quem a fará (`usuarioId` é quem está vendo o quadro).
+ */
+export function CartaoOs({ os, gestao, usuarioId }: { os: OsDoQuadro; gestao: boolean; usuarioId: string }) {
   const programada = dataDoDia(os.data_fim_prog ?? os.data_inicio_prog).slice(0, 5);
   // O tutorial do campo de treino aponta para as duas OS do roteiro.
   const treino = os.id === OS_GUIADA ? "os-guiada" : os.id === OS_BLOQUEIO ? "os-bloqueio" : undefined;
@@ -45,6 +48,12 @@ export function CartaoOs({ os, gestao }: { os: OsDoQuadro; gestao: boolean }) {
       {os.status === "pendente" && (
         <Badge tone="blq" style={{ alignSelf: "flex-start", borderRadius: 6, fontSize: 12 }}>
           Aguardando nova APR
+        </Badge>
+      )}
+      {os.responsavel && (os.status === "liberada" || os.status === "pendente") && (
+        <Badge tone="brand" style={{ alignSelf: "flex-start", borderRadius: 6, fontSize: 12 }}>
+          <Icon name="user" size={13} />
+          {os.responsavel.id === usuarioId ? "Reservada para você" : `Reservada para ${os.responsavel.nome.split(" ")[0]}`}
         </Badge>
       )}
       {gestao && os.status === "encerrada" && (

@@ -1,13 +1,17 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { chamar, ErroCliente } from "@/lib/cliente-api";
+import type { PerguntaDoChecklist } from "@/lib/checklist-inspecao";
+import { chamar, ErroCliente, novoId } from "@/lib/cliente-api";
 import { textoDosPontosGanhos, type RespostaComPontos } from "@/lib/gamificacao";
 import { descreverIntervalo, rotuloDaBase, type BaseDoCiclo, type DetalheDoPlano, type Intervalo, type PlanoPreventiva } from "@/lib/preventivas";
 import { useToast } from "@/state/toast";
 import { CampoIntervalo } from "./CampoIntervalo";
+import { EditorDoChecklist, type PerguntaEditavel } from "./EditorDoChecklist";
+
+const comoEditaveis = (checklist: PerguntaDoChecklist[]): PerguntaEditavel[] => checklist.map((p) => ({ chave: novoId(), id: p.id, texto: p.texto }));
 
 interface EditorDoCicloProps {
   plano: PlanoPreventiva;
@@ -17,7 +21,8 @@ interface EditorDoCicloProps {
 
 /**
  * Regras do ciclo de um plano (admin e supervisor da equipe): o intervalo, de onde ele é contado, com quantos dias de
- * antecedência o aviso sai, a pausa e uma observação. Salvar confere o ciclo na hora: o vencimento novo pode já gerar o alerta.
+ * antecedência o aviso sai, a pausa e uma observação, e o checklist de inspeção que o técnico preenche ao encerrar cada OS do plano.
+ * Salvar confere o ciclo na hora: o vencimento novo pode já gerar o alerta.
  */
 export function EditorDoCiclo({ plano, aoSalvar, aoCancelar }: EditorDoCicloProps) {
   const base = useId();
@@ -27,8 +32,33 @@ export function EditorDoCiclo({ plano, aoSalvar, aoCancelar }: EditorDoCicloProp
   const [antecedencia, setAntecedencia] = useState(String(plano.antecedencia_dias));
   const [ativo, setAtivo] = useState(plano.ativo);
   const [observacao, setObservacao] = useState(plano.observacao ?? "");
+  // A lista de planos traz só o total de perguntas: o checklist vem do detalhe do plano, ao abrir o editor.
+  const [perguntas, setPerguntas] = useState<PerguntaEditavel[] | null>(() => (plano.checklist ? comoEditaveis(plano.checklist) : null));
+  const [original, setOriginal] = useState<PerguntaDoChecklist[] | null>(plano.checklist ?? null);
+  const [erroChecklist, setErroChecklist] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (original !== null) return;
+    let vivo = true;
+    chamar<DetalheDoPlano>("GET", `/preventivas/${plano.id}`)
+      .then((d) => {
+        if (!vivo) return;
+        const checklist = d.plano.checklist ?? [];
+        setOriginal(checklist);
+        setPerguntas(comoEditaveis(checklist));
+      })
+      .catch(() => vivo && setErroChecklist("Não foi possível carregar o checklist. Feche e abra o editor para tentar de novo."));
+    return () => {
+      vivo = false;
+    };
+  }, [plano.id, original]);
+
+  /** O checklist como vai para a `api`: sem as linhas em branco, com o `id` das perguntas que já existiam. */
+  const checklistEditado = (perguntas ?? []).map((p) => ({ id: p.id, texto: p.texto.trim() })).filter((p) => p.texto !== "");
+  const checklistMudou =
+    original !== null && JSON.stringify(checklistEditado) !== JSON.stringify(original.map((p) => ({ id: p.id, texto: p.texto })));
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
@@ -46,6 +76,7 @@ export function EditorDoCiclo({ plano, aoSalvar, aoCancelar }: EditorDoCicloProp
         antecedencia_dias: dias,
         ativo,
         observacao: observacao.trim() || null,
+        ...(checklistMudou && { checklist: checklistEditado }),
       });
       // Definir o intervalo de um plano que estava sem pontua o supervisor.
       const pontos = textoDosPontosGanhos(detalhe);
@@ -112,6 +143,22 @@ export function EditorDoCiclo({ plano, aoSalvar, aoCancelar }: EditorDoCicloProp
           />
         </div>
       </div>
+      <div className="field">
+        <label htmlFor={`${base}-checklist`}>Checklist de inspeção</label>
+        <span className="small">
+          As perguntas que o técnico marca ao encerrar cada OS deste plano. O item não marcado pede uma observação e avisa o supervisor da equipe. Sem
+          perguntas, a OS encerra sem checklist.
+        </span>
+        {erroChecklist ? (
+          <span className="entrada-retorno erro" role="alert">
+            {erroChecklist}
+          </span>
+        ) : perguntas === null ? (
+          <span className="small">Carregando o checklist…</span>
+        ) : (
+          <EditorDoChecklist id={`${base}-checklist`} perguntas={perguntas} aoMudar={setPerguntas} desabilitado={salvando} />
+        )}
+      </div>
       <label className="row g8" style={{ fontSize: 14, cursor: "pointer", alignItems: "center" }}>
         <input type="checkbox" checked={!ativo} onChange={(e) => setAtivo(!e.target.checked)} disabled={salvando} />
         Pausar o ciclo (sem contagem nem alertas até retomar)
@@ -125,7 +172,7 @@ export function EditorDoCiclo({ plano, aoSalvar, aoCancelar }: EditorDoCicloProp
         <Button variant="line" sm onClick={aoCancelar} disabled={salvando}>
           Cancelar
         </Button>
-        <Button variant="p" sm type="submit" disabled={salvando}>
+        <Button variant="p" sm type="submit" disabled={salvando || (original === null && erroChecklist === null)}>
           <Icon name={salvando ? "refresh" : "save"} size={16} className={salvando ? "spin" : undefined} />
           {salvando ? "Salvando…" : "Salvar ciclo"}
         </Button>

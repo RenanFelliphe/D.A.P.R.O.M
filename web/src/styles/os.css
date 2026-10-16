@@ -489,3 +489,105 @@ button.bcard {
   font-weight: 600;
   line-height: 1.2
 }
+
+/* Checklist de inspeção das preventivas: o encerramento da OS, o cartão do detalhe e o editor do ciclo. */
+.insp-lista {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none
+}
+
+.insp-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line2)
+}
+
+.insp-item:last-child {
+  border-bottom: 0
+}
+
+.insp-item[data-estado="pendente"] {
+  background: var(--blq-bg);
+  margin: 0 -12px;
+  padding: 10px 12px;
+  border-radius: 8px
+}
+
+.insp-marca {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.35
+}
+
+.insp-marca input[type=checkbox] {
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  accent-color: var(--brand);
+  flex: none
+}
+
+.insp-obs {
+  padding-left: 34px
+}
+
+.insp-obs .textarea {
+  min-height: 0
+}
+
+.insp-resposta {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px
+}
+
+.insp-caixa {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--ink4);
+  border-radius: 4px;
+  color: var(--enc)
+}
+
+.insp-caixa[data-marcado="true"] {
+  border-color: var(--enc)
+}
+
+.insp-caixa[data-marcado="false"] {
+  border-color: var(--blq);
+  color: var(--blq)
+}
+
+.insp-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none
+}
+
+.insp-editor li {
+  display: flex;
+  align-items: center;
+  gap: 6px
+}
+
+.insp-editor .input {
+  flex: 1 1 auto;
+  min-width: 0
+}

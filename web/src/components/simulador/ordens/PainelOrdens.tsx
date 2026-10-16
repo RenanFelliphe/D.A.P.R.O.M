@@ -24,7 +24,7 @@ import { VerMaisOrdem } from "./VerMaisOrdem";
 
 type Janela = { tipo: "manual" } | { tipo: "aleatorio" } | { tipo: "editar"; o: Ordem } | { tipo: "excluir"; o: Ordem } | { tipo: "ver"; o: Ordem } | { tipo: "massa"; acao: AcaoEmMassaDeOrdens } | null;
 
-const tonsDaSituacao: Record<SituacaoNoDaprom, BadgeTone> = { nao_lida: "neu", ignorada: "al", liberada: "lib", pendente: "al", em_execucao: "exe", encerrada: "enc", cancelada: "blq" };
+const tonsDaSituacao: Record<SituacaoNoDaprom, BadgeTone> = { nao_lida: "neu", ignorada: "al", liberada: "lib", pendente: "al", em_execucao: "exe", encerrada: "enc", cancelada: "blq", devolvida: "neu" };
 
 interface PainelOrdensProps {
   lista: ListaDeOrdens;

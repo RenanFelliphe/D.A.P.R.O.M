@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/Badge";
 import { DocumentosAnexados } from "@/components/ui/DocumentosAnexados";
 import { Icon } from "@/components/ui/Icon";
-import { MateriaisDaApr } from "@/components/ui/MateriaisDaApr";
 import { Panel, TableWrap } from "@/components/web/Panel";
 import type { AprDaOs, RespostaApr } from "@/data/detalhe";
 import { dataHora, hora } from "@/lib/formatar";
@@ -123,8 +122,6 @@ function AprCartao({ apr, numero, total }: { apr: AprDaOs; numero: number; total
           <DocumentosAnexados documentos={item.documentos ?? []} />
         </div>
       ))}
-
-      <MateriaisDaApr materiais={apr.materiais} />
 
       {apr.observacao_geral && (
         <span style={{ fontSize: 13.5 }}>

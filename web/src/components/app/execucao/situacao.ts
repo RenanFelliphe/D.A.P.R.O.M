@@ -10,6 +10,10 @@ export type Situacao =
   | { tipo: "outra_pessoa"; executor: string }
   /** A OS já foi encerrada ou cancelada. */
   | { tipo: "fechada" }
+  /** O supervisor devolveu a OS ao SAP. */
+  | { tipo: "devolvida" }
+  /** O supervisor reservou a OS a outra pessoa da equipe: só ela inicia a execução. */
+  | { tipo: "reservada"; responsavel: string }
   /** Há APR aprovada do dia, desta OS e ainda não usada: dá para iniciar. */
   | { tipo: "iniciar"; apr: Pick<AprDaApi, "id" | "concluida_em" | "participantes"> }
   | { tipo: "sem_apr" };
@@ -22,9 +26,11 @@ interface Entrada {
   abertas: ExecucaoAberta[];
   /** Instante de referência (o "hoje" das regras). */
   agora: Date;
+  /** A pessoa para quem a OS está reservada, se estiver. */
+  reservadaPara?: { id: string; nome: string } | null;
 }
 
-export function definirSituacao({ osStatus, usuarioId, execucoes, aprs, abertas, agora }: Entrada): Situacao {
+export function definirSituacao({ osStatus, usuarioId, execucoes, aprs, abertas, agora, reservadaPara }: Entrada): Situacao {
   const hoje = diaDe(agora);
 
   const esquecida = abertas.find((e) => diaDe(e.inicio) !== hoje);
@@ -40,6 +46,8 @@ export function definirSituacao({ osStatus, usuarioId, execucoes, aprs, abertas,
   if (deOutro) return { tipo: "outra_pessoa", executor: deOutro.executor.nome };
 
   if (osStatus === "encerrada" || osStatus === "cancelada") return { tipo: "fechada" };
+  if (osStatus === "devolvida") return { tipo: "devolvida" };
+  if (reservadaPara && reservadaPara.id !== usuarioId) return { tipo: "reservada", responsavel: reservadaPara.nome };
 
   const usadas = new Set(execucoes.filter((e) => e.resultado !== "cancelada").map((e) => e.apr_id));
   const apr = aprs

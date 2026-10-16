@@ -1,4 +1,5 @@
 import type { BadgeTone } from "@/components/ui/Badge";
+import type { PerguntaDoChecklist } from "./checklist-inspecao";
 import type { OsStatus } from "./tipos";
 
 /**
@@ -43,6 +44,10 @@ export interface PlanoPreventiva {
   total_ciclos: number;
   atualizado_em: string;
   pode_editar: boolean;
+  /** O checklist de inspeção do plano, na ordem. Só o detalhe do plano e o da OS o trazem; a lista traz só o total. */
+  checklist?: PerguntaDoChecklist[];
+  /** Quantas perguntas tem o checklist (só na lista). */
+  total_perguntas?: number;
 }
 
 export type ContagemDosCiclos = Record<SituacaoDoCiclo, number> & { total: number };

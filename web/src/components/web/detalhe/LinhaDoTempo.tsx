@@ -20,6 +20,9 @@ const titulos: Record<string, string> = {
   alerta: "Alerta ao supervisor",
   reprogramacao: "Reprogramada",
   ciencia: "Ciência do supervisor",
+  reserva: "OS reservada",
+  reserva_desfeita: "Reserva desfeita",
+  devolucao: "Devolvida ao SAP",
 };
 
 function corDoEvento(e: EventoDaLinhaDoTempo) {
@@ -38,7 +41,11 @@ function corDoEvento(e: EventoDaLinhaDoTempo) {
     case "alerta":
       return VERMELHO;
     case "reprogramacao":
+    case "reserva":
+    case "reserva_desfeita":
       return AZUL;
+    case "devolucao":
+      return VERMELHO;
     default:
       return CINZA;
   }

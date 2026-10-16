@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
+import type { PerguntaDoChecklist } from "@/lib/checklist-inspecao";
 import type { RespostaComPontos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
 
@@ -18,10 +19,12 @@ interface ExecucaoScreenProps {
   os: { id: string; numero_ordem: string | null; titulo: string; local: string };
   usuario: { id: string; nome: string; matricula: string; assinatura_path: string | null };
   situacao: Situacao;
+  /** O checklist de inspeção do plano da OS preventiva, pedido no encerramento (vazio quando a OS não tem). */
+  checklist?: PerguntaDoChecklist[];
 }
 
 /** Execução da OS: escolhe o que mostrar conforme a situação que a `api` informa (ver `situacao.ts`). */
-export function ExecucaoScreen({ os, usuario, situacao }: ExecucaoScreenProps) {
+export function ExecucaoScreen({ os, usuario, situacao, checklist = [] }: ExecucaoScreenProps) {
   const [encerrada, setEncerrada] = useState(false);
   const [pontos, setPontos] = useState<RespostaComPontos | null>(null);
   const emPausa = situacao.tipo === "em_andamento" && situacao.execucao.pausas.some((p) => !p.fim);
@@ -29,7 +32,7 @@ export function ExecucaoScreen({ os, usuario, situacao }: ExecucaoScreenProps) {
   let corpo;
   if (encerrada) corpo = <ExecucaoEncerrada osId={os.id} pontos={pontos} />;
   else if (situacao.tipo === "esquecida") corpo = <SuspenderEsquecida execucao={situacao.execucao} />;
-  else if (situacao.tipo === "em_andamento") corpo = <ExecucaoEmAndamento os={os} usuario={usuario} situacao={situacao} onEncerrada={(resposta) => {
+  else if (situacao.tipo === "em_andamento") corpo = <ExecucaoEmAndamento os={os} usuario={usuario} situacao={situacao} checklist={checklist} onEncerrada={(resposta) => {
           setPontos(resposta);
           setEncerrada(true);
         }} />;
@@ -46,6 +49,25 @@ export function ExecucaoScreen({ os, usuario, situacao }: ExecucaoScreenProps) {
       </div>
     );
   else if (situacao.tipo === "fechada") corpo = <ExecucaoEncerrada osId={os.id} jaEncerrada />;
+  else if (situacao.tipo === "devolvida" || situacao.tipo === "reservada")
+    corpo = (
+      <div className="panel stack g12" style={{ maxWidth: 560 }}>
+        <Notice tone="info" icon={situacao.tipo === "devolvida" ? "left" : "lock"}>
+          {situacao.tipo === "devolvida" ? (
+            <>
+              Esta OS foi <strong>devolvida ao SAP</strong> pelo supervisor e não pode ser executada.
+            </>
+          ) : (
+            <>
+              Esta OS está reservada para <strong>{situacao.responsavel}</strong>. Só quem o supervisor designou inicia a execução.
+            </>
+          )}
+        </Notice>
+        <LinkButton variant="line" href={rotas.app.lista}>
+          Voltar à lista
+        </LinkButton>
+      </div>
+    );
   else
     corpo = (
       <div className="panel stack g12" style={{ maxWidth: 560 }}>

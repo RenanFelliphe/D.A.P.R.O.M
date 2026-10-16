@@ -2,7 +2,7 @@ import "server-only";
 
 import { api, apiOuNulo } from "@/lib/api";
 import { pedemAtencao, type ListaDePreventivas } from "@/lib/preventivas";
-import { ehAdmin, ehSupervisor, type Equipe, type OsStatus, type Paginacao, type Usuario } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor, type Equipe, type OsStatus, type Paginacao, type ResponsavelDaOs, type Usuario } from "@/lib/tipos";
 
 /** OS como a `api` a devolve em `GET /os` (quadro). */
 export interface OsDoQuadro {
@@ -21,6 +21,8 @@ export interface OsDoQuadro {
   data_fim_prog: string | null;
   pdf_pronto: boolean;
   ciencia_em: string | null;
+  /** A pessoa para quem o supervisor reservou a OS; `null` = a OS é da equipe toda. */
+  responsavel: ResponsavelDaOs | null;
   /** Há quantas horas a execução em andamento está aberta, só quando passa do limite da `api` (12 h). */
   execucao_aberta_ha_horas: number | null;
   atrasada: boolean;
@@ -47,7 +49,7 @@ export interface FiltrosDoQuadro {
   pagina?: number;
 }
 
-/** As quatro colunas do quadro, na ordem do protótipo. `cancelada` fica fora e aparece como um link de contagem. */
+/** As quatro colunas do quadro, na ordem do protótipo. `cancelada` e `devolvida` ficam fora e aparecem como links de contagem. */
 export const STATUS_DO_QUADRO = ["liberada", "pendente", "em_execucao", "encerrada"] as const;
 
 /** Quantos cartões cada coluna mostra antes do "Ver todas". */

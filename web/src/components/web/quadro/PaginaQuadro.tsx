@@ -24,7 +24,7 @@ import { usuarioAtual } from "@/lib/api";
 import { hoje, hora } from "@/lib/formatar";
 import { ehAdmin, ehSupervisor as supervisa, nomesDasEquipesDoSupervisor, rotuloDoStatus, type OsStatus } from "@/lib/tipos";
 
-const STATUS_VALIDOS: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada"];
+const STATUS_VALIDOS: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Lê os filtros da URL, descartando o que não tem a forma esperada (a `api` recusaria com 422). */
@@ -131,7 +131,7 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
           ) : (
             <div className="bcol bcol-grade">
               {unica.os.map((o) => (
-                <CartaoOs key={o.id} os={o} gestao={gestao} />
+                <CartaoOs key={o.id} os={o} gestao={gestao} usuarioId={usuario.id} />
               ))}
             </div>
           )}
@@ -144,7 +144,7 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
               <ColunaQuadro
                 key={coluna.status}
                 gestao={gestao}
-               
+                usuarioId={usuario.id}
                 status={coluna.status}
                 total={coluna.total}
                 os={coluna.os}
@@ -157,6 +157,14 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
               {quadro.contagem.cancelada === 1 ? "1 OS cancelada" : `${quadro.contagem.cancelada} OS canceladas`} ·{" "}
               <Link href={hrefDoQuadro(rota.quadro, filtros, { status: "cancelada" })} style={{ color: aparenciaDoStatus.cancelada.cor, fontWeight: 600 }}>
                 Ver canceladas
+              </Link>
+            </span>
+          )}
+          {quadro.contagem.devolvida > 0 && (
+            <span className="muted">
+              {quadro.contagem.devolvida === 1 ? "1 OS devolvida ao SAP" : `${quadro.contagem.devolvida} OS devolvidas ao SAP`} ·{" "}
+              <Link href={hrefDoQuadro(rota.quadro, filtros, { status: "devolvida" })} style={{ color: aparenciaDoStatus.devolvida.cor, fontWeight: 600 }}>
+                Ver devolvidas
               </Link>
             </span>
           )}

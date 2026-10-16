@@ -1,6 +1,6 @@
 /** Formas das respostas de `/sap-simulado/gestao/...` (chaves em snake_case, como a `api` devolve). */
 
-export type SituacaoNoDaprom = "nao_lida" | "ignorada" | "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada";
+export type SituacaoNoDaprom = "nao_lida" | "ignorada" | "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada" | "devolvida";
 
 export const rotuloDaSituacaoNoDaprom: Record<SituacaoNoDaprom, string> = {
   nao_lida: "Ainda não lida",
@@ -10,6 +10,7 @@ export const rotuloDaSituacaoNoDaprom: Record<SituacaoNoDaprom, string> = {
   em_execucao: "Em execução",
   encerrada: "Encerrada",
   cancelada: "Cancelada",
+  devolvida: "Devolvida ao SAP",
 };
 
 export interface NoDaprom {
@@ -96,6 +97,8 @@ export function efeitoDaEdicao(n: NoDaprom["situacao"]): string | null {
     case "liberada":
     case "pendente":
       return "A OS está no DAPROM: tirar o LIB do status a cancela na próxima leitura, e outra data só vale se a OS não tiver sido reprogramada lá (a reprogramação vence).";
+    case "devolvida":
+      return "O supervisor devolveu esta OS ao SAP, com a justificativa na planilha de baixa. Corrigir a ordem aqui a traz de volta na próxima leitura; tirar o LIB a cancela.";
     case "ignorada":
       return "O DAPROM ignorou esta ordem na última leitura. Ao mudar, ele a confere de novo na próxima.";
     default:

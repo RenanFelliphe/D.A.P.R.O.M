@@ -12,6 +12,7 @@ export const aparenciaDoStatus: Record<OsStatus, { icone: IconName; cheio?: bool
   pendente: { icone: "octagon", cor: "var(--blq)", tom: "blq" },
   encerrada: { icone: "check", cor: "var(--enc)", tom: "enc" },
   cancelada: { icone: "x", cor: "var(--ink3)", tom: "neu" },
+  devolvida: { icone: "left", cor: "var(--ink3)", tom: "neu" },
 };
 
 interface ColunaQuadroProps {
@@ -22,10 +23,12 @@ interface ColunaQuadroProps {
   hrefTodas?: string;
   /** Admin e supervisor: os cartões mostram a ciência e o PDF das encerradas. */
   gestao: boolean;
+  /** Quem está vendo o quadro: o cartão da OS reservada diz "para você" ou o nome do responsável. */
+  usuarioId: string;
 }
 
 /** Coluna do kanban: cabeçalho com o total real, cartões e "Ver todas"; a pessoa pode fechá-la (ver `ColunaRecolhivel`). */
-export function ColunaQuadro({ status, total, os, hrefTodas, gestao }: ColunaQuadroProps) {
+export function ColunaQuadro({ status, total, os, hrefTodas, gestao, usuarioId }: ColunaQuadroProps) {
   const a = aparenciaDoStatus[status];
   const restantes = total - os.length;
   return (
@@ -36,7 +39,7 @@ export function ColunaQuadro({ status, total, os, hrefTodas, gestao }: ColunaQua
         </span>
       )}
       {os.map((o) => (
-        <CartaoOs key={o.id} os={o} gestao={gestao} />
+        <CartaoOs key={o.id} os={o} gestao={gestao} usuarioId={usuarioId} />
       ))}
       {restantes > 0 && hrefTodas && (
         <Link className="more" href={hrefTodas} style={{ color: "var(--brand)" }}>

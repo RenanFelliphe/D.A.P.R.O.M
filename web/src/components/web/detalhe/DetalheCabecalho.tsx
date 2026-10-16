@@ -41,6 +41,12 @@ export function DetalheCabecalho({ os, secao = "Ordem de Serviço", acoes }: { o
             {os.local_instalacao.critico && <Badge tone="crit">Local crítico</Badge>}
             <PilulaPrioridade prioridade={os.prioridade} />
             {os.atrasada && <Badge tone="blq">Atrasada</Badge>}
+            {os.responsavel && (os.status === "liberada" || os.status === "pendente") && (
+              <Badge tone="brand">
+                <Icon name="user" size={13} />
+                Reservada para {os.responsavel.nome}
+              </Badge>
+            )}
           </div>
           <h1>{os.titulo}</h1>
           <span className="muted" style={{ fontSize: 14 }}>

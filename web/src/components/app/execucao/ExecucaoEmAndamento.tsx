@@ -9,6 +9,7 @@ import { ResumoTempo } from "@/components/app/execucao/ResumoTempo";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import type { PerguntaDoChecklist } from "@/lib/checklist-inspecao";
 import { enviarEvento, novoId } from "@/lib/cliente-api";
 import type { RespostaComPontos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
@@ -27,6 +28,8 @@ interface Props {
   os: { id: string; numero_ordem: string | null; titulo: string; local: string };
   usuario: { id: string; assinatura_path: string | null };
   situacao: Extract<Situacao, { tipo: "em_andamento" }>;
+  /** O checklist de inspeção do plano da OS preventiva (vazio quando a OS não tem). */
+  checklist: PerguntaDoChecklist[];
   onEncerrada: (resposta: RespostaComPontos) => void;
 }
 
@@ -34,7 +37,7 @@ interface Props {
  * Execução rodando: cronômetro calculado do início e das pausas que vêm da `api`, pausar/continuar, suspender, interromper
  * por risco, cancelar por engano e encerrar. Pausar não é interromper: a pausa só para o relógio líquido.
  */
-export function ExecucaoEmAndamento({ os, usuario, situacao, onEncerrada }: Props) {
+export function ExecucaoEmAndamento({ os, usuario, situacao, checklist, onEncerrada }: Props) {
   const router = useRouter();
   const exibirAviso = useToast();
   const { execucao, participantes } = situacao;
@@ -97,6 +100,7 @@ export function ExecucaoEmAndamento({ os, usuario, situacao, onEncerrada }: Prop
         participantes={participantes}
         usuarioId={usuario.id}
         assinaturaDoUsuario={usuario.assinatura_path}
+        checklist={checklist}
         onEncerrada={onEncerrada}
         onCancelar={() => abrir("painel")}
       />

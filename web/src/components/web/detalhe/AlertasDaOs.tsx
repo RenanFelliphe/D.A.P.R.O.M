@@ -12,6 +12,7 @@ const rotuloDoAlerta: Record<string, string> = {
   execucao_duplicada: "Execução duplicada",
   preventiva_proxima: "Preventiva: ciclo próximo",
   preventiva_vencida: "Preventiva: ciclo vencido",
+  inspecao_com_pendencia: "Inspeção com pendência",
 };
 
 /** Alertas gerados para esta OS (com o destinatário) e as reprogramações feitas nela. */

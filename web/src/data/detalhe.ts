@@ -1,8 +1,10 @@
 import "server-only";
 
 import { api, apiOuNulo } from "@/lib/api";
-import type { MaterialDaApr, ServicoDaOs } from "@/lib/catalogo";
-import type { DocumentoDeEvidencia, OsStatus, Paginacao } from "@/lib/tipos";
+import type { ServicoDaOs } from "@/lib/catalogo";
+import type { PerguntaDoChecklist } from "@/lib/checklist-inspecao";
+import type { DevolucaoDaOs } from "@/lib/os-app";
+import type { DocumentoDeEvidencia, OsStatus, Paginacao, ResponsavelDaOs } from "@/lib/tipos";
 
 export interface LocalDaOs {
   id: string;
@@ -46,9 +48,20 @@ export interface OsDetalhe {
   cancelada_em: string | null;
   cancelada_por: string | null;
   justificativa_cancelamento: string | null;
+  responsavel_id: string | null;
+  reservada_por: string | null;
+  reservada_em: string | null;
+  devolvida_em: string | null;
+  devolvida_por: string | null;
+  justificativa_devolucao: string | null;
+  devolucao_exportada_em: string | null;
   local_instalacao: LocalDaOs;
   equipe: { id: string; nome: string; centro_trabalho: string; supervisor_id: string | null };
   ciencia_por_nome: string | null;
+  /** Atribuição individual: a pessoa para quem a OS está reservada; `null` = a OS é da equipe toda. */
+  responsavel: (ResponsavelDaOs & { reservada_por_nome: string | null; reservada_em: string | null }) | null;
+  /** O apêndice da OS devolvida ao SAP; `null` se a OS não foi devolvida. */
+  devolucao: DevolucaoDaOs | null;
   pdf_pronto: boolean;
   execucao_aberta_ha_horas: number | null;
   atrasada: boolean;
@@ -104,8 +117,6 @@ export interface AprDaOs {
   participantes: ParticipanteApr[];
   riscos: { id: string; classificacao: string; nome: string }[];
   respostas: RespostaApr[];
-  /** A conferência dos materiais do serviço: o que o técnico levou e a foto do item obrigatório. */
-  materiais: MaterialDaApr[];
   itens_reprovados: {
     item_id: string;
     texto: string;
@@ -174,6 +185,8 @@ export interface DetalheDaOs {
   os: OsDetalhe;
   /** O serviço do catálogo (a atividade da OS) com os materiais, ferramentas e EPIs; nulo quando a OS não tem atividade. */
   servico: ServicoDaOs | null;
+  /** O checklist de inspeção do plano da OS preventiva, na ordem; vazio quando a OS não tem. O Campo de treino não o traz. */
+  checklist_inspecao?: PerguntaDoChecklist[];
   aprs: AprDaOs[];
   execucoes: ExecucaoDaOs[];
   alertas: AlertaDaOs[];

@@ -131,7 +131,8 @@ export function ExportacaoSap({ total, os }: ExportacaoSapProps) {
       </TableWrap>
       {total > os.length && <span className="muted">Mostrando {os.length} de {total} OS.</span>}
       <span className="muted">
-        Ao gerar a planilha, as OS são marcadas como exportadas. A baixa no SAP continua manual, usando o link do PDF de cada OS.
+        Ao gerar a planilha, as OS são marcadas como exportadas. A baixa no SAP continua manual, usando o link do PDF de cada OS. A planilha também leva a
+        aba Devolvidas, com as OS que os supervisores devolveram ao SAP e a justificativa de cada uma; elas saem uma vez só.
       </span>
     </Panel>
   );
