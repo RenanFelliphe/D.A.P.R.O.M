@@ -535,7 +535,7 @@ A tarefa `preventiva_concluida` (+10, grupo "Bônus da OS") entrou pela migraç�
 
 ## 13. Treinamentos de serviço
 
-Decidido em 14/10/2026, ainda não implementado. É a parte de pontos dos treinamentos de serviço, o jogo por serviço do catálogo; o desenho completo está no [chatbot.md](chatbot.md#38-pontos-e-conquistas).
+Decidido em 14/10/2026, ainda não implementado. É a parte de pontos dos treinamentos de serviço, o jogo por serviço do catálogo; o desenho completo está no [vitoria.md](vitoria.md#38-pontos-e-conquistas).
 
 | Tarefa | Quem ganha | Pontos | Quando conta | Limite |
 |---|---|---|---|---|
