@@ -12,6 +12,7 @@
 | 60 | Qual é a "função da atividade" nas APR 04, 05 e 09? | Mario | 🟢 Depois |
 | 61 | O item de espaço confinado da APR 06 aceita "NA"? | Mario | 🟡 MVP |
 | 62 | O horário de início e fim vale por executante? | Iago | 🟢 Depois |
+| 67 | Quem responde pela equipe quando o supervisor está ausente? | Iago | 🟡 MVP |
 
 **Impacto:** 🔴 muda tabelas ou contratos; 🟡 muda uma tela ou regra da demonstração; 🟢 não afeta a demonstração.
 
@@ -27,7 +28,7 @@ A OS corretiva 4023470 não tem nada disso. O texto parece vir da descrição lo
 
 **Pergunta:** o sistema deve capturar esse formulário de forma estruturada (campos, valores e unidades)? Quais atividades têm formulário, e quem define os campos de cada uma?
 
-**Adotado por enquanto:** o preenchimento fica em `execucao.dados_inspecao` (JSON), sem estrutura definida, e o texto do SAP continua aparecendo na OS.
+**Adotado por enquanto:** o checklist de inspeção de [inspecao-preventivas.md](inspecao-preventivas.md): cada plano de preventiva tem a sua lista de perguntas (caixas de marcar), definida no editor do ciclo e preenchida no encerramento de cada OS dela; o preenchimento fica em `execucao.dados_inspecao` e o texto do SAP continua aparecendo na OS. As leituras com valor e unidade (horímetro, tensões) vão na observação. **Para o Iago:** conferir se esse checklist cobre o uso real ou se a pergunta precisa de tipo (número com unidade, opções).
 
 ## 58. Como ligar a OS ao modelo de APR?
 
@@ -76,3 +77,11 @@ A OS corretiva 4023470 não tem nada disso. O texto parece vir da descrição lo
 **Pergunta:** um executante pode chegar ou sair em horário diferente dos outros? O SAP precisa receber o homem-hora de cada pessoa, ou basta o total e o número de pessoas?
 
 **Adotado por enquanto:** um início e um fim para a execução inteira, mais o número de pessoas. O horário individual fica fora do MVP.
+
+## 67. Quem responde pela equipe quando o supervisor está ausente?
+
+**Contexto:** o time decidiu, em 15/10/2026, criar o usuário ausente ([ausencia.md](ausencia.md)): ele continua ativo, mas só visualiza, e só o supervisor da equipe registra, aprova e encerra a ausência dos membros. Cada equipe tem um supervisor só (`equipe.supervisor_id`), e o supervisor também pode ficar ausente.
+
+**Pergunta:** quando o supervisor sai de férias ou de licença, quem responde pela equipe hoje? Alguém da equipe vira supervisor substituto, a gerência assume ou é outra forma? E quem aprova a ausência de quem está numa equipe sem supervisor?
+
+**Adotado por enquanto (feito em 15/10/2026):** nenhum substituto é criado. Com o supervisor ausente, os pedidos da equipe, as reservas e as devoluções esperam ele voltar (a `api` recusa as ações dele sobre a equipe, mas deixa ele cuidar da própria ausência); na equipe sem supervisor, o pedido de ausência fica desabilitado (`409` `equipe_sem_supervisor`).

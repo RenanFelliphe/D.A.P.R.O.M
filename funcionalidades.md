@@ -8,13 +8,16 @@
 
 - **O fluxo online está completo na `api` e na `web`.** A OS entra pela API do SAP, pela planilha ou pelo PDF. A APR é respondida e validada no servidor, a execução é registrada e sai o PDF de 2 páginas. Também já funcionam o painel, os alertas, os indicadores, a auditoria e a gamificação. A web é responsiva e funciona no navegador do celular.
 - **Falta das essenciais o app Android e, com ele, o modo offline** (fila local, cópia da equipe e login sem sinal). A `api` já está pronta para os dois. Sem eles, o critério de sucesso da demo não fecha.
-- **Uma essencial está parcial:** o formulário de inspeção das preventivas: a `api` guarda, mas não há tela.
+- **O formulário de inspeção das preventivas** virou o checklist de inspeção, implementado em 15/10/2026 ([inspecao-preventivas.md](inspecao-preventivas.md)); a pergunta ao Iago (questão 57) fica para conferir se ele cobre o uso real.
+- **Os materiais recomendados foram decididos e feitos em 15/10/2026:** a conferência obrigatória (foto e bloqueio) saiu, e a lista do serviço virou só consulta (seção 4).
+- **O usuário ausente foi feito em 15/10/2026** ([ausencia.md](ausencia.md)): o ausente continua ativo, mas só visualiza; a ausência é pedida pelo técnico ou registrada pelo supervisor, sempre assinada. Ficou de fora só o que depende da questão 67 (o supervisor ausente e a equipe sem supervisor).
 - **A escolha do modelo da APR foi decidida e feita em 14/10/2026:** o técnico escolhe o modelo a cada APR, entre os publicados, e o sistema só recomenda um pela leitura da OS (seção 5).
-- **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com a conferência de materiais na APR, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
+- **A atribuição individual e a devolução de OS foram decididas e feitas em 15/10/2026:** o supervisor da equipe reserva a OS a uma pessoa, que passa a ser a única a iniciar a APR e a execução, e devolve ao SAP a OS com erro, com uma justificativa que vai na planilha de baixa (seção 6).
+- **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com os materiais recomendados, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
 - **Extras não iniciadas:**
   - a Vitória e os treinamentos de serviço, desenhados no [chatbot.md](chatbot.md) (só existe o avatar);
   - o escaneamento de OS e APR antigas, em discussão no [digitalizacao.md](digitalizacao.md) (a câmera é só protótipo).
-- **Números:** 128 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 22 migrações (`0000` a `0021`) e 582 testes em 31 arquivos. Os 582 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
+- **Números:** 144 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 26 migrações (`0000` a `0025`) e 649 testes em 33 arquivos. Os 649 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
 
 ## O que ainda falta, num relance
 
@@ -23,16 +26,20 @@
 - [ ] **App Android** (`mobile/`): login, OS da equipe, APR, execução, câmera, assinatura e perfil (seção 2.3).
 - [ ] **Modo offline:** fila em SQLite, cópia da equipe, login sem sinal e aviso de pendentes (seção 2.3). A `api` já está pronta.
 - [ ] **Dockerfile que gera o APK.**
-- [ ] **Formulário de inspeção das preventivas** na web, com o encerramento e o detalhe da OS (questão 57).
+- [x] **Checklist de inspeção das preventivas**, com a preventiva valendo o dobro na gamificação: [inspecao-preventivas.md](inspecao-preventivas.md).
+- [x] **Materiais recomendados** no lugar da conferência obrigatória na APR: [materiais-recomendados.md](materiais-recomendados.md).
 - [ ] **Vitória e treinamentos de serviço**, nenhum começado (seção 3.3).
 - [ ] **Escaneamento de OS e APR antigas**, em discussão no [digitalizacao.md](digitalizacao.md) (seção 3.3).
+- [x] **Usuário ausente:** [ausencia.md](ausencia.md); a parte do supervisor ausente e da equipe sem supervisor espera a questão 67.
 - [ ] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão (seção 3.2).
 
-**Depende de terceiros** (seção 6.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos e a aprovação da empresa para enviar dados ao fornecedor de IA.
+**Depende de terceiros** (seção 7.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos e a aprovação da empresa para enviar dados ao fornecedor de IA.
 
-**Documentação e arrumação** (seções 6.2 e 6.3): README da raiz, especificação, `api/README.md` e `web/README.md` ainda têm trechos desatualizados; o `Inconsistencias.md` é anterior a quase tudo; há código sem uso na web e o indicador "Online" é texto fixo.
+**Documentação e arrumação** (seções 7.2 e 7.3): README da raiz, especificação, `api/README.md` e `web/README.md` ainda têm trechos desatualizados; o `Inconsistencias.md` é anterior a quase tudo; há código sem uso na web e o indicador "Online" é texto fixo.
 
-**Já resolvido nesta rodada (14/10/2026):** os dashboards do Campo de treino (antes respondiam 404), a carga de demonstração entre a meia-noite e 2h10 (antes quebrava) e a escolha do modelo da APR pelo técnico, com a recomendação, a troca e a orientação editável (seção 5).
+**Já resolvido em 15/10/2026:** a atribuição individual de OS a uma pessoa da equipe e a devolução da OS com erro ao SAP, com a justificativa na planilha de baixa (seção 6).
+
+**Já resolvido na rodada de 14/10/2026:** os dashboards do Campo de treino (antes respondiam 404), a carga de demonstração entre a meia-noite e 2h10 (antes quebrava) e a escolha do modelo da APR pelo técnico, com a recomendação, a troca e a orientação editável (seção 5).
 
 ---
 
@@ -61,8 +68,10 @@ O supervisor não é um perfil, e a web tem uma casca única para todos.
    - do PDF da OS, conferido campo a campo antes do registro.
 
    A equipe sai do centro de trabalho. A única OS criada no próprio sistema é a de apoio, aberta a partir de um impedimento.
+
+   A OS chega para a equipe toda. O supervisor da equipe pode reservá-la a uma pessoa, que passa a ser a única a iniciá-la, ou devolvê-la ao SAP com uma justificativa, se a ordem tiver erro (seção 6).
 2. **Detalhe.** Além dos dados do SAP, o detalhe mostra:
-   - os materiais do serviço, com o selo "Obrigatório";
+   - os materiais recomendados do serviço, só para consulta;
    - o ciclo da preventiva;
    - o histórico do local e do equipamento;
    - todas as APRs e execuções anteriores.
@@ -70,15 +79,15 @@ O supervisor não é um perfil, e a web tem uma casca única para todos.
    - **Etapas:**
      1. modelo, participantes e riscos: o técnico escolhe o modelo numa janela com todos os publicados, e o sistema recomenda um pela leitura da OS (seção 5);
      2. checklist respondido por inteiro, sem marcar o que é eliminatório (o modelo ainda pode ser trocado);
-     3. revisão, com a conferência de materiais;
+     3. revisão, com os materiais recomendados como lembrete;
      4. validação no servidor (`POST /aprs/avaliar`).
-   - **Bloqueada:** quando um item eliminatório é reprovado ou falta a foto de um material obrigatório. A APR fica registrada na hora, a OS fica pendente e o supervisor recebe alerta e e-mail. O técnico documenta cada item reprovado com foto, texto ou PDF, conforme o modelo pede.
+   - **Bloqueada:** quando um item eliminatório é reprovado. A APR fica registrada na hora, a OS fica pendente e o supervisor recebe alerta e e-mail. O técnico documenta cada item reprovado com foto, texto ou PDF, conforme o modelo pede.
    - **Aprovada:** os participantes assinam com a assinatura do perfil, e a APR é registrada.
 4. **Execução.** Iniciar, pausar com motivo, suspender no fim do expediente, interromper por risco (com motivo e foto), cancelar por engano (até 10 minutos depois do início) e encerrar. O encerramento pede descrição, de 1 a 10 fotos e as assinaturas, e aceita até 5 PDFs.
 5. **Documento e baixa.**
    - O PDF de 2 páginas (APR e OS) é gerado em segundo plano.
    - O supervisor dá ciência.
-   - A planilha de baixa no SAP sai com três abas: Encerradas, Sem ordem SAP e Impedimentos.
+   - A planilha de baixa no SAP sai com quatro abas: Encerradas, Sem ordem SAP, Impedimentos e Devolvidas.
 6. **Depois.** Dashboards, alertas de ciclo das preventivas e pontos da gamificação.
 
 Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale online e, quando o app existir, também para a fila offline.
@@ -93,8 +102,8 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale 
 | Entrada de OS | **Pronta com o simulador** (agora com tabela no banco e tela própria), com a planilha e com o PDF que tem texto. A digitalização pela câmera é só protótipo |
 | Registro de funcionários | **Pronto com o simulador.** Cadastro só de quem está no registro, desligamento em tempo real (aviso e leitura diária), selos na tela de usuários e a tela do simulador |
 | Modelos de APR | **Pronta.** 8 modelos na carga inicial, versões imutáveis, editor, orientação de cada modelo para a escolha do técnico, arquivamento e restauração. O critério de bloqueio da carga é provisório até a Segurança do Trabalho validar |
-| Catálogo de serviço | **Pronta.** Materiais, ferramentas e EPIs por serviço, com quantidade e item obrigatório |
-| APR | **Pronta na web.** Modelo escolhido pelo técnico, com a recomendação e a troca, checklist inteiro, validação no servidor, conferência de materiais, evidência por foto, texto ou PDF e APR bloqueada registrada na validação |
+| Catálogo de serviço | **Pronta.** Materiais, ferramentas e EPIs recomendados por serviço, com quantidade |
+| APR | **Pronta na web.** Modelo escolhido pelo técnico, com a recomendação e a troca, checklist inteiro, validação no servidor, materiais recomendados, evidência por foto, texto ou PDF e APR bloqueada registrada na validação |
 | Execução | **Pronta na web.** Pausa com motivo, suspensão, interrupção por risco, cancelamento por engano, assinaturas e PDF de 2 páginas |
 | Impedimento e alertas | **Pronta.** 7 tipos de alerta (e-mail só no bloqueio), reprogramação e OS de apoio |
 | Painel | **Pronta.** Quadro, detalhe, ciência, local crítico, busca global, PDF e exportação para baixa |
@@ -147,7 +156,7 @@ As definições e telas do DesignDoc (dados da OS, regras da APR, execução, PD
 
 **Parcial**
 
-- **Formulário de inspeção das preventivas (questão 57).** A `api` aceita `dados_inspecao` no encerramento, guarda e imprime no PDF como pares de campo e valor. Mas a web não tem o formulário, e o detalhe da OS não o mostra. A estrutura do formulário depende do Iago.
+- **Formulário de inspeção das preventivas (questão 57).** A `api` aceita `dados_inspecao` no encerramento, guarda e imprime no PDF como pares de campo e valor. Mas a web não tem o formulário, e o detalhe da OS não o mostra. Em 15/10/2026 virou o checklist de inspeção, definido no ciclo de cada preventiva: plano em [inspecao-preventivas.md](inspecao-preventivas.md). **Implementado no mesmo dia:** o encerramento pede o checklist e o detalhe da OS o mostra.
 - **Planilha do SAP.** O mapeamento das colunas é provisório até chegar a planilha de 2025.
 
 **Para o piloto, não para a demo**
@@ -194,13 +203,15 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 | Assinatura cadastrada no perfil | DesignDoc (prioridades) | **Pronta.** Não há certificado digital (ICP-Brasil) |
 | Equipe atribuída automaticamente | DesignDoc (essenciais) | **Pronta** |
 | Evidência em PDF | DesignDoc (essenciais) | **Pronta** |
-| Catálogo de serviço com os materiais | DesignDoc (prioridades) | **Pronto**, com a conferência de materiais na APR (seção 4) |
+| Catálogo de serviço com os materiais | DesignDoc (prioridades) | **Pronto**, com os materiais recomendados (seção 4) |
 | Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | **Pronto** |
 | Gamificação | Time, na Reunião 2 | **Pronta** |
 | Chatbot de consulta | Iago, na Reunião 2 | **Desenhado, não iniciado.** Virou a Vitória e os treinamentos de serviço ([chatbot.md](chatbot.md)) |
 | Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Em discussão** ([digitalizacao.md](digitalizacao.md)). A Digitalização da tela de importação só abre a câmera |
 | API de funcionários para cadastro rápido | DesignDoc (extras) | **Pronta com o simulador.** Registro de funcionários simulado, com tela própria; cadastro só de quem está nele e desligamento em tempo real ([apifuncionarios.md](apifuncionarios.md)) |
 | Tela do simulador do SAP | Time, em 14/10/2026 | **Pronta** ([apiSAP.md](apiSAP.md)) |
+| Atribuição individual e devolução de OS | Time, em 15/10/2026 | **Pronta** (seção 6) |
+| Usuário ausente | Time, em 15/10/2026 | **Pronto**, menos o que espera a questão 67 ([ausencia.md](ausencia.md)) |
 
 ### 3.2 As prontas: o que fazem e o que falta
 
@@ -226,8 +237,8 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 **Catálogo de serviço**
 
 - O serviço é a própria atividade do plano de manutenção, a que a OS traz do SAP. Ela não escolhe o modelo de APR, mas a descrição dela entra na recomendação do modelo (seção 5).
-- O admin cadastra materiais, ferramentas e EPIs e monta a lista de cada serviço, com quantidade e item obrigatório.
-- O detalhe da OS mostra a lista, e a APR a confere (seção 4).
+- O admin cadastra materiais, ferramentas e EPIs e monta a lista de cada serviço, com a quantidade.
+- O detalhe da OS e a revisão da APR mostram a lista como recomendação (seção 4).
 - **Falta:** a lista real, que depende da ES Gás (questão 65). Até lá, só a carga fictícia tem itens.
 
 **Ciclo das preventivas**
@@ -266,6 +277,19 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
   - o alerta no sino quando a leitura diária falha, e reativar a conta na readmissão, ficaram fora do escopo;
   - o cartão da tela do SAP não mostra os avisos da leitura (por exemplo, o intervalo entre ciclos que não foi reconhecido), porque a `api` não os guarda.
 
+**Usuário ausente**
+
+- **Onde está o desenho:** [ausencia.md](ausencia.md), com o que mudou na implementação (seção 13).
+- **O que faz:**
+  - o ausente continua ativo e vê tudo, mas não altera nada, não recebe reserva de OS e não entra em APR; a `api` recusa com `403 usuario_ausente`;
+  - o técnico pede (motivo, início e dias ou data de retorno), o supervisor da equipe aprova (com ajuste das datas), recusa, registra a de alguém ou a própria, prorroga e encerra, e o técnico confirma; tudo é assinado, menos o pedido inicial;
+  - a ausência não termina sozinha: passada a data fica vencida até o ausente confirmar o retorno ou o supervisor encerrar;
+  - no início, as reservas de OS caem para a equipe toda e a execução aberta é suspensa; os avisos vão pelo sino, que agora o técnico também tem.
+- **Falta:**
+  - o supervisor ausente e a equipe sem supervisor (questão 67, ao Iago);
+  - o e-mail dos avisos, que espera a curadoria do SMTP;
+  - o app, quando existir.
+
 ### 3.3 As que não começaram
 
 **Vitória e treinamentos de serviço**
@@ -299,95 +323,16 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 
 ---
 
-## 4. Conferência de materiais na APR
+## 4. Materiais recomendados na APR
 
-Esta funcionalidade fica registrada só aqui, não na especificação.
+Esta funcionalidade fica registrada só aqui e em [materiais-recomendados.md](materiais-recomendados.md), não na especificação.
 
-### 4.1 De onde veio e o que se decidiu
-
-A ideia inicial era um controle de "empréstimo":
-
-- o admin cadastraria quantas unidades de cada equipamento a empresa tem;
-- o técnico escolheria o que levaria depois da APR;
-- o sistema validaria se ainda havia saldo.
-
-A conversa reduziu o escopo a três funções e **descartou o controle de estoque**:
-
-1. **Registrar os materiais por atividade.** É o catálogo de serviço (seção 3.2), que ganhou o indicador de item obrigatório.
-2. **Mostrar os materiais recomendados na OS.** É o cartão "Materiais e ferramentas" do detalhe da OS, que ganhou o selo "Obrigatório".
-3. **Validar se o técnico levou tudo.** É a conferência na revisão da APR.
-
-Por que o estoque ficou de fora:
-
-- **A foto vale mais que o saldo.** A foto do item em mãos libera o técnico mesmo com o estoque zerado. Então o saldo nunca barraria quem tem o item, e só barraria quem está sem ele, o que a foto já faz.
-- **Offline.** Sem saldo em tempo real, não há o que conferir. A lista vai no snapshot, e a foto sobe pela fila de arquivos.
-- **Sem virar almoxarifado.** Contar quantas unidades a empresa tem, quem as retirou e a devolução é trabalho do SAP e do almoxarifado, não do D.A.P.R.O.M.
-
-O sistema diz **quais itens o serviço pede e quais precisam de prova**, e não quantos a empresa tem. O "cadastro por entidade" que se pensou é o banco de dados (`material`, `atividade_material`, `apr_material`), não um cadastro de cada unidade.
-
-### 4.2 Como funciona
-
-- **Admin.** No editor do serviço (Catálogo › Serviços), cada item da lista tem a caixa "Obrigatório". Mudar só essa caixa entra na auditoria (`atividade.materiais`, com o antes e o depois).
-- **Técnico, antes de sair.** O detalhe da OS lista os materiais, com o selo "Obrigatório" e o aviso de que eles exigem foto na APR.
-- **Técnico, na APR.**
-  - Depois de responder o checklist, a revisão traz o cartão "Materiais do serviço". Para cada item, o técnico marca "Levei" ou "Não levei", e o botão "Levei os itens opcionais" marca os opcionais de uma vez.
-  - No item obrigatório, ao marcar "Levei", o técnico envia a foto do item. A foto só vale para aquele item.
-  - O técnico sabe quais itens são obrigatórios. Isso é diferente do item eliminatório da APR, que ele não vê.
-  - "Concluir e validar" só é liberado quando todos os itens foram respondidos e todo obrigatório levado tem foto.
-- **Bloqueio.**
-  - O item obrigatório **não levado, ou levado sem foto, bloqueia a APR**. Também bloqueia se nem veio na conferência.
-  - O bloqueio segue o caminho do item reprovado: a APR fica registrada como bloqueada na validação, a OS fica pendente e o supervisor recebe o alerta no painel e o e-mail, que lista os materiais sem comprovação.
-  - Não há evidência a completar: o técnico vê o que faltou e refaz a APR quando estiver com o item.
-  - O bloqueio é na APR, não na execução.
-- **Os demais itens** só são conferidos ("levei" ou "não levei"), sem foto e sem bloquear.
-- **Quem decide é o servidor.** O resultado é recalculado a partir da lista atual do serviço, e o `resultado` que o aparelho manda não vale.
-- **OS sem atividade, ou serviço sem item obrigatório:** nada muda. A conferência só aparece quando a OS tem uma lista.
-- **Offline.**
-  - O `atividades[].materiais` do snapshot já leva `obrigatorio`.
-  - Se o admin tirar um item da lista enquanto o aparelho está sem sinal, esse item é ignorado quando a fila offline sobe, em vez de recusar a APR. Online, o mesmo caso é recusado.
-- **Histórico.** O detalhe da OS (do painel e do técnico) e o alerta de bloqueio mostram a conferência, com as fotos e o que faltou.
-
-### 4.3 Onde está no código
-
-- **Banco.** Migração `0018_apr_materiais`:
-  - coluna `atividade_material.obrigatorio`;
-  - tabela `apr_material`, com uma linha por APR e material: `obrigatorio` como estava na hora, `levou`, a foto e a posição.
-
-  O material que já foi conferido numa APR não pode ser excluído (`409 material_em_uso`): é preciso desativá-lo.
-- **API.**
-  - `PUT /catalogo/servicos/{codigo}` aceita `obrigatorio` por item.
-  - `POST /aprs/avaliar` e o evento `apr_concluida` aceitam `materiais: [{material_id, levou, foto?}]`. A foto sobe antes, por `PUT /arquivos/{id}` com `tipo=foto`.
-  - `POST /aprs/avaliar` devolve `materiais_faltando`.
-  - Erros novos: `material_invalido`, `material_repetido`, `foto_sem_material` e `arquivo_ausente` (neste último, o evento fica pendente).
-  - A foto é lida por `GET /arquivos/{id}/url`, com a mesma regra de equipe das demais evidências.
-  - Código em `api/src/dominio/apr-materiais.ts`; testes em [apr-materiais.test.ts](api/test/apr-materiais.test.ts).
-- **Web.**
-  - editor do serviço;
-  - selo e aviso no detalhe da OS;
-  - cartão `ConferenciaDeMateriais` na revisão;
-  - tela de impedimento com os materiais;
-  - histórico e alerta de bloqueio.
-- **Campo de treino.**
-  - A API fictícia segue a mesma regra.
-  - A "Vestimenta antichama" da OS guiada é obrigatória.
-  - O passo "Revise e valide" do tutorial explica a conferência.
-  - Tudo é conferido por `web/scripts/verificar-treino.mts`.
-- **Carga de demonstração.**
-  - O detector de gases e o respirador são obrigatórios nas listas fictícias.
-  - As APRs da demonstração fazem a conferência.
-  - Uma OS ("Aferição de manômetro padrão") está pendente por material sem comprovação.
-
-### 4.4 O que ficou de fora
-
-- **Estoque, saldo e devolução**, pelas razões da seção 4.1.
-- **Pesquisar e levar um material fora da lista.** Estava na ideia inicial, mas a lista final de três funções não o inclui. Dá para acrescentar depois, e o que o técnico leva a mais diria ao admin o que o serviço usa de verdade.
-- **Os materiais no PDF da OS.** O PDF continua com a página da APR e a da OS, sem a conferência.
-- **Cadastro de cada unidade** (patrimônio, série, validade da calibração). Só faria sentido para os instrumentos calibráveis.
-
-### 4.5 Pontos em aberto
-
-- **Pontos da gamificação.** A APR bloqueada por material pontua como qualquer APR bloqueada, porque a pontuação não olha a conferência. Se a regra precisar mudar, isso deve ser discutido antes e registrado no [gameficacao.md](gameficacao.md).
-- **Lista real de materiais.** Os itens obrigatórios dependem da lista que a ES Gás vai passar por serviço (questão 65). Até lá, o catálogo real não tem nenhum item obrigatório, e nada bloqueia.
+- **Decisão (15/10/2026):** a lista de materiais, ferramentas e EPIs de cada serviço é só uma **recomendação para consulta**. Não há item obrigatório, foto do item, resposta "Levei" ou "Não levei" nem bloqueio da APR por material. Como o técnico escolhe o modelo da APR e a situação no local varia, exigir a prova barraria o serviço sem ganho de segurança.
+- **Onde aparece:** o detalhe da OS (cartão "Materiais recomendados") e a revisão da APR (mesmo cartão, só leitura, sem mudar o "Concluir e validar").
+- **Admin:** monta a lista de cada serviço no catálogo, com a quantidade e a observação.
+- **Bloqueio:** a APR só bloqueia por item eliminatório reprovado.
+- **Fora do escopo:** estoque, saldo e devolução (trabalho do SAP e do almoxarifado) e o cadastro de cada unidade.
+- **Pendente de terceiros:** a lista real por serviço, que a ES Gás vai passar (questão 65). Até lá, só a carga fictícia tem itens.
 
 ---
 
@@ -420,7 +365,7 @@ Decidida e feita em 14/10/2026. A regra está também na especificação (Decis�
   - Na etapa 1 ("Trocar modelo") e no checklist ("Trocar o modelo"), enquanto a APR não foi registrada como bloqueada.
   - Escolhido o modelo novo, o técnico confere os riscos (os de mesmo nome já vêm marcados) e vê quantas respostas continuam e quantas perguntas ficam em branco.
   - Pergunta igual é a da mesma seção e com o mesmo texto (sem acento, maiúsculas e pontuação); na medida preventiva, também do mesmo risco, pelo nome. Ela guarda a resposta e a observação. "NA" só passa se o modelo novo aceita NA. As demais ficam em branco.
-  - A conferência dos materiais fica, porque é do serviço da OS. A validação anterior é apagada, e o checklist volta para a primeira pergunta em branco.
+  - A validação anterior é apagada, e o checklist volta para a primeira pergunta em branco.
 - **Quem decide o resultado continua sendo o servidor.** `POST /aprs/avaliar` e o evento `apr_concluida` aceitam qualquer modelo publicado.
 - **Offline.** O snapshot traz, em cada OS, a escolha do modelo (o recomendado e o que cada modelo achou nela) e, em cada modelo, a orientação (descrição e exemplos).
 - **Campo de treino.** A API fictícia tem a mesma recomendação e a orientação dos dois modelos de treino. O tutorial ganhou o passo "Escolha o modelo da APR", que aponta para a opção recomendada, e o passo "Monte a APR" agora aponta para os riscos.
@@ -460,9 +405,90 @@ Decidida e feita em 14/10/2026. A regra está também na especificação (Decis�
 
 ---
 
-## 6. Pendências transversais
+## 6. Atribuição individual e devolução de OS
 
-### 6.1 Insumos de terceiros
+Decidida e feita em 15/10/2026. A regra está também na especificação (fatias Impedimento e Painel e a tabela `os`).
+
+### 6.1 De onde veio e o que se decidiu
+
+- **Hoje:** a OS entra no sistema para a equipe toda, e qualquer pessoa dela inicia a APR. O Iago confirmou que é assim que a operação funciona. A atribuição individual não corrige um defeito: é um diferencial, para o supervisor poder garantir quem faz uma OS.
+- **Decisões:**
+  - **Atribuição individual.** O supervisor da equipe reserva a OS a uma pessoa. Ela é a responsável e a única que inicia a APR e a execução.
+  - **A OS reservada continua no quadro da equipe,** com a marca de quem a fará. Os colegas precisam saber quais serviços existem, então a OS não some do quadro deles.
+  - **Os colegas podem ser participantes da APR.** A restrição vale para iniciar e preencher a APR, não para quem acompanha o serviço. O responsável da APR é a pessoa designada.
+  - **Só o supervisor da equipe reserva e devolve.** Nem o admin faz isso.
+  - **Devolução.** A OS com erro sai do quadro e segue na planilha de baixa, com uma justificativa que o supervisor escreve e que fica na OS, como um apêndice. O DAPROM continua sem escrever no SAP.
+- **O que foi descartado:** o atraso na entrega, em que a OS nova apareceria primeiro só para o supervisor ("em triagem") e depois de um intervalo iria para a equipe. A reserva visível resolve o mesmo problema (a OS que "some" do quadro) sem custo, e o atraso:
+  - atrasaria todas as OS por causa de uma exceção, inclusive as urgentes;
+  - dependeria de o supervisor, que também é técnico de campo, olhar a tela dentro do intervalo;
+  - teria de contar em horas úteis, e o intervalo certo só se descobre no piloto.
+
+  O custo é que a garantia não é total: se um técnico iniciar a APR antes de o supervisor reservar, já não dá mais para reservar a OS a outra pessoa sem refazer a APR. Se o piloto pedir a garantia total, o atraso volta como uma etapa opcional por equipe.
+
+### 6.2 Como funciona
+
+- **Reservar.**
+  - No detalhe da OS, o supervisor da equipe vê o painel "Quem faz esta OS". Escolhe um técnico ativo e liberado da equipe da OS e reserva.
+  - Vale enquanto a OS está liberada ou pendente. O supervisor pode trocar o responsável ou "Liberar para a equipe toda" a qualquer momento antes do início. Reservar de novo a mesma pessoa não muda nada.
+- **O que a equipe vê.**
+  - A OS segue no quadro, com o selo "Reservada para <nome>" (para o responsável, "Reservada para você").
+  - No detalhe, uma faixa diz quem a reservou e que só o responsável inicia a APR e a execução. Para os outros, o painel de ações no lugar dos botões diz o mesmo.
+- **Quem inicia.**
+  - Só o responsável aplica a APR (`POST /aprs/avaliar` e `apr_concluida`) e inicia a execução (`execucao_iniciada`). Para os demais, a `api` recusa com `os_reservada` (`409` na validação da APR).
+  - Na APR da OS reservada, o responsável é a pessoa designada (senão, `responsavel_reservado`). Os colegas entram como participantes, e o botão "Tornar responsável" some.
+  - A execução também é só do responsável, mesmo que o colega seja participante da APR dele.
+- **Offline.** O evento que vem da fila de quem não era o responsável é aplicado, e o supervisor recebe um alerta `conflito_planejamento` (Decisão-chave 2). O snapshot leva `responsavel_id`.
+- **A leitura do SAP não mexe na reserva.** Nem a planilha.
+- **Devolver.**
+  - O supervisor da equipe devolve a OS **liberada**, ainda não iniciada, com uma justificativa obrigatória. A OS de apoio não se devolve: ela não é do SAP, e o admin a cancela. A OS pendente ou em execução segue pelos impedimentos.
+  - A OS vira `devolvida`, perde a reserva e sai do quadro (aparece o link "Ver devolvidas", com a contagem) e do snapshot do modo offline.
+  - Ela não aceita mais APR nem execução. Online, a `api` recusa com `os_devolvida`; da fila offline, o evento vira alerta.
+  - Sai das contagens de OS programadas dos dashboards e do ciclo das preventivas, como a cancelada.
+- **O apêndice.** A justificativa fica na OS, com quem devolveu e quando: uma faixa no topo do detalhe e uma linha na linha do tempo. A reserva também entra na linha do tempo.
+- **A planilha de baixa** ganhou uma quarta aba, **Devolvidas**: `numero_ordem`, `titulo`, `equipe`, `justificativa`, `devolvida_por` e `devolvida_em`.
+  - Cada devolução sai uma vez só (`os.devolucao_exportada_em`) e conta como OS nova na exportação.
+  - Quem gera a planilha continua sendo só o admin. Quem lê a aba e corrige a ordem no SAP é uma pessoa: a planilha é o único caminho.
+- **Quando a OS volta.** Quando o SAP traz a ordem de novo com o status liberado (a leitura ou a planilha; o PDF impresso não conta), a OS volta `liberada`, sem a devolução, e pode ser devolvida outra vez. A justificativa antiga fica na trilha de auditoria. Se o SAP cancelar a ordem, ela vira `cancelada`, como qualquer outra.
+- **Auditoria.** `os.reservar`, `os.liberar_reserva` e `os.devolver`, com a justificativa nos detalhes.
+- **Permissão.** Quem não vê a equipe da OS recebe `404`. Quem a vê mas não a supervisiona (o técnico comum, o admin, o responsável) recebe `403`.
+
+### 6.3 Onde está no código
+
+- **Banco.** Migração `0022_atribuicao_e_devolucao_de_os`:
+  - `devolvida` entra no `CHECK` de `os.status`;
+  - colunas novas em `os`: `responsavel_id`, `reservada_por`, `reservada_em` e `devolvida_em`, `devolvida_por`, `justificativa_devolucao`, `devolucao_exportada_em`;
+  - `CHECK`s que mantêm a reserva e a devolução completas (quem, quando e, na devolução, a justificativa) e exigem o registro da devolução em toda OS `devolvida`;
+  - dois índices parciais: o das devolvidas a exportar e o do responsável.
+- **API.**
+  - `PUT /os/{id}/responsavel` `{usuario_id}`, `DELETE /os/{id}/responsavel` e `POST /os/{id}/devolver` `{justificativa}`, em `api/src/rotas/impedimento.ts`; a regra em `api/src/dominio/atribuicao-os.ts`.
+  - `GET /os` traz `responsavel` em cada OS; `GET /os/{id}` traz `responsavel` (com quem reservou e quando) e `devolucao`.
+  - A conferência da reserva nos eventos é `conferirReserva` (`api/src/dominio/eventos-base.ts`), usada pela APR e pelo início da execução.
+  - A aba Devolvidas está em `api/src/dominio/painel-exportacao.ts`; a volta da OS, em `atualizarOrdem` (`api/src/dominio/importacao-ordens.ts`).
+  - Testes em [atribuicao.test.ts](api/test/atribuicao.test.ts) (22 casos).
+- **Web.**
+  - O painel `AtribuicaoDaOs` e o `DevolverOs` ficam no detalhe da OS, na lateral, só para o supervisor da equipe.
+  - O selo no `CartaoOs` e no `DetalheCabecalho`; o painel de ações do técnico (`AcoesDaOs`), a Nova APR e a Execução recusam a OS reservada a outra pessoa e a devolvida.
+  - `devolvida` entrou no `OsStatus` e nos filtros do quadro.
+- **Campo de treino.** Sem mudança: a API fictícia não tem reserva nem devolução.
+
+### 6.4 O que ficou de fora
+
+- **O atraso na entrega** (seção 6.1).
+- **Desativar a conta do responsável ou trocá-lo de equipe** não desfaz a reserva: só o supervisor a libera, ou o início de uma ausência dele (seção 3.2, usuário ausente).
+- **Aviso ao responsável.** Ele não recebe alerta nem e-mail; vê a marca no quadro.
+- **O app.** Ainda não existe; quando existir, precisa mostrar a reserva e a devolução.
+
+### 6.5 Pontos em aberto
+
+- **O caminho da devolução até o SAP.** A aba Devolvidas é lida por uma pessoa. Falta combinar com o Iago quem a lê e como corrige a ordem.
+- **A APR de hoje de outra pessoa.** Se a OS já tem uma APR aprovada de hoje e o supervisor a reserva a outra pessoa, a APR fica sem uso: só o responsável inicia a execução, e ele precisa participar da APR (ou fazer outra).
+- **O admin.** Hoje ele não reserva nem devolve. Se a equipe ficar sem supervisor, só a troca de supervisor, na tela da equipe, destrava.
+
+---
+
+## 7. Pendências transversais
+
+### 7.1 Insumos de terceiros
 
 | Quem | O quê | Destrava | Questão |
 |---|---|---|---|
@@ -471,11 +497,11 @@ Decidida e feita em 14/10/2026. A regra está também na especificação (Decis�
 | Iago | Onde o SAP guarda o ciclo do plano e como o conta | Ciclo das preventivas com dado real | 66 |
 | Iago | Validade da assinatura desenhada | Assinatura aceita em auditoria | 38 |
 | Iago | Um PDF de OS gerado pelo SAP, com texto (os exemplos são digitalizações) | Conferir a leitura do PDF real | — |
-| ES Gás | Lista de materiais por serviço | Catálogo e conferência de materiais reais | 65 |
+| ES Gás | Lista de materiais por serviço | Catálogo de materiais recomendados reais | 65 |
 | Mario e Segurança do Trabalho | Critério de bloqueio dos 8 modelos, medidas só dos riscos marcados e "NA" na APR 06 | Modelos reais | 59 e 61 |
 | Empresa | Aprovação para enviar dados ao fornecedor de IA | Vitória, rascunhos e digitalização das OS antigas no piloto | — |
 
-### 6.2 Documentação desatualizada
+### 7.2 Documentação desatualizada
 
 - **[README.md](README.md):**
   - a seção "O que a demonstração apresenta" ainda descreve telas ilustrativas ("Fila de sincronização ilustrativa", "Telas ilustrativas para importação…");
@@ -489,7 +515,6 @@ Decidida e feita em 14/10/2026. A regra está também na especificação (Decis�
   - "Fora" ainda lista o cadastro pelo supervisor e o treinamento.
 - **[api/README.md](api/README.md):**
   - **Rotas que não aparecem:** a auditoria, `POST /auth/sair`, `GET /usuarios/{id}` e `GET /equipes/{id}`.
-  - **Conferência de materiais:** não aparece (`materiais` no `apr_concluida`, `materiais_faltando` e `obrigatorio` no catálogo).
   - **Permissões:** descreve a menos as rotas abertas a quem tem senha provisória, está pendente ou foi desativado.
   - **PDF:** diz que cada página "cabe numa folha". Na verdade a página é reduzida até 45%, e o que não couber continua em outra folha.
   - **Simulador:** diz que as OS entram "em até 15 minutos", mas a primeira leitura já sai na subida.
@@ -503,7 +528,7 @@ Decidida e feita em 14/10/2026. A regra está também na especificação (Decis�
 - **[Inconsistencias.md](Inconsistencias.md):** é uma varredura de 11/10/2026, anterior a quase tudo o que está acima. Vale refazer ou arquivar.
 - **Comentário no código:** em `api/src/rotas/sap.ts`, o comentário da criação da OS de apoio diz que o supervisor a abre "desde que veja a OS de origem". O código exige que ele supervisione a equipe dela.
 
-### 6.3 Defeitos e sobras conhecidos
+### 7.3 Defeitos e sobras conhecidos
 
 - **Resolvidos em 14/10/2026:**
   - **Carga de demonstração.** O `pnpm demo:popular` quebrava entre a meia-noite e cerca de 2h10, porque o cenário "em pausa neste momento" criava a APR no dia anterior e a `api` recusa APR de outro dia. Agora o cenário começa logo depois da meia-noite (`api/src/db/seed/demo.ts`).
@@ -517,13 +542,14 @@ Decidida e feita em 14/10/2026. A regra está também na especificação (Decis�
   - as classes `.sync-row` e `.sync-ic` de `styles/os.css`;
   - um `return` inalcançável em `app/app/treino/estado/route.ts`.
 
-### 6.4 Fora do escopo, por decisão
+### 7.4 Fora do escopo, por decisão
 
 - Escrita no SAP por API: a baixa é por planilha (questão 51).
 - Notificação push no celular: a OS nova aparece quando a lista é atualizada.
 - iOS e terceiros no app.
 - MFA, SSO e vínculo do aparelho com o usuário, que estão como RFC.
-- Estoque, saldo e devolução de materiais (seção 4.1) e baixa do material gasto.
+- Estoque, saldo e devolução de materiais (seção 4) e baixa do material gasto.
 - Escolha automática do modelo da APR: o técnico escolhe a cada APR, e o sistema só recomenda (seção 5.1).
+- Atraso na entrega da OS para o supervisor triar antes da equipe: a OS reservada fica visível no quadro (seção 6.1).
 - Cadastro de equipamentos como entidade.
 - Importação de OS pelo supervisor, adiada (questão 63).

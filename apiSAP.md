@@ -31,6 +31,7 @@
 | Centro de trabalho sem equipe | Ignorada, com o motivo. |
 | Atividade que o DAPROM não conhece | A OS entra, e a leitura cadastra a atividade, com o título da ordem como descrição. A atividade é só o serviço do catálogo: o modelo da APR é o técnico quem escolhe, a cada APR. |
 | OS já encerrada ou cancelada no DAPROM | O SAP só acompanha: o status e a execução não mudam. |
+| OS devolvida pelo supervisor no DAPROM, que o SAP traz de novo com `LIB` (a ordem foi corrigida) | A OS volta `liberada`, sem a devolução. A justificativa do supervisor foi na aba Devolvidas da planilha de baixa, e fica na trilha de auditoria. O PDF impresso não a traz de volta. Se a ordem perder o `LIB`, a OS vira `cancelada`. |
 
 ## 2. Decisões
 
@@ -81,7 +82,7 @@ Colunas da tabela: caixa de seleção, número da ordem, título, tipo, centro d
 
 - **"Ainda não lida":** a ordem não existe no DAPROM e nenhuma leitura a ignorou.
 - **"Ignorada" com o motivo:** a última leitura que passou pela ordem a ignorou. O motivo vem de `importacao.detalhe_ignoradas`.
-- **O status da OS no DAPROM:** Liberada, Pendente, Em execução, Encerrada ou Cancelada.
+- **O status da OS no DAPROM:** Liberada, Pendente, Em execução, Encerrada, Cancelada ou Devolvida ao SAP (o supervisor a devolveu com uma justificativa, que vai na planilha de baixa).
 
 Junto dela aparece o selo **"Alterada depois da última leitura"** quando a ordem mudou no simulador depois da última leitura sem erro. Esse selo mostra o que o DAPROM vai pegar na próxima leitura.
 
@@ -140,6 +141,7 @@ Assim, "10 preventivas liberadas para Serviços Especiais e 5 corretivas criadas
 | OS em execução | Só o planejamento muda. Tirar o `LIB` gera um alerta de conflito, e a execução segue. |
 | OS reprogramada | Uma data diferente faz a próxima leitura ignorar a ordem. |
 | OS encerrada ou cancelada | O SAP só acompanha. Nada muda no DAPROM. |
+| OS devolvida ao SAP | Corrigir a ordem a traz de volta na próxima leitura; tirar o `LIB` a cancela. |
 | OS liberada ou pendente | Tirar o `LIB` cancela a OS na próxima leitura. |
 
 **Excluir** só vale para ordens que o DAPROM não tem. Para as outras, a resposta é "Esta ordem já está no DAPROM. No SAP, uma ordem não é apagada: encerre-a."

@@ -341,7 +341,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.prioridade` | text | sim | | como vem do SAP (`Muito alto`) |
 | `os.data_inicio_prog` | date | não | | planejamento (web) |
 | `os.data_fim_prog` | date | sim | | planejamento (web) |
-| `os.status` | text | não | | `liberada` \| `pendente` \| `em_execucao` \| `encerrada` \| `cancelada`; derivado no servidor (Decisão-chave 3) — ver [Eventos e modo offline](#eventos-e-modo-offline) |
+| `os.status` | text | não | | `liberada` \| `pendente` \| `em_execucao` \| `encerrada` \| `cancelada` \| `devolvida`; derivado no servidor (Decisão-chave 3), salvo `cancelada` e `devolvida`, que ficam — ver [Eventos e modo offline](#eventos-e-modo-offline) |
 | `os.data_ordem` | date | sim | | "Data da Ordem" (emissão), do cabeçalho da OS impressa |
 | `os.criado_por_sap` | text | sim | | quem criou a ordem no SAP (`RFAVARO`, `IP1020251202`); aparece no PDF |
 | `os.status_sap` | text | sim | | "Status do sistema" do SAP, uma lista de códigos (`LIB IMPR CAPC NOAP SCDM`); a api procura o `LIB` |
@@ -356,6 +356,13 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.cancelada_em` | timestamptz | sim | | quando a OS foi cancelada (no SAP, ou na web, no caso da OS de apoio) |
 | `os.cancelada_por` | uuid | sim | `usuario.id` | quem cancelou; nulo quando foi o SAP |
 | `os.justificativa_cancelamento` | text | sim | | obrigatória quando `cancelada_por` está preenchido (cancelamento da OS de apoio, ver [Impedimento](#impedimento)) |
+| `os.responsavel_id` | uuid | sim | `usuario.id` | atribuição individual: a pessoa para quem o supervisor da equipe reservou a OS; só ela inicia a APR e a execução. Nulo = a OS é da equipe toda. A leitura do SAP não mexe nele |
+| `os.reservada_por` | uuid | sim | `usuario.id` | o supervisor que reservou; preenchido junto com `responsavel_id` e `reservada_em` (o banco confere) |
+| `os.reservada_em` | timestamptz | sim | | |
+| `os.devolvida_em` | timestamptz | sim | | quando o supervisor devolveu a OS ao SAP (status `devolvida`) |
+| `os.devolvida_por` | uuid | sim | `usuario.id` | o supervisor da equipe que devolveu |
+| `os.justificativa_devolucao` | text | sim | | obrigatória quando `devolvida_por` está preenchido: o apêndice da OS, que vai na aba `Devolvidas` da planilha de baixa |
+| `os.devolucao_exportada_em` | timestamptz | sim | | preenchida pela exportação do [Painel](#painel); nula enquanto a devolução não saiu na planilha |
 | `os.atualizada_em` | timestamptz | não | | cursor do snapshot do modo offline |
 | `local_instalacao.id` | uuid | não | | |
 | `local_instalacao.codigo` | text | não | | unique; ex.: `VILA VELHA/REDE VILA VELHA` |
@@ -471,7 +478,8 @@ A migração `0021_modelo_escolhido_pelo_tecnico` criou `orientacao_modelo_apr` 
 | Material desativado | sai das escolhas de novos serviços; continua nos que já o listam (sinalizado) | "Desativado" |
 | Excluir material em uso | recusado: tirar dos serviços ou desativar | `409` `material_em_uso` |
 | Excluir a atividade | apaga a lista dela; os materiais ficam | |
-| Técnico abre a OS com atividade | vê a lista do serviço, agrupada em materiais, ferramentas e EPIs | "Materiais e ferramentas" |
+| Técnico abre a OS com atividade | vê a lista do serviço, agrupada em materiais, ferramentas e EPIs, só para consulta | "Materiais recomendados" |
+| Técnico revisa a APR | vê o mesmo cartão, só para leitura; não há resposta, foto nem bloqueio por material (ver [materiais-recomendados.md](../../materiais-recomendados.md)) | "Materiais recomendados" |
 | OS sem atividade, ou serviço sem lista | aviso, e valem as instruções do SAP | "Esta OS não tem serviço do catálogo" |
 | Técnico ou supervisor tenta editar | recusado | `403` |
 | Modo offline | o snapshot leva a lista de cada atividade (`atividades[].materiais`) | |
@@ -724,7 +732,7 @@ sequenceDiagram
   S-->>A: snapshot da equipe
 ```
 
-O `status` da OS é derivado, nesta ordem: `cancelada` se o SAP a cancelou (ou, na OS de apoio, se ela foi cancelada na web); `encerrada` se há Execução encerrada; `em_execucao` se há Execução em andamento (inclui em pausa); `pendente` se há APR bloqueada, ou Execução interrompida ou suspensa, e nenhuma Execução em andamento; `liberada` nos demais casos.
+O `status` da OS é derivado, nesta ordem: `cancelada` se o SAP a cancelou (ou, na OS de apoio, se ela foi cancelada na web) e `devolvida` se o supervisor a devolveu ao SAP (as duas ficam; só o SAP traz a devolvida de volta, ao alterar a ordem); `encerrada` se há Execução encerrada; `em_execucao` se há Execução em andamento (inclui em pausa); `pendente` se há APR bloqueada, ou Execução interrompida ou suspensa, e nenhuma Execução em andamento; `liberada` nos demais casos.
 
 ```mermaid
 stateDiagram-v2
@@ -944,9 +952,25 @@ Alternativas consideradas: gerar o PDF no aparelho — ganha se o técnico preci
 | Cancelar OS de apoio | só o admin, com justificativa, só com a OS `liberada` ou `pendente`; a OS vira `cancelada` | `200` |
 | Cancelar OS de apoio em outro status | recusado | `409` `status_invalido_para_cancelar` |
 | Cancelar OS que não é de apoio | recusado: a OS do SAP é cancelada pelo SAP, na leitura | `422` `os_nao_apoio` "Só OS de apoio pode ser cancelada pelo sistema" |
+| Supervisor da equipe reserva a OS a uma pessoa (atribuição individual) | `responsavel_id` = um técnico ativo e liberado da equipe da OS; a OS continua no quadro da equipe, com o selo "Reservada para …"; só valem `liberada` e `pendente`; trocar o responsável vale até a OS começar; repetir a mesma pessoa não muda nada | `200` |
+| Reservar a OS a quem não é técnico ativo da equipe | recusado | `422` `responsavel_invalido` |
+| Reservar a OS em execução, encerrada, cancelada ou devolvida | recusado | `409` `status_invalido_para_reservar` |
+| Supervisor liberou a reserva | a OS volta a ser da equipe toda; sem reserva é `409` `os_sem_reserva` | `200` |
+| Outra pessoa da equipe inicia a APR ou a execução da OS reservada | recusado, online; o responsável da APR tem de ser a pessoa designada, e os colegas entram como participantes | `409` `os_reservada` na validação da APR; `os_reservada` ou `responsavel_reservado` no evento |
+| Evento da fila offline de quem não era o responsável | aplicado; `alerta` `conflito_planejamento` para o supervisor (Decisão-chave 2) | alerta no painel |
+| Supervisor da equipe devolve a OS `liberada` ao SAP | a OS vira `devolvida`, perde a reserva e sai do quadro da equipe e do snapshot; a justificativa é obrigatória e fica na OS (o apêndice); vai na aba `Devolvidas` da planilha de baixa, uma vez só | `200` |
+| Devolver sem justificativa | recusado | `422` `justificativa_obrigatoria` |
+| Devolver a OS pendente, em execução, encerrada, cancelada ou já devolvida | recusado: a OS pendente segue pelos impedimentos | `409` `status_invalido_para_devolver` |
+| Devolver a OS de apoio | recusado: ela não é do SAP, e o admin a cancela | `422` `os_apoio` |
+| Reservar ou devolver sem supervisionar a equipe da OS (técnico comum, o próprio responsável, admin) | recusado; quem não vê a equipe da OS recebe `404` | `403` |
+| APR ou execução numa OS devolvida | online, recusado; da fila offline, aplicado com `alerta` `conflito_planejamento` | `os_devolvida` |
+| O SAP traz de volta a ordem devolvida (leitura ou planilha, com `LIB`; o PDF impresso não conta) | a OS volta `liberada`, sem a devolução; a justificativa antiga fica na trilha de auditoria | conta em `atualizadas` |
 
 `POST /os/{id}/reprogramar` `{data_inicio_prog, equipe_id?, justificativa}` → `200` `{id, status}`
 `POST /os/{id}/cancelar` `{justificativa}` → `200` — só OS de apoio
+`PUT /os/{id}/responsavel` `{usuario_id}` → `200` `{id, status, responsavel: {id, nome}}` — só o supervisor da equipe da OS
+`DELETE /os/{id}/responsavel` → `200` `{id, status}` — libera a OS para a equipe toda
+`POST /os/{id}/devolver` `{justificativa}` → `200` `{id, status}` — só o supervisor da equipe da OS, só com a OS `liberada` que não é de apoio
 `GET /alertas` `?lido&equipe_id&tipo` → `200` `{alertas[]}` — cada alerta traz `destinatario_id` e `destinatario_nome`
 `PATCH /alertas/{id}` `{lido: true}` → `200`
 OS de apoio usa `POST /os` com `os_origem_id` ([Integração SAP](#integração-sap)).
@@ -986,7 +1010,7 @@ Tabela `reprogramacao`: `id`, `os_id` → `os.id`, `usuario_id` → `usuario.id`
 | Indicador mensal de preventivas | encerradas, atrasadas justificadas (`pendente`, ou com reprogramação, após a data) e atrasadas sem justificativa (`liberada` após a data, sem reprogramação); o atraso conta a partir de `data_fim_prog` quando existe, senão de `data_inicio_prog` | |
 | Indicador de tempo | por equipe, técnico e OS: tempo total médio, tempo líquido médio, pausa média, proporção de pausa (pausa total sobre o tempo total), execuções com pausa e pausas por execução; o tempo em pausa por motivo (almoço, descanso, outro, sem motivo) e as OS com mais pausa; só de Execuções `encerrada` iniciadas no período | Dashboard: tempo por equipe e por técnico (barra do tempo médio dividida em líquido e pausa) e pausas por motivo em Equipes e usuários; tempo, pausas por motivo e OS com mais pausa em OS e em Meus resultados |
 | Execução aberta há mais de 12 h | destacada no quadro | "Execução aberta há N h" |
-| Exportar para o SAP | planilha com 3 abas: `Encerradas` (OS `encerrada` ainda não exportadas), `Sem ordem SAP` (OS de apoio, que o Iago cria no SAP depois) e `Impedimentos` (OS `pendente`, com o motivo); marca `exportada_sap_em` nas encerradas | download `.xlsx` |
+| Exportar para o SAP | planilha com 4 abas: `Encerradas` (OS `encerrada` ainda não exportadas), `Sem ordem SAP` (OS de apoio, que o Iago cria no SAP depois), `Impedimentos` (OS `pendente`, com o motivo) e `Devolvidas` (OS `devolvida` ainda não exportadas, com a justificativa do supervisor); marca `exportada_sap_em` nas encerradas e `devolucao_exportada_em` nas devolvidas | download `.xlsx` |
 | Exportar de novo sem OS novas | planilha vazia | "Nenhuma OS nova para exportar" |
 | Falha de importação (sincronização ou planilha) | nenhuma OS muda; nada fica preso na tela | alerta "Falha na importação" no sino, com o método e o motivo |
 

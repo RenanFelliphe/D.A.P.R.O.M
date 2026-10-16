@@ -229,7 +229,7 @@
 ### 57. Formulário de inspeção das OS preventivas (nova)
 
 **Contexto:** a página 2 da OS 4019821 (preventiva) traz um "Checklist de Inspeção Técnica" com leituras por semana (horímetro, hora da coleta, tensão de entrada, de saída e de shunt, técnico) e conformidades por componente ("Conforme / Não conforme", "Operante", "Executado / Não necessário / Aguardando parada", "Íntegra / Comprometida / Sinais de umidade"), além de "Observações Gerais / Requisições de Ação Corretiva". Vem do texto longo da OS no SAP. A corretiva 4023470 não tem nada disso. Nenhuma fatia da especificação capturava esses dados.
-**Recomendação:** guardar o preenchimento em `execucao.dados_inspecao` (JSON) e definir com o Iago a estrutura do formulário por atividade; o texto do SAP (`os.descricao`) segue sendo exibido. Impacto 🟡.
+**Recomendação:** guardar o preenchimento em `execucao.dados_inspecao` (JSON). Adotado em 15/10/2026: o checklist de inspeção por plano de preventiva ([inspecao-preventivas.md](../../inspecao-preventivas.md)), com perguntas de caixa de marcar; conferir com o Iago se ele cobre o uso real. O texto do SAP (`os.descricao`) segue sendo exibido. Impacto 🟡.
 
 ### 58. Como ligar a OS ao modelo de APR (respondida em 14/10/2026; deixa a 52 sem objeto)
 
@@ -282,6 +282,7 @@
 
 **Contexto:** o catálogo de serviço foi feito em 13/10/2026: cada serviço é a atividade do plano de manutenção (a que a OS traz em `codigo_atividade`), com os materiais, ferramentas e EPIs e a quantidade prevista por execução; o técnico vê a lista no detalhe da OS. Falta o conteúdo: hoje os materiais chegam só como texto na descrição da OS, e o modo local e a demonstração usam uma carga fictícia.
 **Perguntas:** (1) a ES Gás tem a lista de materiais por serviço (ou por plano de manutenção) em algum lugar que dê para importar? (2) os materiais têm código no SAP que valha guardar? (3) além do previsto, o técnico deve registrar o que gastou, para a baixa de material no SAP?
+**Atualização (15/10/2026):** a lista passou a ser só recomendação para consulta ([materiais-recomendados.md](../../materiais-recomendados.md)): sem item obrigatório, sem foto e sem bloqueio da APR. A lista real da ES Gás continua útil, mas deixou de travar o bloqueio.
 **Recomendação:** o admin cadastra a lista dos serviços mais frequentes à mão, com o código do SAP quando houver; a baixa do material gasto fica fora do MVP. Como os códigos do plano vão mudar (questão 58), a lista acompanha a atividade: se o código mudar, o admin recria a atividade e copia a lista. Impacto 🟡.
 **Detalhes:** [Catálogo de serviço](especificacao.md#catálogo-de-serviço).
 
@@ -290,6 +291,13 @@
 **Contexto:** o time decidiu acompanhar o intervalo entre ciclos das preventivas sem criar OS: o sistema conta o tempo até o próximo ciclo de cada plano (plano + item de manutenção) e avisa quem planeja quando ele se aproxima ou vence sem OS nova. O PDF da OS 4019821 tem o campo "Periodicidade", mas ele veio vazio, e a planilha de 2025 ainda não chegou. Também não está claro se o SAP conta o ciclo do encerramento da última ordem ("Dt.Enc.Ult.Ord Plan", impresso no PDF) ou da data planejada.
 **Recomendação (adotada):** ler o intervalo da Periodicidade do PDF, da coluna Intervalo/Periodicidade da planilha e do campo `intervalo_ciclo` da API, e deixar o admin (ou o supervisor da equipe) defini-lo no sistema; contar do encerramento da última OS por padrão, com a opção de contar da data programada. Perguntar ao Iago onde o SAP guarda o ciclo do plano e qual das duas contagens ele usa. Impacto 🟡.
 **Detalhes:** [Ciclo das preventivas](especificacao.md#ciclo-das-preventivas).
+
+### 67. Usuário ausente: quem responde pela equipe quando o supervisor está ausente (nova, 15/10/2026)
+
+**Contexto:** o usuário ausente foi decidido em 15/10/2026 ([ausencia.md](../../ausencia.md)): só o supervisor da equipe registra, aprova e encerra a ausência dos membros, e ele também pode ficar ausente. Cada equipe tem um supervisor só.
+**Perguntas:** (1) quem responde pela equipe hoje quando o supervisor está fora: um substituto da equipe, a gerência ou outra forma? (2) quem aprova a ausência de quem está numa equipe sem supervisor?
+**Recomendação:** nenhuma ainda. Até a resposta, o sistema não cria substituto: os pedidos da equipe esperam o supervisor voltar e, na equipe sem supervisor, o pedido fica desabilitado (feito em 15/10/2026). Impacto 🟡.
+**Detalhes:** [Questoes.md](../../Questoes.md), questão 67.
 
 ## 4. Adotadas de baixo impacto (🟢)
 

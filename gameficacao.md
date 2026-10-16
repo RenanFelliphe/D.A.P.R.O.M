@@ -11,7 +11,7 @@
 - **Entram:** pontuação, patentes, ranking por temporada e geral, conquistas (troféus) e gamificação por equipe.
 - **Saiu:** a sequência de APRs completas (ver [Descartado e pendente](#11-descartado-e-pendente)).
 - **Regra central:** a segurança nunca custa pontos. Bloquear a APR ou interromper por risco rende o mesmo que aprovar e encerrar.
-- **Quanto vale uma OS:** para cada pessoa que trabalhou nela, 20 pontos de base (APR + execução), mais bônus de 5 por preventiva em dia, local crítico, liderar a APR, resgate, apoio a outra equipe e técnico novo acompanhado. Em média, cerca de 29 pontos, não importa quantas tentativas a OS levou.
+- **Quanto vale uma OS:** para cada pessoa que trabalhou nela, 20 pontos de base (APR + execução), mais 10 se a OS é preventiva (a preventiva vale o dobro da corretiva), mais bônus de 5 por preventiva em dia, local crítico, liderar a APR, resgate, apoio a outra equipe e técnico novo acompanhado. Em média, cerca de 29 pontos, não importa quantas tentativas a OS levou.
 - **Outras fontes de pontos:** as boas-vindas (assinatura e treino), a ciência e o intervalo das preventivas, para o supervisor, e as conquistas, que dão pontos como os troféus do PlayStation.
 - **Temporada:** um trimestre. Os pontos e a patente da temporada zeram; os pontos gerais, a maior patente e as conquistas ficam.
 - **O admin configura** os pontos de cada tarefa, as patentes e as conquistas.
@@ -44,6 +44,7 @@ As regras 1, 3, 4 e 5 são as "regras de justiça" escolhidas na discussão.
 | Execução concluída | todos os participantes da APR que amparou a execução | 10 | OS encerrada com as assinaturas de todos, **ou** execução interrompida por risco | uma por pessoa, por OS |
 | **Bônus da OS** (somam-se às principais) | | | | |
 | Responsável pela APR | o participante `responsavel` | 5 | junto com a APR completa, aprovada ou bloqueada | uma por pessoa, por OS |
+| Preventiva concluída | quem tem "Execução concluída" numa OS preventiva, inclusive quem interrompeu por risco | 10 | junto com a execução concluída, quando a OS é preventiva (a preventiva vale o dobro da corretiva) | uma por pessoa, por OS |
 | Preventiva em dia | quem tem "Execução concluída" na OS, inclusive quem interrompeu por risco | 5 | quando a preventiva é encerrada até a data limite (fim programado, senão início, como no indicador de preventivas), ou depois dela com atraso justificado: a OS ficou pendente antes da data ou foi reprogramada | uma por pessoa, por OS |
 | Local crítico | quem tem "Execução concluída" na OS | 5 | junto com a execução concluída (encerrada ou interrompida), quando o local da OS é crítico | uma por pessoa, por OS |
 | Resgate | quem concluiu a execução de uma OS pendente por APR bloqueada ou execução interrompida **de outras pessoas** | 5 | junto com a execução concluída; quem participou de alguma tentativa anterior da OS não ganha | uma por pessoa, por OS |
@@ -76,7 +77,7 @@ As regras 1, 3, 4 e 5 são as "regras de justiça" escolhidas na discussão.
 | Reprogramar e abrir OS de apoio (supervisor) | São decisões de planejamento; pontuar empurraria a decisão. Reprogramar ainda torna o atraso justificado |
 | Ciência depois de 72 h | O ponto é pela ciência em dia |
 | Entrar no sistema todo dia | Não é trabalho |
-| Formulário de inspeção da preventiva | A estrutura ainda não está definida (questão 57); pode virar bônus quando estiver |
+| Checklist de inspeção da preventiva | Ele é obrigatório para encerrar a OS, então um bônus pontuaria o encerramento duas vezes. O incentivo às preventivas está em "Preventiva concluída" |
 | Ações do admin | O admin não joga (regra 7) |
 
 ### 2.3 Como chegamos nesses valores
@@ -84,6 +85,7 @@ As regras 1, 3, 4 e 5 são as "regras de justiça" escolhidas na discussão.
 **Por que a lista cresceu.** A primeira versão tinha 5 tarefas, e a pontuação parecia lenta. Entraram os bônus da OS, as boas-vindas, o intervalo de preventiva e os pontos das conquistas. Com isso, uma OS comum passou de 20 ou 25 pontos para cerca de 29 em média, e o dia tem mais momentos de ganho. Quem define a velocidade de subida, porém, são os limites das patentes; eles foram ajustados para a primeira subida vir na primeira semana ([seção 3.3](#33-carga-inicial)).
 
 - **APR e execução valem o mesmo (10).** Num sistema de segurança, a APR é tão importante quanto o serviço.
+- **A preventiva concluída vale 10, o mesmo da execução concluída:** a preventiva rende o dobro da corretiva, para incentivar as preventivas. É uma tarefa própria, e não um multiplicador, para o admin ajustar o valor como os demais; se ele mudar a "Execução concluída", precisa mudar esta também para manter o dobro. A APR completa e os demais bônus valem o mesmo nas duas. Não é lançada para as preventivas já encerradas antes dela.
 - **Os bônus valem 5, metade de uma tarefa principal.** Reconhecem o que pesa mais sem desequilibrar.
   - **Responsável pela APR:** quem lidera a APR responde por ela. A Reunião 2 lembra que sempre há um líder, e é ele quem preenche a APR.
   - **Preventiva em dia:** é o indicador que a gerência e a diretoria acompanham (Reunião 1). O atraso justificado mantém o bônus, e quem interrompeu por risco também o recebe quando a OS fecha em dia: parar não custa pontos.
@@ -101,11 +103,11 @@ Exemplos (pontos de cada participante):
 | Cenário | Pontos |
 |---|---|
 | Corretiva sem bônus | APR 10 + execução 10 = **20** |
-| Preventiva no prazo, em local crítico, como responsável pela APR | 10 + 10 + 5 + 5 + 5 = **35** |
+| Preventiva no prazo, em local crítico, como responsável pela APR | 10 + 10 + 10 (preventiva concluída) + 5 + 5 + 5 = **45** |
 | A APR bloqueia; o problema é resolvido, a APR nova aprova e a OS é encerrada | 10 + 10 = **20** (o mesmo) |
-| Interrompe por risco numa preventiva; outra pessoa retoma e encerra (atraso justificado) | quem interrompeu: 10 + 10 + 5 = **25**, o mesmo que se tivesse encerrado; quem retomou: 10 + 10 + 5 + 5 (resgate) = **30** |
+| Interrompe por risco numa preventiva; outra pessoa retoma e encerra (atraso justificado) | quem interrompeu: 10 + 10 + 10 + 5 = **35**, o mesmo que se tivesse encerrado; quem retomou: 10 + 10 + 10 + 5 + 5 (resgate) = **40** |
 | Serviço de 3 dias, suspenso no fim de cada expediente | **20** mais os bônus: as APRs dos outros dias não somam |
-| Preventiva atrasada sem justificativa | 10 + 10 = **20** |
+| Preventiva atrasada sem justificativa | 10 + 10 + 10 = **30** |
 | Responsável por uma APR com um técnico de 3 semanas de casa | + 5 (responsável) + 5 (técnico novo) |
 
 ### 2.4 Extrato de pontos
@@ -423,7 +425,7 @@ Os cadastros (pontos, patentes e conquistas) ficam só na web.
 
 | Tabela | Colunas | Nota |
 |---|---|---|
-| `regra_pontuacao` | `codigo` (PK), `nome`, `descricao`, `pontos`, `ativa`, `atualizada_em`, `atualizada_por` | códigos `apr_completa`, `responsavel_apr`, `execucao_concluida`, `preventiva_em_dia`, `local_critico`, `resgate`, `apoio`, `tecnico_novo`, `assinatura_cadastrada`, `treinamento_concluido`, `ciencia_no_prazo`, `intervalo_definido` e `conquista_obtida` (esta sem valor próprio: os pontos vêm da conquista; desativá-la desliga os pontos de todas). As tarefas são fixas no código, e o admin muda só o valor e o estado |
+| `regra_pontuacao` | `codigo` (PK), `nome`, `descricao`, `pontos`, `ativa`, `atualizada_em`, `atualizada_por` | códigos `apr_completa`, `responsavel_apr`, `execucao_concluida`, `preventiva_concluida`, `preventiva_em_dia`, `local_critico`, `resgate`, `apoio`, `tecnico_novo`, `assinatura_cadastrada`, `treinamento_concluido`, `ciencia_no_prazo`, `intervalo_definido` e `conquista_obtida` (esta sem valor próprio: os pontos vêm da conquista; desativá-la desliga os pontos de todas). As tarefas são fixas no código, e o admin muda só o valor e o estado |
 | `temporada` | `codigo` (PK, `2026-T4`), `nome`, `inicio`, `fim`, `fechada_em` | criada quando a primeira pontuação do trimestre chega |
 | `lancamento_pontos` | `id`, `usuario_id`, `regra`, `pontos`, `chave`, `os_id`, `ocorrido_em`, `temporada`, `criado_em` | único (`usuario_id`, `chave`); índice (`temporada`, `usuario_id`) |
 | `lancamento_equipe` | `lancamento_id`, `equipe_id` | PK composta; as equipes creditadas no momento |
@@ -497,7 +499,7 @@ Pendente:
 
 - Rever os limites das patentes no fim da primeira temporada real (seção 3.3).
 - Trocar as imagens da carga inicial pelas definitivas.
-- O bônus do formulário de inspeção, quando a estrutura dele for definida (questão 57).
+- Os limites das patentes precisam considerar que as preventivas passaram a valer mais (já na revisão do fim da primeira temporada real).
 - A conquista de sincronização offline precisaria de uma marcação de origem no evento enviado pela fila; fica para quando o app existir.
 
 ---
@@ -506,7 +508,7 @@ Pendente:
 
 Feita em 13/10/2026, nas quatro etapas da seção 10 de uma vez: a `api` (migração `0016_gamificacao`, `dominio/pontuacao.ts`, `lancamentos.ts`, `temporadas.ts`, `fechamento-temporada.ts`, `ranking.ts`, `conquistas.ts`, `patentes.ts`, `gamificacao-leituras.ts`, `gamificacao-cadastros.ts`, `rotas/gamificacao.ts`) e a web (a seção Gamificação, o selo na barra, os blocos do perfil e da equipe e o "+N pontos"). O que foi decidido ou acrescentado no caminho, além do que as seções acima já dizem:
 
-- **A carga inicial entra pela migração.** As 13 tarefas, as 5 patentes e as 23 conquistas são `INSERT`s da própria `0016`: entram uma vez por banco, então o que o admin apagar ou ajustar não volta. As imagens (`imagem_path` = id do arquivo no bucket `gamificacao`) são gravadas pela subida da `api` se faltarem. São PNGs de 192 × 192 desenhados em código (medalha por metal, troféu por nível: bronze, prata, ouro; azul nas de equipe), simples de propósito.
+- **A carga inicial entra pela migração.** As 13 tarefas (a 14ª, `preventiva_concluida`, entrou na `0023`), as 5 patentes e as 23 conquistas são `INSERT`s da própria `0016`: entram uma vez por banco, então o que o admin apagar ou ajustar não volta. As imagens (`imagem_path` = id do arquivo no bucket `gamificacao`) são gravadas pela subida da `api` se faltarem. São PNGs de 192 × 192 desenhados em código (medalha por metal, troféu por nível: bronze, prata, ouro; azul nas de equipe), simples de propósito.
 - **O histórico entra na primeira subida com o extrato vazio**, numa transação só (se falhar, nada é gravado, a `api` sobe e a próxima subida tenta de novo). Usa as mesmas funções de pontuação dos eventos, e um teste confere que o extrato refeito do histórico é idêntico ao que as regras lançaram na hora. A assinatura já gravada de cada técnico também pontua na implantação. A demonstração (`pnpm demo:popular`) completa o extrato com o mesmo preenchimento.
 - **Acréscimos ao desenho de dados:** `usuario.patente_avisada_id` e `patente_avisada_temporada` (o aviso "Nova patente" precisa lembrar a última patente avisada; sem chave estrangeira, para excluir uma patente não travar) e `temporada_equipe.impecavel` (guarda, no fechamento, se a equipe teve preventivas no trimestre e nenhuma atrasada sem justificativa).
 - **Rotas acrescentadas:** `GET /gamificacao/usuarios/{id}` (o perfil de outra pessoa pedia a patente, a maior patente e as conquistas). `POST` de patentes e de conquistas é `multipart/form-data` (os campos e a `imagem`, obrigatória na criação); trocar a imagem é `PUT .../imagem`, e o arquivo antigo é apagado do bucket. `GET /gamificacao/eu`, o extrato e os avisos são só de quem joga (o admin recebe `403`). `GET /gamificacao/conquistas` traz também os critérios e as patentes que o formulário do admin usa.
@@ -517,6 +519,10 @@ Feita em 13/10/2026, nas quatro etapas da seção 10 de uma vez: a `api` (migra�
 - **Remover um usuário** apaga o extrato, as conquistas e os resultados de temporada dele na mesma transação; o que continua impedindo a remoção é o histórico de campo (APR, execução, alerta).
 - **O relógio é o da `api`:** um lançamento com data no futuro (relógio errado no aparelho) é trazido para agora, e o que chega com data de temporada fechada, ou já fora da tolerância, entra na temporada aberta.
 - **Campo de treino:** a `api` fictícia não pontua e responde `404` às rotas da gamificação; a barra não mostra o selo e nenhuma tela do treino depende dos pontos. Concluir o treino na `api` real pontua (10) e concede "Pronto para o campo".
+
+### Ajuste de 15/10/2026: preventiva concluída
+
+A tarefa `preventiva_concluida` (+10, grupo "Bônus da OS") entrou pela migração `0023_checklist_de_inspecao`, com `dominio/pontuacao.ts` e `regras-de-pontuacao.ts`. Quem tem a "Execução concluída" numa OS preventiva ganha, inclusive quem interrompeu por risco; uma por pessoa, por OS. Preencher o checklist de inspeção não dá bônus ([inspecao-preventivas.md](inspecao-preventivas.md)).
 
 ### Ajustes de 14/10/2026
 
