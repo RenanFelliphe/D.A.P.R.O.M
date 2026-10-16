@@ -15,7 +15,7 @@
 - **A ausência não termina sozinha.** Passada a data de retorno, ela fica "vencida" para o supervisor até o funcionário confirmar o retorno, com a assinatura, ou o supervisor a encerrar.
 - **O supervisor registra a própria ausência** e pode encerrá-la a qualquer momento, em caso de emergência.
 - **Avisos só pelo sino,** inclusive para o técnico, que hoje não tem sino. O e-mail fica para a curadoria do SMTP.
-- **Em aberto, e fora desta etapa:** quem responde pela equipe enquanto o supervisor está ausente, e quem aprova o pedido de quem está numa equipe sem supervisor (questão 67, ao Iago).
+- **Quem responde pela equipe enquanto o supervisor está ausente** é o representante dela, que assume sozinho ([representante.md](representante.md), 16/10/2026). Em aberto: quem aprova o pedido de quem está numa equipe sem supervisor.
 
 ---
 
@@ -179,12 +179,10 @@ Uma migração nova:
 
 ## 9. Pendente: o supervisor ausente e a equipe sem supervisor
 
-**Não entra nesta etapa.** Aguarda a resposta do Iago sobre como funciona hoje (questão 67 do [Questoes.md](Questoes.md)): se alguém da equipe vira supervisor substituto, se a gerência assume ou outra forma.
+**Resolvido em 16/10/2026 pelo representante da equipe** ([representante.md](representante.md)). O Iago explicou que, quando o supervisor se ausenta, ele designa um responsável para assinar e encerrar as ordens por ele. Como não dá para designar alguém de fora do sistema, toda equipe tem um representante, um membro dela, que assume a supervisão quando o supervisor registra uma ausência ou passa 3 dias sem usar o sistema.
 
-Até lá:
-
-- **Supervisor ausente:** a equipe fica sem quem aprove pedidos e fins antecipados, reserve ou devolva OS. Tudo espera ele voltar. Os alertas da equipe continuam indo para ele.
-- **Equipe sem supervisor:** o botão "Pedir ausência" fica desabilitado, com o aviso de que a equipe está sem supervisor.
+- **Supervisor ausente:** o representante aprova pedidos e fins antecipados, reserva e devolve OS e recebe os alertas da equipe. O supervisor continua só cuidando da própria ausência.
+- **Equipe sem supervisor:** continua em aberto. O botão "Pedir ausência" fica desabilitado, com o aviso de que a equipe está sem supervisor.
 
 ## 10. Documentação
 
@@ -202,7 +200,7 @@ Até lá:
 
 ## 12. Pontos em aberto
 
-- **A seção 9** (questão 67).
+- **A equipe sem supervisor** (seção 9).
 - **O e-mail dos avisos,** na curadoria do SMTP.
 - **O app,** quando existir: a faixa, a tela de retorno e o login sem sinal de quem está ausente.
 

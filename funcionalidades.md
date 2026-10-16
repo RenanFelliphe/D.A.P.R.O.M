@@ -2,7 +2,7 @@
 
 > O que o sistema faz hoje, o que está parcial e o que ainda não começou, tanto nas funcionalidades essenciais (o que a especificação exige para a demo) quanto nas extras (ideias do time, dos mentores e do cliente, fora do MVP). O diagnóstico saiu da leitura do código da `api` e da `web`, não só dos documentos.
 >
-> Fontes: [especificação](base/.design/especificacao.md), [DesignDoc](DesignDoc.md), [pontos a validar](base/.design/pontos-a-validar.md), [gameficacao.md](gameficacao.md), [chatbot.md](chatbot.md) e o código em [api/](api/) e [web/](web/).
+> Fontes: [especificação](base/.design/especificacao.md), [DesignDoc](DesignDoc.md), [pontos a validar](base/.design/pontos-a-validar.md), [gameficacao.md](gameficacao.md), [vitoria.md](vitoria.md) e o código em [api/](api/) e [web/](web/).
 
 ## Resumo
 
@@ -10,13 +10,13 @@
 - **Falta das essenciais o app Android e, com ele, o modo offline** (fila local, cópia da equipe e login sem sinal). A `api` já está pronta para os dois. Sem eles, o critério de sucesso da demo não fecha.
 - **O formulário de inspeção das preventivas** virou o checklist de inspeção, implementado em 15/10/2026 ([inspecao-preventivas.md](inspecao-preventivas.md)); a pergunta ao Iago (questão 57) fica para conferir se ele cobre o uso real.
 - **Os materiais recomendados foram decididos e feitos em 15/10/2026:** a conferência obrigatória (foto e bloqueio) saiu, e a lista do serviço virou só consulta (seção 4).
-- **O usuário ausente foi feito em 15/10/2026** ([ausencia.md](ausencia.md)): o ausente continua ativo, mas só visualiza; a ausência é pedida pelo técnico ou registrada pelo supervisor, sempre assinada. Ficou de fora só o que depende da questão 67 (o supervisor ausente e a equipe sem supervisor).
+- **O usuário ausente foi feito em 15/10/2026** ([ausencia.md](ausencia.md)): o ausente continua ativo, mas só visualiza; a ausência é pedida pelo técnico ou registrada pelo supervisor, sempre assinada. Quem responde pela equipe com o supervisor ausente é o representante, feito em 16/10/2026 ([representante.md](representante.md)). Ficou de fora só a equipe sem supervisor.
 - **A escolha do modelo da APR foi decidida e feita em 14/10/2026:** o técnico escolhe o modelo a cada APR, entre os publicados, e o sistema só recomenda um pela leitura da OS (seção 5).
 - **A atribuição individual e a devolução de OS foram decididas e feitas em 15/10/2026:** o supervisor da equipe reserva a OS a uma pessoa, que passa a ser a única a iniciar a APR e a execução, e devolve ao SAP a OS com erro, com uma justificativa que vai na planilha de baixa (seção 6).
 - **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com os materiais recomendados, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
 - **Extras não iniciadas:**
-  - a Vitória e os treinamentos de serviço, desenhados no [chatbot.md](chatbot.md) (só existe o avatar);
-  - o escaneamento de OS e APR antigas, em discussão no [digitalizacao.md](digitalizacao.md) (a câmera é só protótipo).
+  - a Vitória e os treinamentos de serviço, desenhados no [vitoria.md](vitoria.md) (só existe o avatar);
+  - a digitalização de OS e APR antigas, decidida com leitura por IA em [vitoria.md](vitoria.md#10-digitalização-de-os-antigas) (a câmera é só protótipo).
 - **Números:** 144 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 26 migrações (`0000` a `0025`) e 649 testes em 33 arquivos. Os 649 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
 
 ## O que ainda falta, num relance
@@ -29,8 +29,8 @@
 - [x] **Checklist de inspeção das preventivas**, com a preventiva valendo o dobro na gamificação: [inspecao-preventivas.md](inspecao-preventivas.md).
 - [x] **Materiais recomendados** no lugar da conferência obrigatória na APR: [materiais-recomendados.md](materiais-recomendados.md).
 - [ ] **Vitória e treinamentos de serviço**, nenhum começado (seção 3.3).
-- [ ] **Escaneamento de OS e APR antigas**, em discussão no [digitalizacao.md](digitalizacao.md) (seção 3.3).
-- [x] **Usuário ausente:** [ausencia.md](ausencia.md); a parte do supervisor ausente e da equipe sem supervisor espera a questão 67.
+- [ ] **Escaneamento de OS e APR antigas**, decidida com leitura por IA, em [vitoria.md](vitoria.md#10-digitalização-de-os-antigas) (seção 3.3).
+- [x] **Usuário ausente:** [ausencia.md](ausencia.md); o supervisor ausente é coberto pelo representante da equipe ([representante.md](representante.md)); só a equipe sem supervisor segue em aberto.
 - [ ] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão (seção 3.2).
 
 **Depende de terceiros** (seção 7.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos e a aprovação da empresa para enviar dados ao fornecedor de IA.
@@ -206,8 +206,8 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 | Catálogo de serviço com os materiais | DesignDoc (prioridades) | **Pronto**, com os materiais recomendados (seção 4) |
 | Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | **Pronto** |
 | Gamificação | Time, na Reunião 2 | **Pronta** |
-| Chatbot de consulta | Iago, na Reunião 2 | **Desenhado, não iniciado.** Virou a Vitória e os treinamentos de serviço ([chatbot.md](chatbot.md)) |
-| Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Em discussão** ([digitalizacao.md](digitalizacao.md)). A Digitalização da tela de importação só abre a câmera |
+| Chatbot de consulta | Iago, na Reunião 2 | **Desenhado, não iniciado.** Virou a Vitória e os treinamentos de serviço ([vitoria.md](vitoria.md)) |
+| Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Decidida com leitura por IA, não iniciada** ([vitoria.md](vitoria.md#10-digitalização-de-os-antigas)). A Digitalização da tela de importação só abre a câmera |
 | API de funcionários para cadastro rápido | DesignDoc (extras) | **Pronta com o simulador.** Registro de funcionários simulado, com tela própria; cadastro só de quem está nele e desligamento em tempo real ([apifuncionarios.md](apifuncionarios.md)) |
 | Tela do simulador do SAP | Time, em 14/10/2026 | **Pronta** ([apiSAP.md](apiSAP.md)) |
 | Atribuição individual e devolução de OS | Time, em 15/10/2026 | **Pronta** (seção 6) |
@@ -286,7 +286,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
   - a ausência não termina sozinha: passada a data fica vencida até o ausente confirmar o retorno ou o supervisor encerrar;
   - no início, as reservas de OS caem para a equipe toda e a execução aberta é suspensa; os avisos vão pelo sino, que agora o técnico também tem.
 - **Falta:**
-  - o supervisor ausente e a equipe sem supervisor (questão 67, ao Iago);
+  - a equipe sem supervisor (o supervisor ausente é coberto pelo representante, [representante.md](representante.md));
   - o e-mail dos avisos, que espera a curadoria do SMTP;
   - o app, quando existir.
 
@@ -294,7 +294,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 
 **Vitória e treinamentos de serviço**
 
-- **Onde está o desenho:** no [chatbot.md](chatbot.md). Cobre o fornecedor (Claude: Haiku 5.5 na Vitória e Opus 5.5 nos rascunhos), os custos, as regras, os riscos, os dados, as rotas, as páginas e a ordem de implementação.
+- **Onde está o desenho:** no [vitoria.md](vitoria.md). Cobre o fornecedor (Claude: Haiku 5.5 na Vitória e Opus 5.5 nos rascunhos), os custos, as regras, os riscos, os dados, as rotas, as páginas e a ordem de implementação.
 - **Ordem de implementação:**
   1. treinamentos sem IA;
   2. módulo de IA e rascunho;
@@ -307,19 +307,19 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 **Escaneamento de OS e APR antigas**
 
 - **O que existe:** a câmera abre e captura no navegador, mas nada é lido nem enviado, e o PDF só com imagem é recusado (`pdf_sem_texto`).
-- **Em discussão** no [digitalizacao.md](digitalizacao.md) (14/10/2026). O objetivo são as OS antigas, já executadas no papel, que entram encerradas, de histórico. A proposta é a IA de visão ler as folhas, inclusive a parte escrita à mão, e o sistema conferir o que foi lido.
+- **Decidida** (14/10/2026), com o desenho na seção 10 do [vitoria.md](vitoria.md#10-digitalização-de-os-antigas); o modelo de IA e mais sete pontos seguem em aberto. O objetivo são as OS antigas, já executadas no papel, que entram encerradas, de histórico. A IA de visão lê as folhas, inclusive a parte escrita à mão, e o sistema conferir o que foi lido.
 - **Do que depende:** do teste da leitura com folhas fictícias e, no piloto, da aprovação da empresa para enviar as folhas ao fornecedor de IA.
 - **Quando existir:** vira uma nova origem de importação e pode reaproveitar a conferência do PDF.
 - **APR antigas:** não há nada.
 
 ### 3.4 Ordem sugerida para as extras
 
-- **Primeiro, os treinamentos de serviço e a Vitória**, na ordem do [chatbot.md](chatbot.md#8-ordem-de-implementação). Ficam para depois do app, ou em paralelo, se outra pessoa assumir.
+- **Primeiro, os treinamentos de serviço e a Vitória**, na ordem do [vitoria.md](vitoria.md#8-ordem-de-implementação). Ficam para depois do app, ou em paralelo, se outra pessoa assumir.
   - É a única extra pedida pelo cliente.
   - Roda sobre a web pronta.
   - É a vitrine da feira. Se a feira cair antes de o app ter algo para mostrar, ela passa à frente do app.
 - **A API de funcionários e a tela do SAP** já foram feitas, na ordem do [apifuncionarios.md](apifuncionarios.md#11-ordem-de-implementação) e depois a do [apiSAP.md](apiSAP.md#12-ordem-de-implementação).
-- **O escaneamento** começa pelo teste da leitura das folhas pela IA ([digitalizacao.md](digitalizacao.md#12-ordem-de-implementação-proposta)).
+- **O escaneamento** começa pelo teste da leitura das folhas pela IA ([vitoria.md](vitoria.md#1012-ordem-de-implementação-proposta)).
 
 ---
 

@@ -296,7 +296,8 @@
 
 **Contexto:** o usuário ausente foi decidido em 15/10/2026 ([ausencia.md](../../ausencia.md)): só o supervisor da equipe registra, aprova e encerra a ausência dos membros, e ele também pode ficar ausente. Cada equipe tem um supervisor só.
 **Perguntas:** (1) quem responde pela equipe hoje quando o supervisor está fora: um substituto da equipe, a gerência ou outra forma? (2) quem aprova a ausência de quem está numa equipe sem supervisor?
-**Recomendação:** nenhuma ainda. Até a resposta, o sistema não cria substituto: os pedidos da equipe esperam o supervisor voltar e, na equipe sem supervisor, o pedido fica desabilitado (feito em 15/10/2026). Impacto 🟡.
+**Resposta do Iago (16/10/2026):** o supervisor que se ausenta designa um responsável para assinar e encerrar as ordens por ele.
+**Adotado (feito em 16/10/2026):** toda equipe tem um representante (um membro dela), que assume a supervisão quando o supervisor registra uma ausência ou passa 3 dias sem usar o sistema ([representante.md](../../representante.md)). Em aberto: a equipe sem supervisor (o pedido fica desabilitado) e se os 3 dias devem descontar fim de semana e feriado. Impacto 🟡.
 **Detalhes:** [Questoes.md](../../Questoes.md), questão 67.
 
 ## 4. Adotadas de baixo impacto (🟢)

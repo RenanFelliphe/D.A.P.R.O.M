@@ -12,7 +12,7 @@
 | 60 | Qual é a "função da atividade" nas APR 04, 05 e 09? | Mario | 🟢 Depois |
 | 61 | O item de espaço confinado da APR 06 aceita "NA"? | Mario | 🟡 MVP |
 | 62 | O horário de início e fim vale por executante? | Iago | 🟢 Depois |
-| 67 | Quem responde pela equipe quando o supervisor está ausente? | Iago | 🟡 MVP |
+| 67 | Quem responde pela equipe quando o supervisor está ausente? | Iago (respondida em 16/10/2026) | 🟡 MVP |
 
 **Impacto:** 🔴 muda tabelas ou contratos; 🟡 muda uma tela ou regra da demonstração; 🟢 não afeta a demonstração.
 
@@ -84,4 +84,6 @@ A OS corretiva 4023470 não tem nada disso. O texto parece vir da descrição lo
 
 **Pergunta:** quando o supervisor sai de férias ou de licença, quem responde pela equipe hoje? Alguém da equipe vira supervisor substituto, a gerência assume ou é outra forma? E quem aprova a ausência de quem está numa equipe sem supervisor?
 
-**Adotado por enquanto (feito em 15/10/2026):** nenhum substituto é criado. Com o supervisor ausente, os pedidos da equipe, as reservas e as devoluções esperam ele voltar (a `api` recusa as ações dele sobre a equipe, mas deixa ele cuidar da própria ausência); na equipe sem supervisor, o pedido de ausência fica desabilitado (`409` `equipe_sem_supervisor`).
+**Resposta do Iago (16/10/2026):** quando o supervisor entra de férias ou se ausenta, ele designa um responsável para assinar e encerrar as ordens por ele.
+
+**Adotado (feito em 16/10/2026, [representante.md](representante.md)):** como não dá para designar alguém de fora do sistema, toda equipe tem um representante, um membro dela, escolhido pelo sistema (o técnico mais antigo) até o supervisor ou o admin designar outro. Ele assume a supervisão quando o supervisor registra uma ausência ou passa 3 dias sem usar o sistema, e a devolve quando ele volta. Segue em aberto a equipe sem supervisor: o pedido de ausência fica desabilitado (`409` `equipe_sem_supervisor`). Para o Iago confirmar: se 3 dias corridos bastam, ou se fim de semana e feriado devem ser descontados.
