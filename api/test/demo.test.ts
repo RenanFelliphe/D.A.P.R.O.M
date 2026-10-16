@@ -84,6 +84,18 @@ describe("Dados de demonstração", () => {
     assert.ok(Object.values(quadro.contagem_por_status as Record<string, number>).filter((n) => n > 0).length === 5);
   });
 
+  it("tem uma ausência em curso, uma agendada, uma vencida e um pedido aguardando o supervisor", async () => {
+    const eu = await amb.criarUsuario({ perfil: "admin" });
+    const r = await amb.esperar(200, "GET", "/ausencias", { como: eu, consulta: { tamanho: 100 } });
+    const situacoes = r.ausencias.map((a: { situacao: string }) => a.situacao).sort();
+    assert.deepEqual(situacoes, ["agendada", "em_curso", "pedida", "vencida"]);
+    // O início das que já começaram foi aplicado, e o supervisor foi avisado da vencida.
+    const aplicadas = await amb.sql<{ n: number }>("select count(*)::int n from ausencia where estado = 'confirmada' and inicio <= current_date + 1 and inicio_aplicado_em is not null");
+    assert.equal(aplicadas[0]!.n, 2);
+    const tipos = (await amb.sql<{ tipo: string }>("select distinct tipo from alerta where ausencia_id is not null")).map((t) => t.tipo).sort();
+    assert.deepEqual(tipos, ["ausencia_pedida", "ausencia_registrada", "ausencia_vencida"]);
+  });
+
   it("o ciclo das preventivas tem planos em cada situação e os alertas de ciclo", async () => {
     const eu = await amb.criarUsuario({ perfil: "admin" });
     const r = await amb.esperar(200, "GET", "/preventivas", { como: eu });

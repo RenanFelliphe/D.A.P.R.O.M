@@ -1,8 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, lte } from "drizzle-orm";
 import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify } from "jose";
 import type { MiddlewareHandler } from "hono";
 import type { Deps } from "../deps";
-import { equipe, usuario, type Perfil } from "../db/schema";
+import { ausencia, equipe, usuario, type Perfil } from "../db/schema";
+import { diaDe, dataBr } from "../dominio/tempo";
 import { ErroApi, naoAutenticado, proibido } from "./erros";
 
 export interface UsuarioAutenticado {
@@ -17,6 +18,8 @@ export interface UsuarioAutenticado {
   ativo: boolean;
   senhaProvisoria: boolean;
   assinaturaPath: string | null;
+  /** A ausência que está valendo (em curso ou vencida); `null` quando a pessoa não está ausente. O ausente só visualiza. */
+  ausencia: { id: string; inicio: string; retorno: string; situacao: "em_curso" | "vencida" } | null;
 }
 
 /** Papel exigido por uma rota: um perfil, ou `supervisor` (a flag de quem supervisiona uma equipe). */
@@ -44,6 +47,8 @@ export const podeVerEquipe = (u: UsuarioAutenticado, equipeId: string) => equipe
 export const podeSupervisionarEquipe = (u: UsuarioAutenticado, equipeId: string) =>
   veTodasAsEquipes(u) || u.equipesSupervisionadas.includes(equipeId);
 
+const MetodosDeLeitura = new Set(["GET", "HEAD", "OPTIONS"]);
+
 export interface OpcoesAutenticacao {
   /**
    * Usuário desativado ainda pode enviar a fila offline pendente (arquivos e eventos); depois a `api` revoga a
@@ -57,6 +62,12 @@ export interface OpcoesAutenticacao {
    * entrar, trocar a senha e fazer o Campo de treino. Nas demais, `403 aguardando_liberacao`.
    */
   permitirPendente?: boolean;
+  /**
+   * Usuário ausente só visualiza: toda rota que altera (`POST`, `PUT`, `PATCH`, `DELETE`) é recusada com `403 usuario_ausente`, menos as
+   * que ligam esta opção (sair, trocar a senha, marcar alertas como lidos, o pedido de fim antecipado e a confirmação do
+   * retorno, o encerramento da própria ausência pelo supervisor e a fila offline do que foi feito antes do início).
+   */
+  permitirAusente?: boolean;
 }
 
 export function criarAutenticacao(deps: Deps) {
@@ -102,6 +113,18 @@ export function criarAutenticacao(deps: Deps) {
 
     const supervisionadas = await deps.db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, linha.id));
 
+    // Ausente: confirmada, já começada e ainda não encerrada (em curso, ou vencida até o retorno ser confirmado).
+    const hoje = diaDe(deps.agora());
+    const [ausente] = await deps.db
+      .select({ id: ausencia.id, inicio: ausencia.inicio, retorno: ausencia.retorno })
+      .from(ausencia)
+      .where(and(eq(ausencia.usuarioId, linha.id), eq(ausencia.estado, "confirmada"), lte(ausencia.inicio, hoje)))
+      .orderBy(desc(ausencia.inicio))
+      .limit(1);
+    if (ausente && !opcoes.permitirAusente && !MetodosDeLeitura.has(c.req.method)) {
+      throw new ErroApi(403, "usuario_ausente", `Você está ausente${hoje < ausente.retorno ? ` até ${dataBr(ausente.retorno)}` : ""}: o sistema fica só para consulta`, { retorno: ausente.retorno });
+    }
+
     c.set("usuario", {
       id: linha.id,
       nome: linha.nome,
@@ -113,6 +136,7 @@ export function criarAutenticacao(deps: Deps) {
       ativo: linha.ativo,
       senhaProvisoria: linha.senhaProvisoria,
       assinaturaPath: linha.assinaturaPath,
+      ausencia: ausente ? { ...ausente, situacao: hoje < ausente.retorno ? "em_curso" : "vencida" } : null,
     });
     await proximo();
   };

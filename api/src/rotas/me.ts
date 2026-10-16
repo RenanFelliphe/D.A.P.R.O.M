@@ -3,7 +3,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
-import { ESTADOS_TREINAMENTO, equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
+import { ESTADOS_TREINAMENTO, ausencia, equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
+import { ausenciaDaPessoaParaApi, ausenciaVigenteDe } from "../dominio/ausencia";
 import { resumoParaMe } from "../dominio/gamificacao-leituras";
 import { ganhosDe } from "../dominio/lancamentos";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
@@ -13,6 +14,7 @@ import type { Autenticacao, Ambiente } from "../http/autenticacao";
 import { invalido, proibido } from "../http/erros";
 import { responder } from "../http/resposta";
 import { lerCorpo, uuid } from "../http/validacao";
+import { diaDe } from "../dominio/tempo";
 
 export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
   const r = new Hono<Ambiente>();
@@ -27,8 +29,14 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
       ? await deps.db.select({ id: equipe.id, nome: equipe.nome }).from(equipe).where(inArray(equipe.id, eu.equipesSupervisionadas)).orderBy(equipe.nome)
       : [];
     const criadores = await nomesDosCriadores(deps.db, [u!]);
+    // A ausência que está valendo (a faixa "Você está ausente até DD/MM" e a tela de retorno): os dados dela e o que está em andamento.
+    const vigente = await ausenciaVigenteDe(deps.db, eu.id, diaDe(deps.agora()));
+    const [linhaDaAusencia] = vigente ? await deps.db.select().from(ausencia).where(eq(ausencia.id, vigente.id)) : [];
     return responder(c, {
-      usuario: { ...usuarioParaApi(u!, { criadoPorNome: (u!.criadoPorId && criadores.get(u!.criadoPorId)) || null }), rankingAnonimo: u!.rankingAnonimo },
+      usuario: { ...usuarioParaApi(u!, { criadoPorNome: (u!.criadoPorId && criadores.get(u!.criadoPorId)) || null, ausencia: vigente ?? undefined }), rankingAnonimo: u!.rankingAnonimo },
+      ausencia: vigente && linhaDaAusencia
+        ? { ...ausenciaDaPessoaParaApi(vigente), motivo: linhaDaAusencia.motivo, origem: linhaDaAusencia.origem, fimPedidoData: linhaDaAusencia.fimPedidoData, fimPedidoEm: linhaDaAusencia.fimPedidoEm }
+        : null,
       equipe: e ? equipeParaApi(e) : null,
       equipesSupervisionadas: supervisionadas,
       /** A patente e os pontos da temporada para a barra superior; nulo para quem não joga (o admin). */

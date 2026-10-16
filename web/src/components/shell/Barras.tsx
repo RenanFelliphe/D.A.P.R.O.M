@@ -33,8 +33,8 @@ interface BarraProps {
   usuario: UsuarioDaBarra;
   /** Texto abaixo da marca: o papel de quem está usando. */
   subtitulo: string;
-  /** Alertas das equipes (admin e supervisor); sem isso o sino não aparece. */
-  alertas?: { naoLidos: number; recentes: Alerta[] };
+  /** Os alertas de quem está logado (os das equipes, para o admin e o supervisor; os da própria ausência, para o técnico); sem isso o sino não aparece. */
+  alertas?: { naoLidos: number; recentes: Alerta[]; /** Quem acompanha os alertas da gestão abre a tela de alertas. */ gestao: boolean };
   /** Campo de treino: troca a situação da conexão pelo selo do treino. */
   treino?: boolean;
   /** Técnico pendente fora do treino: a busca global é da `api` real e ele ainda não pode usá-la. */
@@ -53,7 +53,16 @@ export function Barra({ usuario, subtitulo, alertas, treino, semBusca, gamificac
         {treino ? (
           <SeloTreino />
         ) : alertas ? (
-          <SinoAlertas naoLidos={alertas.naoLidos} recentes={alertas.recentes} />
+          <>
+            {/* O técnico ganha o sino sem perder a situação da conexão (a gestão não a mostra). */}
+            {!alertas.gestao && (
+              <span className="net on">
+                <Icon name="check" size={16} />
+                Online
+              </span>
+            )}
+            <SinoAlertas naoLidos={alertas.naoLidos} recentes={alertas.recentes} gestao={alertas.gestao} />
+          </>
         ) : (
           <span className="net on">
             <Icon name="check" size={16} />

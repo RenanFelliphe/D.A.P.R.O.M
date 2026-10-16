@@ -4,6 +4,20 @@ import { emLista, instante } from "./comum";
 import { planoPreventiva } from "./preventivas";
 import { importacao, os } from "./sap";
 import { equipe, usuario } from "./usuarios";
+import { ausencia } from "./ausencia";
+
+/** Os avisos da ausência de um usuário: apontam para a ausência, não para uma OS. */
+export const ALERTA_TIPOS_DE_AUSENCIA = [
+  "ausencia_pedida",
+  "ausencia_aprovada",
+  "ausencia_recusada",
+  "ausencia_registrada",
+  "ausencia_fim_pedido",
+  "ausencia_fim_respondido",
+  "ausencia_alterada",
+  "ausencia_vencida",
+  "ausencia_cancelada",
+] as const;
 
 export const ALERTA_TIPOS = [
   "bloqueio",
@@ -14,6 +28,7 @@ export const ALERTA_TIPOS = [
   "preventiva_proxima",
   "preventiva_vencida",
   "inspecao_com_pendencia",
+  ...ALERTA_TIPOS_DE_AUSENCIA,
 ] as const;
 export type AlertaTipo = (typeof ALERTA_TIPOS)[number];
 
@@ -33,6 +48,10 @@ export const alerta = pgTable(
     importacaoId: uuid().references(() => importacao.id),
     /** Só nos alertas do ciclo das preventivas (`preventiva_proxima`, `preventiva_vencida`). */
     planoPreventivaId: uuid().references(() => planoPreventiva.id),
+    /** Só nos alertas da ausência de um usuário (`ausencia_*`). */
+    ausenciaId: uuid().references(() => ausencia.id),
+    /** A pessoa da ausência, nos mesmos alertas. */
+    usuarioAlvoId: uuid().references(() => usuario.id),
     /** Alerta de OS: supervisor da equipe; sem supervisor, um alerta por administrador ativo. Falha de importação: ver `dominio/alertas.ts`. */
     destinatarioId: uuid()
       .notNull()
@@ -46,8 +65,9 @@ export const alerta = pgTable(
     check("alerta_tipo_check", emLista(t.tipo, ALERTA_TIPOS)),
     check(
       "alerta_alvo",
-      sql`(${t.tipo} = 'falha_importacao' and ${t.importacaoId} is not null and ${t.osId} is null) or (${t.tipo} <> 'falha_importacao' and ${t.osId} is not null and ${t.importacaoId} is null)`,
+      sql`(${t.tipo} = 'falha_importacao' and ${t.importacaoId} is not null and ${t.osId} is null and ${t.ausenciaId} is null) or (${emLista(t.tipo, ALERTA_TIPOS_DE_AUSENCIA)} and ${t.ausenciaId} is not null and ${t.osId} is null and ${t.importacaoId} is null) or (${t.tipo} <> 'falha_importacao' and not ${emLista(t.tipo, ALERTA_TIPOS_DE_AUSENCIA)} and ${t.osId} is not null and ${t.importacaoId} is null and ${t.ausenciaId} is null)`,
     ),
+    check("alerta_alvo_da_ausencia", sql`(${t.ausenciaId} is null) = (${t.usuarioAlvoId} is null)`),
     check(
       "alerta_plano_so_na_preventiva",
       sql`(${t.tipo} in ('preventiva_proxima', 'preventiva_vencida')) = (${t.planoPreventivaId} is not null)`,
@@ -55,6 +75,7 @@ export const alerta = pgTable(
     index("alerta_destinatario_idx").on(t.destinatarioId, t.criadoEm.desc()),
     index("alerta_nao_lidos_idx").on(t.destinatarioId).where(sql`${t.lidoEm} is null`),
     index("alerta_os_idx").on(t.osId),
+    index("alerta_ausencia_idx").on(t.ausenciaId).where(sql`${t.ausenciaId} is not null`),
     index("alerta_plano_idx").on(t.planoPreventivaId).where(sql`${t.planoPreventivaId} is not null`),
   ],
 ).enableRLS();

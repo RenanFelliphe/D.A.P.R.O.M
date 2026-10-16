@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { aparenciaDoAlerta, referenciaDoAlerta, rotuloDoAlerta, type Alerta } from "@/components/web/alertas/tipos";
+import { chamar } from "@/lib/cliente-api";
 import { diaMes, hora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 
@@ -11,10 +13,16 @@ interface SinoAlertasProps {
   naoLidos: number;
   /** Alertas mais recentes (lidos ou não), do mais novo para o mais antigo. */
   recentes: Alerta[];
+  /**
+   * Quem acompanha os alertas da gestão (admin e supervisor): cada item abre a tela de alertas. O técnico só tem o sino, com os
+   * avisos endereçados a ele (os da própria ausência): cada item leva às ausências do perfil e abrir o marca como lido.
+   */
+  gestao: boolean;
 }
 
 /** Sino da barra superior: abre um menu com os alertas mais recentes e o atalho "Ver todas as notificações". */
-export function SinoAlertas({ naoLidos, recentes }: SinoAlertasProps) {
+export function SinoAlertas({ naoLidos, recentes, gestao }: SinoAlertasProps) {
+  const roteador = useRouter();
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -36,6 +44,15 @@ export function SinoAlertas({ naoLidos, recentes }: SinoAlertasProps) {
   }, [aberto]);
 
   const fechar = () => setAberto(false);
+
+  /** O técnico não tem a tela de alertas: abrir o aviso o marca como lido, e a tela se atualiza. */
+  function abrir(a: Alerta) {
+    fechar();
+    if (gestao || a.lido_em !== null) return;
+    chamar("PATCH", `/alertas/${a.id}`, { lido: true })
+      .then(() => roteador.refresh())
+      .catch(() => {});
+  }
 
   return (
     <div className="sino" ref={raiz}>
@@ -66,7 +83,7 @@ export function SinoAlertas({ naoLidos, recentes }: SinoAlertasProps) {
                 const referencia = referenciaDoAlerta(a);
                 return (
                   <li key={a.id}>
-                    <Link href={`${rotas.web.alertas}?alerta=${a.id}`} className={a.lido_em === null ? "sino-item novo" : "sino-item"} onClick={fechar}>
+                    <Link href={gestao ? `${rotas.web.alertas}?alerta=${a.id}` : `${rotas.app.perfil}#ausencias`} className={a.lido_em === null ? "sino-item novo" : "sino-item"} onClick={() => abrir(a)}>
                       <span className={urgente ? "ic red" : "ic blue"}>
                         <Icon name={icone} size={16} />
                       </span>
@@ -92,9 +109,11 @@ export function SinoAlertas({ naoLidos, recentes }: SinoAlertasProps) {
               })}
             </ul>
           )}
-          <Link href={rotas.web.alertas} className="sino-todas" onClick={fechar}>
-            Ver todas as notificações
-          </Link>
+          {gestao && (
+            <Link href={rotas.web.alertas} className="sino-todas" onClick={fechar}>
+              Ver todas as notificações
+            </Link>
+          )}
         </div>
       )}
     </div>

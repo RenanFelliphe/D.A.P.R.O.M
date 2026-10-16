@@ -16,8 +16,9 @@ import { lerCorpo, lerJson } from "../http/validacao";
 export function rotasEventos(deps: Deps, { autenticar }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
-  // Usuário desativado ainda envia a fila pendente; depois a sessão é revogada ("Acesso revogado").
-  r.post("/eventos", autenticar({ permitirDesativado: true }), async (c) => {
+  // Usuário desativado ainda envia a fila pendente; depois a sessão é revogada ("Acesso revogado"). O ausente também: só vale o que
+  // aconteceu antes do início da ausência (`processarEventos` recusa o resto com `usuario_ausente`).
+  r.post("/eventos", autenticar({ permitirDesativado: true, permitirAusente: true }), async (c) => {
     const eu = c.get("usuario");
     if (eu.perfil !== "tecnico") throw proibido("Só o perfil técnico aplica APR e executa OS");
     const { eventos } = await lerCorpo(c, esquemaEnvio);
@@ -43,7 +44,7 @@ export function rotasEventos(deps: Deps, { autenticar }: Autenticacao) {
   });
 
   /** Só do modo offline: baixa a cópia local da equipe. O `cursor` é opcional e, por ora, ignorado (snapshot completo). */
-  r.post("/sync/pull", autenticar(), async (c) => {
+  r.post("/sync/pull", autenticar({ permitirAusente: true }), async (c) => {
     const eu = c.get("usuario");
     if (eu.perfil !== "tecnico" || !eu.equipeId) throw proibido("O modo offline é das equipes de campo");
     return responder(c, await montarSnapshot(deps.db, { id: eu.id, equipeId: eu.equipeId }, deps.agora()));

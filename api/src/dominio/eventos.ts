@@ -16,6 +16,7 @@ import {
   aplicarPausaEncerrada,
   aplicarPausaIniciada,
 } from "./eventos-execucao";
+import { inicioDaAusencia } from "./ausencia";
 import { recalcularStatusOs } from "./status-os";
 
 export const MAX_EVENTOS_POR_ENVIO = 500;
@@ -94,6 +95,10 @@ export async function processarEventos(
     const recebidoEm = deps.agora();
     const parcial: Contexto["saida"] = { alertas: [], aprs: [], osAfetadas: new Set(), ganhos: [] };
     try {
+      // O ausente só envia o que fez antes do início da ausência (a fila offline); o que veio depois é recusado.
+      if (usuario.ausencia && e.ocorrido_em >= inicioDaAusencia(usuario.ausencia)) {
+        throw rejeitar("usuario_ausente", "Você estava ausente quando isto aconteceu: o sistema fica só para consulta");
+      }
       await deps.db.transaction(async (tx) => {
         const osDoEnvelope = e.os_id ?? (typeof e.payload.os_id === "string" ? e.payload.os_id : null);
         if (osDoEnvelope) {

@@ -3,6 +3,8 @@ import type { Db } from "../db/conexao";
 import { os, usuario, type OsStatus } from "../db/schema";
 import { podeVerEquipe, type UsuarioAutenticado } from "../http/autenticacao";
 import { conflito, invalido, naoEncontrado, proibido } from "../http/erros";
+import { ausentesEm } from "./ausencia";
+import { diaDe } from "./tempo";
 
 /** Enquanto a OS não começou, o supervisor pode reservá-la a uma pessoa, trocar o responsável ou liberá-la para a equipe. */
 const STATUS_RESERVAVEIS: readonly OsStatus[] = ["liberada", "pendente"];
@@ -34,6 +36,9 @@ export async function reservarOs(db: Db, eu: UsuarioAutenticado, osId: string, r
     const [pessoa] = await tdb.select().from(usuario).where(eq(usuario.id, responsavelId));
     if (!pessoa || pessoa.perfil !== "tecnico" || !pessoa.ativo || pessoa.liberacao !== "liberado" || pessoa.equipeId !== atual.equipeId) {
       throw invalido("responsavel_invalido", "O responsável precisa ser um técnico ativo da equipe da OS");
+    }
+    if ((await ausentesEm(tdb, [responsavelId], diaDe(agora))).has(responsavelId)) {
+      throw invalido("responsavel_ausente", `${pessoa.nome} está ausente e não pode receber a OS`);
     }
     const anterior = atual.responsavelId;
     if (anterior !== responsavelId) {

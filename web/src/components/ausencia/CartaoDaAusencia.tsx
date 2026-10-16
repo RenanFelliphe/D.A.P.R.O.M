@@ -1,0 +1,142 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import { Badge } from "@/components/ui/Badge";
+import { Icon } from "@/components/ui/Icon";
+import { Notice } from "@/components/ui/Notice";
+import { descreverPeriodo, rotuloDaForma, rotuloDaSituacao, tomDaSituacao, type Ausencia, type AtoDaAusencia } from "@/lib/ausencia";
+import { chamar } from "@/lib/cliente-api";
+import { dataDoDia, dataHora } from "@/lib/formatar";
+import { rotas } from "@/lib/rotas";
+import { AcoesDaAusencia, type QuemAge } from "./AcoesDaAusencia";
+
+const ROTULO_DO_ATO: Record<string, string> = {
+  pedido: "Pedido de ausência",
+  registro: "Registrada pelo supervisor",
+  aprovacao: "Aprovada pelo supervisor",
+  recusa: "Pedido recusado",
+  confirmacao: "Confirmada pelo funcionário",
+  recusa_ajuste: "Datas recusadas pelo funcionário",
+  cancelamento: "Pedido cancelado",
+  cancelamento_automatico: "Cancelada pelo sistema (a data de retorno chegou)",
+  inicio: "Início da ausência",
+  fim_pedido: "Fim antecipado pedido",
+  fim_aprovado: "Fim antecipado aprovado",
+  fim_recusado: "Fim antecipado recusado",
+  prorrogacao: "Data de retorno alterada",
+  encerramento: "Ausência encerrada",
+  retorno: "Retorno confirmado",
+};
+
+/** O que o ato guardou que vale mostrar: o motivo, as datas novas e o que o início desfez. */
+function detalheDoAto(a: AtoDaAusencia): string | null {
+  const d = a.dados ?? {};
+  const partes: string[] = [];
+  if (typeof d.motivo === "string" && d.motivo) partes.push(d.motivo);
+  if (a.tipo === "prorrogacao" && typeof d.retorno_anterior === "string" && typeof d.retorno_novo === "string") {
+    partes.push(`de ${dataDoDia(d.retorno_anterior)} para ${dataDoDia(d.retorno_novo)}`);
+  }
+  if (a.tipo === "aprovacao" && d.ajustou === true) partes.push("com as datas ajustadas");
+  if (a.tipo === "fim_pedido" && typeof d.data === "string") partes.push(`voltar em ${dataDoDia(d.data)}`);
+  if (a.tipo === "inicio") {
+    const reservas = Array.isArray(d.reservas_desfeitas) ? d.reservas_desfeitas.length : 0;
+    const execucoes = Array.isArray(d.execucoes_suspensas) ? d.execucoes_suspensas.length : 0;
+    if (reservas > 0) partes.push(`${reservas} ${reservas === 1 ? "reserva de OS desfeita" : "reservas de OS desfeitas"}`);
+    if (execucoes > 0) partes.push(`${execucoes} ${execucoes === 1 ? "execução suspensa" : "execuções suspensas"}`);
+  }
+  return partes.length > 0 ? partes.join(" · ") : null;
+}
+
+/** A linha do tempo da ausência, buscada só quando a pessoa a abre. */
+function HistoricoDaAusencia({ id }: { id: string }) {
+  const [atos, setAtos] = useState<AtoDaAusencia[] | null>(null);
+  const [erro, setErro] = useState(false);
+
+  function aoAbrir(e: React.SyntheticEvent<HTMLDetailsElement>) {
+    if (!e.currentTarget.open || atos) return;
+    chamar<{ ausencia: { atos: AtoDaAusencia[] } }>("GET", `/ausencias/${id}`)
+      .then((r) => setAtos(r.ausencia.atos))
+      .catch(() => setErro(true));
+  }
+
+  return (
+    <details className="aus-historico" onToggle={aoAbrir}>
+      <summary className="small">Histórico</summary>
+      {erro ? (
+        <span className="small muted">Não foi possível carregar o histórico.</span>
+      ) : !atos ? (
+        <span className="small muted">Carregando…</span>
+      ) : (
+        <ol className="aus-atos">
+          {atos.map((a) => {
+            const detalhe = detalheDoAto(a);
+            return (
+              <li key={a.id}>
+                <span className="small muted">{dataHora(a.em)}</span>
+                <span>
+                  <strong>{ROTULO_DO_ATO[a.tipo] ?? a.tipo}</strong>
+                  {a.autor_nome ? ` · ${a.autor_nome}` : " · sistema"}
+                  {a.assinado && <span className="small muted"> · assinado</span>}
+                  {detalhe && <span className="small muted"> — {detalhe}</span>}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </details>
+  );
+}
+
+interface CartaoDaAusenciaProps {
+  ausencia: Ausencia;
+  eu: QuemAge;
+  /** Quem olha supervisiona a equipe da ausência. */
+  supervisaEquipe: boolean;
+  /** Mostra o nome da pessoa (na tela da equipe); no perfil de cada um, só os dados da ausência. */
+  comPessoa?: boolean;
+}
+
+const ORIGEM: Record<Ausencia["origem"], string> = {
+  pedido: "Pedida pelo funcionário",
+  supervisor: "Registrada pelo supervisor",
+  propria: "Registrada pelo próprio supervisor",
+};
+
+/** Uma ausência: quem, o período, o motivo, como está e o que cada pessoa pode fazer agora. */
+export function CartaoDaAusencia({ ausencia: a, eu, supervisaEquipe, comPessoa = false }: CartaoDaAusenciaProps) {
+  return (
+    <article className="card stack g8 aus-cartao" id={`ausencia-${a.id}`}>
+      <div className="row between wrap g8">
+        <div className="stack g4" style={{ minWidth: 0 }}>
+          {comPessoa && (
+            <Link href={rotas.app.perfilDe(a.usuario_id)} style={{ fontWeight: 600 }}>
+              {a.usuario_nome}
+            </Link>
+          )}
+          <span style={{ fontWeight: comPessoa ? 400 : 600 }}>{descreverPeriodo(a)}</span>
+        </div>
+        <Badge tone={tomDaSituacao[a.situacao]}>{rotuloDaSituacao[a.situacao]}</Badge>
+      </div>
+      <p>{a.motivo}</p>
+      <span className="small muted">
+        {ORIGEM[a.origem]}
+        {a.supervisor_nome && a.origem !== "propria" ? ` · supervisor ${a.supervisor_nome}` : ""}
+        {a.encerrada_em ? ` · ${a.forma_encerramento ? rotuloDaForma[a.forma_encerramento] : rotuloDaSituacao[a.situacao]} em ${dataHora(a.encerrada_em)}` : ""}
+      </span>
+      {a.situacao === "vencida" && (
+        <Notice tone="blq" icon="clock">
+          A data de retorno chegou ({dataDoDia(a.retorno)}) e o retorno ainda não foi confirmado: {a.usuario_id === eu.id ? "confirme o retorno" : "o funcionário confirma o retorno, ou você altera a data ou encerra a ausência"}.
+        </Notice>
+      )}
+      {a.fim_pedido_em && a.fim_pedido_data && (
+        <Notice tone="al" icon="clock">
+          <Icon name="refresh" size={13} /> Fim antecipado pedido: voltar em {dataDoDia(a.fim_pedido_data)}. Aguarda a resposta do supervisor.
+        </Notice>
+      )}
+      <AcoesDaAusencia ausencia={a} eu={eu} supervisaEquipe={supervisaEquipe} />
+      <HistoricoDaAusencia id={a.id} />
+    </article>
+  );
+}

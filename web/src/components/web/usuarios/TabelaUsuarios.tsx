@@ -7,6 +7,7 @@ import { dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 import { rotuloDoPerfil, type Equipe, type Perfil, type Usuario } from "@/lib/tipos";
 import { AcoesUsuario } from "./AcoesUsuario";
+import { SeloDeAusencia } from "@/components/ausencia/SeloDeAusencia";
 import { SeloLiberacao } from "./SeloLiberacao";
 import { SeloRegistro } from "./SeloRegistro";
 
@@ -153,6 +154,7 @@ export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, to
                       {supervisor ? (
                         <span className="stack g4" style={{ alignItems: "flex-start" }}>
                           <SeloLiberacao liberacao={u.liberacao} motivo={u.recusa_motivo} />
+                          <SeloDeAusencia ausencia={u.ausencia} />
                           <SeloRegistro situacao={u.situacao_registro} />
                         </span>
                       ) : (
@@ -161,6 +163,7 @@ export function TabelaUsuarios({ usuarios, equipes, filtros, pagina, tamanho, to
                             {u.ativo ? "Ativo" : "Inativo"}
                           </Badge>
                           {u.liberacao && u.liberacao !== "liberado" && <SeloLiberacao liberacao={u.liberacao} motivo={u.recusa_motivo} />}
+                          <SeloDeAusencia ausencia={u.ausencia} />
                           <SeloRegistro situacao={u.situacao_registro} />
                           {u.registro_conferido_em && <span className="small">Registro conferido em {dataHora(u.registro_conferido_em)}</span>}
                           {u.senha_provisoria && (

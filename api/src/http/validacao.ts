@@ -68,3 +68,9 @@ export const instanteIso = z
   .string()
   .datetime({ offset: true })
   .transform((v) => new Date(v));
+
+/** `AAAA-MM-DD` de um dia que existe (2026-02-30 não). */
+export const dataExistente = dataIso.refine((v) => {
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(v);
+}, "Data inexistente");

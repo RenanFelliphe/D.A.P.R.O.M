@@ -7,7 +7,8 @@ import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
 import type { Colega, EscolhaDoModelo } from "@/lib/apr";
-import { execucaoAberta, rotuloDaOs, type DetalheDaOs } from "@/lib/os-app";
+import { execucaoAberta, reservadaParaOutro, rotuloDaOs, type DetalheDaOs } from "@/lib/os-app";
+import { MOTIVO_DO_AUSENTE } from "@/lib/ausencia";
 import { rotas } from "@/lib/rotas";
 
 export const metadata: Metadata = { title: "Nova APR" };
@@ -21,7 +22,8 @@ export default async function NovaAprPage({ params }: PageProps<"/app/os/[id]/ap
   const detalhe = await apiOuNulo<DetalheDaOs>(`/os/${id}`);
   if (!detalhe) notFound();
   const { os, execucoes } = detalhe;
-  if (os.status === "encerrada" || os.status === "cancelada") redirect(rotas.app.os(id));
+  if (os.status === "encerrada" || os.status === "cancelada" || os.status === "devolvida") redirect(rotas.app.os(id));
+  const { usuario, ausencia } = await usuarioAtual();
 
   const cabecalho = (
     <CabecalhoPagina
@@ -35,6 +37,18 @@ export default async function NovaAprPage({ params }: PageProps<"/app/os/[id]/ap
       <span className="muted">Etapa 1 de 3 · modelo, participantes e riscos</span>
     </CabecalhoPagina>
   );
+
+  // O ausente só visualiza: não aplica APR (a `api` também recusa).
+  if (ausencia) {
+    return (
+      <Screen>
+        {cabecalho}
+        <Notice tone="al" icon="lock">
+          <strong>{ausencia.rotulo}.</strong> {MOTIVO_DO_AUSENTE.replace("Você está ausente: ", "")} <Link href={rotas.app.os(id)}>Voltar à OS</Link>
+        </Notice>
+      </Screen>
+    );
+  }
 
   const aberta = execucaoAberta(execucoes);
   if (os.status === "em_execucao" || aberta) {
@@ -50,21 +64,35 @@ export default async function NovaAprPage({ params }: PageProps<"/app/os/[id]/ap
     );
   }
 
-  const { usuario } = await usuarioAtual();
+  // OS reservada pelo supervisor a outra pessoa: só o responsável aplica a APR (a `api` também recusa).
+  if (reservadaParaOutro(os, usuario.id)) {
+    return (
+      <Screen>
+        {cabecalho}
+        <Notice tone="info" icon="lock">
+          <strong>Esta OS está reservada para {os.responsavel!.nome}.</strong> Só quem o supervisor designou aplica a APR e inicia a execução.{" "}
+          <Link href={rotas.app.os(id)}>Voltar à OS</Link>
+        </Notice>
+      </Screen>
+    );
+  }
+
   const [{ usuarios }, escolha] = await Promise.all([
-    api<{ usuarios: Colega[] }>("/usuarios", { consulta: { equipe_id: os.equipe_id, tamanho: 200 } }),
+    api<{ usuarios: (Colega & { ausencia?: unknown })[] }>("/usuarios", { consulta: { equipe_id: os.equipe_id, tamanho: 200 } }),
     api<EscolhaDoModelo>(`/os/${id}/modelos-apr`),
   ]);
 
   // O técnico logado sempre participa, mesmo que a lista da equipe não o traga; só o que a tela usa vai ao navegador.
   const resumo = ({ id, nome, matricula, cargo, perfil, assinatura_path }: Colega): Colega => ({ id, nome, matricula, cargo, perfil, assinatura_path });
-  const colegas = (usuarios.some((u) => u.id === usuario.id) ? usuarios : [...usuarios, usuario]).map(resumo);
+  // O ausente não entra em APR: some da escolha dos participantes (a `api` também o recusa).
+  const presentes = usuarios.filter((u) => !u.ausencia);
+  const colegas = (presentes.some((u) => u.id === usuario.id) ? presentes : [...presentes, usuario]).map(resumo);
 
   return (
     <Screen>
       {cabecalho}
       <NovaAprScreen
-        os={{ id: os.id, rotulo: rotuloDaOs(os), titulo: os.titulo, local: os.local_instalacao.codigo }}
+        os={{ id: os.id, rotulo: rotuloDaOs(os), titulo: os.titulo, local: os.local_instalacao.codigo, reservada: Boolean(os.responsavel) }}
         usuarioId={usuario.id}
         colegas={colegas}
         escolha={escolha}

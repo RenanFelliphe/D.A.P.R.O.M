@@ -5,6 +5,7 @@ import { enfileirarTarefa } from "./fila";
 import { manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
 import { manipularLeituraSap } from "./leitura-sap";
 import { fecharTemporadasVencidas } from "../dominio/fechamento-temporada";
+import { conferirAusencias } from "../dominio/ausencia";
 import { verificarCiclos } from "../dominio/preventivas";
 import { agendarLeituraDiariaRh, manipularConferenciaRh, manipularLeituraRh } from "../dominio/rh";
 
@@ -28,6 +29,8 @@ export const LIMITE_EM_ANDAMENTO_MIN = 10;
 const INTERVALO_EXECUTOR_MS = 5_000;
 /** De quanto em quanto tempo o ciclo das preventivas é conferido (os alertas são por dia: uma hora basta). */
 export const INTERVALO_CICLOS_MIN = 60;
+/** De quanto em quanto tempo as ausências são conferidas (início aplicado, pedido parado cancelado e ausência vencida avisada). */
+export const INTERVALO_AUSENCIAS_MIN = 60;
 /** De quanto em quanto tempo as temporadas da gamificação que passaram da tolerância são fechadas. */
 export const INTERVALO_TEMPORADAS_MIN = 60;
 /** De quanto em quanto tempo se confere se já é hora da leitura diária do registro de funcionários (o índice único evita repetir). */
@@ -126,7 +129,8 @@ export async function agendarLeituraSap(deps: Deps): Promise<boolean> {
  * Liga o executor no processo da `api`: a cada ~5 s recupera as tarefas presas, agenda a leitura do SAP (quando
  * `SAP_API_URL` está configurada, a cada `SAP_LEITURA_INTERVALO_MIN` minutos), agenda a leitura diária do registro de funcionários
  * (quando `RH_API_URL` está configurada, uma por dia a partir de `RH_LEITURA_HORA`), confere o ciclo das preventivas (ao subir e a
- * cada `INTERVALO_CICLOS_MIN` minutos, criando os alertas de ciclo próximo e vencido) e executa as tarefas vencidas, sem que
+ * cada `INTERVALO_CICLOS_MIN` minutos, criando os alertas de ciclo próximo e vencido), confere as ausências (ao subir e a cada
+ * `INTERVALO_AUSENCIAS_MIN` minutos) e executa as tarefas vencidas, sem que
  * duas rodadas se sobreponham. Devolve a função que o encerra.
  */
 export function iniciarTarefas(deps: Deps): () => void {
@@ -135,6 +139,7 @@ export function iniciarTarefas(deps: Deps): () => void {
   let ultimoAgendamento = 0;
   let ultimaConferenciaDeCiclos = 0;
   let ultimoFechamentoDeTemporadas = 0;
+  let ultimaConferenciaDeAusencias = 0;
   let ultimaChecagemDaLeituraRh = 0;
 
   async function rodada() {
@@ -155,6 +160,11 @@ export function iniciarTarefas(deps: Deps): () => void {
       if (agora - ultimaConferenciaDeCiclos >= minutos(INTERVALO_CICLOS_MIN)) {
         ultimaConferenciaDeCiclos = agora;
         await verificarCiclos(deps.db, deps.agora());
+      }
+      if (agora - ultimaConferenciaDeAusencias >= minutos(INTERVALO_AUSENCIAS_MIN)) {
+        ultimaConferenciaDeAusencias = agora;
+        // Idempotente: a subida e a rodada não repetem nada. Uma falha aqui não impede as tarefas da rodada.
+        await conferirAusencias(deps.db, deps.agora()).catch((erro) => console.error("Falha ao conferir as ausências:", erro));
       }
       if (agora - ultimoFechamentoDeTemporadas >= minutos(INTERVALO_TEMPORADAS_MIN)) {
         ultimoFechamentoDeTemporadas = agora;

@@ -2,12 +2,13 @@ import { randomInt } from "node:crypto";
 import { inArray } from "drizzle-orm";
 import { usuario, equipe } from "../db/schema";
 import type { Deps } from "../deps";
+import { ausenciaDaPessoaParaApi, type AusenciaVigente } from "./ausencia";
 
 type LinhaUsuario = typeof usuario.$inferSelect;
 type LinhaEquipe = typeof equipe.$inferSelect;
 
 /** O que a API devolve de um usuário: nunca a senha (que nem existe no nosso banco). */
-export function usuarioParaApi(u: LinhaUsuario, opcoes: { semEmail?: boolean; criadoPorNome?: string | null } = {}) {
+export function usuarioParaApi(u: LinhaUsuario, opcoes: { semEmail?: boolean; criadoPorNome?: string | null; /** Quem está ausente hoje (veja `ausentesEm`): vira o selo "Ausente até DD/MM". */ ausencia?: AusenciaVigente } = {}) {
   return {
     id: u.id,
     nome: u.nome,
@@ -34,6 +35,8 @@ export function usuarioParaApi(u: LinhaUsuario, opcoes: { semEmail?: boolean; cr
     /** O que o registro de funcionários diz da pessoa (`ativo`, `afastado`, `desligado`, `fora_do_registro`); nulo até a primeira conferência. */
     situacaoRegistro: u.situacaoRegistro,
     registroConferidoEm: u.registroConferidoEm,
+    /** A ausência em curso ou vencida da pessoa (o ausente só visualiza); nulo quando ela não está ausente. */
+    ausencia: ausenciaDaPessoaParaApi(opcoes.ausencia),
   };
 }
 

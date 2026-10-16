@@ -1,24 +1,32 @@
 import type { Metadata } from "next";
 import { CabecalhoPagina, Colunas } from "@/components/app/AppChrome";
+import { MinhasAusencias } from "@/components/ausencia/MinhasAusencias";
 import { LinhaHistorico, type ExecucaoDoHistorico } from "@/components/app/perfil/LinhaHistorico";
 import { MinhaAssinatura } from "@/components/app/perfil/MinhaAssinatura";
 import { TrocarSenha } from "@/components/app/perfil/TrocarSenha";
 import { Screen } from "@/components/ui/Screen";
 import { CartaoDaMinhaPontuacao } from "@/components/web/gamificacao/BlocosDoPerfil";
-import { api, usuarioAtual } from "@/lib/api";
+import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
+import type { Ausencia } from "@/lib/ausencia";
 import { data } from "@/lib/formatar";
-import { ehAdmin, rotuloDoPerfil } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor, rotuloDoPerfil } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Perfil" };
 
 /**
  * Perfil de quem está logado: um endereço só para admin, supervisor e técnico. Todos veem os próprios dados, a assinatura e a
- * troca de senha; quem executa OS (técnico e supervisor) vê também as OS que encerrou nos últimos 60 dias, que o admin não tem.
+ * troca de senha; quem executa OS (técnico e supervisor) vê também as ausências (pedir, confirmar, pedir o fim antecipado) e as OS que
+ * encerrou nos últimos 60 dias, que o admin não tem.
  */
 export default async function PerfilPage() {
-  const { usuario, equipe } = await usuarioAtual();
+  const { usuario, equipe, ausencia } = await usuarioAtual();
   const executa = !ehAdmin(usuario);
   const historico = executa ? (await api<{ execucoes: ExecucaoDoHistorico[] }>("/me/historico")).execucoes : null;
+  // As minhas ausências; no campo de treino a rota não existe (404) e a seção não aparece.
+  const ausencias = executa ? (await apiOuNulo<{ ausencias: Ausencia[] }>("/ausencias", { consulta: { usuario_id: usuario.id, tamanho: 50 } }))?.ausencias ?? null : null;
+  const supervisor = ehSupervisor(usuario);
+  // O técnico pede ao supervisor da equipe: sem equipe, ou numa equipe sem supervisor, não há a quem pedir.
+  const motivoSemPedido = supervisor ? null : !equipe ? "Você não está em uma equipe: não há supervisor para responder ao pedido." : !equipe.supervisor_id ? "A sua equipe está sem supervisor: não há quem responda ao pedido de ausência." : null;
   const supervisao = usuario.equipes_supervisionadas?.map((e) => e.nome).join(", ");
 
   const dados: [string, string | null][] = [
@@ -59,6 +67,14 @@ export default async function PerfilPage() {
               </div>
               <span className="muted small">Para alterar nome, e-mail ou cargo, peça a um administrador.</span>
             </section>
+            {ausencias && (
+              <MinhasAusencias
+                ausencias={ausencias}
+                eu={{ id: usuario.id, nome: usuario.nome, assinaturaPath: usuario.assinatura_path, ausente: Boolean(ausencia) }}
+                modo={supervisor ? "registrar" : "pedir"}
+                motivoSemPedido={motivoSemPedido}
+              />
+            )}
             {historico && (
               <section className="stack g8" data-treino="perfil-historico">
                 <h2>OS que encerrei nos últimos 60 dias</h2>

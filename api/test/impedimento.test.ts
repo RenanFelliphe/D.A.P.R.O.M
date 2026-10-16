@@ -318,8 +318,10 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
       assert.equal(outra.total, 0);
     });
 
-    it("técnico é 403 e sem token é 401", async () => {
-      assert.equal((await amb.req("GET", "/alertas", { como: tecnico })).status, 403);
+    it("o técnico tem o sino, mas só vê os alertas endereçados a ele (os da equipe não); sem token é 401", async () => {
+      const meus = await amb.esperar(200, "GET", "/alertas", { como: tecnico });
+      assert.deepEqual(meus.alertas, []);
+      assert.equal(meus.total, 0);
       assert.equal((await amb.req("GET", "/alertas")).status, 401);
     });
 
@@ -355,9 +357,9 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
       assert.equal((await lerAlerta(aSupNovo.id)).lidoEm, null);
     });
 
-    it("só o destinatário (ou o admin) marca: outro supervisor recebe 404; técnico 403", async () => {
+    it("só o destinatário (ou o admin) marca: outro supervisor e o técnico recebem 404", async () => {
       assert.equal((await amb.req("PATCH", `/alertas/${aSupB.id}`, { como: leitor, json: { lido: true } })).status, 404);
-      assert.equal((await amb.req("PATCH", `/alertas/${aSupB.id}`, { como: tecnico, json: { lido: true } })).status, 403);
+      assert.equal((await amb.req("PATCH", `/alertas/${aSupB.id}`, { como: tecnico, json: { lido: true } })).status, 404);
       assert.equal((await amb.req("PATCH", `/alertas/${ID_INEXISTENTE}`, { como: admin, json: { lido: true } })).status, 404);
       assert.equal((await lerAlerta(aSupB.id)).lidoEm, null);
 

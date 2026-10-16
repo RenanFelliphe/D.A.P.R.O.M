@@ -1,5 +1,6 @@
 /** Tipos das respostas da `api` que várias telas usam (os demais ficam junto da tela que os consome). Chaves em snake_case, como a `api` devolve. */
 
+import type { AusenciaDaPessoa } from "@/lib/ausencia";
 import type { ResumoDaBarra } from "@/lib/gamificacao";
 
 /** Só técnico e administrador. Supervisor não é perfil: é quem a equipe aponta (`equipes_supervisionadas` de `GET /me`) e sempre é técnico. */
@@ -43,6 +44,8 @@ export interface Usuario {
   ranking_anonimo?: boolean;
   /** A patente e os pontos da temporada para a barra superior; `GET /me` preenche, e é `null` para o admin (não joga). */
   gamificacao?: ResumoDaBarra | null;
+  /** A ausência em curso ou vencida da pessoa (o ausente só visualiza); `null` quando não está ausente. As listas de pessoas e `GET /me` preenchem. */
+  ausencia?: AusenciaDaPessoa | null;
 }
 
 export type Liberacao = "liberado" | "pendente" | "recusado";
@@ -76,7 +79,8 @@ export interface Equipe {
   supervisor_id: string | null;
 }
 
-export type OsStatus = "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada";
+/** `devolvida`: o supervisor a devolveu ao SAP com uma justificativa (erro na ordem); sai do quadro, como a `cancelada`. */
+export type OsStatus = "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada" | "devolvida";
 
 /** Resposta de listas: `{<nome>: [...], pagina, tamanho, total}`. */
 export interface Paginacao {
@@ -120,7 +124,14 @@ export const rotuloDoStatus: Record<OsStatus, string> = {
   em_execucao: "Em execução",
   encerrada: "Encerrada",
   cancelada: "Cancelada",
+  devolvida: "Devolvida ao SAP",
 };
+
+/** A pessoa para quem o supervisor reservou a OS (atribuição individual): só ela inicia a APR e a execução. */
+export interface ResponsavelDaOs {
+  id: string;
+  nome: string;
+}
 
 /** Iniciais para o avatar: primeira e última palavra do nome. */
 export function iniciaisDe(nome: string): string {

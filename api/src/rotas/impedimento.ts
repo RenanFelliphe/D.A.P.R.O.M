@@ -115,13 +115,14 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     return responder(c, resultado);
   });
 
-  r.get("/alertas", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
+  /** O sino: cada pessoa lê os alertas endereçados a ela (o técnico, os da própria ausência); o admin lê os de todos. */
+  r.get("/alertas", autenticar(), async (c) => {
     const filtros = lerConsulta(c, esquemaPaginacao.extend({ lido: booleanoDaConsulta, equipe_id: uuid.optional(), tipo: z.enum(ALERTA_TIPOS).optional() }));
     const { linhas, total } = await listarAlertas(deps.db, c.get("usuario"), filtros);
     return responder(c, { alertas: linhas, ...meta(filtros, total) });
   });
 
-  r.patch("/alertas/:id", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
+  r.patch("/alertas/:id", autenticar({ permitirAusente: true }), async (c) => {
     const id = lerId(c);
     await lerCorpo(c, z.object({ lido: z.literal(true, { error: "Só é possível marcar o alerta como lido" }) }));
     await marcarComoLido(deps.db, c.get("usuario"), id, deps.agora());

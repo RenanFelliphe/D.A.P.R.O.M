@@ -27,9 +27,9 @@ import { podeSupervisionarEquipe, podeVerEquipe, type UsuarioAutenticado } from 
 import { conflito, naoEncontrado, proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { enfileirarTarefa } from "../servicos/fila";
+import { reservasDesfeitasPorAusencia } from "./ausencia";
 import { buscaDeOs } from "./busca";
 import { checklistsDasOs } from "./checklist-inspecao";
-import { materiaisDasAprs } from "./apr-materiais";
 import { servicoDaAtividade } from "./catalogo";
 import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
 import { ganhosDe } from "./lancamentos";
@@ -260,7 +260,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
   if (linhas.length === 0) return [];
   const ids = linhas.map((l) => l.id);
 
-  const [participantes, riscos, respostas, arquivos, conferidos] = await Promise.all([
+  const [participantes, riscos, respostas, arquivos] = await Promise.all([
     db
       .select({
         aprId: aprParticipante.aprId,
@@ -305,7 +305,6 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
       .from(evidencia)
       .where(inArray(evidencia.aprId, ids))
       .orderBy(asc(evidencia.capturadaEm), asc(evidencia.id)),
-    materiaisDasAprs(db, ids),
   ]);
 
   return linhas.map((l) => {
@@ -347,8 +346,6 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
         .map(({ aprId: _a, ...p }) => p),
       riscos: riscos.filter((r) => r.aprId === l.id).map(({ aprId: _a, ...r }) => r),
       respostas: completas,
-      /** A conferência dos materiais do serviço: o que foi levado e a foto do item (obrigatórios primeiro). */
-      materiais: conferidos.filter((m) => m.aprId === l.id).map(({ aprId: _a, ...m }) => m),
       itensReprovados: respostas
         .filter((r) => r.aprId === l.id && reprovado(r.tipo, r.resposta, r.respostaBloqueante))
         .map((r) => ({
@@ -438,7 +435,7 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
 
   const equipeAnterior = alias(equipe, "equipe_anterior");
   const equipeNova = alias(equipe, "equipe_nova");
-  const [servico, aprs, execucoes, alertas, reprogramacoes, abertas, [suspeitos], checklists] = await Promise.all([
+  const [servico, aprs, execucoes, alertas, reprogramacoes, abertas, [suspeitos], checklists, reservasDesfeitas] = await Promise.all([
     o.codigoAtividade ? servicoDaAtividade(db, o.codigoAtividade) : null,
     carregarAprs(db, osId, eu.perfil === "admin"),
     carregarExecucoes(db, osId),
@@ -483,9 +480,11 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
       .from(eventoCampo)
       .where(and(eq(eventoCampo.osId, osId), sql`${eventoCampo.ocorridoEm} > ${eventoCampo.recebidoEm}`)),
     checklistsDasOs(db, [o]),
+    reservasDesfeitasPorAusencia(db, osId),
   ]);
 
   const linhaDoTempo = montarLinhaDoTempo({
+    reservasDesfeitas,
     aprs,
     execucoes,
     alertas,
@@ -554,6 +553,8 @@ function montarLinhaDoTempo(d: {
   cienciaEm: Date | null;
   cienciaPorNome: string | null;
   reserva: { em: Date; responsavelNome: string; porNome: string | null } | null;
+  /** As ausências que desfizeram a reserva da OS (a pessoa ficou ausente e a OS voltou para a equipe toda). */
+  reservasDesfeitas: { em: Date; usuarioNome: string }[];
   devolucao: { em: Date; porNome: string | null; justificativa: string | null } | null;
 }) {
   const itens: { em: Date; tipo: string; descricao: string }[] = [];
@@ -591,6 +592,7 @@ function montarLinhaDoTempo(d: {
   if (d.reserva) {
     itens.push({ em: d.reserva.em, tipo: "reserva", descricao: `Reservada para ${d.reserva.responsavelNome}${d.reserva.porNome ? ` por ${d.reserva.porNome}` : ""}` });
   }
+  for (const r of d.reservasDesfeitas) itens.push({ em: r.em, tipo: "reserva_desfeita", descricao: `Reserva desfeita: ausência de ${r.usuarioNome}` });
   if (d.devolucao) {
     itens.push({
       em: d.devolucao.em,

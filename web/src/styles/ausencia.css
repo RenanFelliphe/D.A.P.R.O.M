@@ -1,0 +1,74 @@
+/* Usuário ausente (ver ausencia.md): a faixa de quem está ausente, os cartões das ausências e o histórico de cada uma. */
+
+/* ===== Faixa no alto do conteúdo de quem está ausente ===== */
+
+.aus-faixa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--al-bd);
+  border-radius: 10px;
+  background: var(--al-bg);
+  color: var(--off);
+  font-size: 14px;
+  line-height: 1.4
+}
+
+.aus-faixa.vencida {
+  border-color: var(--blq-bd);
+  background: var(--blq-bg);
+  color: #5A1510
+}
+
+.aus-faixa-texto {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1 1 320px;
+  min-width: 0
+}
+
+.aus-faixa-texto .i {
+  flex: none;
+  margin-top: 2px
+}
+
+/* ===== Cartão de uma ausência ===== */
+
+.aus-cartao p {
+  overflow-wrap: anywhere
+}
+
+.aus-historico summary {
+  cursor: pointer;
+  color: var(--brand);
+  font-weight: 600
+}
+
+.aus-atos {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px
+}
+
+.aus-atos li {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.4
+}
+
+@media (max-width: 560px) {
+  .aus-atos li {
+    grid-template-columns: 1fr;
+    gap: 0
+  }
+}

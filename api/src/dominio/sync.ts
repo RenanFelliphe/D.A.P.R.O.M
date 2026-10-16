@@ -1,10 +1,12 @@
 import { and, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import type { Db } from "../db/conexao";
 import { apr, aprParticipante, atividade, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
+import { ausenciaDaPessoaParaApi, ausentesEm } from "./ausencia";
 import { materiaisDosServicos } from "./catalogo";
 import { checklistsDasOs } from "./checklist-inspecao";
 import { semClassificacao } from "./modelo-apr-banco";
 import { modelosParaEscolher, recomendarModelo } from "./recomendacao-apr";
+import { diaDe } from "./tempo";
 import { usuarioParaApi } from "./usuarios";
 
 const DIAS_DE_HISTORICO = 60;
@@ -66,6 +68,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
   const checklists = await checklistsDasOs(db, ordens);
 
   const equipe = await db.select().from(usuario).where(and(eq(usuario.equipeId, usuarioLogado.equipeId), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")));
+  const ausentes = await ausentesEm(db, [...equipe.map((u) => u.id), usuarioLogado.id], diaDe(agora));
 
   // A escolha do modelo offline: a orientação de cada modelo e, em cada OS, o recomendado e o que cada modelo achou nela.
   const paraEscolher = await modelosParaEscolher(db);
@@ -88,7 +91,9 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
       riscos: riscos.filter((r) => r.modeloAprId === m.id),
       itens: itens.filter((i) => i.modeloAprId === m.id).map(semClassificacao),
     })),
-    usuarios: equipe.map((u) => usuarioParaApi(u, { semEmail: true })),
+    usuarios: equipe.map((u) => usuarioParaApi(u, { semEmail: true, ausencia: ausentes.get(u.id) })),
+    /** A ausência de quem baixou a cópia (o app mostra a faixa e a tela de retorno); nula quando não está ausente. */
+    minhaAusencia: ausenciaDaPessoaParaApi(ausentes.get(usuarioLogado.id)),
     cursor: agora.toISOString(),
   };
 }

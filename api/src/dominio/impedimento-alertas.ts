@@ -1,6 +1,7 @@
 import { and, desc, eq, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
-import { alerta, importacao, os, usuario, type AlertaTipo } from "../db/schema";
+import { alerta, ausencia, importacao, os, usuario, type AlertaTipo } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { naoEncontrado } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
@@ -8,8 +9,11 @@ import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 /** O admin enxerga os alertas de todos os destinatários; o supervisor, só os seus. */
 const veTodosOsAlertas = (u: UsuarioAutenticado) => u.perfil === "admin";
 
+/** A pessoa da ausência, nos alertas `ausencia_*`. */
+const alvoDaAusencia = alias(usuario, "alvo_da_ausencia");
+
 /**
- * A OS (alertas de OS) ou a importação (falha de importação): o que não se aplica vem nulo. O destinatário diz de quem é
+ * A OS (alertas de OS), a importação (falha de importação): o que não se aplica vem nulo. O destinatário diz de quem é
  * o `lido_em`: o admin vê os alertas de todos, mas abrir o de outra pessoa não o marca como lido por ela.
  */
 const colunas = {
@@ -24,6 +28,12 @@ const colunas = {
   importacaoId: alerta.importacaoId,
   importacaoOrigem: importacao.origem,
   planoPreventivaId: alerta.planoPreventivaId,
+  /** Só nos alertas da ausência de um usuário (`ausencia_*`): a ausência e a pessoa dela. */
+  ausenciaId: alerta.ausenciaId,
+  usuarioAlvoId: alerta.usuarioAlvoId,
+  usuarioAlvoNome: alvoDaAusencia.nome,
+  /** A equipe da ausência (é nela que o supervisor responde). */
+  ausenciaEquipeId: ausencia.equipeId,
   detalhe: alerta.detalhe,
   emailEnviadoEm: alerta.emailEnviadoEm,
   lidoEm: alerta.lidoEm,
@@ -49,6 +59,8 @@ export async function listarAlertas(db: Db, eu: UsuarioAutenticado, filtros: Pag
     .leftJoin(os, eq(os.id, alerta.osId))
     .leftJoin(importacao, eq(importacao.id, alerta.importacaoId))
     .leftJoin(usuario, eq(usuario.id, alerta.destinatarioId))
+    .leftJoin(alvoDaAusencia, eq(alvoDaAusencia.id, alerta.usuarioAlvoId))
+    .leftJoin(ausencia, eq(ausencia.id, alerta.ausenciaId))
     .where(onde)
     .orderBy(desc(alerta.criadoEm), desc(alerta.id))
     .limit(limit)

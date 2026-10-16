@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Colunas } from "@/components/app/AppChrome";
 import { AcoesDaOs } from "@/components/app/detalhe/AcoesDaOs";
 import { AprExigidaCard } from "@/components/app/detalhe/AprExigidaCard";
+import { ChecklistDaOsCard } from "@/components/app/detalhe/ChecklistDaOsCard";
 import { DadosSapCard } from "@/components/app/detalhe/DadosSapCard";
 import { HistoricoAprs } from "@/components/app/detalhe/HistoricoAprs";
 import { InstrucoesCard } from "@/components/app/detalhe/InstrucoesCard";
@@ -18,10 +19,12 @@ import { AlertasDaOs } from "@/components/web/detalhe/AlertasDaOs";
 import { AprsDaOs } from "@/components/web/detalhe/AprsDaOs";
 import { BaixaSap } from "@/components/web/detalhe/BaixaSap";
 import { BotaoCritico } from "@/components/web/detalhe/BotaoCritico";
+import { AtribuicaoDaOs } from "@/components/web/detalhe/AtribuicaoDaOs";
 import { CancelarOs } from "@/components/web/detalhe/CancelarOs";
 import { CienciaSupervisor } from "@/components/web/detalhe/CienciaSupervisor";
 import { DadosSap } from "@/components/web/detalhe/DadosSap";
 import { DetalheCabecalho } from "@/components/web/detalhe/DetalheCabecalho";
+import { DevolverOs } from "@/components/web/detalhe/DevolverOs";
 import { DocumentoOs } from "@/components/web/detalhe/DocumentoOs";
 import { ExecucoesDaOs } from "@/components/web/detalhe/ExecucoesDaOs";
 import { HistoricoDoLocal } from "@/components/web/detalhe/HistoricoDoLocal";
@@ -29,9 +32,10 @@ import { LinhaDoTempo } from "@/components/web/detalhe/LinhaDoTempo";
 import { CicloDaOs } from "@/components/web/preventivas/CicloDaOs";
 import { carregarDetalhe, carregarHistorico } from "@/data/detalhe";
 import { api, usuarioAtual } from "@/lib/api";
+import { dataHora } from "@/lib/formatar";
 import { aprAprovadaDisponivel, execucaoAberta, type DetalheDaOs as DetalheDoCampo } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
-import { ehAdmin, ehSupervisor, equipesDoSupervisor, rotuloDoStatus, type Equipe } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor, equipesDoSupervisor, rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Detalhe da OS" };
 
@@ -41,17 +45,20 @@ export const metadata: Metadata = { title: "Detalhe da OS" };
  *   da OS permite (APR, execução).
  * - Admin: a visão de supervisão (abas Resumo, APRs e execuções, Histórico; alertas, PDF, ciência, baixa no SAP, local crítico, cancelar).
  * - Supervisor: a mesma visão de supervisão e, na lateral, as ações de campo (ele também é técnico e executa OS).
- * Quem supervisiona a equipe da OS (e o admin) reprograma ou abre OS de apoio no Resumo, sem depender de um alerta. A tela
- * atualiza sozinha.
+ * Quem supervisiona a equipe da OS (e o admin) reprograma ou abre OS de apoio no Resumo, sem depender de um alerta. Só o
+ * supervisor da equipe reserva a OS a uma pessoa (atribuição individual) e a devolve ao SAP. A tela atualiza sozinha.
  */
 export default async function DetalheOsPage({ params, searchParams }: PageProps<"/app/os/[id]">) {
   const { id } = await params;
   const sp = await searchParams;
 
-  const [{ usuario }, detalhe] = await Promise.all([usuarioAtual(), carregarDetalhe(id)]);
+  const [{ usuario, ausencia }, detalhe] = await Promise.all([usuarioAtual(), carregarDetalhe(id)]);
+  // O ausente só visualiza: as ações de campo e de supervisão desta tela ficam recolhidas, com o motivo.
+  const ausente = Boolean(ausencia);
   // OS que não existe ou é de outra equipe: a `api` responde 404.
   if (!detalhe) notFound();
   const { os, servico, aprs, execucoes, alertas, reprogramacoes, linha_do_tempo } = detalhe;
+  const checklist = detalhe.checklist_inspecao ?? [];
 
   const admin = ehAdmin(usuario);
   const gestao = admin || ehSupervisor(usuario);
@@ -70,6 +77,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
         execucaoAberta={aberta}
         aprDisponivel={aprAprovadaDisponivel(campo.aprs, campo.execucoes, usuario.id)}
         aprDeOutros={aprAprovadaDisponivel(campo.aprs, campo.execucoes)}
+        ausencia={ausencia?.rotulo ?? null}
       />
     </>
   );
@@ -86,18 +94,36 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
       <strong>OS cancelada.</strong> {os.justificativa_cancelamento}
     </Notice>
   );
+  // O apêndice da OS devolvida: a justificativa do supervisor, que vai na planilha de baixa para o SAP corrigir a ordem.
+  const avisoDevolucao = os.status === "devolvida" && os.devolucao && (
+    <Notice tone="info" icon="left">
+      <strong>OS devolvida ao SAP{os.devolucao.por_nome ? ` por ${os.devolucao.por_nome}` : ""}.</strong> {os.devolucao.justificativa}{" "}
+      <span className="muted">
+        ({dataHora(os.devolucao.em)} · {os.devolucao.exportada_em ? "já saiu na planilha de baixa" : "sai na próxima planilha de baixa"})
+      </span>
+    </Notice>
+  );
+  const avisoReserva = os.responsavel && (os.status === "liberada" || os.status === "pendente") && (
+    <Notice tone="info" icon="user">
+      <strong>{os.responsavel.id === usuario.id ? "Esta OS foi reservada para você" : `OS reservada para ${os.responsavel.nome}`}</strong>
+      {os.responsavel.reservada_por_nome ? ` por ${os.responsavel.reservada_por_nome}` : ""}. Só essa pessoa inicia a APR e a execução.
+    </Notice>
+  );
 
   if (!gestao) {
     return (
       <Screen>
         {cabecalho}
         {aviso}
+        {avisoDevolucao}
+        {avisoReserva}
         <Colunas
           principal={
             <>
               <LocalCard local={campo.os.local_instalacao} />
               <DadosSapCard os={campo.os} />
               <CicloDaOs osId={os.id} preventiva={os.tipo === "preventiva"} gestao={false} estilo="card" />
+              <ChecklistDaOsCard perguntas={checklist} />
               <InstrucoesCard descricao={os.descricao} titulo={os.titulo} />
               <MateriaisCard servico={servico ?? null} />
               <HistoricoAprs aprs={campo.aprs} execucoes={campo.execucoes} osId={os.id} />
@@ -126,13 +152,24 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   // Dá a ciência quem supervisiona a equipe da OS e não participou dela (a `api` confere os dois).
   const supervisaEquipeDaOs = equipesDoSupervisor(usuario)?.includes(os.equipe.id) ?? false;
   // Reprogramar e abrir OS de apoio: quem supervisiona a equipe da OS (ou o admin), enquanto ela não começou nem terminou.
-  const podeDecidir = (admin || supervisaEquipeDaOs) && (os.status === "liberada" || os.status === "pendente");
+  const podeDecidir = (admin || (supervisaEquipeDaOs && !ausente)) && (os.status === "liberada" || os.status === "pendente");
   const equipes = podeDecidir && aba === "resumo" ? (await api<{ equipes: Equipe[] }>("/equipes", { consulta: { tamanho: 200 } })).equipes : [];
+  // Atribuição individual e devolução são só do supervisor da equipe da OS, enquanto ela não começou (a devolução, só se ainda liberada).
+  const podeReservar = supervisaEquipeDaOs && !ausente && (os.status === "liberada" || os.status === "pendente");
+  const podeDevolver = supervisaEquipeDaOs && !ausente && os.status === "liberada" && os.origem !== "apoio";
+  const colegas = podeReservar
+    ? (await api<{ usuarios: Usuario[] }>("/usuarios", { consulta: { equipe_id: os.equipe_id, tamanho: 200 } })).usuarios
+        // Quem está ausente não recebe reserva de OS.
+        .filter((u) => u.perfil === "tecnico" && u.ativo && (u.liberacao ?? "liberado") === "liberado" && !u.ausencia)
+        .map(({ id, nome }) => ({ id, nome }))
+    : [];
 
   return (
     <Screen>
       {cabecalho}
       {aviso}
+      {avisoDevolucao}
+      {avisoReserva}
       {os.eventos_com_relogio_suspeito > 0 && (
         <Notice tone="al" icon="clock">
           <strong>Relógio do aparelho suspeito.</strong>{" "}
@@ -154,6 +191,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
             <>
               <DadosSap os={os} />
               <CicloDaOs osId={os.id} preventiva={os.tipo === "preventiva"} gestao estilo="panel" />
+              <ChecklistDaOsCard perguntas={checklist} />
               <MateriaisCard servico={servico ?? null} />
               {podeDecidir && (
                 <Recolhivel titulo="Reprogramar ou abrir OS de apoio" resumo={os.atrasada ? "OS atrasada" : rotuloDoStatus[os.status]} aberto={os.status === "pendente" || os.atrasada}>
@@ -193,9 +231,11 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
         </div>
         <aside className="stack g16">
           {painelDeCampo}
+          {podeReservar && <AtribuicaoDaOs osId={os.id} responsavel={os.responsavel ? { id: os.responsavel.id, nome: os.responsavel.nome } : null} colegas={colegas} />}
+          {podeDevolver && <DevolverOs osId={os.id} />}
           {admin && <BotaoCritico localId={os.local_instalacao.id} critico={os.local_instalacao.critico} />}
           <DocumentoOs os={os} />
-          {os.status === "encerrada" && <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs} />}
+          {os.status === "encerrada" && <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs && !ausente} />}
           <BaixaSap os={os} podeExportar={admin} />
         </aside>
       </div>

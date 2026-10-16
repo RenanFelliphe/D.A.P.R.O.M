@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Trilha } from "@/components/app/AppChrome";
+import { AusenciasDaEquipe, BotaoRegistrarAusencia, type PessoaDaEquipe } from "@/components/ausencia/AusenciasDaEquipe";
+import { SeloDeAusencia } from "@/components/ausencia/SeloDeAusencia";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Screen } from "@/components/ui/Screen";
@@ -9,6 +11,7 @@ import { aparenciaDoStatus } from "@/components/web/quadro/ColunaQuadro";
 import { lerPerfilDaEquipe } from "@/data/gamificacao";
 import type { ContagemPorStatus, OsDoQuadro } from "@/data/quadro";
 import { apiOuNulo, usuarioAtual } from "@/lib/api";
+import type { Ausencia, AusenciaDaPessoa } from "@/lib/ausencia";
 import { dataDoDia } from "@/lib/formatar";
 import { ordemDosStatus } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
@@ -17,8 +20,8 @@ import { ehAdmin, ehSupervisor, iniciaisDe, rotuloDoPerfil, rotuloDoStatus, type
 /** Resposta de `GET /equipes/{id}`. */
 interface EquipeDaApi {
   equipe: Equipe;
-  supervisor: { id: string; nome: string; matricula: string; cargo: string | null } | null;
-  membros: { id: string; nome: string; matricula: string; cargo: string | null; perfil: Perfil; ativo: boolean }[];
+  supervisor: { id: string; nome: string; matricula: string; cargo: string | null; ausencia: AusenciaDaPessoa | null } | null;
+  membros: { id: string; nome: string; matricula: string; cargo: string | null; perfil: Perfil; ativo: boolean; ausencia: AusenciaDaPessoa | null }[];
   contagem_por_status: ContagemPorStatus;
   total_os: number;
   os_recentes: OsDoQuadro[];
@@ -36,7 +39,7 @@ interface PerfilEquipeProps {
  */
 export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipeProps) {
   // A gamificação da equipe (soma, média, patente, posição, conquistas e os pontos de cada membro) vem à parte e some no campo de treino.
-  const [dados, { usuario: eu }, gamificacao] = await Promise.all([apiOuNulo<EquipeDaApi>(`/equipes/${equipeId}`), usuarioAtual(), lerPerfilDaEquipe(equipeId)]);
+  const [dados, { usuario: eu, ausencia: minhaAusencia }, gamificacao] = await Promise.all([apiOuNulo<EquipeDaApi>(`/equipes/${equipeId}`), usuarioAtual(), lerPerfilDaEquipe(equipeId)]);
   if (!dados) notFound();
 
   const { equipe, supervisor, membros, contagem_por_status: contagem, total_os: totalOs, os_recentes: recentes } = dados;
@@ -46,6 +49,15 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
   const minhaEquipe = eu.equipe_id === equipe.id;
   // O atalho para o quadro da equipe é de quem acompanha as OS (admin e supervisor); o técnico já vê o quadro da própria equipe.
   const gestao = ehAdmin(eu) || ehSupervisor(eu);
+  // As ausências da equipe são de quem a supervisiona (que responde e registra) e do admin (que só consulta); no campo de treino a rota não existe.
+  const supervisaEquipe = eu.equipes_supervisionadas?.some((e) => e.id === equipe.id) ?? false;
+  const ausencias = supervisaEquipe || ehAdmin(eu) ? (await apiOuNulo<{ ausencias: Ausencia[] }>("/ausencias", { consulta: { equipe_id: equipe.id, abertas: true, tamanho: 100 } }))?.ausencias ?? null : null;
+  const quemAge = { id: eu.id, assinaturaPath: eu.assinatura_path, ausente: Boolean(minhaAusencia) };
+  // A quem o supervisor registra a ausência: os técnicos ativos da equipe e ele mesmo.
+  const pessoas: PessoaDaEquipe[] = [
+    { id: eu.id, nome: eu.nome, eu: true },
+    ...membros.filter((m) => m.ativo && m.perfil === "tecnico" && m.id !== eu.id).map((m) => ({ id: m.id, nome: m.nome })),
+  ];
 
   return (
     <Screen className="perfil-pagina">
@@ -99,6 +111,8 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
         })}
       </div>
 
+      {ausencias && <AusenciasDaEquipe ausencias={ausencias} eu={quemAge} supervisaEquipe={supervisaEquipe} pessoas={pessoas} equipeNome={equipe.nome} />}
+
       <div className="perfil-grade">
         <section className="panel" aria-labelledby="os-da-equipe">
           <h2 id="os-da-equipe">OS mais recentes da equipe</h2>
@@ -144,14 +158,16 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
               <Link href={hrefDoPerfil(supervisor.id)} className="perfil-membro">
                 <span className="avatar">{iniciaisDe(supervisor.nome)}</span>
                 <span className="stack" style={{ minWidth: 0, lineHeight: 1.25 }}>
-                  <strong style={{ fontSize: 14 }}>{supervisor.nome}</strong>
+                  <strong style={{ fontSize: 14 }}>
+                    {supervisor.nome} <SeloDeAusencia ausencia={supervisor.ausencia} />
+                  </strong>
                   <span className="small">
                     {supervisor.cargo ?? "Supervisor"} · mat. {supervisor.matricula}
                   </span>
                 </span>
               </Link>
             ) : (
-              <p className="muted">Sem supervisor: os alertas desta equipe ficam só com o admin.</p>
+              <p className="muted">Sem supervisor: os alertas desta equipe ficam só com o admin, e ninguém da equipe pode pedir ausência.</p>
             )}
           </section>
 
@@ -164,19 +180,22 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
             ) : (
               <ul className="perfil-membros" aria-label={`Membros da equipe ${equipe.nome}`}>
                 {membros.map((m) => (
-                  <li key={m.id}>
-                    <Link href={hrefDoPerfil(m.id)} className="perfil-membro" aria-current={m.id === eu.id ? "true" : undefined}>
+                  <li key={m.id} className="row g8" style={{ alignItems: "center" }}>
+                    <Link href={hrefDoPerfil(m.id)} className="perfil-membro" aria-current={m.id === eu.id ? "true" : undefined} style={{ flex: 1, minWidth: 0 }}>
                       <span className={m.ativo ? "avatar" : "avatar av3"}>{iniciaisDe(m.nome)}</span>
                       <span className="stack" style={{ minWidth: 0, lineHeight: 1.25 }}>
                         <strong style={{ fontSize: 14 }}>
                           {m.nome}
-                          {!m.ativo && <span className="small"> · inativo</span>}
+                          {!m.ativo && <span className="small"> · inativo</span>} <SeloDeAusencia ausencia={m.ausencia} />
                         </strong>
                         <span className="small">
                           {m.cargo ?? rotuloDoPerfil[m.perfil]} · mat. {m.matricula}
                         </span>
                       </span>
                     </Link>
+                    {supervisaEquipe && m.ativo && m.perfil === "tecnico" && m.id !== eu.id && (
+                      <BotaoRegistrarAusencia pessoas={pessoas} pessoaInicial={m.id} assinaturaPath={eu.assinatura_path} ausente={quemAge.ausente} rotulo="Ausência" pequeno />
+                    )}
                   </li>
                 ))}
               </ul>

@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNotNull, like, sql } from "drizzle-orm";
 import type { Deps } from "../../deps";
-import { materiaisDosServicos } from "../../dominio/catalogo";
 import { emailDoNome, gerarSenhaInicial } from "../../dominio/usuarios";
 import { processarEventos } from "../../dominio/eventos";
+import { avisarAusencia, conferirAusencias } from "../../dominio/ausencia";
+import { dataBr, somarDias } from "../../dominio/tempo";
 import type { UsuarioAutenticado } from "../../http/autenticacao";
 import { enfileirarTarefa } from "../../servicos/fila";
 import { verificarCiclos, type Intervalo } from "../../dominio/preventivas";
-import { alerta, atividade, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, planoPreventivaPergunta, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
+import { alerta, atividade, ausencia, ausenciaAto, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, planoPreventivaPergunta, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
 import { popularCatalogoDemo } from "./catalogo-demo";
 import { espelharOsDoSapNoSimulador } from "./ordens-sap";
 import { carregarRegistroDosUsuarios } from "./registro-rh";
@@ -117,7 +118,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
       await db.update(usuario).set({ assinaturaPath: id, assinaturaEm: deps.agora() }).where(eq(usuario.id, u.id));
       u.assinaturaPath = id;
     }
-    return { id: u.id, nome: u.nome, matricula: u.matricula, email: u.email, perfil: u.perfil, equipeId: u.equipeId, equipesSupervisionadas: (await db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, u.id))).map((e) => e.id), ativo: u.ativo, senhaProvisoria: u.senhaProvisoria, assinaturaPath: u.assinaturaPath } satisfies UsuarioAutenticado;
+    return { id: u.id, nome: u.nome, matricula: u.matricula, email: u.email, perfil: u.perfil, equipeId: u.equipeId, equipesSupervisionadas: (await db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, u.id))).map((e) => e.id), ativo: u.ativo, senhaProvisoria: u.senhaProvisoria, assinaturaPath: u.assinaturaPath, ausencia: null } satisfies UsuarioAutenticado;
   };
   const garantir = async (matricula: string, nome: string, perfil: Perfil, centro: string | null, cargo: string | null = null) => {
     let u = await carregarUsuario(matricula);
@@ -341,7 +342,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     m: ModeloCarregado,
     participantes: UsuarioAutenticado[],
     quando: Date,
-    opcoes: { riscos?: number; avisoNoAlerta?: boolean; falhar?: Item[]; observacao?: string; documentoNoPrimeiro?: DocumentoDemo; semMaterial?: boolean } = {},
+    opcoes: { riscos?: number; avisoNoAlerta?: boolean; falhar?: Item[]; observacao?: string; documentoNoPrimeiro?: DocumentoDemo } = {},
   ) => {
     const marcados = m.riscos.slice(0, opcoes.riscos ?? 0);
     const falhar = opcoes.falhar ?? [];
@@ -365,23 +366,8 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const primeiroEliminatorio = (m: ModeloCarregado, n = 1, aPartirDe = 0) => m.itens.filter((i) => i.secao === "verificacao" && i.tipo === "eliminatorio" && i.evidencia === "foto").slice(aPartirDe, aPartirDe + n);
   const itemDeTexto = (m: ModeloCarregado) => m.itens.find((i) => i.tipo === "eliminatorio" && i.evidencia === "texto");
 
-  /**
-   * A conferência dos materiais do serviço da OS: tudo levado, com a foto do item nos obrigatórios; `semMaterial` deixa de
-   * fora os obrigatórios (a APR é bloqueada).
-   */
-  const conferenciaDoServico = async (osId: string, quando: Date, semMaterial = false) => {
-    const [o] = await db.select({ codigo: os.codigoAtividade }).from(os).where(eq(os.id, osId));
-    const lista = o?.codigo ? ((await materiaisDosServicos(db, [o.codigo])).get(o.codigo) ?? []) : [];
-    const itens: Record<string, unknown>[] = [];
-    for (const m of lista) {
-      if (m.obrigatorio && semMaterial) itens.push({ material_id: m.materialId, levou: false });
-      else itens.push({ material_id: m.materialId, levou: true, ...(m.obrigatorio ? { foto: { arquivo_id: await foto(), capturada_em: quando.toISOString(), latitude: -20.31, longitude: -40.29 } } : {}) });
-    }
-    return itens;
-  };
-
   const aprovar = async (u: UsuarioAutenticado, osId: string, m: ModeloCarregado, equipeTec: UsuarioAutenticado[], quando: Date, opcoes: Parameters<typeof aprPayload>[3] = {}) => {
-    const p = { ...(await aprPayload(m, equipeTec, quando, opcoes)), materiais: await conferenciaDoServico(osId, quando, opcoes.semMaterial) };
+    const p = await aprPayload(m, equipeTec, quando, opcoes);
     await enviar(u, "apr_concluida", osId, p, quando);
     return p.id as string;
   };
@@ -506,9 +492,9 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     documentoNoPrimeiro: { nome: "registro-detector-gas.pdf", titulo: "Registro do detector de gases", linhas: ["Equipamento: detector portátil de 4 gases", "Leitura no ramal RM-204: 18% do LIE", "Limite para liberar a atividade: 10% do LIE", "Conclusão: atividade não liberada."] },
   });
 
-  // 6b. APR bloqueada por material: o detector de gases, obrigatório neste serviço, não foi comprovado; o alerta chega ao supervisor
+  // 6b. APR aprovada num serviço com lista de materiais recomendados: a lista é só consulta, não trava a liberação
   id = await criarOs({ titulo: "Aferição de manômetro padrão", equipamento: "Manômetro MN-12", local: L.gua, equipe: equipes.INSTRUM, prioridade: "Alto", inicio: 2, fim: 1, atividade: "Medição" });
-  await aprovar(tec3, id, apr01, duplaI, em(2, 10, 30), { semMaterial: true });
+  await aprovar(tec3, id, apr01, duplaI, em(2, 10, 30));
 
   // 7. APR bloqueada por condição pessoal (justificativa em texto, sem foto) — alerta lido
   id = await criarOs({ tipo: "preventiva", titulo: "Calibração de PSV", equipamento: "PSV-0312", local: L.pr, prioridade: "Alto", inicio: 2, fim: 1, atividade: ativ[3], ciclo: { intervalo: { quantidade: 1, unidade: "semestre" } } });
@@ -592,6 +578,53 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
       .onConflictDoNothing();
   }
   await verificarCiclos(db, real);
+
+  // ================= AUSÊNCIAS ======================================================================================
+  // Uma em curso (Tadeu), uma agendada (Taís), uma vencida (Tânia) e um pedido que aguarda o supervisor (Tomás): ninguém com execução
+  // aberta nas OS da demonstração entra em ausência em curso (o início a suspenderia). Os atos e os avisos
+  // são gravados como as regras da `api` os gravariam; a conferência periódica aplica o início das que já começaram (desfaz as
+  // reservas, suspende a execução aberta) e avisa o supervisor da vencida.
+  const ausenciaDemo = async (
+    quem: UsuarioAutenticado,
+    quemAprova: UsuarioAutenticado,
+    d: { motivo: string; inicio: number; retorno: number; estado: "pedida" | "confirmada"; origem: "pedido" | "supervisor"; criadaHaDias: number },
+  ) => {
+    const criadaEm = em(d.criadaHaDias, 9);
+    const dias = Math.round((Date.parse(dia(d.retorno)) - Date.parse(dia(d.inicio))) / 86_400_000);
+    const [a] = await db
+      .insert(ausencia)
+      .values({
+        usuarioId: quem.id,
+        equipeId: quem.equipeId!,
+        supervisorId: d.estado === "confirmada" ? quemAprova.id : null,
+        motivo: d.motivo,
+        inicio: dia(d.inicio),
+        retorno: dia(d.retorno),
+        diasInformados: d.origem === "pedido" ? dias : null,
+        estado: d.estado,
+        origem: d.origem,
+        criadaEm,
+      })
+      .returning();
+    const ato = (tipo: "pedido" | "registro" | "aprovacao" | "confirmacao", autor: UsuarioAutenticado, minutos: number, assina: boolean) =>
+      db.insert(ausenciaAto).values({ ausenciaId: a!.id, tipo, autorId: autor.id, em: new Date(criadaEm.getTime() + minutos * 60_000), assinaturaPath: assina ? autor.assinaturaPath : null, dados: { motivo: d.motivo, inicio: a!.inicio, retorno: a!.retorno } });
+    if (d.origem === "supervisor") await ato("registro", quemAprova, 0, true);
+    else {
+      await ato("pedido", quem, 0, false);
+      if (d.estado === "confirmada") {
+        await ato("aprovacao", quemAprova, 30, true);
+        await ato("confirmacao", quem, 60, true);
+      }
+    }
+    return a!;
+  };
+  await ausenciaDemo(tec5, sup1, { motivo: "Férias", inicio: 3, retorno: -4, estado: "confirmada", origem: "pedido", criadaHaDias: 20 });
+  const agendada = await ausenciaDemo(tec2, sup1, { motivo: "Treinamento de segurança", inicio: -5, retorno: -8, estado: "confirmada", origem: "supervisor", criadaHaDias: 2 });
+  await avisarAusencia(db, { tipo: "ausencia_registrada", ausenciaId: agendada.id, usuarioAlvoId: tec2.id, destinatarios: [tec2.id], detalhe: `${sup1.nome} registrou uma ausência para você de ${dataBr(agendada.inicio)} a ${dataBr(somarDias(agendada.retorno, -1))}, com retorno em ${dataBr(agendada.retorno)}. Motivo: ${agendada.motivo}`, agora: em(2, 9) });
+  await ausenciaDemo(tec4, sup2, { motivo: "Atestado médico", inicio: 10, retorno: 1, estado: "confirmada", origem: "supervisor", criadaHaDias: 10 });
+  const pedida = await ausenciaDemo(tec3, sup2, { motivo: "Viagem a trabalho em outra filial", inicio: -10, retorno: -17, estado: "pedida", origem: "pedido", criadaHaDias: 0 });
+  await avisarAusencia(db, { tipo: "ausencia_pedida", ausenciaId: pedida.id, usuarioAlvoId: tec3.id, destinatarios: [sup2.id], detalhe: `${tec3.nome} pediu ausência de ${dataBr(pedida.inicio)} a ${dataBr(somarDias(pedida.retorno, -1))}, com retorno em ${dataBr(pedida.retorno)}. Motivo: ${pedida.motivo}`, agora: minutosAtras(90) });
+  await conferirAusencias(db, real);
 
   // ================= GAMIFICAÇÃO ====================================================================================
   // APRs e execuções já pontuaram pelas regras da `api` (`processarEventos`); as ciências, as assinaturas e os intervalos do ciclo

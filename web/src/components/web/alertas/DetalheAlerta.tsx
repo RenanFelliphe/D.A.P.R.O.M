@@ -10,9 +10,10 @@ import { rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
 import { DecisoesDaOs } from "./DecisoesDaOs";
 import { CausaDoBloqueio } from "./DetalheBloqueio";
 import { DetalheCicloPreventiva } from "./DetalheCicloPreventiva";
+import { DetalheAusencia } from "./DetalheAusencia";
 import { DetalheFalhaImportacao } from "./DetalheFalhaImportacao";
 import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
-import { ehDeCiclo, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
+import { ehDeAusencia, ehDeCiclo, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
 
 interface DetalheAlertaProps {
   alerta: Alerta;
@@ -27,19 +28,22 @@ interface DetalheAlertaProps {
  * admin. Abrir o próprio alerta o marca como lido, sem botão; o admin que abre o alerta de outra pessoa só o lê.
  */
 export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }: DetalheAlertaProps) {
+  // A ausência de um usuário não tem OS: o supervisor responde na equipe.
+  if (ehDeAusencia(alerta)) return <DetalheAusencia alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   // A falha de importação não tem OS: detalhe próprio.
   if (alerta.tipo === "falha_importacao" || !alerta.os_id) return <DetalheFalhaImportacao alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   // O do ciclo das preventivas fala do plano, não de uma decisão sobre a OS.
   if (ehDeCiclo(alerta)) return <DetalheCicloPreventiva alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   const osId = alerta.os_id;
   const bloqueio = alerta.tipo === "bloqueio";
+  const inspecao = alerta.tipo === "inspecao_com_pendencia";
   const podeAgir = perfilAgeSobreAlertas(usuario);
   const naoLido = alerta.lido_em === null;
 
   // A OS pode já não ser visível ao usuário (por exemplo, o supervisor reprogramou para outra equipe): 404.
   const detalhe = await apiOuNulo<DetalheDaOs>(`/os/${osId}`);
   const os = detalhe?.os ?? null;
-  const aberta = os !== null && os.status !== "encerrada" && os.status !== "cancelada";
+  const aberta = os !== null && os.status !== "encerrada" && os.status !== "cancelada" && os.status !== "devolvida";
   const decide = podeAgir && aberta && (bloqueio || alerta.tipo === "apoio_encerrado");
 
   return (
@@ -47,8 +51,8 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
       <div className="row between wrap" style={{ alignItems: "flex-start" }}>
         <div className="stack g6" style={{ minWidth: 0 }}>
           <div className="row wrap g8">
-            <Badge tone={bloqueio ? "blq" : "lib"}>
-              <Icon name={bloqueio ? "octagon" : "refresh"} size={13} />
+            <Badge tone={bloqueio ? "blq" : inspecao ? "al" : "lib"}>
+              <Icon name={bloqueio ? "octagon" : inspecao ? "clip" : "refresh"} size={13} />
               {rotuloDoAlerta(alerta)}
             </Badge>
             <Badge tone="neu">{rotuloDaLeitura(alerta, usuario)}</Badge>
@@ -103,7 +107,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
 
       {bloqueio && detalhe && <CausaDoBloqueio aprs={detalhe.aprs} execucoes={detalhe.execucoes} />}
 
-      {os && !aberta && (
+      {os && !aberta && !inspecao && (
         <Notice tone="off" icon="info" style={{ fontSize: 14 }}>
           A OS está {rotuloDoStatus[os.status].toLowerCase()}: não há mais o que decidir sobre ela.
         </Notice>

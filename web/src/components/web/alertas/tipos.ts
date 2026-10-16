@@ -1,5 +1,4 @@
 import type { IconName } from "@/components/ui/Icon";
-import type { MaterialDaApr } from "@/lib/catalogo";
 import { ehAdmin, ehSupervisor, type DocumentoDeEvidencia, type Usuario } from "@/lib/tipos";
 
 /** Alerta como `GET /alertas` devolve. */
@@ -10,7 +9,17 @@ export type TipoDeAlerta =
   | "apoio_encerrado"
   | "falha_importacao"
   | "preventiva_proxima"
-  | "preventiva_vencida";
+  | "preventiva_vencida"
+  | "inspecao_com_pendencia"
+  | "ausencia_pedida"
+  | "ausencia_aprovada"
+  | "ausencia_recusada"
+  | "ausencia_registrada"
+  | "ausencia_fim_pedido"
+  | "ausencia_fim_respondido"
+  | "ausencia_alterada"
+  | "ausencia_vencida"
+  | "ausencia_cancelada";
 
 export interface Alerta {
   id: string;
@@ -18,7 +27,7 @@ export interface Alerta {
   /** De quem é o alerta (e o `lido_em`): o admin vê os de todos, mas só marca como lidos os seus. */
   destinatario_id: string;
   destinatario_nome: string | null;
-  /** A OS do alerta; nulos (os quatro) na falha de importação, que não tem OS. */
+  /** A OS do alerta; nulos (os quatro) na falha de importação e nos alertas da ausência, que não têm OS. */
   os_id: string | null;
   numero_ordem: string | null;
   titulo: string | null;
@@ -28,6 +37,11 @@ export interface Alerta {
   importacao_origem: "api" | "planilha" | "pdf" | null;
   /** Só nos alertas do ciclo das preventivas: o plano (a OS é a última dele). */
   plano_preventiva_id: string | null;
+  /** Só nos alertas da ausência de um usuário (`ausencia_*`): a ausência, a pessoa dela e a equipe, onde o supervisor responde. */
+  ausencia_id: string | null;
+  usuario_alvo_id: string | null;
+  usuario_alvo_nome: string | null;
+  ausencia_equipe_id: string | null;
   detalhe: string;
   email_enviado_em: string | null;
   lido_em: string | null;
@@ -42,6 +56,16 @@ export const TIPOS_DE_ALERTA: TipoDeAlerta[] = [
   "falha_importacao",
   "preventiva_proxima",
   "preventiva_vencida",
+  "inspecao_com_pendencia",
+  "ausencia_pedida",
+  "ausencia_aprovada",
+  "ausencia_recusada",
+  "ausencia_registrada",
+  "ausencia_fim_pedido",
+  "ausencia_fim_respondido",
+  "ausencia_alterada",
+  "ausencia_vencida",
+  "ausencia_cancelada",
 ];
 
 export const rotuloDoTipo: Record<TipoDeAlerta, string> = {
@@ -52,7 +76,20 @@ export const rotuloDoTipo: Record<TipoDeAlerta, string> = {
   falha_importacao: "Falha na importação",
   preventiva_proxima: "Preventiva: ciclo próximo",
   preventiva_vencida: "Preventiva: ciclo vencido",
+  inspecao_com_pendencia: "Inspeção com pendência",
+  ausencia_pedida: "Ausência: pedido a responder",
+  ausencia_aprovada: "Ausência aprovada",
+  ausencia_recusada: "Ausência recusada",
+  ausencia_registrada: "Ausência registrada",
+  ausencia_fim_pedido: "Ausência: fim antecipado pedido",
+  ausencia_fim_respondido: "Ausência: fim antecipado respondido",
+  ausencia_alterada: "Ausência alterada",
+  ausencia_vencida: "Ausência vencida",
+  ausencia_cancelada: "Pedido de ausência cancelado",
 };
+
+/** Alerta da ausência de um usuário: não tem OS e leva ao perfil (do ausente) ou à equipe (do supervisor). */
+export const ehDeAusencia = (a: Pick<Alerta, "tipo">) => a.tipo.startsWith("ausencia_");
 
 /** Alerta do ciclo das preventivas (próximo ou vencido): aponta para o plano e para a última OS dele. */
 export const ehDeCiclo = (a: Pick<Alerta, "tipo">) => a.tipo === "preventiva_proxima" || a.tipo === "preventiva_vencida";
@@ -63,12 +100,14 @@ export function rotuloDoAlerta(a: Pick<Alerta, "tipo" | "detalhe">): string {
   return a.detalhe.startsWith("Execução interrompida") ? "Execução interrompida" : "APR bloqueada";
 }
 
-/** Impedimento, falha de importação e ciclo vencido pedem atenção (vermelho); os demais só informam (azul). */
+/** Impedimento, falha de importação e ciclo vencido pedem atenção (vermelho); os demais, inclusive a inspeção com item não marcado, só informam (azul). */
 export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; urgente: boolean } {
   if (a.tipo === "bloqueio") return { icone: "octagon", urgente: true };
   if (a.tipo === "falha_importacao") return { icone: "alert", urgente: true };
-  if (a.tipo === "preventiva_vencida") return { icone: "clock", urgente: true };
+  if (a.tipo === "preventiva_vencida" || a.tipo === "ausencia_vencida") return { icone: "clock", urgente: true };
+  if (a.tipo.startsWith("ausencia_")) return { icone: "cal", urgente: false };
   if (a.tipo === "preventiva_proxima") return { icone: "clock", urgente: false };
+  if (a.tipo === "inspecao_com_pendencia") return { icone: "clip", urgente: false };
   return { icone: "refresh", urgente: false };
 }
 
@@ -79,6 +118,7 @@ export const metodoDaFalha = (origem: Alerta["importacao_origem"]) =>
 /** A que o alerta se refere, na lista e no sino: a OS (número em fonte mono e título) ou o método da importação. */
 export function referenciaDoAlerta(a: Alerta): { codigo: string | null; texto: string } {
   if (a.tipo === "falha_importacao") return { codigo: null, texto: metodoDaFalha(a.importacao_origem) };
+  if (ehDeAusencia(a)) return { codigo: null, texto: a.usuario_alvo_nome ?? "Ausência" };
   return { codigo: a.numero_ordem ?? "OS de apoio", texto: a.titulo ?? "" };
 }
 
@@ -100,7 +140,7 @@ export interface DetalheDaOs {
     id: string;
     numero_ordem: string | null;
     titulo: string;
-    status: "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada";
+    status: "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada" | "devolvida";
     equipe_id: string;
     data_inicio_prog: string;
     data_fim_prog: string | null;
@@ -125,7 +165,6 @@ export interface AprDaOs {
   preenchida_por: { id: string; nome: string };
   modelo: { codigo: string; versao: number; titulo: string };
   participantes: { usuario_id: string; nome: string; funcao: string }[];
-  materiais: MaterialDaApr[];
   itens_reprovados: { item_id: string; texto: string; resposta: "sim" | "nao" | "na"; observacao: string | null; fotos: FotoDaOs[]; documentos?: DocumentoDeEvidencia[] }[];
 }
 

@@ -91,7 +91,7 @@ export function rotasGamificacao(deps: Deps, { autenticar, exigirPerfil }: Auten
   r.get("/gamificacao/conquistas", autenticar(), async (c) => responder(c, await listarConquistas(deps, c.get("usuario"))));
 
   /** Marca os avisos de conquista e de patente como vistos (a próxima abertura não os mostra de novo). */
-  r.post("/gamificacao/avisos/vistos", autenticar(), joga, async (c) => {
+  r.post("/gamificacao/avisos/vistos", autenticar({ permitirAusente: true }), joga, async (c) => {
     await marcarAvisosVistos(deps, c.get("usuario"));
     return responder(c, { ok: true });
   });

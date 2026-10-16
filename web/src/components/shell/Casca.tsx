@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AcessoRecusado } from "@/components/aguardando/AcessoRecusado";
+import { FaixaDeAusencia } from "@/components/ausencia/FaixaDeAusencia";
 import { FaixaDoTreino } from "@/components/treino/FaixaDoTreino";
 import { TreinoRaiz } from "@/components/treino/TreinoRaiz";
 import type { Alerta } from "@/components/web/alertas/tipos";
@@ -43,7 +44,7 @@ export async function exigirGestao() {
  * parte, no fim. As telas compartilhadas têm um endereço só.
  */
 export async function Casca({ children }: { children: ReactNode }) {
-  const { usuario, equipe } = await usuarioAtual();
+  const { usuario, equipe, ausencia } = await usuarioAtual();
   const admin = ehAdmin(usuario);
   const supervisor = ehSupervisor(usuario);
   // Cadastro recusado com a sessão ainda aberta: só o motivo e o botão de sair.
@@ -62,8 +63,9 @@ export async function Casca({ children }: { children: ReactNode }) {
   // Sistema real e acesso liberado: o menu completo do papel. No campo de treino e para quem espera a liberação, o enxuto.
   const liberado = !restrito && !treino;
 
-  // Alertas não lidos das equipes do supervisor ou de todas (admin); o selo do menu do admin conta os cadastros de supervisores que esperam.
-  const comAlertas = (admin || supervisor) && liberado;
+  // O sino é de todos: alertas não lidos das equipes do supervisor ou de todas (admin); o técnico vê só os endereçados a ele (os da
+  // própria ausência). O selo do menu do admin conta os cadastros de supervisores que esperam.
+  const comAlertas = liberado;
   const [alertas, recentes, pendentes] = comAlertas
     ? await Promise.all([
         api<{ total: number }>("/alertas", { consulta: { lido: false, tamanho: 1 } }),
@@ -105,7 +107,7 @@ export async function Casca({ children }: { children: ReactNode }) {
         <Barra
           usuario={{ iniciais: iniciaisDe(usuario.nome), nome: usuario.nome, cargo }}
           subtitulo={subtitulo}
-          alertas={comAlertas && alertas && recentes ? { naoLidos: alertas.total, recentes: recentes.alertas } : undefined}
+          alertas={comAlertas && alertas && recentes ? { naoLidos: alertas.total, recentes: recentes.alertas, gestao: admin || supervisor } : undefined}
           treino={treino}
           semBusca={restrito}
           gamificacao={gamificacao ?? undefined}
@@ -113,6 +115,8 @@ export async function Casca({ children }: { children: ReactNode }) {
       }
       menu={<MenuLateral titulo="Menu principal" itens={itens} secoes={secoes} rodape={rodape} />}
     >
+      {/* O ausente só visualiza: a faixa avisa até quando e leva ao pedido de fim antecipado e à confirmação do retorno. */}
+      {!admin && liberado && ausencia && <FaixaDeAusencia ausencia={ausencia} eu={{ id: usuario.id, nome: usuario.nome, assinaturaPath: usuario.assinatura_path }} supervisor={supervisor} />}
       {children}
       {gamificacao && gamificacao.avisos_pendentes > 0 && <AvisoConquista />}
       {!admin && <TreinoRaiz emTreino={treino} primeiroAcesso={primeiroAcesso} pendente={pendente} />}

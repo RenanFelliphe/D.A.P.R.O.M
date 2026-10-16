@@ -3,9 +3,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { equipe, usuario } from "../db/schema";
+import { ausenciaDaPessoaParaApi, ausentesEm } from "../dominio/ausencia";
 import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeEquipes, equipesVisiveis } from "../dominio/busca";
 import { listarOs } from "../dominio/painel-os";
+import { diaDe } from "../dominio/tempo";
 import { equipeParaApi } from "../dominio/usuarios";
 import { podeVerEquipe, type Autenticacao, type Ambiente } from "../http/autenticacao";
 import { codigoPostgres, conflito, invalido, naoEncontrado } from "../http/erros";
@@ -175,8 +177,10 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
       .where(admin ? eq(usuario.equipeId, id) : and(eq(usuario.equipeId, id), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")))
       .orderBy(asc(usuario.nome));
     const { itens, total, contagemPorStatus } = await listarOs(deps.db, eu, { equipe_id: id, pagina: 1, tamanho: OS_RECENTES_DA_EQUIPE }, deps.agora());
+    // O selo "Ausente até DD/MM" de cada membro.
+    const ausentes = await ausentesEm(deps.db, [...membros.map((m) => m.id), ...(supervisor ? [supervisor.id] : [])], diaDe(deps.agora()));
 
-    return responder(c, { equipe: equipeParaApi(e), supervisor: supervisor ?? null, membros, contagemPorStatus, totalOs: total, osRecentes: itens });
+    return responder(c, { equipe: equipeParaApi(e), supervisor: supervisor ? { ...supervisor, ausencia: ausenciaDaPessoaParaApi(ausentes.get(supervisor.id)) } : null, membros: membros.map((m) => ({ ...m, ausencia: ausenciaDaPessoaParaApi(ausentes.get(m.id)) })), contagemPorStatus, totalOs: total, osRecentes: itens });
   });
 
   return r;

@@ -1,8 +1,8 @@
 /** Tipos das respostas de OS usadas nas telas do técnico (lista, detalhe e APR) e pequenas regras sobre elas. Chaves em snake_case, como a `api` devolve. */
 
 import type { BadgeTone } from "@/components/ui/Badge";
-import type { MaterialDaApr, ServicoDaOs } from "./catalogo";
-import type { DocumentoDeEvidencia, OsStatus, Paginacao } from "./tipos";
+import type { ServicoDaOs } from "./catalogo";
+import type { DocumentoDeEvidencia, OsStatus, Paginacao, ResponsavelDaOs } from "./tipos";
 
 export interface LocalDaOs {
   id: string;
@@ -29,6 +29,8 @@ export interface OsResumo {
   data_fim_prog: string | null;
   pdf_pronto: boolean;
   atrasada: boolean;
+  /** Reservada a uma pessoa da equipe; ausente ou `null` = a OS é da equipe toda. */
+  responsavel?: ResponsavelDaOs | null;
 }
 
 export interface ListaDeOs extends Paginacao {
@@ -67,8 +69,6 @@ export interface AprDaOs {
   participantes: ParticipanteDaApr[];
   respostas: { item_id: string; texto: string; reprovado: boolean }[];
   itens_reprovados: ItemReprovadoDaApr[];
-  /** A conferência dos materiais do serviço: o que foi levado e a foto do item obrigatório. */
-  materiais: MaterialDaApr[];
 }
 
 export interface ExecucaoDaOs {
@@ -102,6 +102,17 @@ export interface OsDetalhada {
   equipe: { id: string; nome: string; centro_trabalho: string; supervisor_id: string | null };
   justificativa_cancelamento: string | null;
   pdf_pronto: boolean;
+  /** A pessoa para quem a OS está reservada, com quem a reservou; `null` = a OS é da equipe toda. */
+  responsavel?: (ResponsavelDaOs & { reservada_por_nome: string | null; reservada_em: string | null }) | null;
+  /** O apêndice da OS devolvida ao SAP: quem devolveu, quando e a justificativa. */
+  devolucao?: DevolucaoDaOs | null;
+}
+
+export interface DevolucaoDaOs {
+  em: string;
+  por_nome: string | null;
+  justificativa: string | null;
+  exportada_em: string | null;
 }
 
 export interface DetalheDaOs {
@@ -119,10 +130,14 @@ export const statusDaOs: Record<OsStatus, { tone: BadgeTone; rotulo: string }> =
   em_execucao: { tone: "exe", rotulo: "Em execução" },
   encerrada: { tone: "enc", rotulo: "Encerrada" },
   cancelada: { tone: "neu", rotulo: "Cancelada" },
+  devolvida: { tone: "neu", rotulo: "Devolvida ao SAP" },
 };
 
 /** Ordem dos grupos da lista. */
-export const ordemDosStatus: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada"];
+export const ordemDosStatus: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"];
+
+/** A OS está reservada a outra pessoa da equipe: o usuário a vê, mas só o responsável inicia a APR e a execução. */
+export const reservadaParaOutro = (o: { responsavel?: { id: string } | null }, usuarioId: string) => Boolean(o.responsavel) && o.responsavel!.id !== usuarioId;
 
 export const rotuloDoTipo = { preventiva: "Preventiva", corretiva: "Corretiva" } as const;
 

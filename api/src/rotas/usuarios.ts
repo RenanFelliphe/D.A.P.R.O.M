@@ -4,11 +4,13 @@ import { z } from "zod";
 import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
 import { equipe, execucao, execucaoPausa, LIBERACOES, localInstalacao, os, PERFIS, usuario } from "../db/schema";
+import { ausenciaDaPessoaParaApi, ausentesEm } from "../dominio/ausencia";
 import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeUsuarios, usuariosVisiveis } from "../dominio/busca";
 import { apagarGamificacaoDaPessoa } from "../dominio/lancamentos";
 import { aplicarConferencia, conferirParaCadastro, consultarFuncionario, exigirSetorSupervisionado } from "../dominio/rh";
 import { emMinutos, tempoDaExecucao } from "../dominio/painel-comum";
+import { diaDe } from "../dominio/tempo";
 import { equipeParaApi, gerarSenhaInicial, nomesDosCriadores, usuarioParaApi } from "../dominio/usuarios";
 import { ehSupervisor, equipesDoEscopo, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
 import { codigoPostgres, conflito, invalido, naoEncontrado, proibido } from "../http/erros";
@@ -305,8 +307,10 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     const linhas = await deps.db.select().from(usuario).where(onde).orderBy(asc(usuario.nome)).limit(limit).offset(offset);
     const total = await contar(deps.db, usuario, onde);
     const criadores = await nomesDosCriadores(deps.db, linhas);
+    // O selo "Ausente até DD/MM" das listas de pessoas (e de onde a APR e a reserva tiram quem não pode ser escolhido).
+    const ausentes = await ausentesEm(deps.db, linhas.map((u) => u.id), diaDe(deps.agora()));
     return responder(c, {
-      usuarios: linhas.map((u) => usuarioParaApi(u, { semEmail: !admin, criadoPorNome: (u.criadoPorId && criadores.get(u.criadoPorId)) || null })),
+      usuarios: linhas.map((u) => usuarioParaApi(u, { semEmail: !admin, criadoPorNome: (u.criadoPorId && criadores.get(u.criadoPorId)) || null, ausencia: ausentes.get(u.id) })),
       ...meta(filtros, total),
     });
   });
@@ -330,6 +334,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     }
 
     const [dadosDaEquipe] = alvo.equipeId ? await deps.db.select().from(equipe).where(eq(equipe.id, alvo.equipeId)) : [];
+    const hoje = diaDe(deps.agora());
     const [supervisor] = dadosDaEquipe?.supervisorId
       ? await deps.db.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(eq(usuario.id, dadosDaEquipe.supervisorId))
       : [];
@@ -340,6 +345,8 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
           .where(and(eq(usuario.equipeId, alvo.equipeId), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")))
           .orderBy(asc(usuario.nome))
       : [];
+
+    const ausentes = await ausentesEm(deps.db, [alvo.id, ...membros.map((m) => m.id)], hoje);
 
     // O que cada pessoa fez (OS encerradas e tempo) é de quem acompanha a equipe, do admin e dela mesma: um técnico comum não
     // vê o desempenho de um colega.
@@ -377,10 +384,10 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     });
 
     return responder(c, {
-      usuario: usuarioParaApi(alvo, { semEmail: !admin, criadoPorNome: (alvo.criadoPorId && (await nomesDosCriadores(deps.db, [alvo])).get(alvo.criadoPorId)) || null }),
+      usuario: usuarioParaApi(alvo, { semEmail: !admin, criadoPorNome: (alvo.criadoPorId && (await nomesDosCriadores(deps.db, [alvo])).get(alvo.criadoPorId)) || null, ausencia: ausentes.get(alvo.id) }),
       equipe: dadosDaEquipe ? equipeParaApi(dadosDaEquipe) : null,
       supervisor: supervisor ?? null,
-      membros,
+      membros: membros.map((m) => ({ ...m, ausencia: ausenciaDaPessoaParaApi(ausentes.get(m.id)) })),
       resumo: verTrabalho ? { osEncerradas: totais?.encerradas ?? 0, emAndamento: totais?.emAndamento ?? 0, ultimaEncerradaEm: totais?.ultimaEm ?? null } : null,
       execucoes,
     });

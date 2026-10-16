@@ -3,7 +3,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { dataHora, hora } from "@/lib/formatar";
-import type { AprDaOs, ExecucaoDaOs, OsDetalhada } from "@/lib/os-app";
+import { reservadaParaOutro, type AprDaOs, type ExecucaoDaOs, type OsDetalhada } from "@/lib/os-app";
 import { rotas, urlDoPdf } from "@/lib/rotas";
 import { BotaoApr } from "./BotaoApr";
 
@@ -15,10 +15,23 @@ interface AcoesDaOsProps {
   aprDisponivel: AprDaOs | null;
   /** A mesma APR disponível, de quem quer que seja: se o técnico não participou dela, ele não inicia a execução. */
   aprDeOutros: AprDaOs | null;
+  /** O ausente só visualiza: o selo "Ausente até DD/MM/AAAA" quando quem olha está ausente, e as ações de campo somem. */
+  ausencia?: string | null;
 }
 
 /** Painel lateral do detalhe: o que o técnico pode fazer agora, conforme o estado da OS. */
-export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel, aprDeOutros }: AcoesDaOsProps) {
+export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel, aprDeOutros, ausencia = null }: AcoesDaOsProps) {
+  const aberta = os.status !== "encerrada" && os.status !== "cancelada" && os.status !== "devolvida";
+  // O ausente não aplica APR nem executa: só consulta (a OS dele em execução foi suspensa quando a ausência começou).
+  if (ausencia && aberta) {
+    return (
+      <PainelAcoes>
+        <Notice tone="al" icon="lock">
+          <strong>{ausencia}.</strong> Você só visualiza o sistema: não dá para aplicar APR nem iniciar a execução desta OS.
+        </Notice>
+      </PainelAcoes>
+    );
+  }
   if (os.status === "em_execucao" || execucaoAberta) {
     const minha = execucaoAberta?.executor.id === usuarioId;
     return (
@@ -45,14 +58,15 @@ export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel, aprDeO
     );
   }
 
-  if (os.status === "encerrada" || os.status === "cancelada") {
+  if (os.status === "encerrada" || os.status === "cancelada" || os.status === "devolvida") {
     return (
       <PainelAcoes>
         <div className="row g8 small">
           <Icon name="lock" size={16} />
-          {os.status === "encerrada" ? "OS encerrada: só consulta." : "OS cancelada: só consulta."}
+          {os.status === "encerrada" ? "OS encerrada: só consulta." : os.status === "cancelada" ? "OS cancelada: só consulta." : "OS devolvida ao SAP: só consulta."}
         </div>
         {os.status === "cancelada" && os.justificativa_cancelamento && <p className="muted">{os.justificativa_cancelamento}</p>}
+        {os.status === "devolvida" && os.devolucao?.justificativa && <p className="muted">{os.devolucao.justificativa}</p>}
         {os.status === "encerrada" &&
           (os.pdf_pronto ? (
             <a className="btn btn-p btn-block" href={urlDoPdf(os.id)} target="_blank" rel="noreferrer">
@@ -67,6 +81,16 @@ export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel, aprDeO
   }
 
   // liberada ou pendente
+  if (reservadaParaOutro(os, usuarioId)) {
+    return (
+      <PainelAcoes>
+        <Notice tone="info" icon="lock">
+          <strong>OS reservada para {os.responsavel!.nome}.</strong> Só quem o supervisor designou inicia a APR e a execução desta OS. Siga com as outras da equipe.
+        </Notice>
+      </PainelAcoes>
+    );
+  }
+
   return (
     <PainelAcoes>
       {aprDisponivel ? (

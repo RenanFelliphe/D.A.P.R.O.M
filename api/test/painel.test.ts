@@ -1126,7 +1126,8 @@ describe("Painel: técnico que supervisa outra equipe", () => {
 
   it("acessa a caixa de alertas e os indicadores só das equipes do próprio escopo", async () => {
     assert.equal((await amb.req("GET", "/alertas", { como: tecnicoSupervisor })).status, 200);
-    assert.equal((await amb.req("GET", "/alertas", { como: semSupervisao })).status, 403);
+    // O técnico sem supervisão também tem o sino (o dos avisos endereçados a ele, como os da própria ausência).
+    assert.equal((await amb.req("GET", "/alertas", { como: semSupervisao })).status, 200);
     assert.equal((await amb.req("GET", "/indicadores", { como: tecnicoSupervisor, consulta: { mes: "2026-10" } })).status, 200);
     const outra = (await amb.db.select().from(os).where(eq(os.id, osDaOutra.id)))[0]!.equipeId;
     assert.equal((await amb.req("GET", "/indicadores", { como: tecnicoSupervisor, consulta: { mes: "2026-10", equipe_id: outra } })).status, 403);

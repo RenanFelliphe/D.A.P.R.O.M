@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Screen } from "@/components/ui/Screen";
 import { BlocoDaPessoa } from "@/components/web/gamificacao/BlocosDoPerfil";
+import { SeloDeAusencia } from "@/components/ausencia/SeloDeAusencia";
 import { SeloRegistro } from "@/components/web/usuarios/SeloRegistro";
 import { lerPerfilDaPessoa } from "@/data/gamificacao";
 import { apiOuNulo, usuarioAtual } from "@/lib/api";
@@ -93,6 +94,7 @@ export async function PerfilUsuario({ usuarioId }: PerfilUsuarioProps) {
             <Badge tone={u.perfil === "admin" ? "dark" : "lib"}>{rotuloDoPerfil[u.perfil]}</Badge>
             <Badge tone={u.ativo ? "enc" : "blq"}>{u.ativo ? "Conta ativa" : "Conta inativa"}</Badge>
             {admin && <SeloRegistro situacao={u.situacao_registro} />}
+            <SeloDeAusencia ausencia={u.ausencia} />
           </div>
         </div>
         <div className="perfil-acoes">

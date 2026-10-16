@@ -176,6 +176,13 @@
       "when": 1792113112416,
       "tag": "0024_materiais_recomendados",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792114418945,
+      "tag": "0025_ausencia_do_usuario",
+      "breakpoints": true
     }
   ]
 }
