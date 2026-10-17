@@ -26,24 +26,25 @@ export function itensDeNavegacao(usuario: Usuario, pendentes?: number): ItemMenu
     { href: rotas.app.lista, icone: "grid", rotulo: admin || ehSupervisor(usuario) ? "Ordem de Serviço" : "OS da equipe", prefixos: ["/app/os", "/web/os", "/doc"], chave: "menu-lista" },
     abasDoPerfil(usuario),
   );
-  const dashboard = comAbas({ href: rotas.app.dashboard, icone: "bars", rotulo: "Dashboard", prefixos: ["/app/dashboard"] }, abasDoDashboard(usuario));
-  const catalogo = comAbas({ href: rotas.app.catalogo, icone: "box", rotulo: "Catálogo", prefixos: ["/app/catalogo"] }, abasDoCatalogo);
+  const dashboard = comAbas({ href: rotas.app.dashboard, icone: "bars", rotulo: "Dashboard", prefixos: ["/app/dashboard"], chave: "menu-dashboard" }, abasDoDashboard(usuario));
+  const catalogo = comAbas({ href: rotas.app.catalogo, icone: "box", rotulo: "Catálogo", prefixos: ["/app/catalogo"], chave: "menu-catalogo" }, abasDoCatalogo);
   // A gamificação é para todos; quem joga abre em "Minha pontuação" e o admin, no Ranking (a primeira aba de cada um).
   const abasDaGamificacaoDeQuem = abasDaGamificacao(usuario);
-  const gamificacao = comAbas({ href: abasDaGamificacaoDeQuem[0]!.href, icone: "trophy", rotulo: "Gamificação", prefixos: ["/app/gamificacao"] }, abasDaGamificacaoDeQuem);
-  if (!admin) return [quadro, { href: rotas.app.usuarios, icone: "users", rotulo: "Minha equipe" }, catalogo, gamificacao, dashboard];
+  const gamificacao = comAbas({ href: abasDaGamificacaoDeQuem[0]!.href, icone: "trophy", rotulo: "Gamificação", prefixos: ["/app/gamificacao"], chave: "menu-gamificacao" }, abasDaGamificacaoDeQuem);
+  if (!admin) return [quadro, { href: rotas.app.usuarios, icone: "users", rotulo: "Minha equipe", chave: "menu-usuarios" }, catalogo, gamificacao, dashboard];
   return [
     quadro,
-    comAbas({ href: rotas.web.modelos, icone: "clip", rotulo: "APR", prefixos: ["/web/apr"] }, abasApr),
+    comAbas({ href: rotas.web.modelos, icone: "clip", rotulo: "APR", prefixos: ["/web/apr"], chave: "menu-apr" }, abasApr),
     catalogo,
     {
       href: rotas.app.usuarios,
       icone: "users",
       rotulo: "Equipes e usuários",
+      chave: "menu-usuarios",
       ...(pendentes === undefined ? {} : { contador: pendentes, rotuloDoContador: `${pendentes} pendentes de liberação` }),
     },
     // Só o admin: quem fez o quê nas telas de gestão.
-    { href: rotas.web.auditoria, icone: "shield", rotulo: "Auditoria" },
+    { href: rotas.web.auditoria, icone: "shield", rotulo: "Auditoria", chave: "menu-auditoria" },
     gamificacao,
     // O Dashboard é sempre o último item antes do campo.
     dashboard,

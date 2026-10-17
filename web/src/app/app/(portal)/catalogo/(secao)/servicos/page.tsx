@@ -7,6 +7,7 @@ import { editaCatalogo } from "@/components/web/catalogo/secao";
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
 import type { ListaDeServicos, Material } from "@/lib/catalogo";
 import { rotas } from "@/lib/rotas";
+import type { TreinamentoResumo } from "@/lib/treinamento-servico";
 
 export const metadata: Metadata = { title: "Catálogo de serviço" };
 
@@ -28,14 +29,17 @@ export default async function ServicosDoCatalogoPage({ searchParams }: { searchP
   const filtroDeMaterial = materialId && UUID.test(materialId) ? materialId : undefined;
   const pagina = Math.max(1, Number.parseInt(um(params.pagina) ?? "1", 10) || 1);
 
-  const [lista, material] = await Promise.all([
+  const [lista, material, treinamentos] = await Promise.all([
     api<ListaDeServicos>("/catalogo/servicos", {
       consulta: { busca, sem_materiais: semMateriais ? true : undefined, material_id: filtroDeMaterial, pagina, tamanho: TAMANHO },
     }),
     // O nome do material do filtro; a lista de materiais é pequena e já ordenada, então basta procurar nela.
     filtroDeMaterial ? apiOuNulo<{ materiais: Material[] }>("/catalogo/materiais", { consulta: { tamanho: 200 } }) : null,
+    // Os treinamentos publicados, com a situação de quem pede; a aba Treinamento do cartão busca aqui pelo código.
+    apiOuNulo<{ treinamentos: TreinamentoResumo[] }>("/treinamentos"),
   ]);
   const nomeDoMaterial = material?.materiais.find((m) => m.id === filtroDeMaterial)?.descricao;
+  const treinamentoPorCodigo = new Map((treinamentos?.treinamentos ?? []).map((t) => [t.atividade_codigo, t]));
   const consulta = { busca, sem_materiais: semMateriais ? "true" : undefined, material_id: filtroDeMaterial };
 
   return (
@@ -68,7 +72,7 @@ export default async function ServicosDoCatalogoPage({ searchParams }: { searchP
       ) : (
         <div className="servicos-catalogo">
           {lista.servicos.map((s) => (
-            <CartaoServico key={s.codigo} servico={s} podeEditar={podeEditar} />
+            <CartaoServico key={s.codigo} servico={s} podeEditar={podeEditar} treinamento={treinamentoPorCodigo.get(s.codigo) ?? null} />
           ))}
         </div>
       )}

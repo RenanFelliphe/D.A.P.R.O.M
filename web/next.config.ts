@@ -1,6 +1,13 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
+// A raiz é a pasta do repositório, não `web/`: o manifesto da Vitória (`shared/vitoria`) fica fora de `web/` e é lido
+// também pela `api`. Sem isso o Turbopack não resolve arquivos acima de `web/` (que tem o próprio pnpm-workspace).
+const raizDoRepositorio = path.join(__dirname, "..");
+
 const nextConfig: NextConfig = {
+  turbopack: { root: raizDoRepositorio },
+  outputFileTracingRoot: raizDoRepositorio,
   // As telas dependem da sessão do usuário (cookies) e da `api`, então toda página é dinâmica: o modo "Cache Components"
   // do protótipo estático foi desligado.
   reactCompiler: true,

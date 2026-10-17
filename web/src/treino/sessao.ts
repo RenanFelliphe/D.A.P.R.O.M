@@ -45,10 +45,12 @@ export async function usuarioDoTreino(token: string): Promise<Usuario | null> {
 }
 
 /**
- * Chamadas que, mesmo no treino, vão à `api` real porque guardam o estado do próprio treino do usuário (não são dados de
- * campo): `PUT /me/treinamento` (concluir, pular ou refazer o treino).
+ * Chamadas que, mesmo no treino, vão à `api` real: `PUT /me/treinamento` (guarda o estado do próprio treino, não é dado
+ * de campo) e tudo em `/vitoria` (o assistente de ajuda — `vitoria.md`, seção 2.1 — só consulta o manual e o manifesto
+ * de destinos, nunca lê nem grava dado de OS, por isso funciona igual dentro e fora do Campo de treino).
  */
 export function rotaSempreReal(metodo: string, caminho: string): boolean {
   const limpo = caminho.split("?")[0]!.replace(/^\/+|\/+$/g, "");
+  if (limpo === "vitoria" || limpo.startsWith("vitoria/")) return true;
   return metodo.toUpperCase() === "PUT" && limpo === "me/treinamento";
 }

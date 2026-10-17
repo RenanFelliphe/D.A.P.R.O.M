@@ -8,6 +8,7 @@ import { FaixaDoTreino } from "@/components/treino/FaixaDoTreino";
 import { TreinoRaiz } from "@/components/treino/TreinoRaiz";
 import type { Alerta } from "@/components/web/alertas/tipos";
 import { AvisoConquista } from "@/components/web/gamificacao/AvisoConquista";
+import { Vitoria } from "@/components/vitoria/Vitoria";
 import { api, usuarioAtual } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
 import { CABECALHO_ENDERECO } from "@/lib/sessao-comum";
@@ -123,6 +124,8 @@ export async function Casca({ children }: { children: ReactNode }) {
       {children}
       {gamificacao && gamificacao.avisos_pendentes > 0 && <AvisoConquista />}
       {!admin && <TreinoRaiz emTreino={treino} primeiroAcesso={primeiroAcesso} pendente={pendente} />}
+      {/* A Vitória atende os três perfis, quem aguarda liberação e quem está ausente, dentro e fora do Campo de treino: ela só consulta. */}
+      <Vitoria />
     </Shell>
   );
 }

@@ -9,6 +9,8 @@ export interface AbaDaSecao {
   href: string;
   rotulo: string;
   icone: IconName;
+  /** `data-treino` da aba, para o tutorial do campo de treino ou a Vitória apontarem para ela. */
+  chave?: string;
 }
 
 interface AbasSecaoProps {
@@ -27,6 +29,7 @@ function Abas({ rotulo, abas, consulta }: { rotulo: string; abas: AbaDaSecao[]; 
           key={aba.href}
           href={consulta ? `${aba.href}?${consulta}` : aba.href}
           aria-current={pathname === aba.href || pathname.startsWith(`${aba.href}/`) ? "page" : undefined}
+          data-treino={aba.chave}
         >
           <Icon name={aba.icone} size={16} />
           {aba.rotulo}

@@ -61,6 +61,45 @@ export async function chamar<T = unknown>(metodo: "GET" | "POST" | "PUT" | "PATC
   return lerResposta(resposta) as Promise<T>;
 }
 
+export interface EventoDeStream {
+  event: string;
+  data: string;
+}
+
+/**
+ * Como `chamar`, mas para rotas que respondem em streaming (SSE), como `POST /vitoria/mensagens`: entrega cada evento a
+ * `aoReceber` assim que chega, sem esperar o fim da resposta. O proxy (`app/api/[...caminho]/route.ts`) já repassa o
+ * corpo da `api` como stream, sem buffer. Uma resposta de erro (não streaming) passa pelo mesmo tratamento de `chamar`
+ * e lança `ErroCliente`.
+ */
+export async function chamarEmStream(caminho: string, corpo: unknown, aoReceber: (evento: EventoDeStream) => void): Promise<void> {
+  const resposta = await fetch(`/api${caminho}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo), cache: "no-store" });
+  if (!resposta.ok || !resposta.body) {
+    await lerResposta(resposta);
+    return;
+  }
+  const leitor = resposta.body.getReader();
+  const decodificador = new TextDecoder();
+  let restante = "";
+  while (true) {
+    const { done, value } = await leitor.read();
+    if (done) break;
+    restante += decodificador.decode(value, { stream: true });
+    const blocos = restante.split("\n\n");
+    restante = blocos.pop() ?? "";
+    for (const bloco of blocos) {
+      if (!bloco.trim()) continue;
+      const linhas = bloco.split("\n");
+      const event = linhas.find((l) => l.startsWith("event: "))?.slice("event: ".length) ?? "message";
+      const data = linhas
+        .filter((l) => l.startsWith("data: "))
+        .map((l) => l.slice("data: ".length))
+        .join("\n");
+      aoReceber({ event, data });
+    }
+  }
+}
+
 const LADO_MAXIMO = 1600;
 const QUALIDADE_JPEG = 0.7;
 
@@ -87,13 +126,15 @@ export const LIMITE_PDF = 10 * 1024 * 1024;
 export const pareceUmPdf = (arquivo: File) => arquivo.type === "application/pdf" || (!arquivo.type && /\.pdf$/i.test(arquivo.name));
 
 /**
- * Envia uma foto, uma assinatura ou um PDF de evidência (`PUT /arquivos/{id}`) com um id gerado aqui e devolve o id, que
- * os eventos referenciam (`arquivo_id`). Fotos são comprimidas antes; o PDF vai como está (a `api` confere o conteúdo e
- * o limite de 10 MB). Reenviar o mesmo id e conteúdo não tem efeito.
+ * Envia uma foto, uma assinatura, um PDF de evidência ou a imagem de um treinamento de serviço (`PUT /arquivos/{id}`) com
+ * um id gerado aqui e devolve o id, que os eventos (ou o editor do treinamento) referenciam (`arquivo_id`). Fotos e
+ * imagens de treinamento são comprimidas antes; o PDF vai como está (a `api` confere o conteúdo e o limite de 10 MB).
+ * Reenviar o mesmo id e conteúdo não tem efeito.
  */
-export async function enviarArquivo(arquivo: Blob, tipo: "foto" | "assinatura" | "pdf", id: string = novoId()): Promise<string> {
-  const conteudo = tipo === "foto" ? await comprimirFoto(arquivo) : arquivo;
-  const nome = tipo === "foto" ? "foto.jpg" : tipo === "pdf" ? "documento.pdf" : "assinatura.png";
+export async function enviarArquivo(arquivo: Blob, tipo: "foto" | "assinatura" | "pdf" | "treinamento_imagem", id: string = novoId()): Promise<string> {
+  const comprimir = tipo === "foto" || tipo === "treinamento_imagem";
+  const conteudo = comprimir ? await comprimirFoto(arquivo) : arquivo;
+  const nome = comprimir ? "foto.jpg" : tipo === "pdf" ? "documento.pdf" : "assinatura.png";
   const form = new FormData();
   form.set("arquivo", new File([conteudo], nome, { type: tipo === "pdf" ? "application/pdf" : conteudo.type || "image/png" }));
   form.set("tipo", tipo);

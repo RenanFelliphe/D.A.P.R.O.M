@@ -10,7 +10,7 @@ export const veImportacao = (u: Pick<Usuario, "perfil">) => ehAdmin(u);
 
 const abas: AbaDaSecao[] = [
   { href: rotas.app.lista, rotulo: "Quadro", icone: "grid" },
-  { href: rotas.web.importacao, rotulo: "Importação", icone: "upload" },
+  { href: rotas.web.importacao, rotulo: "Importação", icone: "upload", chave: "menu-importacao" },
 ];
 
 /** As abas da seção Ordem de Serviço que a pessoa vê: o supervisor, só o Quadro. */

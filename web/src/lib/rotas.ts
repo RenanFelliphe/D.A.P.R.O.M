@@ -51,6 +51,10 @@ export const rotas = {
      */
     catalogo: "/app/catalogo/servicos",
     catalogoMateriais: "/app/catalogo/materiais",
+    /** Editor do treinamento de serviço (admin): explicação, fases, pré-visualizar, publicar, versões e reportes. */
+    treinamentoServico: (codigo: string) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinamento`,
+    /** Jogar o treinamento de serviço (técnico, inclusive pendente). */
+    treinarServico: (codigo: string) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinar`,
     /**
      * Seção Gamificação, a mesma para todos os perfis (só o admin edita pontos, patentes e conquistas): Minha pontuação (técnico),
      * Ranking, Conquistas, Patentes e Como pontuar. `/app/gamificacao` sozinho abre a pontuação do técnico; o admin, que não
@@ -69,6 +73,8 @@ export const rotas = {
     treinoEntrar: (modo?: "direcionado" | "livre") => (modo ? `/app/treino/entrar?modo=${modo}` : "/app/treino/entrar"),
     /** Desliga o modo treino e volta ao sistema real. */
     treinoSair: "/app/treino/sair",
+    /** Perguntas que a Vitória não soube responder (admin), para melhorar o manual. */
+    vitoriaSemResposta: "/app/vitoria/sem-resposta",
   },
   web: {
     /** Aba Importação da seção Ordem de Serviço (a outra aba é o quadro, `app.lista`). */

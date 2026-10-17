@@ -3,25 +3,15 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { acharAlvoDataTreino, useAlvoDataTreino, type MedidaDoAlvo } from "@/hooks/useAlvoDataTreino";
 import { textoDosPontosGanhos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
 import { estadoDoTreino, gravarTreinamento, usePassoDoTreino } from "./estado";
 import { passosDoTreino, type PassoDoTreino } from "./passos";
 
-interface Retangulo {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
-
-interface Medida {
-  /** Posição do alvo na janela; `null` = o alvo não está na tela. */
-  rect: Retangulo | null;
-  vw: number;
-  vh: number;
-}
+type Medida = MedidaDoAlvo;
+const acharAlvo = acharAlvoDataTreino;
 
 /** Folga do destaque em volta do alvo. */
 const FOLGA = 6;
@@ -37,21 +27,6 @@ const total = passosDoTreino.length;
 const limitar = (valor: number, minimo: number, maximo: number) => Math.min(Math.max(valor, minimo), Math.max(minimo, maximo));
 const reduzMovimento = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/** Primeiro elemento visível com a chave `data-treino`. */
-function acharAlvo(chave: string): HTMLElement | null {
-  for (const el of document.querySelectorAll<HTMLElement>(`[data-treino="${chave}"]`)) {
-    const caixa = el.getBoundingClientRect();
-    if (caixa.width > 0 && caixa.height > 0) return el;
-  }
-  return null;
-}
-
-function mesmoRetangulo(a: Retangulo | null, b: Retangulo | null) {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
-}
-
 /** Leva o alvo para a parte visível da tela (uma vez por passo); no celular o balão ocupa a parte de baixo ou de cima. */
 function mostrarAlvo(el: HTMLElement) {
   const caixa = el.getBoundingClientRect();
@@ -62,51 +37,8 @@ function mostrarAlvo(el: HTMLElement) {
   el.scrollIntoView({ block: pequena || caixa.height > altura * 0.6 ? "start" : "center", behavior: reduzMovimento() ? "auto" : "smooth" });
 }
 
-/** Mede o alvo do passo e o mantém atualizado quando a tela muda (rolagem, redimensionamento, conteúdo novo). */
-function useMedida(chave: string | undefined, passoId: string): Medida {
-  const [medida, setMedida] = useState<Medida>({ rect: null, vw: 0, vh: 0 });
-
-  useEffect(() => {
-    let quadro = 0;
-    let rolou = false;
-    const medir = () => {
-      quadro = 0;
-      const el = chave ? acharAlvo(chave) : null;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      let rect: Retangulo | null = null;
-      if (el) {
-        if (!rolou) {
-          rolou = true;
-          mostrarAlvo(el);
-        }
-        const caixa = el.getBoundingClientRect();
-        rect = { top: caixa.top, left: caixa.left, width: caixa.width, height: caixa.height };
-      }
-      setMedida((atual) => (atual.vw === vw && atual.vh === vh && mesmoRetangulo(atual.rect, rect) ? atual : { rect, vw, vh }));
-    };
-    const agendar = () => {
-      if (!quadro) quadro = requestAnimationFrame(medir);
-    };
-    const observador = new MutationObserver((registros) => {
-      // Mudanças do próprio tutorial não precisam de nova medida.
-      if (registros.every((r) => (r.target as Element).closest?.(".tr-raiz"))) return;
-      agendar();
-    });
-    observador.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-treino", "hidden", "class", "disabled"] });
-    window.addEventListener("resize", agendar);
-    window.addEventListener("scroll", agendar, true);
-    agendar();
-    return () => {
-      cancelAnimationFrame(quadro);
-      observador.disconnect();
-      window.removeEventListener("resize", agendar);
-      window.removeEventListener("scroll", agendar, true);
-    };
-  }, [chave, passoId]);
-
-  return medida;
-}
+/** Mede o alvo do passo e o mantém atualizado quando a tela muda (rolagem, redimensionamento, conteúdo novo); rola até ele na primeira vez. */
+const useMedida = (chave: string | undefined, passoId: string): Medida => useAlvoDataTreino(chave, passoId, mostrarAlvo);
 
 /** Posição do balão em relação ao alvo (desktop) ou folha fixa (celular e passos sem alvo). */
 function posicionar(medida: Medida): { estilo: CSSProperties; lado: "centro" | "abaixo" | "acima" | "direita" | "esquerda" | "canto" | "folha-baixo" | "folha-topo" } {

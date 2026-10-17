@@ -91,6 +91,7 @@ function GrupoMenu({ item, pathname, ativo }: { item: ItemMenu & { subitens: Sub
         aria-expanded={aberto}
         aria-controls={idSub}
         data-ativo={ativo || undefined}
+        data-treino={item.chave}
         title={item.rotulo}
         onClick={() => setEscolha(!aberto)}
       >
