@@ -1,19 +1,28 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { IconSprite } from "@/components/ui/Icon";
 import { Providers } from "@/state/Providers";
 import "./globals.css";
 
-const plexSans = IBM_Plex_Sans({
+// As fontes vêm do próprio repositório (`fontes/`, subconjunto latin, licença OFL), não do `next/font/google`: o build não
+// depende de baixar nada do Google, o que quebrava a imagem Docker no servidor.
+const plexSans = localFont({
   variable: "--font-plex-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  src: [
+    { path: "./fontes/ibm-plex-sans-latin-400-normal.woff2", weight: "400" },
+    { path: "./fontes/ibm-plex-sans-latin-500-normal.woff2", weight: "500" },
+    { path: "./fontes/ibm-plex-sans-latin-600-normal.woff2", weight: "600" },
+    { path: "./fontes/ibm-plex-sans-latin-700-normal.woff2", weight: "700" },
+  ],
 });
 
-const plexMono = IBM_Plex_Mono({
+const plexMono = localFont({
   variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  src: [
+    { path: "./fontes/ibm-plex-mono-latin-400-normal.woff2", weight: "400" },
+    { path: "./fontes/ibm-plex-mono-latin-500-normal.woff2", weight: "500" },
+    { path: "./fontes/ibm-plex-mono-latin-600-normal.woff2", weight: "600" },
+  ],
 });
 
 export const metadata: Metadata = {
