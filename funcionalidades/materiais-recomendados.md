@@ -99,7 +99,7 @@ Uma migração nova (a próxima numeração, sem alterar as já geradas):
 
 ## 7. O que ficou de fora
 
-- **Estoque, saldo e devolução.** A ideia inicial era um controle de empréstimo, com o saldo de cada equipamento. Foi descartada: contar unidades, quem retirou e a devolução é trabalho do SAP e do almoxarifado, não do D.A.P.R.O.M.
+- **Estoque, saldo e devolução.** A ideia inicial era um controle de empréstimo, com o saldo de cada equipamento. Foi descartada: contar unidades, quem retirou e a devolução é trabalho do SAP e do almoxarifado, não do SYNC OS.
 - **Pesquisar e levar um material fora da lista**, e o **cadastro de cada unidade** (patrimônio, série, validade da calibração).
 - **Os materiais no PDF da OS.**
 

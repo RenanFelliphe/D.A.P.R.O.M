@@ -646,7 +646,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     const r = await db.execute(sql`select count(*)::int as n from ${sql.identifier(tabela)}${filtro}`);
     contagem[rotulo] = Number(((r as unknown as { rows: { n: number }[] }).rows ?? (r as unknown as { n: number }[]))[0]!.n);
   }
-  // O SAP simulado passa a ter as ordens das OS que a carga criou, para o SAP e o DAPROM concordarem desde o início.
+  // O SAP simulado passa a ter as ordens das OS que a carga criou, para o SAP e o SYNC OS concordarem desde o início.
   if (deps.config.sapSimulado) contagem["ordens do SAP simulado"] = await espelharOsDoSapNoSimulador(db);
 
   return { jaPopulado: false, usuariosCriados: criados, contagem };

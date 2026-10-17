@@ -1,4 +1,4 @@
-# API do D.A.P.R.O.M (Node + TypeScript). A porta é a variável PORT (padrão 3333).
+# API do SYNC OS (Node + TypeScript). A porta é a variável PORT (padrão 3333).
 #
 # O contexto do build é a RAIZ do repositório, não `api/`: a Vitória importa `shared/vitoria`, que fica fora de `api/`.
 #   docker build -f api/Dockerfile .

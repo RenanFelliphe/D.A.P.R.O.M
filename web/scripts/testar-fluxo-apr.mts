@@ -43,7 +43,7 @@ const ok = async (token: string | null, metodo: string, caminho: string, corpo?:
   return r.corpo;
 };
 /** Login pelo e-mail institucional (os usuários de `pnpm dev:local`: primeiro nome e último sobrenome, `@empresa.com.br`). */
-const entrar = async (email: string, senha = "daprom123") => (await ok(null, "POST", "/auth/login", { email, senha })).access_token as string;
+const entrar = async (email: string, senha = "syncos123") => (await ok(null, "POST", "/auth/login", { email, senha })).access_token as string;
 
 async function subir(token: string, id: string, tipo: "foto" | "assinatura") {
   const form = new FormData();

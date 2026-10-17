@@ -15,7 +15,7 @@ const LIVRE = "__livre__";
 /**
  * Cadastro manual e edição de uma ordem do SAP simulado (`POST` e `PATCH /sap-simulado/gestao/ordens`). O número vem sugerido e não muda
  * depois de criado; o status começa em `LIB IMPR` e aceita as opções prontas ou texto livre; o centro de trabalho e a atividade (as que
- * o DAPROM já tem, ou outra digitada) saem de listas, e o local de instalação do catálogo ou digitado. Na edição, avisa o que o DAPROM fará.
+ * o SYNC OS já tem, ou outra digitada) saem de listas, e o local de instalação do catálogo ou digitado. Na edição, avisa o que o SYNC OS fará.
  */
 export function FormularioOrdem({ ordem, catalogo, aoConcluir }: { ordem?: Ordem; catalogo: CatalogoDeOrdens; aoConcluir: () => void }) {
   const router = useRouter();
@@ -55,7 +55,7 @@ export function FormularioOrdem({ ordem, catalogo, aoConcluir }: { ordem?: Ordem
   const centroEscolhido = catalogo.centros_de_trabalho.find((c) => c.centro_trabalho === centro);
   const atividadeDoCatalogo = catalogo.atividades.find((a) => a.codigo === atividade);
   const statusPronto = catalogo.status_prontos.some((s) => s.codigo === status);
-  const efeito = ordem ? efeitoDaEdicao(ordem.no_daprom.situacao) : null;
+  const efeito = ordem ? efeitoDaEdicao(ordem.no_sync_os.situacao) : null;
 
   function escolherLocal(codigo: string) {
     setLocalEscolhido(codigo);
@@ -110,7 +110,7 @@ export function FormularioOrdem({ ordem, catalogo, aoConcluir }: { ordem?: Ordem
     <form onSubmit={enviar} className="stack g12">
       {efeito && (
         <Notice tone="info" icon="info">
-          <b>No DAPROM:</b> {efeito}
+          <b>No SYNC OS:</b> {efeito}
         </Notice>
       )}
       <div className="grade2">
@@ -156,7 +156,7 @@ export function FormularioOrdem({ ordem, catalogo, aoConcluir }: { ordem?: Ordem
               </option>
             ))}
           </select>
-          {centroEscolhido && !centroEscolhido.equipe_no_daprom && <span className="small">Este centro não tem equipe no DAPROM: a leitura vai ignorar a ordem.</span>}
+          {centroEscolhido && !centroEscolhido.equipe_no_sync_os && <span className="small">Este centro não tem equipe no SYNC OS: a leitura vai ignorar a ordem.</span>}
         </Field>
         <Field label="Atividade">
           <select className="input" value={atividadeEscolhida} onChange={(e) => escolherAtividade(e.target.value)}>
@@ -169,7 +169,7 @@ export function FormularioOrdem({ ordem, catalogo, aoConcluir }: { ordem?: Ordem
             <option value={LIVRE}>Outra (digitar)…</option>
           </select>
           {atividadeEscolhida === LIVRE && <input className="input" aria-label="Código da atividade" value={atividade} onChange={(e) => setAtividade(e.target.value)} placeholder="Código da atividade" />}
-          {atividade && !atividadeDoCatalogo && <span className="small">Atividade que o DAPROM não conhece: a leitura a cadastra, com o título da ordem como descrição.</span>}
+          {atividade && !atividadeDoCatalogo && <span className="small">Atividade que o SYNC OS não conhece: a leitura a cadastra, com o título da ordem como descrição.</span>}
         </Field>
       </div>
       <div className="grade2">
@@ -227,7 +227,7 @@ export function FormularioOrdem({ ordem, catalogo, aoConcluir }: { ordem?: Ordem
           <option value={LIVRE}>Outro (texto livre)…</option>
         </select>
         {!statusPronto && <input className="input" aria-label="Status SAP em texto livre" value={status} onChange={(e) => setStatus(e.target.value)} placeholder="Códigos separados por espaço, como LIB IMPR CAPC" />}
-        <span className="small">{(status ?? "").toUpperCase().split(/\s+/).includes("LIB") ? "Com LIB: o DAPROM lê a ordem como liberada." : "Sem LIB: o DAPROM não cria a OS (e cancela a que já tem)."}</span>
+        <span className="small">{(status ?? "").toUpperCase().split(/\s+/).includes("LIB") ? "Com LIB: o SYNC OS lê a ordem como liberada." : "Sem LIB: o SYNC OS não cria a OS (e cancela a que já tem)."}</span>
       </Field>
       <div className="grade2">
         <Field label="Solicitante">

@@ -1,5 +1,5 @@
 /**
- * Carga única do registro de funcionários simulado: cria um funcionário (situação ativo) para cada usuário do DAPROM que ainda não
+ * Carga única do registro de funcionários simulado: cria um funcionário (situação ativo) para cada usuário do SYNC OS que ainda não
  * tem o seu, com a mesma matrícula, nome, e-mail, cargo e registro profissional. Em ambiente publicado com `RH_SIMULADO=true`,
  * rode **antes** de ligar a conferência (a leitura diária), senão a primeira leitura trataria todo mundo como fora do registro
  * (a trava de segurança impediria o estrago, mas a leitura falharia todos os dias). Pode rodar de novo sem duplicar.

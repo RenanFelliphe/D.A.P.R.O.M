@@ -10,8 +10,8 @@ export const abasDoSimulador: AbaDaSecao[] = [
 ];
 
 /**
- * Cabeçalho próprio da área dos sistemas simulados, fora da casca do DAPROM: é o que a empresa teria do lado dela (o RH e o
- * SAP), com o visual de outro sistema e um link de volta ao DAPROM.
+ * Cabeçalho próprio da área dos sistemas simulados, fora da casca do SYNC OS: é o que a empresa teria do lado dela (o RH e o
+ * SAP), com o visual de outro sistema e um link de volta ao SYNC OS.
  */
 export function CabecalhoSimulador({ abas = abasDoSimulador }: { abas?: AbaDaSecao[] }) {
   return (
@@ -23,7 +23,7 @@ export function CabecalhoSimulador({ abas = abasDoSimulador }: { abas?: AbaDaSec
         </span>
         <Link className="sim-voltar" href={rotas.app.lista}>
           <Icon name="left" size={16} />
-          Voltar ao DAPROM
+          Voltar ao SYNC OS
         </Link>
       </div>
       <div className="sim-cab-abas">

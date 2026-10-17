@@ -23,7 +23,7 @@ const esquema = z.object({
   RH_AVISO_URL: z.string().default(""),
   RH_LEITURA_HORA: z.coerce.number().int().min(0).max(23).default(3),
   SMTP_URL: z.string().default(""),
-  EMAIL_REMETENTE: z.string().default("daprom@localhost"),
+  EMAIL_REMETENTE: z.string().default("syncos@localhost"),
   PAINEL_URL: z.string().default("http://localhost:3000"),
   // Módulo de IA (Claude/Anthropic): sem chave, a api sobe normalmente e fica "desligada" (vitoria.md, seção 1).
   ANTHROPIC_API_KEY: z.string().default(""),
@@ -51,7 +51,7 @@ export interface Config {
   rhSimulado: boolean;
   rhApiUrl: string;
   rhApiToken: string;
-  /** Token que o registro usa para avisar o DAPROM (`POST /rh/avisos`). */
+  /** Token que o registro usa para avisar o SYNC OS (`POST /rh/avisos`). */
   rhAvisoToken: string;
   /** Para onde o simulador manda os avisos; só o simulador usa. */
   rhAvisoUrl: string;

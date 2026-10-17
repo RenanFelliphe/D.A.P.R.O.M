@@ -1,6 +1,6 @@
   # API de funcionários — decisões de 14/10/2026
 
-> Registro do desenho da API de funcionários: o registro geral dos funcionários da empresa, que o DAPROM consulta para cadastrar usuários e para saber de desligamentos. A API de RH é simulada, com uma tela própria, para mostrar como o fluxo final funcionaria dentro da empresa. Este documento reúne o objetivo, as decisões, o contrato, as mudanças no cadastro, o desligamento, a tela do simulador, a proposta de dados e rotas e a ordem de implementação.
+> Registro do desenho da API de funcionários: o registro geral dos funcionários da empresa, que o SYNC OS consulta para cadastrar usuários e para saber de desligamentos. A API de RH é simulada, com uma tela própria, para mostrar como o fluxo final funcionaria dentro da empresa. Este documento reúne o objetivo, as decisões, o contrato, as mudanças no cadastro, o desligamento, a tela do simulador, a proposta de dados e rotas e a ordem de implementação.
 >
 > **Situação:** implementado em 14/10/2026 (`api` e `web`). As diferenças entre o que se decidiu e o que ficou estão na seção 13.
 >
@@ -8,11 +8,11 @@
 
 ## Resumo
 
-- **Só funcionário da empresa vira usuário.** O admin ou o supervisor informa o e-mail institucional e a matrícula. O DAPROM consulta o registro e copia o nome, o cargo e o registro profissional. O cadastro é recusado se a matrícula não estiver no registro, se o e-mail não for o dela ou se o funcionário estiver desligado ou afastado.
-- **O registro é a fonte dos dados pessoais.** No DAPROM, nome, e-mail, cargo e registro profissional deixam de ser digitados ou editados. O DAPROM decide só o perfil, a equipe, a liberação, se a conta está ativa e a senha.
-- **O desligamento vale em tempo real.** O registro avisa o DAPROM no momento do desligamento, e a conta é desativada em segundos. Uma vez por dia, uma leitura completa atualiza os dados e pega desligamentos cujo aviso não chegou.
+- **Só funcionário da empresa vira usuário.** O admin ou o supervisor informa o e-mail institucional e a matrícula. O SYNC OS consulta o registro e copia o nome, o cargo e o registro profissional. O cadastro é recusado se a matrícula não estiver no registro, se o e-mail não for o dela ou se o funcionário estiver desligado ou afastado.
+- **O registro é a fonte dos dados pessoais.** No SYNC OS, nome, e-mail, cargo e registro profissional deixam de ser digitados ou editados. O SYNC OS decide só o perfil, a equipe, a liberação, se a conta está ativa e a senha.
+- **O desligamento vale em tempo real.** O registro avisa o SYNC OS no momento do desligamento, e a conta é desativada em segundos. Uma vez por dia, uma leitura completa atualiza os dados e pega desligamentos cujo aviso não chegou.
 - **Com o registro fora do ar, o cadastro para.** É melhor recusar do que deixar entrar alguém que não foi conferido.
-- **É simulado, de propósito.** O registro serve para mostrar como o fluxo final funcionaria dentro da empresa. O DAPROM fala com ele por um cliente HTTP, com endereço e token configuráveis, como faz com o SAP.
+- **É simulado, de propósito.** O registro serve para mostrar como o fluxo final funcionaria dentro da empresa. O SYNC OS fala com ele por um cliente HTTP, com endereço e token configuráveis, como faz com o SAP.
 - **A tela do simulador** fica em `/simulador/funcionarios`, só para o admin. Tem contador, criação manual e aleatória, tabela com seleção, ações em massa, "ver mais", editar e excluir.
 
 ---
@@ -21,17 +21,17 @@
 
 | # | Pergunta | Decisão |
 |---|---|---|
-| 1 | Onde fica a tela do simulador | Na web atual, fora do menu do DAPROM: `/simulador/funcionarios`, ao lado das ordens do SAP ([apiSAP.md](apiSAP.md)). Só para admin logado, com visual de sistema da empresa. |
-| 2 | Que campos o registro tem | Os da seção 2.1, sem CPF: o DAPROM não usa CPF e ele chama atenção na LGPD, mesmo fictício. |
-| 3 | O desligamento afeta o DAPROM? | Sim, em tempo real, pelo aviso do registro, mais uma leitura completa por dia (seção 5). |
-| 4 | Nome, cargo e CREA ficam travados no DAPROM? | Sim, e o e-mail também. Só mudam pelo registro: pelo botão "Atualizar do registro" e pela leitura diária. |
+| 1 | Onde fica a tela do simulador | Na web atual, fora do menu do SYNC OS: `/simulador/funcionarios`, ao lado das ordens do SAP ([apiSAP.md](apiSAP.md)). Só para admin logado, com visual de sistema da empresa. |
+| 2 | Que campos o registro tem | Os da seção 2.1, sem CPF: o SYNC OS não usa CPF e ele chama atenção na LGPD, mesmo fictício. |
+| 3 | O desligamento afeta o SYNC OS? | Sim, em tempo real, pelo aviso do registro, mais uma leitura completa por dia (seção 5). |
+| 4 | Nome, cargo e CREA ficam travados no SYNC OS? | Sim, e o e-mail também. Só mudam pelo registro: pelo botão "Atualizar do registro" e pela leitura diária. |
 | 5 | Quais ações em massa | Excluir, mudar o setor e mudar a situação. |
 | 6 | O supervisor pode cadastrar alguém de outro setor? | Não. Ele só cadastra quem é de um setor cuja equipe ele supervisiona. |
 | 7 | O que fazer com os usuários que já existem | Uma carga única cria no registro um funcionário para cada usuário atual (seção 7). |
 | — | Onde ficam os dados do simulador | Numa tabela própria no banco, não na memória (seção 6.1). |
 | — | E se o registro estiver fora do ar? | O cadastro fica bloqueado (`503`). |
 
-**Mudança em relação ao diagnóstico:** lá, trocar o e-mail no DAPROM exigiria conferir com o registro. Ficou mais simples: o e-mail não é mais editado no DAPROM e sempre vem do registro.
+**Mudança em relação ao diagnóstico:** lá, trocar o e-mail no SYNC OS exigiria conferir com o registro. Ficou mais simples: o e-mail não é mais editado no SYNC OS e sempre vem do registro.
 
 ## 2. O registro de funcionários
 
@@ -39,10 +39,10 @@
 
 | Campo | Exemplo | Observação |
 |---|---|---|
-| Matrícula | `100231` | Única. Não muda depois de criada, porque é o vínculo com o DAPROM. |
+| Matrícula | `100231` | Única. Não muda depois de criada, porque é o vínculo com o SYNC OS. |
 | Nome completo | Ana Paula Ribeiro | |
-| E-mail institucional | `ana.ribeiro@empresa.com.br` | Único, em minúsculas. É o login no DAPROM. |
-| Cargo | Eletricista | Vira o `cargo` do DAPROM, impresso sob a assinatura na OS. |
+| E-mail institucional | `ana.ribeiro@empresa.com.br` | Único, em minúsculas. É o login no SYNC OS. |
+| Cargo | Eletricista | Vira o `cargo` do SYNC OS, impresso sob a assinatura na OS. |
 | Setor | `SERV_ESP` · Serviços Especiais | Código do centro de trabalho e nome. Casa com `equipe.centro_trabalho`. |
 | Registro profissional | CREA ES-050003/D | Opcional. |
 | Situação | ativo, afastado ou desligado | Seção 2.2. |
@@ -54,7 +54,7 @@
 
 Na tabela da tela aparecem nome, e-mail, matrícula e setor. O resto fica no "ver mais".
 
-### 2.2 Situações e o efeito no DAPROM
+### 2.2 Situações e o efeito no SYNC OS
 
 | Situação no registro | Cadastro novo | Conta que já existe |
 |---|---|---|
@@ -63,36 +63,36 @@ Na tabela da tela aparecem nome, e-mail, matrícula e setor. O resto fica no "ve
 | desligado | recusado (`409 funcionario_desligado`) | A conta é desativada na hora (seção 5). |
 | fora do registro (a matrícula sumiu) | recusado (`404 funcionario_nao_encontrado`) | Tratada como desligada. |
 
-**Regra geral: o automático só tira acesso; quem dá acesso é sempre uma pessoa.** Se o funcionário voltar a ficar ativo no registro (readmissão), a conta não é reativada sozinha. O admin reativa no DAPROM, e só consegue se o registro disser que a pessoa está ativa.
+**Regra geral: o automático só tira acesso; quem dá acesso é sempre uma pessoa.** Se o funcionário voltar a ficar ativo no registro (readmissão), a conta não é reativada sozinha. O admin reativa no SYNC OS, e só consegue se o registro disser que a pessoa está ativa.
 
 ### 2.3 Setores e cargos
 
 O simulador tem uma lista fixa de setores:
 
 - os três centros de trabalho das equipes de demonstração: `SERV_ESP`, `INSTRUM` e `LAB_QUI`;
-- alguns sem equipe no DAPROM, por exemplo Manutenção Elétrica, Manutenção Mecânica e Administrativo. Eles servem para mostrar o caso "sem equipe correspondente".
+- alguns sem equipe no SYNC OS, por exemplo Manutenção Elétrica, Manutenção Mecânica e Administrativo. Eles servem para mostrar o caso "sem equipe correspondente".
 
 Cada setor tem os seus cargos (Eletricista, Mecânico, Instrumentista, Técnico em Gás, Técnico em Instrumentação, Químico, Engenheiro Mecânico, Técnico de Segurança e outros). O gerador aleatório sorteia o cargo entre os do setor. No cadastro manual, o cargo é um texto livre com essas sugestões.
 
 ## 3. Contrato
 
-É o que o DAPROM usa do registro. O contrato segue o formato do contrato do SAP (`snake_case`, paginação por `proxima_pagina`).
+É o que o SYNC OS usa do registro. O contrato segue o formato do contrato do SAP (`snake_case`, paginação por `proxima_pagina`).
 
-**Consulta.** O DAPROM chama o registro com `Authorization: Bearer {RH_API_TOKEN}`:
+**Consulta.** O SYNC OS chama o registro com `Authorization: Bearer {RH_API_TOKEN}`:
 
 `GET {RH_API_URL}/funcionarios/{matricula}` → `200` funcionário, ou `404`
 `GET {RH_API_URL}/funcionarios` `?pagina&tamanho` → `200` `{funcionarios[], proxima_pagina?}`. É a leitura diária.
 
 Formato do funcionário: `{matricula, nome, email, cargo, centro_trabalho, setor, registro_profissional, situacao, data_admissao, data_nascimento, telefone, gestor_matricula, lotacao}`.
 
-**Aviso.** O registro chama o DAPROM com `Authorization: Bearer {RH_AVISO_TOKEN}`:
+**Aviso.** O registro chama o SYNC OS com `Authorization: Bearer {RH_AVISO_TOKEN}`:
 
-`POST {DAPROM}/rh/avisos` `{matriculas: ["100231", ...]}` → `202`
+`POST {SYNC OS}/rh/avisos` `{matriculas: ["100231", ...]}` → `202`
 
-- **O aviso não traz decisão, só a lista de matrículas a conferir.** O DAPROM consulta cada matrícula no registro e age pelo que a consulta responder. Assim, um aviso falso não desativa ninguém.
+- **O aviso não traz decisão, só a lista de matrículas a conferir.** O SYNC OS consulta cada matrícula no registro e age pelo que a consulta responder. Assim, um aviso falso não desativa ninguém.
 - **O simulador avisa quando um funcionário passa a desligado**, seja pela edição, seja por uma ação em massa.
 
-## 4. Cadastro no DAPROM
+## 4. Cadastro no SYNC OS
 
 ### 4.1 Fluxo em duas etapas
 
@@ -126,13 +126,13 @@ Formato do funcionário: `{matricula, nome, email, cargo, centro_trabalho, setor
 
 1. No simulador, um funcionário passa a desligado (pela edição ou por uma ação em massa).
 2. O simulador chama `POST /rh/avisos` com as matrículas.
-3. O DAPROM responde `202` e, para cada matrícula que tem conta, enfileira uma tarefa `conferencia_rh`, cuja referência é o id do usuário. Matrícula sem conta é ignorada.
+3. O SYNC OS responde `202` e, para cada matrícula que tem conta, enfileira uma tarefa `conferencia_rh`, cuja referência é o id do usuário. Matrícula sem conta é ignorada.
 4. O executor de tarefas, que roda a cada 5 segundos, consulta o registro e aplica o resultado (seção 5.3). Se o registro estiver fora do ar, a tarefa tenta de novo depois de 1, 5, 15 e 15 minutos, como as outras tarefas.
 
 ### 5.2 A leitura diária
 
 - **Quando:** uma vez por dia, às `RH_LEITURA_HORA` horas (padrão: 3h, no horário de São Paulo, o fuso que a `api` já usa).
-- **O que lê:** o registro inteiro, página por página, e confere todos os usuários do DAPROM pela matrícula. Lê tudo, e não só os alterados, para pegar também quem sumiu do registro.
+- **O que lê:** o registro inteiro, página por página, e confere todos os usuários do SYNC OS pela matrícula. Lê tudo, e não só os alterados, para pegar também quem sumiu do registro.
 - **"Ler agora":** o admin pode pedir uma leitura fora de hora com `POST /rh/leituras`. É útil na demonstração.
 - **Histórico:** cada leitura é gravada na tabela `leitura_rh`. A tabela também garante uma leitura por dia, mesmo que a `api` reinicie. `GET /rh/sincronizacao` devolve a última leitura, quando aconteceu e o resultado (conferidos, atualizados, desativados e erro).
 - **Falha:** tenta de novo como as outras tarefas. Se as tentativas acabarem, a falha fica no histórico com o erro e aparece no cartão de sincronização. Nesta etapa não há alerta no sino.
@@ -153,7 +153,7 @@ O aviso e a leitura diária fazem a mesma conferência, uma pessoa por vez:
 - **Auditoria:** tudo entra na auditoria com o ator "Registro de funcionários". Para isso, a auditoria passa a aceitar um ator de sistema (`ator_id` nulo).
 - **Equipe cujo supervisor foi desligado:** os alertas passam a ir para os admins, como já acontece com supervisor desativado (`destinatariosDaEquipe`).
 
-### 5.4 Na tela de usuários do DAPROM
+### 5.4 Na tela de usuários do SYNC OS
 
 - O selo "Desligado no registro" ou "Afastado" aparece na tabela e no perfil.
 - O admin vê um cartão "Registro de funcionários" com a última leitura e o botão "Ler agora".
@@ -162,9 +162,9 @@ O aviso e a leitura diária fazem a mesma conferência, uma pessoa por vez:
 
 ### 6.1 Onde ficam os dados
 
-Ficam na tabela `funcionario_simulado`, no banco do DAPROM, criada por migração e separada das tabelas do DAPROM.
+Ficam na tabela `funcionario_simulado`, no banco do SYNC OS, criada por migração e separada das tabelas do SYNC OS.
 
-Guardar na memória, como o simulador do SAP faz hoje, não serve. No ambiente publicado, os usuários do DAPROM ficam no Postgres: um reinício apagaria o registro, e os usuários perderiam o vínculo com ele. A tabela existe em todos os ambientes e fica vazia quando `RH_SIMULADO=false`.
+Guardar na memória, como o simulador do SAP faz hoje, não serve. No ambiente publicado, os usuários do SYNC OS ficam no Postgres: um reinício apagaria o registro, e os usuários perderiam o vínculo com ele. A tabela existe em todos os ambientes e fica vazia quando `RH_SIMULADO=false`.
 
 ### 6.2 Rotas do simulador
 
@@ -172,11 +172,11 @@ As rotas só existem com `RH_SIMULADO=true` e ficam em `/rh-simulado`.
 
 **Contrato** (com o token `RH_API_TOKEN`): `GET /rh-simulado/funcionarios` e `GET /rh-simulado/funcionarios/{matricula}`, no formato da seção 3.
 
-**Gestão** (com o admin logado no DAPROM; servem à tela):
+**Gestão** (com o admin logado no SYNC OS; servem à tela):
 
 | Rota | O que faz |
 |---|---|
-| `GET /rh-simulado/gestao/funcionarios` `?busca&pagina&tamanho` | Lista com `total` e, em cada funcionário, `conta_no_daprom` (perfil, equipe e se está ativa) ou `null`. |
+| `GET /rh-simulado/gestao/funcionarios` `?busca&pagina&tamanho` | Lista com `total` e, em cada funcionário, `conta_no_sync_os` (perfil, equipe e se está ativa) ou `null`. |
 | `GET /rh-simulado/gestao/catalogo` | Setores, cargos por setor e a próxima matrícula livre. |
 | `POST /rh-simulado/gestao/funcionarios` | Cria um funcionário (manual) → `201`. |
 | `POST /rh-simulado/gestao/funcionarios/aleatorios` `{lotes: [{quantidade, centro_trabalho?, cargo?, situacao?}]}` | Gera em lotes → `201` `{criados}`. No máximo 200 por envio. |
@@ -190,7 +190,7 @@ As rotas só existem com `RH_SIMULADO=true` e ficam em `/rh-simulado`.
 
 - **Matrícula:** não muda depois de criada. A tela sugere a próxima livre: a maior matrícula numérica mais um, começando em `100001`.
 - **E-mail:** único. No gerador aleatório, segue o padrão `nome.sobrenome@empresa.com.br` (já existe `emailDoNome`), com número quando houver nomes iguais (`ana.ribeiro2@...`).
-- **Excluir:** só vale para quem não tem conta no DAPROM. Quem tem conta deve ser desligado, não excluído, como numa empresa de verdade; a resposta diz "Desligue o funcionário em vez de excluir". Na exclusão em massa, os que podem ser excluídos são excluídos e os demais voltam na lista de recusados.
+- **Excluir:** só vale para quem não tem conta no SYNC OS. Quem tem conta deve ser desligado, não excluído, como numa empresa de verdade; a resposta diz "Desligue o funcionário em vez de excluir". Na exclusão em massa, os que podem ser excluídos são excluídos e os demais voltam na lista de recusados.
 - **Gerador:**
   - nomes e sobrenomes brasileiros sorteados de uma lista fixa;
   - cargo coerente com o setor, e CREA só nos cargos de engenharia;
@@ -200,18 +200,18 @@ As rotas só existem com `RH_SIMULADO=true` e ficam em `/rh-simulado`.
 
 ### 6.4 A tela
 
-A tela fica em `/simulador/funcionarios`, na web, fora da casca do DAPROM. Tem cabeçalho próprio ("Sistemas da empresa · simulados"), com abas Funcionários e Ordens do SAP, e um link de volta ao DAPROM. Só o admin acessa.
+A tela fica em `/simulador/funcionarios`, na web, fora da casca do SYNC OS. Tem cabeçalho próprio ("Sistemas da empresa · simulados"), com abas Funcionários e Ordens do SAP, e um link de volta ao SYNC OS. Só o admin acessa.
 
 - **Contador:** total de funcionários, com a divisão por situação.
-- **"Novo funcionário"** (e não "novo usuário", para não confundir com os usuários do DAPROM): abre um menu com duas opções, e cada uma abre uma janela.
+- **"Novo funcionário"** (e não "novo usuário", para não confundir com os usuários do SYNC OS): abre um menu com duas opções, e cada uma abre uma janela.
   - **Manual:** todos os campos. A matrícula vem sugerida, e setor e cargo são escolhidos em listas.
   - **Aleatório:** linhas de quantidade, setor, cargo e situação, com o botão "Adicionar linha". Assim, "10 mecânicos e 5 eletricistas" sai num envio só.
 - **Busca** por nome, e-mail ou matrícula, e paginação.
-- **Tabela:** caixa de seleção, nome completo (com os selos Afastado, Desligado e "No DAPROM"), e-mail, matrícula, setor, "Ver mais" e o menu de três pontos (Editar e Excluir).
+- **Tabela:** caixa de seleção, nome completo (com os selos Afastado, Desligado e "No SYNC OS"), e-mail, matrícula, setor, "Ver mais" e o menu de três pontos (Editar e Excluir).
 - **"Selecionar todos"**, no cabeçalho da tabela, marca a página. Uma faixa oferece "Selecionar os N da busca".
-- **Barra de ações em massa:** aparece quando há seleção, com Mudar setor, Mudar situação e Excluir. A confirmação informa quantos dos selecionados têm conta no DAPROM e o que vai acontecer com eles; desligar desativa a conta na hora.
-- **"Ver mais":** janela com todos os campos e, se houver, a conta no DAPROM.
-- **Cartão "Sincronização com o DAPROM":** mostra a última leitura diária e tem o botão "Ler agora", que chama `POST /rh/leituras`.
+- **Barra de ações em massa:** aparece quando há seleção, com Mudar setor, Mudar situação e Excluir. A confirmação informa quantos dos selecionados têm conta no SYNC OS e o que vai acontecer com eles; desligar desativa a conta na hora.
+- **"Ver mais":** janela com todos os campos e, se houver, a conta no SYNC OS.
+- **Cartão "Sincronização com o SYNC OS":** mostra a última leitura diária e tem o botão "Ler agora", que chama `POST /rh/leituras`.
 
 **Componentes compartilhados:** a tabela com seleção, a barra de ações em massa, o botão com menu de criação e a janela "ver mais" são feitos aqui e reaproveitados na tela do SAP ([apiSAP.md](apiSAP.md)).
 
@@ -243,8 +243,8 @@ A tela fica em `/simulador/funcionarios`, na web, fora da casca do DAPROM. Tem c
 |---|---|
 | `RH_SIMULADO` | Liga o simulador. |
 | `RH_API_URL` | Endereço do registro. |
-| `RH_API_TOKEN` | Token que o DAPROM usa para ler o registro. |
-| `RH_AVISO_TOKEN` | Token que o registro usa para avisar o DAPROM. |
+| `RH_API_TOKEN` | Token que o SYNC OS usa para ler o registro. |
+| `RH_AVISO_TOKEN` | Token que o registro usa para avisar o SYNC OS. |
 | `RH_AVISO_URL` | Para onde o simulador manda os avisos; só usada pelo simulador. |
 | `RH_LEITURA_HORA` | Hora da leitura diária; padrão 3. |
 
@@ -252,7 +252,7 @@ Com `RH_SIMULADO=true`, endereços e tokens ganham valores padrão, como acontec
 
 **`Deps`:** ganha `rh: ClienteRh`, com `obterFuncionario(matricula)` e `listarFuncionarios({pagina, tamanho})`. A versão HTTP (`ClienteRhHttp`) segue a do SAP; os testes usam uma versão em memória.
 
-## 9. Rotas do DAPROM (proposta)
+## 9. Rotas do SYNC OS (proposta)
 
 | Rota | Quem chama | O que faz |
 |---|---|---|
@@ -293,10 +293,10 @@ Com `RH_SIMULADO=true`, endereços e tokens ganham valores padrão, como acontec
 
 ## 12. Riscos e pontos em aberto
 
-- **LGPD:** o registro usa apenas dados fictícios. O DAPROM só copia nome, e-mail, cargo e CREA.
+- **LGPD:** o registro usa apenas dados fictícios. O SYNC OS só copia nome, e-mail, cargo e CREA.
 - **Fora do escopo:**
   - alerta no sino quando a leitura diária falha;
-  - mudar a equipe no DAPROM quando o setor muda no registro (a equipe é decisão do DAPROM; o setor só a sugere no cadastro);
+  - mudar a equipe no SYNC OS quando o setor muda no registro (a equipe é decisão do SYNC OS; o setor só a sugere no cadastro);
   - reativar a conta automaticamente na readmissão.
 
 ## 13. Como ficou a implementação

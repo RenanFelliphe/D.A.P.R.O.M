@@ -33,7 +33,7 @@ interface PainelFuncionariosProps {
 
 /**
  * A tabela do simulador de funcionários: busca, "Novo funcionário" (manual ou aleatório), seleção com ações em massa (mudar setor,
- * mudar situação e excluir), "ver mais", editar e excluir. Tudo vai para `/rh-simulado/gestao/...`; o que o DAPROM faz com cada mudança
+ * mudar situação e excluir), "ver mais", editar e excluir. Tudo vai para `/rh-simulado/gestao/...`; o que o SYNC OS faz com cada mudança
  * (o aviso de desligamento, por exemplo) acontece do lado dele.
  */
 export function PainelFuncionarios({ lista, catalogo, busca, nomesDeEquipe }: PainelFuncionariosProps) {
@@ -84,9 +84,9 @@ export function PainelFuncionarios({ lista, catalogo, busca, nomesDeEquipe }: Pa
           <span className="row g4 wrap">
             {f.situacao === "afastado" && <Badge tone="al" style={{ padding: "1px 8px", fontSize: 11 }}>Afastado</Badge>}
             {f.situacao === "desligado" && <Badge tone="blq" style={{ padding: "1px 8px", fontSize: 11 }}>Desligado</Badge>}
-            {f.conta_no_daprom && (
-              <Badge tone={f.conta_no_daprom.ativo ? "lib" : "neu"} style={{ padding: "1px 8px", fontSize: 11 }}>
-                {f.conta_no_daprom.ativo ? "No DAPROM" : "No DAPROM (desativada)"}
+            {f.conta_no_sync_os && (
+              <Badge tone={f.conta_no_sync_os.ativo ? "lib" : "neu"} style={{ padding: "1px 8px", fontSize: 11 }}>
+                {f.conta_no_sync_os.ativo ? "No SYNC OS" : "No SYNC OS (desativada)"}
               </Badge>
             )}
           </span>
@@ -170,7 +170,7 @@ export function PainelFuncionarios({ lista, catalogo, busca, nomesDeEquipe }: Pa
               rotulo={`Ações de ${f.nome}`}
               itens={[
                 { rotulo: "Editar", aoClicar: () => setJanela({ tipo: "editar", f }) },
-                { rotulo: f.conta_no_daprom ? "Excluir (tem conta)" : "Excluir", aoClicar: () => setJanela({ tipo: "excluir", f }), perigo: true, desabilitado: Boolean(f.conta_no_daprom) },
+                { rotulo: f.conta_no_sync_os ? "Excluir (tem conta)" : "Excluir", aoClicar: () => setJanela({ tipo: "excluir", f }), perigo: true, desabilitado: Boolean(f.conta_no_sync_os) },
               ]}
             />
           </span>
@@ -222,7 +222,7 @@ export function PainelFuncionarios({ lista, catalogo, busca, nomesDeEquipe }: Pa
           matriculas={[...selecionados]}
           todosDaBusca={todosDaBusca}
           busca={busca}
-          daPagina={daPagina.map((f) => ({ matricula: f.matricula, tem_conta: Boolean(f.conta_no_daprom) }))}
+          daPagina={daPagina.map((f) => ({ matricula: f.matricula, tem_conta: Boolean(f.conta_no_sync_os) }))}
           aoFechar={fechar}
         />
       )}

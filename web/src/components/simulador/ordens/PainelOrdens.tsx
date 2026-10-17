@@ -19,12 +19,12 @@ import { useToast } from "@/state/toast";
 import { FormularioOrdem } from "./FormularioOrdem";
 import { FormularioOrdensAleatorias } from "./FormularioOrdensAleatorias";
 import { JanelaEmMassaOrdens, type FiltrosDaBusca } from "./JanelaEmMassaOrdens";
-import { rotuloDaSituacaoNoDaprom, type AcaoEmMassaDeOrdens, type CatalogoDeOrdens, type ListaDeOrdens, type Ordem, type SituacaoNoDaprom } from "./tipos";
+import { rotuloDaSituacaoNoSyncOs, type AcaoEmMassaDeOrdens, type CatalogoDeOrdens, type ListaDeOrdens, type Ordem, type SituacaoNoSyncOs } from "./tipos";
 import { VerMaisOrdem } from "./VerMaisOrdem";
 
 type Janela = { tipo: "manual" } | { tipo: "aleatorio" } | { tipo: "editar"; o: Ordem } | { tipo: "excluir"; o: Ordem } | { tipo: "ver"; o: Ordem } | { tipo: "massa"; acao: AcaoEmMassaDeOrdens } | null;
 
-const tonsDaSituacao: Record<SituacaoNoDaprom, BadgeTone> = { nao_lida: "neu", ignorada: "al", liberada: "lib", pendente: "al", em_execucao: "exe", encerrada: "enc", cancelada: "blq", devolvida: "neu" };
+const tonsDaSituacao: Record<SituacaoNoSyncOs, BadgeTone> = { nao_lida: "neu", ignorada: "al", liberada: "lib", pendente: "al", em_execucao: "exe", encerrada: "enc", cancelada: "blq", devolvida: "neu" };
 
 interface PainelOrdensProps {
   lista: ListaDeOrdens;
@@ -33,9 +33,9 @@ interface PainelOrdensProps {
 }
 
 /**
- * A tabela do simulador do SAP: busca e filtros (tipo, centro de trabalho e "No DAPROM"), "Nova ordem" (manual ou aleatória), seleção com
- * ações em massa (mudar status, mudar centro, reprogramar e excluir), "ver mais", editar e excluir. A coluna "No DAPROM" mostra como o
- * DAPROM reagiu a cada ordem, e o selo "Alterada depois da última leitura" mostra o que ele vai pegar na próxima.
+ * A tabela do simulador do SAP: busca e filtros (tipo, centro de trabalho e "No SYNC OS"), "Nova ordem" (manual ou aleatória), seleção com
+ * ações em massa (mudar status, mudar centro, reprogramar e excluir), "ver mais", editar e excluir. A coluna "No SYNC OS" mostra como o
+ * SYNC OS reagiu a cada ordem, e o selo "Alterada depois da última leitura" mostra o que ele vai pegar na próxima.
  */
 export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
   const router = useRouter();
@@ -77,7 +77,7 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
     }
   }
 
-  const noDaprom = (o: Ordem) => o.no_daprom.situacao !== "nao_lida" && o.no_daprom.situacao !== "ignorada";
+  const noSyncOs = (o: Ordem) => o.no_sync_os.situacao !== "nao_lida" && o.no_sync_os.situacao !== "ignorada";
   const centroPorCodigo = new Map(catalogo.centros_de_trabalho.map((c) => [c.centro_trabalho, c.nome]));
 
   const colunas: ColunaDaTabela<Ordem>[] = [
@@ -100,13 +100,13 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
     { titulo: "Início", largura: 100, render: (o) => dataDoDia(o.data_inicio_prog) },
     { titulo: "Status SAP", render: (o) => <span className="mono">{o.status_sap ?? "—"}</span> },
     {
-      titulo: "No DAPROM",
+      titulo: "No SYNC OS",
       render: (o) => (
         <span className="stack g4" style={{ alignItems: "flex-start" }}>
-          <Badge tone={tonsDaSituacao[o.no_daprom.situacao]} style={{ padding: "1px 8px", fontSize: 11 }}>
-            {rotuloDaSituacaoNoDaprom[o.no_daprom.situacao]}
+          <Badge tone={tonsDaSituacao[o.no_sync_os.situacao]} style={{ padding: "1px 8px", fontSize: 11 }}>
+            {rotuloDaSituacaoNoSyncOs[o.no_sync_os.situacao]}
           </Badge>
-          {o.no_daprom.motivo && <span className="small" style={{ whiteSpace: "normal", maxWidth: 220 }}>{o.no_daprom.motivo}</span>}
+          {o.no_sync_os.motivo && <span className="small" style={{ whiteSpace: "normal", maxWidth: 220 }}>{o.no_sync_os.motivo}</span>}
         </span>
       ),
     },
@@ -159,12 +159,12 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="f-no-daprom">No DAPROM</label>
-          <select id="f-no-daprom" name="no_daprom" className="select" defaultValue={filtros.no_daprom ?? ""}>
+          <label htmlFor="f-no-sync-os">No SYNC OS</label>
+          <select id="f-no-sync-os" name="no_sync_os" className="select" defaultValue={filtros.no_sync_os ?? ""}>
             <option value="">Todas</option>
-            {(Object.keys(rotuloDaSituacaoNoDaprom) as SituacaoNoDaprom[]).map((s) => (
+            {(Object.keys(rotuloDaSituacaoNoSyncOs) as SituacaoNoSyncOs[]).map((s) => (
               <option key={s} value={s}>
-                {rotuloDaSituacaoNoDaprom[s]}
+                {rotuloDaSituacaoNoSyncOs[s]}
               </option>
             ))}
           </select>
@@ -216,7 +216,7 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
               rotulo={`Ações da ordem ${o.numero_ordem}`}
               itens={[
                 { rotulo: "Editar", aoClicar: () => setJanela({ tipo: "editar", o }) },
-                { rotulo: noDaprom(o) ? "Excluir (já no DAPROM)" : "Excluir", aoClicar: () => setJanela({ tipo: "excluir", o }), perigo: true, desabilitado: noDaprom(o) },
+                { rotulo: noSyncOs(o) ? "Excluir (já no SYNC OS)" : "Excluir", aoClicar: () => setJanela({ tipo: "excluir", o }), perigo: true, desabilitado: noSyncOs(o) },
               ]}
             />
           </span>
@@ -268,7 +268,7 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
           numeros={[...selecionados]}
           todosDaBusca={todosDaBusca}
           filtros={filtros}
-          daPagina={daPagina.map((o) => ({ numero: o.numero_ordem, situacao: o.no_daprom.situacao }))}
+          daPagina={daPagina.map((o) => ({ numero: o.numero_ordem, situacao: o.no_sync_os.situacao }))}
           aoFechar={fechar}
         />
       )}

@@ -18,7 +18,7 @@ function cabecalho(c: Cursor, titulo: string, direita: string) {
   linhaDeCelulas(
     c,
     [
-      { fracao: 0.2, valor: "D.A.P.R.O.M", negrito: true },
+      { fracao: 0.2, valor: "SYNC OS", negrito: true },
       { fracao: 0.55, valor: titulo, negrito: true },
       { fracao: 0.25, valor: direita },
     ],

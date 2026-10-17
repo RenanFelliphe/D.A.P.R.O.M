@@ -1,4 +1,4 @@
-# Painel web e telas de campo do D.A.P.R.O.M (Next.js). Aplicação do Coolify; a porta é a variável PORT (padrão 3000).
+# Painel web e telas de campo do SYNC OS (Next.js). Aplicação do Coolify; a porta é a variável PORT (padrão 3000).
 FROM node:24-slim AS construir
 
 RUN npm install --global pnpm@11.21.0

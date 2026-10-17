@@ -2,8 +2,8 @@ import { date, index, jsonb, pgTable, text } from "drizzle-orm/pg-core";
 import { instante } from "./comum";
 
 /**
- * As ordens de manutenção do SAP simulado: o que o SAP teria, com dados fictícios, que o DAPROM lê pelo contrato (`GET /sap-simulado/ordens`).
- * Fica no banco do DAPROM (e não na memória) para sobreviver a um reinício, mas não tem chave para nenhuma tabela do DAPROM: o vínculo
+ * As ordens de manutenção do SAP simulado: o que o SAP teria, com dados fictícios, que o SYNC OS lê pelo contrato (`GET /sap-simulado/ordens`).
+ * Fica no banco do SYNC OS (e não na memória) para sobreviver a um reinício, mas não tem chave para nenhuma tabela do SYNC OS: o vínculo
  * com `os` é só o número da ordem, como seria com o SAP de verdade. Uma coluna para cada campo do contrato (`OrdemSap`), com o local de
  * instalação em quatro colunas. Vazia quando `SAP_SIMULADO=false`. Ver `apiSAP.md`.
  */
@@ -28,7 +28,7 @@ export const ordemSapSimulada = pgTable(
     prioridade: text(),
     dataInicioProg: date({ mode: "string" }).notNull(),
     dataFimProg: date({ mode: "string" }),
-    /** Lista de códigos do sistema (`LIB IMPR CAPC`); a `api` do DAPROM procura o `LIB`. */
+    /** Lista de códigos do sistema (`LIB IMPR CAPC`); a `api` do SYNC OS procura o `LIB`. */
     statusSap: text(),
     solicitante: text(),
     criadoPor: text(),

@@ -39,7 +39,7 @@ const INTERVALO_MS = 2_000;
 const TENTATIVAS = 40;
 
 /**
- * Cartão "Registro de funcionários" (tela de usuários, para o admin) e "Sincronização com o DAPROM" (tela do simulador): a última
+ * Cartão "Registro de funcionários" (tela de usuários, para o admin) e "Sincronização com o SYNC OS" (tela do simulador): a última
  * leitura completa do registro, com o resultado (conferidos, atualizados, desativados e o erro), e o botão "Ler agora"
  * (`POST /rh/leituras`). Depois do clique, consulta `GET /rh/sincronizacao` até a leitura terminar.
  */

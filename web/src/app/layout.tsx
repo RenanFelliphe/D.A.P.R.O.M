@@ -18,8 +18,8 @@ const plexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "D.A.P.R.O.M",
-    template: "%s · D.A.P.R.O.M",
+    default: "SYNC OS",
+    template: "%s · SYNC OS",
   },
   description: "APR e Ordens de Manutenção 100% digitais.",
 };

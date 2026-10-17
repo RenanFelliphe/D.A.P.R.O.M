@@ -9,7 +9,7 @@ import type { RascunhoApr } from "@/lib/apr";
  * ficar aberta.
  */
 
-const chaveDe = (osId: string) => `daprom:apr:${osId}`;
+const chaveDe = (osId: string) => `syncos:apr:${osId}`;
 
 const memoria = new Map<string, string>();
 const ouvintes = new Set<() => void>();

@@ -302,7 +302,7 @@ describe("Registro de funcionários: cadastro, desligamento e leitura diária", 
       assert.match(login.corpo.erro.mensagem, /Desligado no registro de funcionários/);
     });
 
-    it("um aviso falso não muda nada: o DAPROM consulta o registro e age pelo que ele responde", async () => {
+    it("um aviso falso não muda nada: o SYNC OS consulta o registro e age pelo que ele responde", async () => {
       const u = await pessoa();
       await aviso([u.matricula]); // o registro diz que a pessoa segue ativa
       await executarTarefasPendentes(amb.deps);

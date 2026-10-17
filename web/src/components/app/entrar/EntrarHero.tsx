@@ -10,7 +10,7 @@ export function EntrarHero() {
         <Icon name="shield" size={24} style={{ fontSize: 30 }} />
       </span>
       <div className="stack g8">
-        <h1>D.A.P.R.O.M</h1>
+        <h1>SYNC OS</h1>
         <p className="tagline">APR e Ordens de Manutenção 100% digitais</p>
       </div>
       <div className="row wrap g8">

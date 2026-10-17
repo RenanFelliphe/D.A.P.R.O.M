@@ -7,7 +7,7 @@ import { dataDoDia, dataHora } from "@/lib/formatar";
 import { rotuloDoPerfil } from "@/lib/tipos";
 import { rotuloDaSituacao, type Funcionario, type ListaDeFuncionarios } from "./tipos";
 
-/** "Ver mais" do funcionário: todos os campos do registro (com o nome do gestor) e, se houver, a conta dele no DAPROM. */
+/** "Ver mais" do funcionário: todos os campos do registro (com o nome do gestor) e, se houver, a conta dele no SYNC OS. */
 export function VerMaisFuncionario({ funcionario: f, nomesDeEquipe, aoFechar }: { funcionario: Funcionario; nomesDeEquipe: Record<string, string>; aoFechar: () => void }) {
   const [gestor, setGestor] = useState<string | null>(null);
 
@@ -22,7 +22,7 @@ export function VerMaisFuncionario({ funcionario: f, nomesDeEquipe, aoFechar }: 
     };
   }, [f.gestor_matricula]);
 
-  const conta = f.conta_no_daprom;
+  const conta = f.conta_no_sync_os;
   return (
     <JanelaVerMais
       titulo={f.nome}
@@ -46,7 +46,7 @@ export function VerMaisFuncionario({ funcionario: f, nomesDeEquipe, aoFechar }: 
           ],
         },
         {
-          titulo: "No DAPROM",
+          titulo: "No SYNC OS",
           itens: conta
             ? [
                 { rotulo: "Conta", valor: conta.ativo ? "Ativa" : "Desativada" },
@@ -54,7 +54,7 @@ export function VerMaisFuncionario({ funcionario: f, nomesDeEquipe, aoFechar }: 
                 { rotulo: "Equipe", valor: conta.equipe_id ? (nomesDeEquipe[conta.equipe_id] ?? "—") : "Sem equipe" },
                 { rotulo: "Acesso", valor: conta.liberacao === "liberado" ? "Liberado" : conta.liberacao === "pendente" ? "Aguarda liberação" : "Recusado" },
               ]
-            : [{ rotulo: "Conta", valor: "Ainda não tem conta no DAPROM" }],
+            : [{ rotulo: "Conta", valor: "Ainda não tem conta no SYNC OS" }],
         },
       ]}
     />

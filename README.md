@@ -1,8 +1,8 @@
-# D.A.P.R.O.M
+# SYNC OS
 
 **APR e Ordens de Manutenção sem papel.**
 
-D.A.P.R.O.M é uma proposta de digitalização do fluxo de Ordens de Manutenção (OM/OS) e Análises Preliminares de Risco (APR), do planejamento à execução em campo. A solução foi concebida para combinar uma experiência móvel para equipes operacionais com um painel web para gestão, mantendo o histórico, as evidências e as assinaturas associados a cada atividade.
+SYNC OS é uma proposta de digitalização do fluxo de Ordens de Manutenção (OM/OS) e Análises Preliminares de Risco (APR), do planejamento à execução em campo. A solução foi concebida para combinar uma experiência móvel para equipes operacionais com um painel web para gestão, mantendo o histórico, as evidências e as assinaturas associados a cada atividade.
 
 > **Estado atual:** o repositório tem a `api` (rotas, regras, banco, PDF e tarefas, testada) e o `web` (área do técnico e painel de gestão, ligados à `api`), além das especificações e dos materiais de referência. O aplicativo `mobile` (React Native, com o modo offline) ainda não foi iniciado. Nada aqui roda com dados reais da empresa: o SAP é simulado e o desenvolvimento usa só dados fictícios.
 
@@ -81,7 +81,7 @@ A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramen
 
 ## Executar
 
-Sem Supabase nem Docker, a `api` tem um modo local (banco, autenticação e arquivos em memória, SAP simulado, usuários de exemplo com a senha `daprom123`):
+Sem Supabase nem Docker, a `api` tem um modo local (banco, autenticação e arquivos em memória, SAP simulado, usuários de exemplo com a senha `syncos123`):
 
 ```bash
 cd api && pnpm install && pnpm dev:local    # http://localhost:3333

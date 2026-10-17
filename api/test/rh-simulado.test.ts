@@ -44,7 +44,7 @@ describe("Simulador do registro de funcionários", () => {
   });
   after(() => amb.fechar());
 
-  describe("contrato (o que o DAPROM lê)", () => {
+  describe("contrato (o que o SYNC OS lê)", () => {
     it("exige o token do registro", async () => {
       await criar("K1");
       assert.equal((await contrato("/funcionarios", null)).status, 401);
@@ -77,7 +77,7 @@ describe("Simulador do registro de funcionários", () => {
       assert.equal(nao.status, 404);
     });
 
-    it("pagina com proxima_pagina, por matrícula, e o cliente HTTP do DAPROM lê tudo", async () => {
+    it("pagina com proxima_pagina, por matrícula, e o cliente HTTP do SYNC OS lê tudo", async () => {
       for (const m of ["K10", "K11", "K12", "K13", "K14"]) await criar(m);
       const total = (await lista()).total;
       const p1 = await contrato("/funcionarios", configDeTeste.rhApiToken, { pagina: 1, tamanho: 2 });
@@ -87,7 +87,7 @@ describe("Simulador do registro de funcionários", () => {
       assert.equal(ultima.corpo.proxima_pagina, undefined);
       assert.equal((await contrato("/funcionarios", configDeTeste.rhApiToken, { tamanho: 500 })).status, 422);
 
-      // O mesmo caminho do DAPROM: o cliente HTTP falando com a aplicação.
+      // O mesmo caminho do SYNC OS: o cliente HTTP falando com a aplicação.
       const buscarNaApp: typeof fetch = async (entrada, init) => amb.app.request(entrada instanceof Request ? entrada : new URL(String(entrada)).pathname + new URL(String(entrada)).search, init);
       const cliente = new ClienteRhHttp("http://rh.local/rh-simulado", configDeTeste.rhApiToken, buscarNaApp);
       const todos: string[] = [];
@@ -142,7 +142,7 @@ describe("Simulador do registro de funcionários", () => {
   });
 
   describe("catálogo", () => {
-    it("traz os setores com os cargos, quais têm equipe no DAPROM e a próxima matrícula livre (a maior numérica mais um)", async () => {
+    it("traz os setores com os cargos, quais têm equipe no SYNC OS e a próxima matrícula livre (a maior numérica mais um)", async () => {
       const amb2 = await criarAmbiente();
       try {
         const adm = await amb2.criarUsuario({ perfil: "admin" });
@@ -152,9 +152,9 @@ describe("Simulador do registro de funcionários", () => {
         assert.equal(c.proxima_matricula, "100001", "começa em 100001");
         assert.deepEqual(c.situacoes, ["ativo", "afastado", "desligado"]);
         const serv = c.setores.find((s: any) => s.centro_trabalho === "SERV_ESP");
-        assert.equal(serv.equipe_no_daprom, "Serviços Especiais");
+        assert.equal(serv.equipe_no_sync_os, "Serviços Especiais");
         assert.ok(serv.cargos.includes("Técnico em Gás"));
-        assert.equal(c.setores.find((s: any) => s.centro_trabalho === "INSTRUM").equipe_no_daprom, null);
+        assert.equal(c.setores.find((s: any) => s.centro_trabalho === "INSTRUM").equipe_no_sync_os, null);
         assert.ok(c.setores.some((s: any) => s.centro_trabalho === "MAN_ELE"), "há setores sem equipe, para o caso 'sem equipe correspondente'");
 
         await amb2.esperar(201, "POST", "/rh-simulado/gestao/funcionarios", { como: adm, json: novoCorpo("100231") });
@@ -266,16 +266,16 @@ describe("Simulador do registro de funcionários", () => {
       assert.equal(total, 1);
     });
 
-    it("mostra a conta no DAPROM (perfil, equipe e se está ativa) ou null", async () => {
+    it("mostra a conta no SYNC OS (perfil, equipe e se está ativa) ou null", async () => {
       const equipe = await amb.criarEquipe();
       const conta = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipe.id, matricula: "CONTA1" });
       await criar("CONTA1", { email: conta.email });
       await criar("SEM_CONTA1");
       const r = await lista({ busca: "conta1" });
       const com = r.funcionarios.find((f: any) => f.matricula === "CONTA1");
-      assert.deepEqual(com.conta_no_daprom, { id: conta.id, perfil: "tecnico", equipe_id: equipe.id, ativo: true, liberacao: "liberado" });
+      assert.deepEqual(com.conta_no_sync_os, { id: conta.id, perfil: "tecnico", equipe_id: equipe.id, ativo: true, liberacao: "liberado" });
       const sem = (await lista({ busca: "sem_conta1" })).funcionarios.find((f: any) => f.matricula === "SEM_CONTA1");
-      assert.equal(sem.conta_no_daprom, null);
+      assert.equal(sem.conta_no_sync_os, null);
     });
   });
 
@@ -296,7 +296,7 @@ describe("Simulador do registro de funcionários", () => {
       assert.equal((await amb.req("PATCH", "/rh-simulado/gestao/funcionarios/E1", { como: admin, json: { email: "fulano.e1@empresa.com.br" } })).status, 200, "o próprio e-mail não conflita consigo");
     });
 
-    it("passar para desligado avisa o DAPROM; outras mudanças e repetir o desligamento, não", async () => {
+    it("passar para desligado avisa o SYNC OS; outras mudanças e repetir o desligamento, não", async () => {
       await criar("E3");
       amb.avisosRh.length = 0;
       await amb.esperar(200, "PATCH", "/rh-simulado/gestao/funcionarios/E3", { como: admin, json: { situacao: "afastado" } });
@@ -308,11 +308,11 @@ describe("Simulador do registro de funcionários", () => {
       assert.equal(amb.avisosRh.length, 1, "já estava desligado");
     });
 
-    it("de ponta a ponta: desligar na tela desativa a conta no DAPROM em segundos (aviso → tarefa → conferência)", async () => {
+    it("de ponta a ponta: desligar na tela desativa a conta no SYNC OS em segundos (aviso → tarefa → conferência)", async () => {
       const conta = await amb.criarUsuario({ perfil: "tecnico", matricula: "FIM1" });
       await criar("FIM1", { email: conta.email });
       await amb.esperar(200, "GET", "/equipes", { como: conta });
-      // O consultor do DAPROM fala com o simulador de verdade (o cliente HTTP, não o de memória).
+      // O consultor do SYNC OS fala com o simulador de verdade (o cliente HTTP, não o de memória).
       const buscarNaApp: typeof fetch = async (entrada, init) => amb.app.request(new URL(String(entrada)).pathname + new URL(String(entrada)).search, init);
       const deps = { ...amb.deps, rh: new ClienteRhHttp("http://rh.local/rh-simulado", configDeTeste.rhApiToken, buscarNaApp) };
       amb.rhSimulador.encaminhar = true;
@@ -375,7 +375,7 @@ describe("Simulador do registro de funcionários", () => {
       assert.equal((await amb.req("POST", "/rh-simulado/gestao/funcionarios/em-massa", { como: admin, json: { matriculas: ["S1"], acao: "mudar_setor" } })).status, 422);
     });
 
-    it("mudar_situacao: desligar avisa o DAPROM só das matrículas que passaram a desligado agora", async () => {
+    it("mudar_situacao: desligar avisa o SYNC OS só das matrículas que passaram a desligado agora", async () => {
       await criar("D1");
       await criar("D2", { situacao: "desligado" });
       await criar("D3");
@@ -404,12 +404,12 @@ describe("Simulador do registro de funcionários", () => {
   });
 
   describe("aviso de saída", () => {
-    it("se o envio ao DAPROM falhar, o simulador só registra no log e a edição vale", async () => {
+    it("se o envio ao SYNC OS falhar, o simulador só registra no log e a edição vale", async () => {
       const { avisoPorHttp } = await import("../src/rotas/rh-simulado");
       const chamadas: string[] = [];
       const falha: typeof fetch = async (url, init) => {
         chamadas.push(`${String(url)} ${(init?.headers as Record<string, string>).Authorization}`);
-        throw new Error("DAPROM fora do ar");
+        throw new Error("SYNC OS fora do ar");
       };
       const avisar = avisoPorHttp(amb.deps, falha);
       const aviso = console.warn;
@@ -423,7 +423,7 @@ describe("Simulador do registro de funcionários", () => {
       }
       assert.deepEqual(chamadas, [`http://api.local/rh/avisos Bearer ${configDeTeste.rhAvisoToken}`]);
       assert.equal(logs.length, 1);
-      assert.match(logs[0]!, /DAPROM fora do ar/);
+      assert.match(logs[0]!, /SYNC OS fora do ar/);
     });
   });
 

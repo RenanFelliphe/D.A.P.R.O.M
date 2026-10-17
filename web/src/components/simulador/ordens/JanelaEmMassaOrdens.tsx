@@ -8,13 +8,13 @@ import { Notice } from "@/components/ui/Notice";
 import { JanelaModal } from "@/components/web/JanelaModal";
 import { chamar } from "@/lib/cliente-api";
 import { useToast } from "@/state/toast";
-import { rotuloDaSituacaoNoDaprom, type AcaoEmMassaDeOrdens, type CatalogoDeOrdens, type ListaDeOrdens, type RecusadaEmMassa, type SituacaoNoDaprom } from "./tipos";
+import { rotuloDaSituacaoNoSyncOs, type AcaoEmMassaDeOrdens, type CatalogoDeOrdens, type ListaDeOrdens, type RecusadaEmMassa, type SituacaoNoSyncOs } from "./tipos";
 
 export interface FiltrosDaBusca {
   busca?: string;
   tipo?: string;
   centro_trabalho?: string;
-  no_daprom?: string;
+  no_sync_os?: string;
 }
 
 interface JanelaEmMassaOrdensProps {
@@ -23,16 +23,16 @@ interface JanelaEmMassaOrdensProps {
   numeros: string[];
   todosDaBusca: boolean;
   filtros: FiltrosDaBusca;
-  /** Os da página: a situação no DAPROM de cada um, para o resumo sem nova consulta. */
-  daPagina: { numero: string; situacao: SituacaoNoDaprom }[];
+  /** Os da página: a situação no SYNC OS de cada um, para o resumo sem nova consulta. */
+  daPagina: { numero: string; situacao: SituacaoNoSyncOs }[];
   aoFechar: (concluiu: boolean) => void;
 }
 
 const titulos: Record<AcaoEmMassaDeOrdens, string> = { mudar_status: "Mudar o status SAP", mudar_centro: "Mudar o centro de trabalho", reprogramar: "Reprogramar", excluir: "Excluir ordens" };
 
-type Contagem = { total: number; porSituacao: Partial<Record<SituacaoNoDaprom, number>> };
+type Contagem = { total: number; porSituacao: Partial<Record<SituacaoNoSyncOs, number>> };
 
-/** A situação no DAPROM das ordens da busca inteira: lê todas as páginas (a seleção pode passar da página). */
+/** A situação no SYNC OS das ordens da busca inteira: lê todas as páginas (a seleção pode passar da página). */
 async function contarDaBusca(f: FiltrosDaBusca): Promise<Contagem> {
   const porSituacao: Contagem["porSituacao"] = {};
   let total = 0;
@@ -41,7 +41,7 @@ async function contarDaBusca(f: FiltrosDaBusca): Promise<Contagem> {
     for (const [k, v] of Object.entries(f)) if (v) consulta.set(k, v);
     const r = await chamar<ListaDeOrdens>("GET", `/sap-simulado/gestao/ordens?${consulta}`);
     total = r.total;
-    for (const o of r.ordens) porSituacao[o.no_daprom.situacao] = (porSituacao[o.no_daprom.situacao] ?? 0) + 1;
+    for (const o of r.ordens) porSituacao[o.no_sync_os.situacao] = (porSituacao[o.no_sync_os.situacao] ?? 0) + 1;
     if (pagina * 200 >= r.total) break;
   }
   return { total, porSituacao };
@@ -49,8 +49,8 @@ async function contarDaBusca(f: FiltrosDaBusca): Promise<Contagem> {
 
 /**
  * Confirmação de uma ação em massa (`POST /sap-simulado/gestao/ordens/em-massa`). Antes de aplicar, diz quantas das ordens selecionadas já
- * estão no DAPROM e o efeito nelas, pelas regras da leitura: tirar o `LIB` cancela a OS (ou gera conflito se está em execução), a
- * reprogramação no DAPROM vence, a OS encerrada ou cancelada o SAP só acompanha. Excluir recusa as que o DAPROM tem.
+ * estão no SYNC OS e o efeito nelas, pelas regras da leitura: tirar o `LIB` cancela a OS (ou gera conflito se está em execução), a
+ * reprogramação no SYNC OS vence, a OS encerrada ou cancelada o SAP só acompanha. Excluir recusa as que o SYNC OS tem.
  */
 export function JanelaEmMassaOrdens({ acao, catalogo, numeros, todosDaBusca, filtros, daPagina, aoFechar }: JanelaEmMassaOrdensProps) {
   const router = useRouter();
@@ -130,7 +130,7 @@ export function JanelaEmMassaOrdens({ acao, catalogo, numeros, todosDaBusca, fil
   }
 
   const p = contagem?.porSituacao ?? {};
-  const noDaprom = contagem ? contagem.total - (p.nao_lida ?? 0) - (p.ignorada ?? 0) : 0;
+  const noSyncOs = contagem ? contagem.total - (p.nao_lida ?? 0) - (p.ignorada ?? 0) : 0;
   const ativas = (p.liberada ?? 0) + (p.pendente ?? 0);
   const emExecucao = p.em_execucao ?? 0;
   const acompanhadas = (p.encerrada ?? 0) + (p.cancelada ?? 0);
@@ -160,7 +160,7 @@ export function JanelaEmMassaOrdens({ acao, catalogo, numeros, todosDaBusca, fil
             {catalogo.centros_de_trabalho.map((c) => (
               <option key={c.centro_trabalho} value={c.centro_trabalho}>
                 {c.centro_trabalho} · {c.nome}
-                {c.equipe_no_daprom ? "" : " (sem equipe no DAPROM)"}
+                {c.equipe_no_sync_os ? "" : " (sem equipe no SYNC OS)"}
               </option>
             ))}
           </select>
@@ -187,29 +187,29 @@ export function JanelaEmMassaOrdens({ acao, catalogo, numeros, todosDaBusca, fil
           )}
         </div>
       )}
-      {contagem === null && !erro && <p className="small">Conferindo quantas já estão no DAPROM…</p>}
+      {contagem === null && !erro && <p className="small">Conferindo quantas já estão no SYNC OS…</p>}
       {contagem && (
-        <Notice tone={noDaprom > 0 && acao !== "reprogramar" ? "al" : "info"} icon={noDaprom > 0 ? "alert" : "info"}>
+        <Notice tone={noSyncOs > 0 && acao !== "reprogramar" ? "al" : "info"} icon={noSyncOs > 0 ? "alert" : "info"}>
           <div className="stack g4">
             <span>
-              {noDaprom === 0
-                ? "Nenhuma delas está no DAPROM: nada muda lá até a próxima leitura criar as OS."
-                : `${noDaprom} ${noDaprom === 1 ? "já está" : "já estão"} no DAPROM (${resumo([ativas, "liberada(s) ou pendente(s)"], [emExecucao, "em execução"], [acompanhadas, "encerrada(s) ou cancelada(s)"])}).`}
+              {noSyncOs === 0
+                ? "Nenhuma delas está no SYNC OS: nada muda lá até a próxima leitura criar as OS."
+                : `${noSyncOs} ${noSyncOs === 1 ? "já está" : "já estão"} no SYNC OS (${resumo([ativas, "liberada(s) ou pendente(s)"], [emExecucao, "em execução"], [acompanhadas, "encerrada(s) ou cancelada(s)"])}).`}
             </span>
-            {acao === "excluir" && noDaprom > 0 && <span>Estas não serão excluídas: no SAP uma ordem não é apagada, ela é encerrada (tire o LIB do status).</span>}
-            {acao === "mudar_status" && noDaprom > 0 && !status.toUpperCase().split(/\s+/).includes("LIB") && (
+            {acao === "excluir" && noSyncOs > 0 && <span>Estas não serão excluídas: no SAP uma ordem não é apagada, ela é encerrada (tire o LIB do status).</span>}
+            {acao === "mudar_status" && noSyncOs > 0 && !status.toUpperCase().split(/\s+/).includes("LIB") && (
               <span>
-                Sem o LIB, na próxima leitura o DAPROM cancela as {ativas} OS liberadas ou pendentes
+                Sem o LIB, na próxima leitura o SYNC OS cancela as {ativas} OS liberadas ou pendentes
                 {emExecucao > 0 ? ` e gera um alerta de conflito nas ${emExecucao} em execução, que seguem` : ""}. {acompanhadas > 0 ? `As ${acompanhadas} encerradas ou canceladas só são acompanhadas.` : ""}
               </span>
             )}
-            {acao === "mudar_status" && noDaprom > 0 && status.toUpperCase().split(/\s+/).includes("LIB") && <span>Com o LIB, o planejamento das OS que o DAPROM já tem é atualizado na próxima leitura.</span>}
-            {acao === "mudar_centro" && noDaprom > 0 && <span>Na próxima leitura, o DAPROM atualiza o planejamento (a equipe) das OS que já tem.</span>}
-            {acao === "reprogramar" && noDaprom > 0 && <span>Se a OS foi reprogramada no DAPROM, uma data diferente no SAP faz a leitura ignorá-la: a reprogramação vence.</span>}
+            {acao === "mudar_status" && noSyncOs > 0 && status.toUpperCase().split(/\s+/).includes("LIB") && <span>Com o LIB, o planejamento das OS que o SYNC OS já tem é atualizado na próxima leitura.</span>}
+            {acao === "mudar_centro" && noSyncOs > 0 && <span>Na próxima leitura, o SYNC OS atualiza o planejamento (a equipe) das OS que já tem.</span>}
+            {acao === "reprogramar" && noSyncOs > 0 && <span>Se a OS foi reprogramada no SYNC OS, uma data diferente no SAP faz a leitura ignorá-la: a reprogramação vence.</span>}
           </div>
         </Notice>
       )}
-      {contagem && (p.ignorada ?? 0) > 0 && acao !== "excluir" && <p className="small">{p.ignorada} {p.ignorada === 1 ? "foi ignorada" : "foram ignoradas"} na última leitura ({rotuloDaSituacaoNoDaprom.ignorada.toLowerCase()}); o DAPROM confere de novo na próxima.</p>}
+      {contagem && (p.ignorada ?? 0) > 0 && acao !== "excluir" && <p className="small">{p.ignorada} {p.ignorada === 1 ? "foi ignorada" : "foram ignoradas"} na última leitura ({rotuloDaSituacaoNoSyncOs.ignorada.toLowerCase()}); o SYNC OS confere de novo na próxima.</p>}
       {erro && (
         <Notice tone="blq" icon="alert">
           {erro}

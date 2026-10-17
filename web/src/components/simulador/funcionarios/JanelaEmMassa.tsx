@@ -17,14 +17,14 @@ interface JanelaEmMassaProps {
   matriculas: string[];
   todosDaBusca: boolean;
   busca?: string;
-  /** Os da página, para contar quantos têm conta no DAPROM sem nova consulta. */
+  /** Os da página, para contar quantos têm conta no SYNC OS sem nova consulta. */
   daPagina: { matricula: string; tem_conta: boolean }[];
   aoFechar: (concluiu: boolean) => void;
 }
 
 const titulos: Record<AcaoEmMassa, string> = { excluir: "Excluir funcionários", mudar_setor: "Mudar o setor", mudar_situacao: "Mudar a situação" };
 
-/** Quantos funcionários da busca têm conta no DAPROM: lê todas as páginas da busca (a seleção pode passar da página). */
+/** Quantos funcionários da busca têm conta no SYNC OS: lê todas as páginas da busca (a seleção pode passar da página). */
 async function contarContasDaBusca(busca: string | undefined): Promise<{ total: number; comConta: number }> {
   let total = 0;
   let comConta = 0;
@@ -33,7 +33,7 @@ async function contarContasDaBusca(busca: string | undefined): Promise<{ total: 
     if (busca) consulta.set("busca", busca);
     const r = await chamar<ListaDeFuncionarios>("GET", `/rh-simulado/gestao/funcionarios?${consulta}`);
     total = r.total;
-    comConta += r.funcionarios.filter((f) => f.conta_no_daprom).length;
+    comConta += r.funcionarios.filter((f) => f.conta_no_sync_os).length;
     if (pagina * 200 >= r.total) break;
   }
   return { total, comConta };
@@ -41,7 +41,7 @@ async function contarContasDaBusca(busca: string | undefined): Promise<{ total: 
 
 /**
  * Confirmação de uma ação em massa (`POST /rh-simulado/gestao/funcionarios/em-massa`). Antes de aplicar, diz quantos dos
- * selecionados têm conta no DAPROM e o que vai acontecer com eles: desligar desativa a conta na hora; excluir não vale para quem
+ * selecionados têm conta no SYNC OS e o que vai acontecer com eles: desligar desativa a conta na hora; excluir não vale para quem
  * tem conta. Depois, lista os recusados com o motivo.
  */
 export function JanelaEmMassa({ acao, catalogo, matriculas, todosDaBusca, busca, daPagina, aoFechar }: JanelaEmMassaProps) {
@@ -142,15 +142,15 @@ export function JanelaEmMassa({ acao, catalogo, matriculas, todosDaBusca, busca,
           </select>
         </Field>
       )}
-      {contas === null && !erro && <p className="small">Contando quantos têm conta no DAPROM…</p>}
+      {contas === null && !erro && <p className="small">Contando quantos têm conta no SYNC OS…</p>}
       {contas && (
         <Notice tone={comConta > 0 && (acao !== "mudar_setor") ? "al" : "info"} icon={comConta > 0 ? "alert" : "info"}>
-          {comConta === 0 && "Nenhum deles tem conta no DAPROM: nada muda lá."}
-          {comConta > 0 && acao === "excluir" && `${comConta} ${plural(comConta, "tem", "têm")} conta no DAPROM e não ${plural(comConta, "será excluído", "serão excluídos")}: quem tem conta deve ser desligado, não excluído. Os demais são excluídos.`}
-          {comConta > 0 && acao === "mudar_setor" && `${comConta} ${plural(comConta, "tem", "têm")} conta no DAPROM. O setor só sugere a equipe no cadastro: a equipe da conta não muda.`}
-          {comConta > 0 && acao === "mudar_situacao" && situacao === "desligado" && `${comConta} ${plural(comConta, "tem", "têm")} conta no DAPROM: desligar avisa o DAPROM, e a conta é desativada em segundos.`}
-          {comConta > 0 && acao === "mudar_situacao" && situacao === "afastado" && `${comConta} ${plural(comConta, "tem", "têm")} conta no DAPROM: o afastamento só é anotado lá, e o acesso não muda.`}
-          {comConta > 0 && acao === "mudar_situacao" && situacao === "ativo" && `${comConta} ${plural(comConta, "tem", "têm")} conta no DAPROM: o DAPROM nunca reativa uma conta sozinho. Quem estava desativada continua assim até um admin reativar.`}
+          {comConta === 0 && "Nenhum deles tem conta no SYNC OS: nada muda lá."}
+          {comConta > 0 && acao === "excluir" && `${comConta} ${plural(comConta, "tem", "têm")} conta no SYNC OS e não ${plural(comConta, "será excluído", "serão excluídos")}: quem tem conta deve ser desligado, não excluído. Os demais são excluídos.`}
+          {comConta > 0 && acao === "mudar_setor" && `${comConta} ${plural(comConta, "tem", "têm")} conta no SYNC OS. O setor só sugere a equipe no cadastro: a equipe da conta não muda.`}
+          {comConta > 0 && acao === "mudar_situacao" && situacao === "desligado" && `${comConta} ${plural(comConta, "tem", "têm")} conta no SYNC OS: desligar avisa o SYNC OS, e a conta é desativada em segundos.`}
+          {comConta > 0 && acao === "mudar_situacao" && situacao === "afastado" && `${comConta} ${plural(comConta, "tem", "têm")} conta no SYNC OS: o afastamento só é anotado lá, e o acesso não muda.`}
+          {comConta > 0 && acao === "mudar_situacao" && situacao === "ativo" && `${comConta} ${plural(comConta, "tem", "têm")} conta no SYNC OS: o SYNC OS nunca reativa uma conta sozinho. Quem estava desativada continua assim até um admin reativar.`}
         </Notice>
       )}
       {erro && (

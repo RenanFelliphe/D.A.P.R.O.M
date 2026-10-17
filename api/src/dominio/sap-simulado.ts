@@ -12,9 +12,9 @@ import { esquemaOrdem } from "./importacao-ordens";
 import { SETORES } from "./rh-simulado";
 
 /*
- * O SAP simulado (`apiSAP.md`): o contrato que o DAPROM lê (agora a partir da tabela `ordem_sap_simulada`), o catálogo e o gerador
- * de ordens fictícias e as operações de gestão da tela `/simulador/ordens`. O DAPROM só fala com o simulador pelo contrato HTTP; a
- * gestão consulta as tabelas `os` e `importacao` só para mostrar, na coluna "No DAPROM", como ele reagiu (atalho de demonstração).
+ * O SAP simulado (`apiSAP.md`): o contrato que o SYNC OS lê (agora a partir da tabela `ordem_sap_simulada`), o catálogo e o gerador
+ * de ordens fictícias e as operações de gestão da tela `/simulador/ordens`. O SYNC OS só fala com o simulador pelo contrato HTTP; a
+ * gestão consulta as tabelas `os` e `importacao` só para mostrar, na coluna "No SYNC OS", como ele reagiu (atalho de demonstração).
  */
 
 type Linha = typeof ordemSapSimulada.$inferSelect;
@@ -24,7 +24,7 @@ type NovaLinha = typeof ordemSapSimulada.$inferInsert;
 // Contrato
 // ------------------------------------------------------------------------------------------------------------------
 
-/** A ordem no formato do contrato (`OrdemSap`): o que o DAPROM lê. Sem intervalo, a chave nem existe. */
+/** A ordem no formato do contrato (`OrdemSap`): o que o SYNC OS lê. Sem intervalo, a chave nem existe. */
 export function paraContrato(l: Linha): OrdemSap {
   return {
     numero_ordem: l.numeroOrdem,
@@ -102,7 +102,7 @@ export async function obterOrdemSimulada(db: Db, numero: string): Promise<Linha 
 // Catálogos
 // ------------------------------------------------------------------------------------------------------------------
 
-/** Opções prontas do status SAP; a tela também aceita texto livre. A regra do DAPROM é só procurar o `LIB`. */
+/** Opções prontas do status SAP; a tela também aceita texto livre. A regra do SYNC OS é só procurar o `LIB`. */
 export const STATUS_PRONTOS = [
   { codigo: "CRTD", rotulo: "Criada" },
   { codigo: "LIB", rotulo: "Liberada" },
@@ -154,17 +154,17 @@ export const SERVICOS: readonly ServicoDoCatalogo[] = [
 const PRIORIDADES = ["Muito alto", "Alto", "Médio", "Baixo"];
 const CRIADORES = ["RFAVARO", "MSANTOS", "LCARDOSO", "IP1020251202", "TPEREIRA"];
 const INTERVALOS: OrdemSap["intervalo_ciclo"][] = ["mensal", "trimestral", "3 MES", "6 meses", "semestral", "1 ano", { quantidade: 2, unidade: "meses" }];
-/** Atividades que o DAPROM ainda não conhece: a leitura as cadastra, e o serviço fica sem lista de materiais. */
+/** Atividades que o SYNC OS ainda não conhece: a leitura as cadastra, e o serviço fica sem lista de materiais. */
 const ATIVIDADES_NOVAS = ["Z-ATIV-01", "Z-ATIV-02", "Z-ATIV-03", "Inspeção especial", "Ajuste de campo"];
 
 export async function catalogoDoSimuladorSap(db: Db) {
   const equipes = await db.select({ centro: equipe.centroTrabalho, nome: equipe.nome }).from(equipe);
   const comEquipe = new Map(equipes.map((e) => [e.centro, e.nome]));
-  // Os centros do DAPROM que o catálogo fixo não conhece também aparecem (equipes criadas pelo admin).
+  // Os centros do SYNC OS que o catálogo fixo não conhece também aparecem (equipes criadas pelo admin).
   const conhecidos = new Set(SETORES.map((s) => s.centro));
   const centros = [
-    ...SETORES.map((s) => ({ centroTrabalho: s.centro, nome: s.nome, equipeNoDaprom: comEquipe.get(s.centro) ?? null })),
-    ...equipes.filter((e) => !conhecidos.has(e.centro)).map((e) => ({ centroTrabalho: e.centro, nome: e.nome, equipeNoDaprom: e.nome })),
+    ...SETORES.map((s) => ({ centroTrabalho: s.centro, nome: s.nome, equipeNoSyncOs: comEquipe.get(s.centro) ?? null })),
+    ...equipes.filter((e) => !conhecidos.has(e.centro)).map((e) => ({ centroTrabalho: e.centro, nome: e.nome, equipeNoSyncOs: e.nome })),
   ];
   const atividades = await db.select({ codigo: atividade.codigo, descricao: atividade.descricao }).from(atividade).orderBy(asc(atividade.codigo));
   return {
@@ -200,7 +200,7 @@ export const esquemaLotesDeOrdens = z.object({
         tipo: z.enum(["corretiva", "preventiva"]).optional(),
         centro_trabalho: z.string().trim().min(1).optional(),
         status: z.enum(["liberada", "criada"]).optional(),
-        /** `cadastrada`: sorteada entre as do DAPROM (o serviço do catálogo); `nova`: um código que o DAPROM não conhece. */
+        /** `cadastrada`: sorteada entre as do SYNC OS (o serviço do catálogo); `nova`: um código que o SYNC OS não conhece. */
         atividade: z.enum(["cadastrada", "nova", "qualquer"]).optional(),
       }),
     )
@@ -213,7 +213,7 @@ export interface OpcoesDoGeradorDeOrdens {
   sorteio?: () => number;
   /** Primeiro número livre. */
   numeroInicial: number;
-  /** Atividades que o DAPROM já tem (para o "cadastrada"). */
+  /** Atividades que o SYNC OS já tem (para o "cadastrada"). */
   atividadesCadastradas: string[];
   /** Hoje, `AAAA-MM-DD`: o início programado sai dos próximos `dias`. */
   hoje: Date;
@@ -225,7 +225,7 @@ const somaDias = (dia: string, dias: number) => new Date(Date.parse(`${dia}T12:0
 
 /**
  * Gera as ordens dos lotes: números sequenciais depois do maior existente, serviços e locais dos catálogos fixos, atividade
- * cadastrada (sorteada entre as do DAPROM) ou nova (códigos inventados), preventivas com plano, item e, às vezes, intervalo,
+ * cadastrada (sorteada entre as do SYNC OS) ou nova (códigos inventados), preventivas com plano, item e, às vezes, intervalo,
  * prioridade e "criado por" sorteados, e início programado nos próximos `dias`. O sorteio é injetável.
  */
 export function gerarOrdens(lotes: LoteDeOrdens[], o: OpcoesDoGeradorDeOrdens): NovaLinha[] {
@@ -242,7 +242,7 @@ export function gerarOrdens(lotes: LoteDeOrdens[], o: OpcoesDoGeradorDeOrdens): 
   let numero = o.numeroInicial;
   for (const lote of lotes) {
     if (lote.centro_trabalho && !centros.includes(lote.centro_trabalho)) throw invalido("centro_inexistente", `Centro de trabalho desconhecido: ${lote.centro_trabalho}`);
-    if (lote.atividade === "cadastrada" && o.atividadesCadastradas.length === 0) throw invalido("sem_atividade_cadastrada", "O DAPROM não tem nenhuma atividade cadastrada para sortear");
+    if (lote.atividade === "cadastrada" && o.atividadesCadastradas.length === 0) throw invalido("sem_atividade_cadastrada", "O SYNC OS não tem nenhuma atividade cadastrada para sortear");
     for (let i = 0; i < lote.quantidade; i++) {
       const tipo = lote.tipo ?? (sorteio() < 0.5 ? "corretiva" : "preventiva");
       const servico = escolher(SERVICOS.filter((s) => s.tipo === (tipo === "corretiva" ? "YBA1" : "YBA2")));
@@ -285,23 +285,23 @@ export function gerarOrdens(lotes: LoteDeOrdens[], o: OpcoesDoGeradorDeOrdens): 
 }
 
 // ------------------------------------------------------------------------------------------------------------------
-// A coluna "No DAPROM"
+// A coluna "No SYNC OS"
 // ------------------------------------------------------------------------------------------------------------------
 
-export type SituacaoNoDaprom = "nao_lida" | "ignorada" | OsStatus;
+export type SituacaoNoSyncOs = "nao_lida" | "ignorada" | OsStatus;
 
-export interface NoDaprom {
-  situacao: SituacaoNoDaprom;
+export interface NoSyncOs {
+  situacao: SituacaoNoSyncOs;
   /** Só em `ignorada`: o motivo que a leitura gravou em `importacao.detalhe_ignoradas`. */
   motivo?: string;
 }
 
 /**
- * Como o DAPROM está com cada ordem: o status da OS que ele tem ("Liberada", "Em execução"…), "Ignorada" com o motivo (da leitura mais
- * recente que passou pela ordem e a ignorou) ou "Ainda não lida". Atalho de demonstração: o SAP real não sabe nada do DAPROM.
+ * Como o SYNC OS está com cada ordem: o status da OS que ele tem ("Liberada", "Em execução"…), "Ignorada" com o motivo (da leitura mais
+ * recente que passou pela ordem e a ignorou) ou "Ainda não lida". Atalho de demonstração: o SAP real não sabe nada do SYNC OS.
  */
-export async function situacoesNoDaprom(db: Db, numeros: string[]): Promise<Map<string, NoDaprom>> {
-  const mapa = new Map<string, NoDaprom>();
+export async function situacoesNoSyncOs(db: Db, numeros: string[]): Promise<Map<string, NoSyncOs>> {
+  const mapa = new Map<string, NoSyncOs>();
   if (numeros.length === 0) return mapa;
   const oss = await db.select({ numero: os.numeroOrdem, status: os.status }).from(os).where(and(isNotNull(os.numeroOrdem), inArray(os.numeroOrdem, numeros)));
   for (const o of oss) mapa.set(o.numero!, { situacao: o.status });
@@ -337,7 +337,7 @@ export const esquemaListaDeOrdens = z.object({
   busca: z.string().trim().min(1).optional(),
   tipo: z.enum(["YBA1", "YBA2"]).optional(),
   centro_trabalho: z.string().trim().min(1).optional(),
-  no_daprom: z
+  no_sync_os: z
     .enum(["nao_lida", "ignorada", "liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"])
     .optional(),
   pagina: z.coerce.number().int().min(1).default(1),
@@ -353,22 +353,22 @@ const condicoes = (f: FiltrosDaLista): SQL | undefined =>
   );
 
 /**
- * Lista paginada com `no_daprom` e `alterada_depois_da_leitura` em cada ordem, e o contador por situação no DAPROM (de todas as ordens,
- * sem os filtros). O filtro `no_daprom` age sobre a situação calculada, então com ele a lista é filtrada antes de paginar.
+ * Lista paginada com `no_sync_os` e `alterada_depois_da_leitura` em cada ordem, e o contador por situação no SYNC OS (de todas as ordens,
+ * sem os filtros). O filtro `no_sync_os` age sobre a situação calculada, então com ele a lista é filtrada antes de paginar.
  */
 export async function listarOrdens(db: Db, f: z.infer<typeof esquemaListaDeOrdens>) {
   const ultimaLeitura = await ultimaLeituraConcluida(db);
   const todas = await db.select({ numero: ordemSapSimulada.numeroOrdem }).from(ordemSapSimulada);
-  const situacoesDeTodas = await situacoesNoDaprom(db, todas.map((t) => t.numero));
+  const situacoesDeTodas = await situacoesNoSyncOs(db, todas.map((t) => t.numero));
   const contagem: Record<string, number> = { nao_lida: 0, ignorada: 0, liberada: 0, pendente: 0, em_execucao: 0, encerrada: 0, cancelada: 0, devolvida: 0 };
   for (const s of situacoesDeTodas.values()) contagem[s.situacao] = (contagem[s.situacao] ?? 0) + 1;
 
   const onde = condicoes(f);
   let linhas: Linha[];
   let total: number;
-  if (f.no_daprom) {
+  if (f.no_sync_os) {
     const doFiltro = await db.select().from(ordemSapSimulada).where(onde).orderBy(asc(ordemSapSimulada.numeroOrdem));
-    const filtradas = doFiltro.filter((l) => situacoesDeTodas.get(l.numeroOrdem)?.situacao === f.no_daprom);
+    const filtradas = doFiltro.filter((l) => situacoesDeTodas.get(l.numeroOrdem)?.situacao === f.no_sync_os);
     total = filtradas.length;
     linhas = filtradas.slice((f.pagina - 1) * f.tamanho, f.pagina * f.tamanho);
   } else {
@@ -384,10 +384,10 @@ export async function listarOrdens(db: Db, f: z.infer<typeof esquemaListaDeOrden
   }
   const ordens = linhas.map((l) => ({
     ...paraContrato(l),
-    // O que muda no DAPROM com a próxima leitura: a ordem mudou depois da última leitura sem erro (sem leitura nenhuma, todas).
+    // O que muda no SYNC OS com a próxima leitura: a ordem mudou depois da última leitura sem erro (sem leitura nenhuma, todas).
     alterada_depois_da_leitura: !ultimaLeitura || l.alteradaEm > ultimaLeitura,
     alterada_em: l.alteradaEm,
-    no_daprom: situacoesDeTodas.get(l.numeroOrdem) ?? { situacao: "nao_lida" as const },
+    no_sync_os: situacoesDeTodas.get(l.numeroOrdem) ?? { situacao: "nao_lida" as const },
   }));
   return { ordens, total, contagem, totalGeral: todas.length };
 }
@@ -448,7 +448,7 @@ export async function criarAleatorias(db: Db, corpo: z.infer<typeof esquemaLotes
   return novas.length;
 }
 
-/** O que o DAPROM faz com cada edição, para a tela avisar antes de salvar (`apiSAP.md`, seção 7). */
+/** O que o SYNC OS faz com cada edição, para a tela avisar antes de salvar (`apiSAP.md`, seção 7). */
 export async function editarOrdem(db: Db, numero: string, dados: z.infer<typeof esquemaEdicaoDeOrdem>, agora: Date): Promise<Linha> {
   const atual = await obterOrdemSimulada(db, numero);
   if (!atual) throw naoEncontrado("Ordem não encontrada");
@@ -484,13 +484,13 @@ export async function editarOrdem(db: Db, numero: string, dados: z.infer<typeof 
   return editada!;
 }
 
-export const MOTIVO_NO_DAPROM = "Esta ordem já está no DAPROM. No SAP, uma ordem não é apagada: encerre-a (tire o LIB do status) e o DAPROM a cancela na próxima leitura.";
+export const MOTIVO_NO_SYNC_OS = "Esta ordem já está no SYNC OS. No SAP, uma ordem não é apagada: encerre-a (tire o LIB do status) e o SYNC OS a cancela na próxima leitura.";
 
-/** Exclui só a ordem que o DAPROM não tem (nunca lida, ou lida e ignorada): no SAP real uma ordem não some, ela é encerrada. */
+/** Exclui só a ordem que o SYNC OS não tem (nunca lida, ou lida e ignorada): no SAP real uma ordem não some, ela é encerrada. */
 export async function excluirOrdem(db: Db, numero: string): Promise<void> {
   if (!(await obterOrdemSimulada(db, numero))) throw naoEncontrado("Ordem não encontrada");
-  const situacao = (await situacoesNoDaprom(db, [numero])).get(numero);
-  if (situacao && situacao.situacao !== "nao_lida" && situacao.situacao !== "ignorada") throw conflito("ordem_no_daprom", MOTIVO_NO_DAPROM);
+  const situacao = (await situacoesNoSyncOs(db, [numero])).get(numero);
+  if (situacao && situacao.situacao !== "nao_lida" && situacao.situacao !== "ignorada") throw conflito("ordem_no_sync_os", MOTIVO_NO_SYNC_OS);
   await db.delete(ordemSapSimulada).where(eq(ordemSapSimulada.numeroOrdem, numero));
 }
 
@@ -503,7 +503,7 @@ export const esquemaEmMassaDeOrdens = z
     busca: z.string().trim().min(1).optional(),
     tipo: z.enum(["YBA1", "YBA2"]).optional(),
     centro_trabalho: z.string().trim().min(1).optional(),
-    no_daprom: esquemaListaDeOrdens.shape.no_daprom,
+    no_sync_os: esquemaListaDeOrdens.shape.no_sync_os,
     acao: z.enum(ACOES_EM_MASSA),
     /** O status novo (`mudar_status`) ou o centro de trabalho novo (`mudar_centro`). */
     valor: z.string().trim().min(1).optional(),
@@ -528,9 +528,9 @@ export async function agirEmMassaNasOrdens(db: Db, c: z.infer<typeof esquemaEmMa
     const f = { ...(c.busca ? { busca: c.busca } : {}), ...(c.tipo ? { tipo: c.tipo } : {}), ...(c.centro_trabalho ? { centro_trabalho: c.centro_trabalho } : {}) };
     const doFiltro = await db.select({ numero: ordemSapSimulada.numeroOrdem }).from(ordemSapSimulada).where(condicoes(f));
     alvos = doFiltro.map((l) => l.numero);
-    if (c.no_daprom) {
-      const s = await situacoesNoDaprom(db, alvos);
-      alvos = alvos.filter((n) => s.get(n)?.situacao === c.no_daprom);
+    if (c.no_sync_os) {
+      const s = await situacoesNoSyncOs(db, alvos);
+      alvos = alvos.filter((n) => s.get(n)?.situacao === c.no_sync_os);
     }
   }
   const existentes = alvos.length ? await db.select().from(ordemSapSimulada).where(inArray(ordemSapSimulada.numeroOrdem, alvos)) : [];
@@ -539,9 +539,9 @@ export async function agirEmMassaNasOrdens(db: Db, c: z.infer<typeof esquemaEmMa
   const numeros = existentes.map((l) => l.numeroOrdem);
 
   if (c.acao === "excluir") {
-    const situacoes = await situacoesNoDaprom(db, numeros);
+    const situacoes = await situacoesNoSyncOs(db, numeros);
     const livres = numeros.filter((n) => ["nao_lida", "ignorada"].includes(situacoes.get(n)?.situacao ?? "nao_lida"));
-    for (const n of numeros) if (!livres.includes(n)) recusadas.push({ numero_ordem: n, motivo: MOTIVO_NO_DAPROM });
+    for (const n of numeros) if (!livres.includes(n)) recusadas.push({ numero_ordem: n, motivo: MOTIVO_NO_SYNC_OS });
     if (livres.length) await db.delete(ordemSapSimulada).where(inArray(ordemSapSimulada.numeroOrdem, livres));
     return { afetadas: livres.length, recusadas };
   }

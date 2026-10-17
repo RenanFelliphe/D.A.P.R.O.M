@@ -14,7 +14,7 @@ const vazioParaNulo = (v: string) => v.trim() || null;
 /**
  * Cadastro manual e edição de um funcionário do registro (`POST` e `PATCH /rh-simulado/gestao/funcionarios`). A matrícula vem
  * sugerida (a próxima livre) e não muda depois de criada; setor e cargo são escolhidos em listas (o cargo aceita texto livre, com as
- * sugestões do setor). Passar para "Desligado" avisa o DAPROM na hora.
+ * sugestões do setor). Passar para "Desligado" avisa o SYNC OS na hora.
  */
 export function FormularioFuncionario({ funcionario, catalogo, aoConcluir }: { funcionario?: Funcionario; catalogo: CatalogoDeFuncionarios; aoConcluir: () => void }) {
   const router = useRouter();
@@ -99,7 +99,7 @@ export function FormularioFuncionario({ funcionario, catalogo, aoConcluir }: { f
               </option>
             ))}
           </select>
-          {setor && !setor.equipe_no_daprom && <span className="small">Este setor não tem equipe no DAPROM.</span>}
+          {setor && !setor.equipe_no_sync_os && <span className="small">Este setor não tem equipe no SYNC OS.</span>}
         </Field>
         <Field label="Cargo">
           <input className="input" required list="cargos-do-setor" value={cargo} onChange={(e) => setCargo(e.target.value)} autoComplete="off" />
@@ -136,9 +136,9 @@ export function FormularioFuncionario({ funcionario, catalogo, aoConcluir }: { f
       </div>
       {desligando && (
         <Notice tone="al" icon="alert">
-          {funcionario?.conta_no_daprom
-            ? "Este funcionário tem conta no DAPROM: ao salvar, o registro avisa o DAPROM e a conta é desativada em segundos."
-            : "Ao salvar, o registro avisa o DAPROM. Como a pessoa não tem conta lá, nada muda."}
+          {funcionario?.conta_no_sync_os
+            ? "Este funcionário tem conta no SYNC OS: ao salvar, o registro avisa o SYNC OS e a conta é desativada em segundos."
+            : "Ao salvar, o registro avisa o SYNC OS. Como a pessoa não tem conta lá, nada muda."}
         </Notice>
       )}
       {erro && (
