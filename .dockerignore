@@ -1,0 +1,8 @@
+# Contexto de build da api e do web (os dois usam a raiz do repositório).
+.git
+**/node_modules
+**/.next
+**/.env*
+!.env.example
+**/*.tsbuildinfo
+mobile

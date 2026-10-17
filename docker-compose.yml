@@ -29,7 +29,9 @@ services:
     restart: unless-stopped
 
   web:
-    build: ./web
+    build:
+      context: .
+      dockerfile: web/Dockerfile
     environment:
       PORT: 3000
       API_URL: http://api:3333

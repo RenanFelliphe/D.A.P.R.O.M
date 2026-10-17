@@ -1,9 +1,0 @@
-node_modules
-.next
-.env*
-*.tsbuildinfo
-README.md
-AGENTS.md
-Dockerfile
-.dockerignore
-.gitignore
