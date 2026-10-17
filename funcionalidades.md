@@ -11,6 +11,7 @@
 - **O formulário de inspeção das preventivas** virou o checklist de inspeção, implementado em 15/10/2026 ([inspecao-preventivas.md](inspecao-preventivas.md)); a pergunta ao Iago (questão 57) fica para conferir se ele cobre o uso real.
 - **Os materiais recomendados foram decididos e feitos em 15/10/2026:** a conferência obrigatória (foto e bloqueio) saiu, e a lista do serviço virou só consulta (seção 4).
 - **O usuário ausente foi feito em 15/10/2026** ([ausencia.md](ausencia.md)): o ausente continua ativo, mas só visualiza; a ausência é pedida pelo técnico ou registrada pelo supervisor, sempre assinada. Quem responde pela equipe com o supervisor ausente é o representante, feito em 16/10/2026 ([representante.md](representante.md)). Ficou de fora só a equipe sem supervisor.
+- **A assinatura nas ações importantes foi feita em 17/10/2026** ([assinaturas.md](funcionalidades/assinaturas.md)): depois da liberação a assinatura é a primeira coisa a cadastrar (todos os perfis), e a ciência do supervisor, a liberação de cadastro, a reprogramação, o cancelamento e a devolução de OS e a interrupção ou o cancelamento por engano da execução passaram a ser assinados.
 - **Os treinamentos de serviço foram feitos em 16/10/2026, sem IA** ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)): o jogo por serviço do catálogo (explicação da Vitória + até 10 fases), publicado pelo admin com termo e assinatura, jogado pelo técnico (inclusive quem aguarda liberação) e pontuado pela gamificação. No mesmo dia, o **módulo de IA genérico** (desligado até a chave existir) e a **Vitória assistente, níveis 1 a 3**, também foram feitos ([vitoria-assistente.md](funcionalidades/vitoria-assistente.md)): botão flutuante em toda tela, respostas pelo manual do perfil, "Me leve lá", "mostrar na tela" e consultas filtradas, tudo hoje em modo sem IA (fallback por palavra-chave). O rascunho de treinamento por IA (seção 3.6 do [vitoria.md](funcionalidades/vitoria.md)) segue não iniciado.
 - **A escolha do modelo da APR foi decidida e feita em 14/10/2026:** o técnico escolhe o modelo a cada APR, entre os publicados, e o sistema só recomenda um pela leitura da OS (seção 5).
 - **A atribuição individual e a devolução de OS foram decididas e feitas em 15/10/2026:** o supervisor da equipe reserva a OS a uma pessoa, que passa a ser a única a iniciar a APR e a execução, e devolve ao SAP a OS com erro, com uma justificativa que vai na planilha de baixa (seção 6).
@@ -227,7 +228,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 
 **Assinatura no perfil**
 
-- A assinatura é desenhada no perfil, confirmada a cada uso e impressa no PDF.
+- A assinatura é desenhada no perfil, confirmada a cada uso e impressa no PDF. Depois da liberação ela é obrigatória para todos os perfis (a `api` responde `403 assinatura_pendente` até ser cadastrada) e valida as ações importantes: ver [assinaturas.md](funcionalidades/assinaturas.md).
 - Cada assinatura guarda a imagem usada; refazer a do perfil vale só para as próximas.
 - **Falta:** o Iago dizer se a assinatura desenhada vale para auditoria (questão 38).
 
