@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Alerta } from "@/components/web/alertas/tipos";
-import { Icon } from "@/components/ui/Icon";
 import { SeloPatente } from "@/components/web/gamificacao/SeloPatente";
 import { numero, type ResumoDaBarra } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
@@ -18,11 +17,9 @@ export interface UsuarioDaBarra {
 function Marca({ subtitulo }: { subtitulo: string }) {
   return (
     <div className="brand">
-      <span className="logo">
-        <Icon name="shield" size={18} />
-      </span>
       <span className="brand-txt">
-        SYNQ OS
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="brand-logo" src="/marca/synq.png" alt="SYNQ OS" width={1000} height={308} />
         <small>{subtitulo}</small>
       </span>
     </div>

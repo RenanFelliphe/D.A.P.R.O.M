@@ -730,6 +730,20 @@
   font-size: 12px
 }
 
+/* A imagem da logo traz folga em volta (o brilho): as margens negativas encostam o subtítulo nas letras. */
+.topbar .brand-logo {
+  display: block;
+  height: 40px;
+  width: auto;
+  margin: -6px -8px -4px -8px
+}
+
+@media (max-width: 767px) {
+  .topbar .brand-logo {
+    height: 32px
+  }
+}
+
 /* ===== Busca da barra superior em telas menores: lupa + faixa que desce por baixo da barra ===== */
 
 .busca-lupa {

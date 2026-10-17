@@ -1,16 +1,14 @@
-import { Icon } from "@/components/ui/Icon";
-
 const destaques = ["Web e Android", "Online primeiro", "Zero papel"];
 
 /** Painel escuro de boas-vindas, ao lado do formulário de entrada. */
 export function EntrarHero() {
   return (
     <section className="login-hero">
-      <span className="logo">
-        <Icon name="shield" size={24} style={{ fontSize: 30 }} />
-      </span>
       <div className="stack g8">
-        <h1>SYNQ OS</h1>
+        <h1>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/marca/synq.png" alt="SYNQ OS" width={1000} height={308} />
+        </h1>
         <p className="tagline">APR e Ordens de Manutenção 100% digitais</p>
       </div>
       <div className="row wrap g8">

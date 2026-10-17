@@ -101,18 +101,6 @@ button:focus-visible,
   outline-offset: 2px
 }
 
-.logo {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--brand);
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none
-}
-
 .spin {
   animation: spin 1s linear infinite
 }
