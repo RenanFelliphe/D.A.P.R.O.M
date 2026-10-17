@@ -1,0 +1,10 @@
+# Usado pelo build da `api` a partir da raiz (`docker build -f api/Dockerfile .`): só entram `api/` e `shared/`.
+*
+!api
+!shared
+**/node_modules
+**/.env*
+api/test
+api/db/tests
+**/*.md
+!api/conteudo/**/*.md
