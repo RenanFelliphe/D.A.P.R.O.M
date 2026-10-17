@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Colunas, PainelAcoes } from "@/components/app/AppChrome";
+import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
 import { FormularioEncerrar } from "@/components/app/execucao/FormularioEncerrar";
 import { FormularioInterromper } from "@/components/app/execucao/FormularioInterromper";
 import { ResumoTempo } from "@/components/app/execucao/ResumoTempo";
@@ -13,6 +14,7 @@ import type { PerguntaDoChecklist } from "@/lib/checklist-inspecao";
 import { enviarEvento, novoId } from "@/lib/cliente-api";
 import type { RespostaComPontos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
+import { useMinhaAssinatura } from "@/state/minha-assinatura";
 import { useToast } from "@/state/toast";
 import type { Situacao } from "./situacao";
 import type { PausaDaApi } from "./tempo";
@@ -45,6 +47,8 @@ export function ExecucaoEmAndamento({ os, usuario, situacao, checklist, onEncerr
   const { ocupado, erro, limparErro, executar } = useAcao();
   const [modo, setModo] = useState<Modo>("painel");
   const [confirmando, setConfirmando] = useState<Confirmando>(null);
+  const [assinandoCancelamento, setAssinandoCancelamento] = useState(false);
+  const assinaturaPath = useMinhaAssinatura();
   const [motivo, setMotivo] = useState<NonNullable<PausaDaApi["motivo"]> | "">("");
 
   const pausaAberta = execucao.pausas.find((p) => !p.fim);
@@ -85,12 +89,11 @@ export function ExecucaoEmAndamento({ os, usuario, situacao, checklist, onEncerr
       router.push(rotas.app.lista);
     });
 
-  const cancelar = () =>
-    executar(async () => {
-      await enviarEvento({ tipo: "execucao_cancelada", os_id: os.id, payload: { execucao_id: execucao.id } });
-      exibirAviso("Execução cancelada");
-      router.push(rotas.app.os(os.id));
-    });
+  async function cancelar() {
+    await enviarEvento({ tipo: "execucao_cancelada", os_id: os.id, payload: { execucao_id: execucao.id } });
+    exibirAviso("Execução cancelada");
+    router.push(rotas.app.os(os.id));
+  }
 
   const principal =
     modo === "encerrar" ? (
@@ -152,13 +155,24 @@ export function ExecucaoEmAndamento({ os, usuario, situacao, checklist, onEncerr
             <div className="stack g8">
               <p className="small">Cancelar por engano apaga esta execução e devolve a APR para uso. Só vale até 10 minutos depois do início, sem pausa nem foto.</p>
               <div className="nav2">
-                <Button variant="d" onClick={cancelar} disabled={ocupado}>
-                  {ocupado ? "Cancelando…" : "Cancelar execução"}
+                <Button variant="d" onClick={() => setAssinandoCancelamento(true)} disabled={ocupado}>
+                  Assinar e cancelar a execução
                 </Button>
                 <Button variant="line" onClick={() => confirmar(null)} disabled={ocupado}>
                   Voltar
                 </Button>
               </div>
+              {assinandoCancelamento && (
+                <JanelaDeAssinatura
+                  titulo="Cancelar a execução por engano"
+                  tom="d"
+                  resumo="A execução é apagada e a APR volta para uso."
+                  rotuloConfirmar="Assinar e cancelar"
+                  assinaturaPath={assinaturaPath}
+                  aoConfirmar={cancelar}
+                  aoFechar={() => setAssinandoCancelamento(false)}
+                />
+              )}
             </div>
           ) : (
             <>

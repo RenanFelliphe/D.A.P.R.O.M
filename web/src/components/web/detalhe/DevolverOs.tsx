@@ -1,37 +1,30 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
 import { Panel } from "@/components/web/Panel";
 import { chamar } from "@/lib/cliente-api";
+import { useMinhaAssinatura } from "@/state/minha-assinatura";
 
 /**
- * Devolve a OS ao SAP (`POST /os/{id}/devolver`): o supervisor escreve a justificativa (o erro que viu na ordem), a OS sai do
- * quadro da equipe e a justificativa vai na próxima planilha de baixa, que o SAP usa para corrigir a ordem. O SYNC OS não
+ * Devolve a OS ao SAP (`POST /os/{id}/devolver`): o supervisor escreve a justificativa (o erro que viu na ordem) e assina; a OS sai
+ * do quadro da equipe e a justificativa vai na próxima planilha de baixa, que o SAP usa para corrigir a ordem. O SYNC OS não
  * escreve no SAP. Só aparece para a OS liberada, que ainda não foi iniciada.
  */
 export function DevolverOs({ osId }: { osId: string }) {
-  const router = useRouter();
+  const assinaturaPath = useMinhaAssinatura();
   const [aberto, setAberto] = useState(false);
+  const [assinando, setAssinando] = useState(false);
   const [justificativa, setJustificativa] = useState("");
-  const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [, iniciar] = useTransition();
 
-  async function devolver() {
+  function pedirAssinatura() {
     setErro(null);
     if (!justificativa.trim()) {
       setErro("Justificativa obrigatória");
       return;
     }
-    setEnviando(true);
-    try {
-      await chamar("POST", `/os/${osId}/devolver`, { justificativa: justificativa.trim() });
-      iniciar(() => router.refresh());
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível devolver a OS");
-      setEnviando(false);
-    }
+    setAssinando(true);
   }
 
   return (
@@ -54,13 +47,12 @@ export function DevolverOs({ osId }: { osId: string }) {
             value={justificativa}
             onChange={(e) => setJustificativa(e.target.value)}
             placeholder="O que está errado na ordem?"
-            disabled={enviando}
           />
           <div className="row g8">
-            <button className="btn btn-d btn-sm" type="button" onClick={devolver} disabled={enviando}>
-              {enviando ? "Devolvendo…" : "Confirmar devolução"}
+            <button className="btn btn-d btn-sm" type="button" onClick={pedirAssinatura}>
+              Assinar e devolver
             </button>
-            <button className="btn btn-line btn-sm" type="button" onClick={() => setAberto(false)} disabled={enviando}>
+            <button className="btn btn-line btn-sm" type="button" onClick={() => setAberto(false)}>
               Voltar
             </button>
           </div>
@@ -70,6 +62,23 @@ export function DevolverOs({ osId }: { osId: string }) {
         <span role="alert" style={{ color: "var(--blq)", fontSize: 13.5 }}>
           {erro}
         </span>
+      )}
+      {assinando && (
+        <JanelaDeAssinatura
+          titulo="Devolver a OS ao SAP"
+          tom="d"
+          resumo="A OS sai do quadro da equipe e a sua justificativa vai na próxima planilha de baixa."
+          rotuloConfirmar="Assinar e devolver"
+          assinaturaPath={assinaturaPath}
+          aoConfirmar={async () => {
+            await chamar("POST", `/os/${osId}/devolver`, { justificativa: justificativa.trim() });
+          }}
+          aoFechar={() => setAssinando(false)}
+        >
+          <p className="small">
+            <strong>Justificativa:</strong> {justificativa.trim()}
+          </p>
+        </JanelaDeAssinatura>
       )}
     </Panel>
   );

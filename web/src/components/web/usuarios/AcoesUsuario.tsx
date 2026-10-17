@@ -11,9 +11,9 @@ import type { ModoUsuarios } from "@/data/usuarios";
 import type { Usuario } from "@/lib/tipos";
 import { useToast } from "@/state/toast";
 import { FormularioUsuario, type OpcaoEquipe } from "./FormularioUsuario";
-import { JanelaRecusar, useLiberar } from "./liberacao";
+import { JanelaLiberar, JanelaRecusar } from "./liberacao";
 
-type Janela = "editar" | "senha" | "remover" | "recusar" | null;
+type Janela = "editar" | "senha" | "remover" | "liberar" | "recusar" | null;
 
 interface AcoesUsuarioProps {
   usuario: Usuario;
@@ -35,7 +35,6 @@ export function AcoesUsuario({ usuario, equipes, modo = "admin", meuId }: AcoesU
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [senhaNova, setSenhaNova] = useState<string | null>(null);
-  const { liberar, ocupado: liberando, erro: erroDeLiberar } = useLiberar(usuario);
   const supervisor = modo === "supervisor";
   const pendente = usuario.liberacao === "pendente";
   const recusado = usuario.liberacao === "recusado";
@@ -123,23 +122,22 @@ export function AcoesUsuario({ usuario, equipes, modo = "admin", meuId }: AcoesU
     : recusado
       ? [{ rotulo: "Excluir cadastro", aoClicar: () => setJanela("remover"), perigo: true }]
       : [
-          ...(pendente ? [{ rotulo: "Liberar", aoClicar: liberar }, { rotulo: "Recusar…", aoClicar: () => setJanela("recusar") }] : []),
+          ...(pendente ? [{ rotulo: "Liberar…", aoClicar: () => setJanela("liberar") }, { rotulo: "Recusar…", aoClicar: () => setJanela("recusar") }] : []),
           { rotulo: "Editar perfil e equipe", aoClicar: () => setJanela("editar") },
           { rotulo: "Atualizar do registro", aoClicar: atualizarDoRegistro },
           { rotulo: "Redefinir senha", aoClicar: () => setJanela("senha") },
           ...(pendente ? [] : [{ rotulo: usuario.ativo ? "Desativar" : "Reativar", aoClicar: alternarAtivo }]),
           { rotulo: "Remover", aoClicar: () => setJanela("remover"), perigo: true },
         ];
-  const mensagemDeErro = erro ?? erroDeLiberar;
 
   return (
     <>
       <span style={{ display: "inline-flex", justifyContent: "flex-end" }}>
-        <MenuAcoes rotulo={`Ações de ${usuario.nome}`} desabilitado={ocupado || liberando} itens={itens} />
+        <MenuAcoes rotulo={`Ações de ${usuario.nome}`} desabilitado={ocupado} itens={itens} />
       </span>
-      {mensagemDeErro && janela === null && (
+      {erro && janela === null && (
         <div role="alert" className="small" style={{ color: "var(--blq)", textAlign: "right", marginTop: 4, whiteSpace: "normal" }}>
-          {mensagemDeErro}
+          {erro}
         </div>
       )}
       {janela === "editar" && !supervisor && (
@@ -147,6 +145,7 @@ export function AcoesUsuario({ usuario, equipes, modo = "admin", meuId }: AcoesU
           <FormularioUsuario usuario={usuario} equipes={equipes} modo={modo} aoConcluir={fechar} />
         </JanelaModal>
       )}
+      {janela === "liberar" && <JanelaLiberar usuario={usuario} aoFechar={fechar} />}
       {janela === "recusar" && <JanelaRecusar usuario={usuario} aoFechar={fechar} />}
       {janela === "remover" && supervisor && (
         <JanelaModal titulo="Cancelar cadastro" aoFechar={fechar}>

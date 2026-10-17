@@ -12,6 +12,7 @@ import { Vitoria } from "@/components/vitoria/Vitoria";
 import { api, usuarioAtual } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
 import { CABECALHO_ENDERECO } from "@/lib/sessao-comum";
+import { ProvedorDeAssinatura } from "@/state/minha-assinatura";
 import { ehAdmin, ehSupervisor, estaPendente, foiRecusado, iniciaisDe, nomesDasEquipesDoSupervisor, rotuloDoPerfil } from "@/lib/tipos";
 import { COOKIE_TREINO_ADIADO } from "@/lib/treino-comum";
 import { emTreino } from "@/lib/treino-modo";
@@ -61,6 +62,8 @@ export async function Casca({ children }: { children: ReactNode }) {
   const pendente = estaPendente(usuario);
   const restrito = pendente && !treino;
   if (restrito && endereco && !ehLivre(endereco)) redirect(rotas.app.aguardando);
+  // Liberado e sem assinatura: ela é a primeira coisa a fazer, antes de qualquer outra tela (no treino a assinatura fictícia já vem cadastrada).
+  if (!restrito && !treino && !usuario.assinatura_path) redirect(rotas.app.assinatura);
 
   // Sistema real e acesso liberado: o menu completo do papel. No campo de treino e para quem espera a liberação, o enxuto.
   const liberado = !restrito && !treino;
@@ -103,29 +106,31 @@ export async function Casca({ children }: { children: ReactNode }) {
   const rodape = admin || !equipe ? `${rotuloDoPerfil[usuario.perfil]} · mat. ${usuario.matricula}` : `Equipe ${equipe.nome}`;
 
   return (
-    <Shell
-      faixa={treino ? <FaixaDoTreino /> : undefined}
-      topbar={
-        <Barra
-          usuario={{ iniciais: iniciaisDe(usuario.nome), nome: usuario.nome, cargo }}
-          subtitulo={subtitulo}
-          alertas={comAlertas && alertas && recentes ? { naoLidos: alertas.total, recentes: recentes.alertas, gestao: admin || supervisor } : undefined}
-          treino={treino}
-          semBusca={restrito}
-          gamificacao={gamificacao ?? undefined}
-        />
-      }
-      menu={<MenuLateral titulo="Menu principal" itens={itens} secoes={secoes} rodape={rodape} />}
-    >
-      {/* O ausente só visualiza: a faixa avisa até quando e leva ao pedido de fim antecipado e à confirmação do retorno. */}
-      {!admin && liberado && ausencia && <FaixaDeAusencia ausencia={ausencia} eu={{ id: usuario.id, nome: usuario.nome, assinaturaPath: usuario.assinatura_path }} supervisor={supervisor} />}
-      {/* O representante no comando da equipe (o supervisor está ausente ou parado) sabe de qual e por quê. */}
-      {!admin && liberado && !treino && <FaixaDeRepresentacao equipes={usuario.equipes_representadas ?? []} />}
-      {children}
-      {gamificacao && gamificacao.avisos_pendentes > 0 && <AvisoConquista />}
-      {!admin && <TreinoRaiz emTreino={treino} primeiroAcesso={primeiroAcesso} pendente={pendente} />}
-      {/* A Vitória atende os três perfis, quem aguarda liberação e quem está ausente, dentro e fora do Campo de treino: ela só consulta. */}
-      <Vitoria />
-    </Shell>
+    <ProvedorDeAssinatura assinaturaPath={usuario.assinatura_path ?? null}>
+      <Shell
+        faixa={treino ? <FaixaDoTreino /> : undefined}
+        topbar={
+          <Barra
+            usuario={{ iniciais: iniciaisDe(usuario.nome), nome: usuario.nome, cargo }}
+            subtitulo={subtitulo}
+            alertas={comAlertas && alertas && recentes ? { naoLidos: alertas.total, recentes: recentes.alertas, gestao: admin || supervisor } : undefined}
+            treino={treino}
+            semBusca={restrito}
+            gamificacao={gamificacao ?? undefined}
+          />
+        }
+        menu={<MenuLateral titulo="Menu principal" itens={itens} secoes={secoes} rodape={rodape} />}
+      >
+        {/* O ausente só visualiza: a faixa avisa até quando e leva ao pedido de fim antecipado e à confirmação do retorno. */}
+        {!admin && liberado && ausencia && <FaixaDeAusencia ausencia={ausencia} eu={{ id: usuario.id, nome: usuario.nome, assinaturaPath: usuario.assinatura_path }} supervisor={supervisor} />}
+        {/* O representante no comando da equipe (o supervisor está ausente ou parado) sabe de qual e por quê. */}
+        {!admin && liberado && !treino && <FaixaDeRepresentacao equipes={usuario.equipes_representadas ?? []} />}
+        {children}
+        {gamificacao && gamificacao.avisos_pendentes > 0 && <AvisoConquista />}
+        {!admin && <TreinoRaiz emTreino={treino} primeiroAcesso={primeiroAcesso} pendente={pendente} />}
+        {/* A Vitória atende os três perfis, quem aguarda liberação e quem está ausente, dentro e fora do Campo de treino: ela só consulta. */}
+        <Vitoria />
+      </Shell>
+    </ProvedorDeAssinatura>
   );
 }

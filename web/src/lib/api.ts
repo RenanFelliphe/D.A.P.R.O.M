@@ -67,6 +67,8 @@ export async function chamarApi(caminho: string, opcoes: OpcoesApi = {}): Promis
     // Com a senha inicial só a troca de senha está liberada: leva à tela "Defina sua senha".
     const corpo = await resposta.clone().json().catch(() => null);
     if (corpo?.erro?.codigo === "senha_provisoria") redirect("/app/trocar-senha");
+    // Liberado, mas sem assinatura: ela vem antes de qualquer outra tela.
+    if (corpo?.erro?.codigo === "assinatura_pendente" && endereco !== "/app/assinatura") redirect("/app/assinatura");
     // Cadastro ainda não liberado por um admin: só o Campo de treino e a tela de espera funcionam (ela não chama nada que a `api` trave).
     if (corpo?.erro?.codigo === "aguardando_liberacao" && endereco !== "/app/aguardando") redirect("/app/aguardando");
     // Cadastro recusado com a sessão ainda aberta: volta à entrada, onde o login mostra o motivo.

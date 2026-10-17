@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
 import { FotosExecucao, PdfsExecucao, comoEvidencia, pdfComoEvidencia, type FotoDaExecucao, type PdfDaExecucao } from "@/components/app/execucao/FotosExecucao";
 import { Button } from "@/components/ui/Button";
 import { Field, Req } from "@/components/ui/Field";
@@ -9,31 +10,31 @@ import { Notice } from "@/components/ui/Notice";
 import { enviarEvento } from "@/lib/cliente-api";
 import { textoDosPontosGanhos } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
+import { useMinhaAssinatura } from "@/state/minha-assinatura";
 import { useToast } from "@/state/toast";
-import { useAcao } from "./useAcao";
 
-/** Interrupção por risco: motivo e ao menos 1 foto (PDFs opcionais); a OS fica pendente e o supervisor é avisado pela `api`. */
+/** Interrupção por risco: motivo e ao menos 1 foto (PDFs opcionais) e a assinatura de quem interrompe; a OS fica pendente e o supervisor é avisado pela `api`. */
 export function FormularioInterromper({ osId, execucaoId, onCancelar }: { osId: string; execucaoId: string; onCancelar: () => void }) {
   const router = useRouter();
   const exibirAviso = useToast();
-  const { ocupado, erro, executar } = useAcao();
+  const assinaturaPath = useMinhaAssinatura();
+  const [assinando, setAssinando] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [fotos, setFotos] = useState<FotoDaExecucao[]>([]);
   const [pdfs, setPdfs] = useState<PdfDaExecucao[]>([]);
   const pronto = motivo.trim() !== "" && fotos.length > 0;
 
-  const interromper = () =>
-    executar(async () => {
-      const resposta = await enviarEvento({
-        tipo: "execucao_interrompida",
-        os_id: osId,
-        payload: { execucao_id: execucaoId, fim: new Date().toISOString(), motivo: motivo.trim(), evidencias: [...fotos.map(comoEvidencia), ...pdfs.map(pdfComoEvidencia)] },
-      });
-      // Interromper por risco vale o mesmo que encerrar: a segurança não custa pontos.
-      const pontos = textoDosPontosGanhos(resposta);
-      exibirAviso(pontos ? `Atividade interrompida — supervisor será avisado · ${pontos}` : "Atividade interrompida — supervisor será avisado");
-      router.push(rotas.app.lista);
+  async function interromper() {
+    const resposta = await enviarEvento({
+      tipo: "execucao_interrompida",
+      os_id: osId,
+      payload: { execucao_id: execucaoId, fim: new Date().toISOString(), motivo: motivo.trim(), evidencias: [...fotos.map(comoEvidencia), ...pdfs.map(pdfComoEvidencia)] },
     });
+    // Interromper por risco vale o mesmo que encerrar: a segurança não custa pontos.
+    const pontos = textoDosPontosGanhos(resposta);
+    exibirAviso(pontos ? `Atividade interrompida — supervisor será avisado · ${pontos}` : "Atividade interrompida — supervisor será avisado");
+    router.push(rotas.app.lista);
+  }
 
   return (
     <>
@@ -53,25 +54,35 @@ export function FormularioInterromper({ osId, execucaoId, onCancelar }: { osId: 
         </Field>
       </div>
       <div className="panel">
-        <FotosExecucao fotos={fotos} onChange={setFotos} desabilitado={ocupado} />
-        <PdfsExecucao documentos={pdfs} onChange={setPdfs} desabilitado={ocupado} />
+        <FotosExecucao fotos={fotos} onChange={setFotos} />
+        <PdfsExecucao documentos={pdfs} onChange={setPdfs} />
       </div>
-      {erro && (
-        <Notice tone="blq" icon="alert">
-          {erro.mensagem}
-        </Notice>
-      )}
       <div className="panel stack g8">
         {!pronto && <span className="small">Falta: {[motivo.trim() === "" && "o motivo", fotos.length === 0 && "ao menos 1 foto"].filter(Boolean).join(" e ")}.</span>}
         <div className="row g8">
-          <Button variant="od" onClick={interromper} disabled={!pronto || ocupado}>
-            {ocupado ? "Interrompendo…" : "Interromper a atividade"}
+          <Button variant="od" onClick={() => setAssinando(true)} disabled={!pronto}>
+            Assinar e interromper a atividade
           </Button>
-          <Button variant="line" onClick={onCancelar} disabled={ocupado}>
+          <Button variant="line" onClick={onCancelar}>
             Voltar à execução
           </Button>
         </div>
       </div>
+      {assinando && (
+        <JanelaDeAssinatura
+          titulo="Interromper por risco"
+          tom="d"
+          resumo="A atividade para, a OS fica pendente e o supervisor é avisado. Para retomar, faça uma APR nova."
+          rotuloConfirmar="Assinar e interromper"
+          assinaturaPath={assinaturaPath}
+          aoConfirmar={interromper}
+          aoFechar={() => setAssinando(false)}
+        >
+          <p className="small">
+            <strong>Motivo:</strong> {motivo.trim()}
+          </p>
+        </JanelaDeAssinatura>
+      )}
     </>
   );
 }

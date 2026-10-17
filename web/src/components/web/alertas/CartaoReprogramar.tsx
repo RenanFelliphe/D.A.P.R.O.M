@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
 import { Button } from "@/components/ui/Button";
 import { Field, Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
@@ -9,6 +9,7 @@ import { Notice } from "@/components/ui/Notice";
 import { chamar } from "@/lib/cliente-api";
 import { dataDoDia } from "@/lib/formatar";
 import type { Equipe } from "@/lib/tipos";
+import { useMinhaAssinatura } from "@/state/minha-assinatura";
 
 const rotulo = { fontSize: 12 } as const;
 
@@ -22,18 +23,18 @@ interface CartaoReprogramarProps {
   hoje: string;
 }
 
-/** Cartão de decisão "Reprogramar" (opcional): nova data e, se fizer sentido, nova equipe; a justificativa é obrigatória. */
+/** Cartão de decisão "Reprogramar" (opcional): nova data e, se fizer sentido, nova equipe; a justificativa é obrigatória e a reprogramação é assinada. */
 export function CartaoReprogramar({ osId, dataAtual, equipeAtualId, equipes, hoje }: CartaoReprogramarProps) {
-  const roteador = useRouter();
+  const assinaturaPath = useMinhaAssinatura();
+  const [assinando, setAssinando] = useState(false);
   const campoJustificativa = useRef<HTMLTextAreaElement>(null);
   const [data, setData] = useState(dataAtual >= hoje ? dataAtual : hoje);
   const [equipeId, setEquipeId] = useState(equipeAtualId);
   const [justificativa, setJustificativa] = useState("");
-  const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [feito, setFeito] = useState<string | null>(null);
 
-  async function reprogramar() {
+  function pedirAssinatura() {
     if (!justificativa.trim()) {
       setErro("Justificativa obrigatória");
       campoJustificativa.current?.focus();
@@ -44,22 +45,18 @@ export function CartaoReprogramar({ osId, dataAtual, equipeAtualId, equipes, hoj
       return;
     }
     setErro(null);
-    setEnviando(true);
-    try {
-      await chamar("POST", `/os/${osId}/reprogramar`, {
-        data_inicio_prog: data,
-        equipe_id: equipeId !== equipeAtualId ? equipeId : undefined,
-        justificativa: justificativa.trim(),
-      });
-      const nova = equipes.find((e) => e.id === equipeId);
-      setFeito(`OS reprogramada para ${dataDoDia(data)}${equipeId !== equipeAtualId && nova ? `, equipe ${nova.nome}` : ""}. A equipe segue podendo fazer uma APR nova.`);
-      setJustificativa("");
-      roteador.refresh();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível reprogramar.");
-    } finally {
-      setEnviando(false);
-    }
+    setAssinando(true);
+  }
+
+  async function reprogramar() {
+    await chamar("POST", `/os/${osId}/reprogramar`, {
+      data_inicio_prog: data,
+      equipe_id: equipeId !== equipeAtualId ? equipeId : undefined,
+      justificativa: justificativa.trim(),
+    });
+    const nova = equipes.find((e) => e.id === equipeId);
+    setFeito(`OS reprogramada para ${dataDoDia(data)}${equipeId !== equipeAtualId && nova ? `, equipe ${nova.nome}` : ""}. A equipe segue podendo fazer uma APR nova.`);
+    setJustificativa("");
   }
 
   return (
@@ -115,9 +112,23 @@ export function CartaoReprogramar({ osId, dataAtual, equipeAtualId, equipes, hoj
           {feito}
         </Notice>
       )}
-      <Button variant="line" sm style={{ height: 44, borderColor: "var(--ink)" }} onClick={reprogramar} disabled={enviando}>
-        {enviando ? "Reprogramando…" : "Reprogramar OS"}
+      <Button variant="line" sm style={{ height: 44, borderColor: "var(--ink)" }} onClick={pedirAssinatura}>
+        Assinar e reprogramar
       </Button>
+      {assinando && (
+        <JanelaDeAssinatura
+          titulo="Reprogramar a OS"
+          resumo={`A OS passa para ${dataDoDia(data)}${equipeId !== equipeAtualId ? ", com outra equipe" : ""}.`}
+          rotuloConfirmar="Assinar e reprogramar"
+          assinaturaPath={assinaturaPath}
+          aoConfirmar={reprogramar}
+          aoFechar={() => setAssinando(false)}
+        >
+          <p className="small">
+            <strong>Justificativa:</strong> {justificativa.trim()}
+          </p>
+        </JanelaDeAssinatura>
+      )}
     </div>
   );
 }

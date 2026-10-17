@@ -10,6 +10,8 @@ export const rotas = {
   app: {
     entrar: "/app/entrar",
     trocarSenha: "/app/trocar-senha",
+    /** Cadastro da assinatura: a primeira coisa depois da liberação, antes de qualquer outra tela. */
+    assinatura: "/app/assinatura",
     /** Técnico cadastrado por supervisor que ainda espera o admin liberar o acesso (só ele e o Campo de treino ficam abertos). */
     aguardando: "/app/aguardando",
     /** Quadro de OS (todos os perfis). */

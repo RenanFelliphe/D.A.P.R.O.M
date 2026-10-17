@@ -1,32 +1,25 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
 import { chamar } from "@/lib/cliente-api";
+import { useMinhaAssinatura } from "@/state/minha-assinatura";
 
-/** Cancela a OS de apoio (`POST /os/{id}/cancelar`): pede a justificativa e confirma. Só aparece para OS de apoio liberada ou pendente. */
+/** Cancela a OS de apoio (`POST /os/{id}/cancelar`): pede a justificativa e a assinatura do admin. Só aparece para OS de apoio liberada ou pendente. */
 export function CancelarOs({ osId }: { osId: string }) {
-  const router = useRouter();
+  const assinaturaPath = useMinhaAssinatura();
   const [aberto, setAberto] = useState(false);
+  const [assinando, setAssinando] = useState(false);
   const [justificativa, setJustificativa] = useState("");
-  const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [, iniciar] = useTransition();
 
-  async function cancelar() {
+  function pedirAssinatura() {
     setErro(null);
     if (!justificativa.trim()) {
       setErro("Justificativa obrigatória");
       return;
     }
-    setEnviando(true);
-    try {
-      await chamar("POST", `/os/${osId}/cancelar`, { justificativa: justificativa.trim() });
-      iniciar(() => router.refresh());
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível cancelar a OS");
-      setEnviando(false);
-    }
+    setAssinando(true);
   }
 
   if (!aberto) {
@@ -49,13 +42,12 @@ export function CancelarOs({ osId }: { osId: string }) {
         value={justificativa}
         onChange={(e) => setJustificativa(e.target.value)}
         placeholder="Por que esta OS está sendo cancelada?"
-        disabled={enviando}
       />
       <div className="row g8">
-        <button className="btn btn-d btn-sm" type="button" onClick={cancelar} disabled={enviando}>
-          {enviando ? "Cancelando…" : "Confirmar cancelamento"}
+        <button className="btn btn-d btn-sm" type="button" onClick={pedirAssinatura}>
+          Assinar e cancelar
         </button>
-        <button className="btn btn-line btn-sm" type="button" onClick={() => setAberto(false)} disabled={enviando}>
+        <button className="btn btn-line btn-sm" type="button" onClick={() => setAberto(false)}>
           Voltar
         </button>
       </div>
@@ -63,6 +55,23 @@ export function CancelarOs({ osId }: { osId: string }) {
         <span role="alert" style={{ color: "var(--blq)", fontSize: 13.5 }}>
           {erro}
         </span>
+      )}
+      {assinando && (
+        <JanelaDeAssinatura
+          titulo="Cancelar a OS de apoio"
+          tom="d"
+          resumo="A OS de apoio é cancelada e sai do quadro da equipe."
+          rotuloConfirmar="Assinar e cancelar"
+          assinaturaPath={assinaturaPath}
+          aoConfirmar={async () => {
+            await chamar("POST", `/os/${osId}/cancelar`, { justificativa: justificativa.trim() });
+          }}
+          aoFechar={() => setAssinando(false)}
+        >
+          <p className="small">
+            <strong>Justificativa:</strong> {justificativa.trim()}
+          </p>
+        </JanelaDeAssinatura>
       )}
     </div>
   );
