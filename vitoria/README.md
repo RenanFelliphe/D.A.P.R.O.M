@@ -2,7 +2,7 @@
 
 Imagens da Vitória, a assistente do sistema: o chatbot que orienta o usuário e a narradora dos treinamentos de serviço.
 
-O desenho atual é **provisório e genérico**: uma técnica de capacete e farda com faixas refletivas, nas cores do sistema. Ele existe para o código ter o que mostrar enquanto o desenho definitivo não chega.
+O desenho atual é **provisório e genérico**: uma técnica de capacete e farda com faixas refletivas, nas cores do sistema. Ele existe para o código ter o que mostrar enquanto o desenho definitivo não chega. O contexto e as direções para o desenho definitivo estão no [briefing de design](briefing-de-design.md).
 
 ## Expressões
 

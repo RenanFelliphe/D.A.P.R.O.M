@@ -12,7 +12,7 @@
 - **Os materiais recomendados foram decididos e feitos em 15/10/2026:** a conferência obrigatória (foto e bloqueio) saiu, e a lista do serviço virou só consulta (seção 4).
 - **O usuário ausente foi feito em 15/10/2026** ([ausencia.md](ausencia.md)): o ausente continua ativo, mas só visualiza; a ausência é pedida pelo técnico ou registrada pelo supervisor, sempre assinada. Quem responde pela equipe com o supervisor ausente é o representante, feito em 16/10/2026 ([representante.md](representante.md)). Ficou de fora só a equipe sem supervisor.
 - **A assinatura nas ações importantes foi feita em 17/10/2026** ([assinaturas.md](funcionalidades/assinaturas.md)): depois da liberação a assinatura é a primeira coisa a cadastrar (todos os perfis), e a ciência do supervisor, a liberação de cadastro, a reprogramação, o cancelamento e a devolução de OS e a interrupção ou o cancelamento por engano da execução passaram a ser assinados.
-- **Os treinamentos de serviço foram feitos em 16/10/2026, sem IA** ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)): o jogo por serviço do catálogo (explicação da Vitória + até 10 fases), publicado pelo admin com termo e assinatura, jogado pelo técnico (inclusive quem aguarda liberação) e pontuado pela gamificação. No mesmo dia, o **módulo de IA genérico** (desligado até a chave existir) e a **Vitória assistente, níveis 1 a 3**, também foram feitos ([vitoria-assistente.md](funcionalidades/vitoria-assistente.md)): botão flutuante em toda tela, respostas pelo manual do perfil, "Me leve lá", "mostrar na tela" e consultas filtradas, tudo hoje em modo sem IA (fallback por palavra-chave). O rascunho de treinamento por IA (seção 3.6 do [vitoria.md](funcionalidades/vitoria.md)) segue não iniciado.
+- **Os treinamentos de serviço foram feitos em 16/10/2026, sem IA** ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)): o jogo por serviço do catálogo (explicação da Vitória + até 10 fases), publicado pelo admin com termo e assinatura, jogado pelo técnico (inclusive quem aguarda liberação) e pontuado pela gamificação. No mesmo dia, o **módulo de IA genérico** (desligado até a chave existir) e a **Vitória assistente, níveis 1 a 3**, também foram feitos ([vitoria.md](funcionalidades/vitoria.md), seções 1.5 e 2.10): botão flutuante em toda tela, respostas pelo manual do perfil, "Me leve lá", "mostrar na tela" e consultas filtradas. Em 17/10/2026 o módulo ganhou o Gemini gratuito, para a demonstração (seção 1.6); a primeira chamada real ainda não foi conferida, e sem IA ela responde por palavra-chave. O rascunho de treinamento por IA (seção 3.6 do [vitoria.md](funcionalidades/vitoria.md)) segue não iniciado.
 - **A escolha do modelo da APR foi decidida e feita em 14/10/2026:** o técnico escolhe o modelo a cada APR, entre os publicados, e o sistema só recomenda um pela leitura da OS (seção 5).
 - **A atribuição individual e a devolução de OS foram decididas e feitas em 15/10/2026:** o supervisor da equipe reserva a OS a uma pessoa, que passa a ser a única a iniciar a APR e a execução, e devolve ao SAP a OS com erro, com uma justificativa que vai na planilha de baixa (seção 6).
 - **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com os materiais recomendados, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
@@ -31,7 +31,7 @@
 - [x] **Checklist de inspeção das preventivas**, com a preventiva valendo o dobro na gamificação: [inspecao-preventivas.md](inspecao-preventivas.md).
 - [x] **Materiais recomendados** no lugar da conferência obrigatória na APR: [materiais-recomendados.md](materiais-recomendados.md).
 - [x] **Treinamentos de serviço (sem IA)**: [treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md) (seção 3.3).
-- [x] **Vitória (o assistente), níveis 1 a 3, e o módulo de IA genérico**, em modo sem IA até a chave existir: [vitoria-assistente.md](funcionalidades/vitoria-assistente.md) (seção 3.2). O rascunho de treinamento por IA segue não iniciado.
+- [x] **Vitória (o assistente), níveis 1 a 3, e o módulo de IA genérico**, com o Gemini na demonstração: [vitoria.md](funcionalidades/vitoria.md) (seção 3.2). O rascunho de treinamento por IA segue não iniciado.
 - [ ] **Escaneamento de OS e APR antigas**, decidida com leitura por IA, em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (seção 3.3).
 - [x] **Usuário ausente:** [ausencia.md](ausencia.md); o supervisor ausente é coberto pelo representante da equipe ([representante.md](representante.md)); só a equipe sem supervisor segue em aberto.
 - [ ] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão (seção 3.2).
@@ -116,7 +116,7 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale 
 | Eventos e sincronização | **Pronta na `api`.** Envio idempotente, snapshot da equipe (`POST /sync/pull`) e tolerância à fila offline. Hoje só a web usa, e só online |
 | App Android e modo offline | **Não iniciados.** A pasta [`mobile/`](mobile/) só tem o README |
 | Treinamentos de serviço | **Prontos, sem IA**, em 16/10/2026 ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)) |
-| Vitória (assistente) e módulo de IA | **Prontos, em modo sem IA**, em 16/10/2026 ([vitoria-assistente.md](funcionalidades/vitoria-assistente.md)). Níveis 1 a 3; liga de verdade só preenchendo `ANTHROPIC_API_KEY` |
+| Vitória (assistente) e módulo de IA | **Prontos** em 16/10/2026, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)). Provedor por `IA_PROVEDOR` (Claude ou Gemini); o Gemini gratuito, da demonstração, entrou em 17/10/2026 e ainda não teve a primeira chamada real conferida |
 
 ---
 
@@ -210,7 +210,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 | Catálogo de serviço com os materiais | DesignDoc (prioridades) | **Pronto**, com os materiais recomendados (seção 4) |
 | Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | **Pronto** |
 | Gamificação | Time, na Reunião 2 | **Pronta** |
-| Chatbot de consulta | Iago, na Reunião 2 | **Virou a Vitória e os treinamentos de serviço** ([vitoria.md](funcionalidades/vitoria.md)). Os dois estão prontos, em modo sem IA: os treinamentos ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)) e a Vitória assistente, níveis 1 a 3 ([vitoria-assistente.md](funcionalidades/vitoria-assistente.md)) |
+| Chatbot de consulta | Iago, na Reunião 2 | **Virou a Vitória e os treinamentos de serviço** ([vitoria.md](funcionalidades/vitoria.md)). Os dois estão prontos: os treinamentos, sem IA ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)), e a Vitória assistente, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)) |
 | Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Decidida com leitura por IA, não iniciada** ([vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A Digitalização da tela de importação só abre a câmera |
 | API de funcionários para cadastro rápido | DesignDoc (extras) | **Pronta com o simulador.** Registro de funcionários simulado, com tela própria; cadastro só de quem está nele e desligamento em tempo real ([apifuncionarios.md](apifuncionarios.md)) |
 | Tela do simulador do SAP | Time, em 14/10/2026 | **Pronta** ([apiSAP.md](apiSAP.md)) |
@@ -302,10 +302,10 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 
 **Vitória (o assistente) e o módulo de IA genérico**
 
-- **Onde está o desenho e o que mudou na implementação:** [vitoria.md](funcionalidades/vitoria.md) (seções 1 e 2) e [vitoria-assistente.md](funcionalidades/vitoria-assistente.md), feitos em 16/10/2026.
+- **Onde está o desenho, o que mudou na implementação e o que ela faz, ainda não faz e não deve fazer:** [vitoria.md](funcionalidades/vitoria.md) (seções 1 e 2 e "Situação atual da Vitória"), feitos em 16/10/2026.
 - **O que faz:** botão flutuante em toda tela do portal e da gestão, inclusive o Campo de treino; responde pelo manual do perfil de quem pergunta (técnico ou admin, cada um sem o que o outro não deve ver); oferece "Me leve lá" e "mostrar na tela" por uma lista fechada de destinos (nunca uma URL livre); interpreta consultas simples como um link já filtrado (ex.: período); grava, sem identificar quem perguntou, o que não soube responder, numa tela própria do admin.
-- **Em modo sem IA** (a licença da Anthropic ainda não foi comprada): as respostas vêm de 3 sugestões fixas por tela e de uma busca por palavra-chave no próprio manual. Ligar a IA de verdade é só preencher `ANTHROPIC_API_KEY`; nenhum código muda.
-- **Falta:** a bateria de perguntas (seção 2.9 do [vitoria.md](funcionalidades/vitoria.md)) e o plano B no Sonnet 5.5, que só fazem sentido com a chave comprada; o nível 4 (a IA lendo as OS) está fora de escopo por decisão (LGPD e números inventados).
+- **A IA:** o provedor sai de `IA_PROVEDOR` (`ANTHROPIC_API_KEY` ou `GEMINI_API_KEY`); o Gemini gratuito, só com dados fictícios, está configurado no desenvolvimento desde 17/10/2026 (seção 1.6 do [vitoria.md](funcionalidades/vitoria.md)). Sem chave ou com falha, as respostas vêm de 3 sugestões fixas por tela e de uma busca por palavra-chave no manual.
+- **Falta:** conferir a primeira chamada real pelo Gemini, levar a data de hoje no pedido à IA (para "mês passado"), a bateria de perguntas (seção 2.9) e o plano B no Sonnet 5.5; o nível 4 (a IA lendo as OS) está fora de escopo por decisão (LGPD e números inventados).
 
 ### 3.3 As que não começaram
 
