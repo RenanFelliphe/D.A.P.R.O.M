@@ -1,9 +1,9 @@
 /** Constantes e funções puras da sessão, usadas pelo proxy, pelas ações do servidor e pelo handler `/api`. */
 
-export const COOKIE_ACESSO = "syncos_at";
-export const COOKIE_RENOVACAO = "syncos_rt";
+export const COOKIE_ACESSO = "synqos_at";
+export const COOKIE_RENOVACAO = "synqos_rt";
 /** Cabeçalho que o `proxy.ts` põe na requisição com o endereço pedido (só o servidor lê). */
-export const CABECALHO_ENDERECO = "x-syncos-endereco";
+export const CABECALHO_ENDERECO = "x-synqos-endereco";
 
 /** Endereço da `api` (variável `API_URL`, só do servidor do `web`). */
 export const apiUrl = () => (process.env.API_URL ?? "http://localhost:3333").replace(/\/$/, "");

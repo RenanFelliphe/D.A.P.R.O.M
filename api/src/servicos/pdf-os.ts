@@ -59,7 +59,7 @@ export async function gerarPdfOs(deps: Deps, osId: string, opcoes: { comprimir?:
     size: "A4",
     compress: opcoes.comprimir ?? true,
     margins: MARGENS,
-    info: { Title: `OS ${dados.os.numeroOrdem ?? dados.os.id}`, Author: "SYNC OS", CreationDate: geradoEm },
+    info: { Title: `OS ${dados.os.numeroOrdem ?? dados.os.id}`, Author: "SYNQ OS", CreationDate: geradoEm },
   });
   const pedacos: Buffer[] = [];
   doc.on("data", (p: Buffer) => pedacos.push(p));

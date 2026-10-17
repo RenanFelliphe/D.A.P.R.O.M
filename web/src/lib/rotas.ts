@@ -91,7 +91,7 @@ export const rotas = {
     /** Trilha de auditoria das ações de gestão (só o admin). */
     auditoria: "/web/auditoria",
   },
-  /** Telas dos sistemas da empresa que o SYNC OS só lê e que são simulados (só o admin): o registro de funcionários e as ordens do SAP. */
+  /** Telas dos sistemas da empresa que o SYNQ OS só lê e que são simulados (só o admin): o registro de funcionários e as ordens do SAP. */
   simulador: {
     funcionarios: "/simulador/funcionarios",
     ordens: "/simulador/ordens",

@@ -23,7 +23,7 @@ const esquema = z.object({
   RH_AVISO_URL: z.string().default(""),
   RH_LEITURA_HORA: z.coerce.number().int().min(0).max(23).default(3),
   SMTP_URL: z.string().default(""),
-  EMAIL_REMETENTE: z.string().default("syncos@localhost"),
+  EMAIL_REMETENTE: z.string().default("synqos@localhost"),
   PAINEL_URL: z.string().default("http://localhost:3000"),
   VITORIA_LIMITE_POR_CONVERSA: z.coerce.number().int().positive().default(20),
   VITORIA_LIMITE_POR_CONTA_DIA: z.coerce.number().int().positive().default(40),
@@ -62,7 +62,7 @@ export interface Config {
   rhSimulado: boolean;
   rhApiUrl: string;
   rhApiToken: string;
-  /** Token que o registro usa para avisar o SYNC OS (`POST /rh/avisos`). */
+  /** Token que o registro usa para avisar o SYNQ OS (`POST /rh/avisos`). */
   rhAvisoToken: string;
   /** Para onde o simulador manda os avisos; só o simulador usa. */
   rhAvisoUrl: string;

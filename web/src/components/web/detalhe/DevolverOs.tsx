@@ -8,7 +8,7 @@ import { useMinhaAssinatura } from "@/state/minha-assinatura";
 
 /**
  * Devolve a OS ao SAP (`POST /os/{id}/devolver`): o supervisor escreve a justificativa (o erro que viu na ordem) e assina; a OS sai
- * do quadro da equipe e a justificativa vai na próxima planilha de baixa, que o SAP usa para corrigir a ordem. O SYNC OS não
+ * do quadro da equipe e a justificativa vai na próxima planilha de baixa, que o SAP usa para corrigir a ordem. O SYNQ OS não
  * escreve no SAP. Só aparece para a OS liberada, que ainda não foi iniciada.
  */
 export function DevolverOs({ osId }: { osId: string }) {

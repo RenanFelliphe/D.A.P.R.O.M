@@ -4,7 +4,7 @@ export type SituacaoFuncionario = "ativo" | "afastado" | "desligado";
 
 export const rotuloDaSituacao: Record<SituacaoFuncionario, string> = { ativo: "Ativo", afastado: "Afastado", desligado: "Desligado" };
 
-export interface ContaNoSyncOs {
+export interface ContaNoSynqOs {
   id: string;
   perfil: "tecnico" | "admin";
   equipe_id: string | null;
@@ -28,8 +28,8 @@ export interface Funcionario {
   lotacao: string | null;
   criado_em: string;
   alterado_em: string;
-  /** A conta que a pessoa tem no SYNC OS, ou `null`. */
-  conta_no_sync_os: ContaNoSyncOs | null;
+  /** A conta que a pessoa tem no SYNQ OS, ou `null`. */
+  conta_no_synq_os: ContaNoSynqOs | null;
 }
 
 export interface ListaDeFuncionarios {
@@ -45,8 +45,8 @@ export interface SetorDoCatalogo {
   centro_trabalho: string;
   nome: string;
   cargos: string[];
-  /** Nome da equipe do SYNC OS que tem este centro de trabalho; `null` quando o setor não tem equipe lá. */
-  equipe_no_sync_os: string | null;
+  /** Nome da equipe do SYNQ OS que tem este centro de trabalho; `null` quando o setor não tem equipe lá. */
+  equipe_no_synq_os: string | null;
 }
 
 export interface CatalogoDeFuncionarios {

@@ -13,7 +13,7 @@ export interface ResultadoCargaDoRegistro {
 }
 
 /**
- * Cria no registro de funcionários simulado um funcionário para cada usuário do SYNC OS que ainda não tem o seu: a mesma matrícula,
+ * Cria no registro de funcionários simulado um funcionário para cada usuário do SYNQ OS que ainda não tem o seu: a mesma matrícula,
  * nome, e-mail, cargo e registro profissional, o setor da equipe (os sem equipe ficam no Administrativo) e a situação ativo
  * (`apifuncionarios.md`, seção 7). É a carga única do banco publicado e a base do modo local e da demonstração; pode rodar de novo
  * sem duplicar. No banco publicado ela precisa rodar **antes** de a conferência ser ligada: sem isso a primeira leitura diária

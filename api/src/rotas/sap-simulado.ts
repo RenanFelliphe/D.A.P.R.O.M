@@ -35,11 +35,11 @@ const esquemaConsulta = z.object({
 
 /**
  * Simulador da API do SAP, só montado com `SAP_SIMULADO=true` (em `/sap-simulado`). Tem duas partes:
- * - **Contrato** (`GET /ordens`, `GET /ordens/{numero_ordem}`), com `Authorization: Bearer <SAP_API_TOKEN>`: o que o SYNC OS lê, no mesmo
+ * - **Contrato** (`GET /ordens`, `GET /ordens/{numero_ordem}`), com `Authorization: Bearer <SAP_API_TOKEN>`: o que o SYNQ OS lê, no mesmo
  *   formato do contrato. É só leitura;
- * - **Gestão** (`/gestao/...`), com o admin logado no SYNC OS: o CRUD das ordens que a tela `/simulador/ordens` usa, com criação manual
+ * - **Gestão** (`/gestao/...`), com o admin logado no SYNQ OS: o CRUD das ordens que a tela `/simulador/ordens` usa, com criação manual
  *   e aleatória, edição, exclusão e ações em massa.
- * As ordens ficam na tabela `ordem_sap_simulada`, no banco do SYNC OS, e o que `alteradas_desde` filtra é a `alterada_em` dela. Ver `apiSAP.md`.
+ * As ordens ficam na tabela `ordem_sap_simulada`, no banco do SYNQ OS, e o que `alteradas_desde` filtra é a `alterada_em` dela. Ver `apiSAP.md`.
  */
 export function rotasSapSimulado(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();

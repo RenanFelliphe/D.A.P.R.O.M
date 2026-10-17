@@ -2,15 +2,15 @@
 
 import { JanelaVerMais } from "@/components/simulador/JanelaVerMais";
 import { dataDoDia, dataHora } from "@/lib/formatar";
-import { efeitoDaEdicao, rotuloDaSituacaoNoSyncOs, rotuloDoStatus, type CatalogoDeOrdens, type Ordem } from "./tipos";
+import { efeitoDaEdicao, rotuloDaSituacaoNoSynqOs, rotuloDoStatus, type CatalogoDeOrdens, type Ordem } from "./tipos";
 
 const intervalo = (i: Ordem["intervalo_ciclo"]) => (typeof i === "string" ? i : i ? `${i.quantidade} ${i.unidade}` : null);
 
-/** "Ver mais" da ordem: todos os campos do contrato e o que o SYNC OS fez com ela. */
+/** "Ver mais" da ordem: todos os campos do contrato e o que o SYNQ OS fez com ela. */
 export function VerMaisOrdem({ ordem: o, catalogo, aoFechar }: { ordem: Ordem; catalogo: CatalogoDeOrdens; aoFechar: () => void }) {
   const centro = catalogo.centros_de_trabalho.find((c) => c.centro_trabalho === o.centro_trabalho);
   const atividade = catalogo.atividades.find((a) => a.codigo === o.codigo_atividade);
-  const efeito = efeitoDaEdicao(o.no_sync_os.situacao);
+  const efeito = efeitoDaEdicao(o.no_synq_os.situacao);
   return (
     <JanelaVerMais
       titulo={`Ordem ${o.numero_ordem}`}
@@ -24,7 +24,7 @@ export function VerMaisOrdem({ ordem: o, catalogo, aoFechar }: { ordem: Ordem; c
             { rotulo: "Tipo da ordem", valor: o.tipo_ordem === "YBA1" ? "YBA1 · Corretiva" : "YBA2 · Preventiva" },
             { rotulo: "Tipo de atividade", valor: o.tipo_atividade },
             { rotulo: "Título", valor: o.titulo },
-            { rotulo: "Atividade", valor: o.codigo_atividade ? `${o.codigo_atividade}${atividade ? " (cadastrada no SYNC OS)" : " (o SYNC OS não a conhece)"}` : null },
+            { rotulo: "Atividade", valor: o.codigo_atividade ? `${o.codigo_atividade}${atividade ? " (cadastrada no SYNQ OS)" : " (o SYNQ OS não a conhece)"}` : null },
             { rotulo: "Status SAP", valor: `${o.status_sap ?? "—"}${o.status_sap ? ` · ${rotuloDoStatus(o.status_sap, catalogo.status_prontos)}` : ""}` },
             { rotulo: "Prioridade", valor: o.prioridade },
             { rotulo: "Centro de trabalho", valor: `${o.centro_trabalho}${centro ? ` · ${centro.nome}` : ""}` },
@@ -49,10 +49,10 @@ export function VerMaisOrdem({ ordem: o, catalogo, aoFechar }: { ordem: Ordem; c
           ],
         },
         {
-          titulo: "No SYNC OS",
+          titulo: "No SYNQ OS",
           itens: [
-            { rotulo: "Situação", valor: rotuloDaSituacaoNoSyncOs[o.no_sync_os.situacao] },
-            ...(o.no_sync_os.motivo ? [{ rotulo: "Motivo", valor: o.no_sync_os.motivo }] : []),
+            { rotulo: "Situação", valor: rotuloDaSituacaoNoSynqOs[o.no_synq_os.situacao] },
+            ...(o.no_synq_os.motivo ? [{ rotulo: "Motivo", valor: o.no_synq_os.motivo }] : []),
             { rotulo: "Próxima leitura", valor: o.alterada_depois_da_leitura ? "Vai pegar a alteração desta ordem" : "Nada novo nesta ordem" },
             ...(efeito ? [{ rotulo: "O que acontece se mudar", valor: efeito }] : []),
           ],

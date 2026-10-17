@@ -90,11 +90,11 @@ describe("Simulador do SAP: gestão das ordens", () => {
   });
 
   describe("catálogo", () => {
-    it("traz centros (com e sem equipe), locais, atividades do SYNC OS, serviços, status prontos e o próximo número", async () => {
+    it("traz centros (com e sem equipe), locais, atividades do SYNQ OS, serviços, status prontos e o próximo número", async () => {
       const c = (await gestao("GET", "/catalogo")).corpo;
       const serv = c.centros_de_trabalho.find((x: any) => x.centro_trabalho === "SERV_ESP");
-      assert.equal(serv.equipe_no_sync_os, "Serviços Especiais");
-      assert.equal(c.centros_de_trabalho.find((x: any) => x.centro_trabalho === "MAN_ELE").equipe_no_sync_os, null);
+      assert.equal(serv.equipe_no_synq_os, "Serviços Especiais");
+      assert.equal(c.centros_de_trabalho.find((x: any) => x.centro_trabalho === "MAN_ELE").equipe_no_synq_os, null);
       assert.ok(c.locais.length >= 9);
       assert.ok(c.locais.every((l: any) => l.codigo && "endereco" in l && "plus_code" in l && "cliente" in l));
       assert.deepEqual(c.atividades.find((a: any) => a.codigo === ATIVIDADE_CADASTRADA), { codigo: ATIVIDADE_CADASTRADA, descricao: ATIVIDADE_CADASTRADA });
@@ -158,7 +158,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
       assert.ok(o.every((x) => x.criadoPor && x.prioridade));
     });
 
-    it("atividade cadastrada sorteia entre as do SYNC OS; nova usa códigos inventados", () => {
+    it("atividade cadastrada sorteia entre as do SYNQ OS; nova usa códigos inventados", () => {
       const cadastradas = gerarOrdens([{ quantidade: 30, atividade: "cadastrada" }], { ...base, sorteio: sorteioComSemente(1) });
       assert.ok(cadastradas.every((x) => base.atividadesCadastradas.includes(x.codigoAtividade!)));
       const novas = gerarOrdens([{ quantidade: 30, atividade: "nova" }], { ...base, sorteio: sorteioComSemente(1) });
@@ -184,7 +184,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
       assert.equal(LIMITE_POR_ENVIO, 200);
     });
 
-    it("POST /gestao/ordens/aleatorias grava em lotes (com atividade do SYNC OS) e recusa o que passa do limite", async () => {
+    it("POST /gestao/ordens/aleatorias grava em lotes (com atividade do SYNQ OS) e recusa o que passa do limite", async () => {
       const antes = (await lista()).total;
       const r = await gestao("POST", "/ordens/aleatorias", {
         lotes: [
@@ -244,18 +244,18 @@ describe("Simulador do SAP: gestão das ordens", () => {
     });
   });
 
-  describe("a coluna \"No SYNC OS\"", () => {
+  describe("a coluna \"No SYNQ OS\"", () => {
     it("ordem nova é 'Ainda não lida'; depois da leitura, ganha o status da OS; a ignorada mostra o motivo", async () => {
       await criar("N1", { status_sap: "LIB IMPR" });
       await criar("N2", { status_sap: "CRTD" }); // sem LIB: a leitura ignora
       await criar("N3", { centro_trabalho: "SEM_EQUIPE" }); // sem equipe: ignorada com o motivo
-      assert.deepEqual((await daLista("N1")).no_sync_os, { situacao: "nao_lida" });
+      assert.deepEqual((await daLista("N1")).no_synq_os, { situacao: "nao_lida" });
 
       const r = await ler();
       assert.equal(r.erro, null);
-      assert.deepEqual((await daLista("N1")).no_sync_os, { situacao: "liberada" });
-      assert.deepEqual((await daLista("N2")).no_sync_os, { situacao: "ignorada", motivo: "Status SAP diferente de liberada" });
-      assert.deepEqual((await daLista("N3")).no_sync_os, { situacao: "ignorada", motivo: "Centro de trabalho sem equipe cadastrada" });
+      assert.deepEqual((await daLista("N1")).no_synq_os, { situacao: "liberada" });
+      assert.deepEqual((await daLista("N2")).no_synq_os, { situacao: "ignorada", motivo: "Status SAP diferente de liberada" });
+      assert.deepEqual((await daLista("N3")).no_synq_os, { situacao: "ignorada", motivo: "Centro de trabalho sem equipe cadastrada" });
     });
 
     it("mostra cada status da OS: pendente, em execução, encerrada e cancelada", async () => {
@@ -264,16 +264,16 @@ describe("Simulador do SAP: gestão das ordens", () => {
       await ler();
       for (const [n, status] of [["S1", "pendente"], ["S2", "em_execucao"], ["S3", "encerrada"], ["S4", "cancelada"]] as const) {
         await amb.db.update(os).set({ status }).where(eq(os.numeroOrdem, n));
-        assert.equal((await daLista(n)).no_sync_os.situacao, status);
+        assert.equal((await daLista(n)).no_synq_os.situacao, status);
       }
       const contagem = (await lista()).contagem;
       assert.ok(contagem.pendente >= 1 && contagem.em_execucao >= 1 && contagem.encerrada >= 1 && contagem.cancelada >= 1 && contagem.ignorada >= 2);
-      assert.equal((await lista({ no_sync_os: "em_execucao" })).ordens.map((o: any) => o.numero_ordem).includes("S2"), true);
-      assert.ok((await lista({ no_sync_os: "ignorada" })).ordens.every((o: any) => o.no_sync_os.situacao === "ignorada"));
-      assert.equal((await lista({ no_sync_os: "ignorada", tamanho: 1 })).total, (await lista()).contagem.ignorada);
+      assert.equal((await lista({ no_synq_os: "em_execucao" })).ordens.map((o: any) => o.numero_ordem).includes("S2"), true);
+      assert.ok((await lista({ no_synq_os: "ignorada" })).ordens.every((o: any) => o.no_synq_os.situacao === "ignorada"));
+      assert.equal((await lista({ no_synq_os: "ignorada", tamanho: 1 })).total, (await lista()).contagem.ignorada);
     });
 
-    it("o selo 'alterada depois da última leitura' mostra o que o SYNC OS vai pegar na próxima leitura", async () => {
+    it("o selo 'alterada depois da última leitura' mostra o que o SYNQ OS vai pegar na próxima leitura", async () => {
       await criar("A1");
       passar(1);
       await ler();
@@ -293,7 +293,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
         const adm = await amb2.criarUsuario({ perfil: "admin" });
         const l = (await amb2.esperar(200, "GET", "/sap-simulado/gestao/ordens", { como: adm })).ordens;
         assert.equal(l.length, 11);
-        assert.ok(l.every((o: any) => o.alterada_depois_da_leitura === true && o.no_sync_os.situacao === "nao_lida"));
+        assert.ok(l.every((o: any) => o.alterada_depois_da_leitura === true && o.no_synq_os.situacao === "nao_lida"));
       } finally {
         await amb2.fechar();
       }
@@ -301,7 +301,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
   });
 
   describe("exclusão", () => {
-    it("exclui a ordem que o SYNC OS nunca leu ou que ele ignorou; a que ele já tem não (409 ordem_no_sync_os)", async () => {
+    it("exclui a ordem que o SYNQ OS nunca leu ou que ele ignorou; a que ele já tem não (409 ordem_no_synq_os)", async () => {
       await criar("D1");
       await amb.relogio.agora; // a ordem ainda não foi lida
       assert.equal((await gestao("DELETE", "/ordens/D1")).status, 200);
@@ -309,13 +309,13 @@ describe("Simulador do SAP: gestão das ordens", () => {
       assert.equal((await gestao("DELETE", "/ordens/D1")).status, 404);
 
       // ignorada: pode
-      assert.equal((await daLista("N2")).no_sync_os.situacao, "ignorada");
+      assert.equal((await daLista("N2")).no_synq_os.situacao, "ignorada");
       assert.equal((await gestao("DELETE", "/ordens/N2")).status, 200);
 
       // lida: não pode
       const r = await gestao("DELETE", "/ordens/N1");
       assert.equal(r.status, 409);
-      assert.equal(r.corpo.erro.codigo, "ordem_no_sync_os");
+      assert.equal(r.corpo.erro.codigo, "ordem_no_synq_os");
       assert.match(r.corpo.erro.mensagem, /uma ordem não é apagada: encerre-a/);
       assert.ok(await cliente().obterOrdem("N1"));
     });
@@ -356,26 +356,26 @@ describe("Simulador do SAP: gestão das ordens", () => {
       assert.equal((await gestao("POST", "/ordens/em-massa", { numeros: ["R1"], acao: "reprogramar", dias: 1, data: "2026-11-01" })).status, 422);
     });
 
-    it("excluir: exclui as que o SYNC OS não tem e devolve as recusadas (as que ele tem)", async () => {
+    it("excluir: exclui as que o SYNQ OS não tem e devolve as recusadas (as que ele tem)", async () => {
       await criar("X1");
       await criar("X2");
       passar(1);
-      await ler(); // X1 e X2 entram no SYNC OS
+      await ler(); // X1 e X2 entram no SYNQ OS
       await criar("X3");
       const r = await emMassa({ numeros: ["X1", "X2", "X3"], acao: "excluir" });
       assert.equal(r.afetadas, 1);
       assert.deepEqual(r.recusadas.map((x: any) => x.numero_ordem).sort(), ["X1", "X2"]);
-      assert.match(r.recusadas[0].motivo, /já está no SYNC OS/);
+      assert.match(r.recusadas[0].motivo, /já está no SYNQ OS/);
       assert.equal(await cliente().obterOrdem("X3"), null);
       assert.ok(await cliente().obterOrdem("X1"));
     });
 
-    it("todos_da_busca age sobre tudo o que a busca e os filtros acham (inclusive o filtro No SYNC OS); sem números nem a marca é 422", async () => {
+    it("todos_da_busca age sobre tudo o que a busca e os filtros acham (inclusive o filtro No SYNQ OS); sem números nem a marca é 422", async () => {
       for (let i = 1; i <= 4; i++) await criar(`T${i}`, { titulo: `Torneira lote ${i}` });
       const r = await emMassa({ todos_da_busca: true, busca: "torneira lote", acao: "mudar_status", valor: "CRTD" });
       assert.equal(r.afetadas, 4);
       assert.ok((await lista({ busca: "torneira lote" })).ordens.every((o: any) => o.status_sap === "CRTD"));
-      const exc = await emMassa({ todos_da_busca: true, busca: "torneira lote", no_sync_os: "nao_lida", acao: "excluir" });
+      const exc = await emMassa({ todos_da_busca: true, busca: "torneira lote", no_synq_os: "nao_lida", acao: "excluir" });
       assert.equal(exc.afetadas, 4);
       assert.equal((await lista({ busca: "torneira lote" })).total, 0);
       assert.equal((await gestao("POST", "/ordens/em-massa", { acao: "excluir" })).status, 422);
@@ -384,7 +384,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
     });
   });
 
-  describe("de ponta a ponta com o SYNC OS", () => {
+  describe("de ponta a ponta com o SYNQ OS", () => {
     it("1. criar ordens aleatórias, ler e ver as OS criadas", async () => {
       const antes = (await amb.db.select().from(os)).length;
       const r = await gestao("POST", "/ordens/aleatorias", { lotes: [{ quantidade: 6, tipo: "corretiva", centro_trabalho: "SERV_ESP", status: "liberada" }, { quantidade: 3, centro_trabalho: "SERV_ESP", status: "criada" }] });
@@ -409,7 +409,7 @@ describe("Simulador do SAP: gestão das ordens", () => {
       passar(1);
       await ler();
       assert.equal((await amb.db.select().from(os).where(eq(os.numeroOrdem, "P1")))[0]!.status, "cancelada");
-      assert.equal((await daLista("P1")).no_sync_os.situacao, "cancelada");
+      assert.equal((await daLista("P1")).no_synq_os.situacao, "cancelada");
     });
 
     it("3. o mesmo com uma OS em execução: a execução segue e sai o alerta de conflito", async () => {
@@ -426,15 +426,15 @@ describe("Simulador do SAP: gestão das ordens", () => {
       assert.equal(depois.status, "em_execucao");
       const alertas = await amb.db.select().from(alerta).where(eq(alerta.osId, criada.id));
       assert.deepEqual(alertas.map((a) => a.tipo), ["conflito_planejamento"]);
-      assert.equal((await daLista("P2")).no_sync_os.situacao, "em_execucao");
+      assert.equal((await daLista("P2")).no_synq_os.situacao, "em_execucao");
     });
 
-    it("4. reprogramada no SYNC OS com outra data no SAP: a ordem é ignorada, e a coluna diz o motivo", async () => {
+    it("4. reprogramada no SYNQ OS com outra data no SAP: a ordem é ignorada, e a coluna diz o motivo", async () => {
       await criar("P3", { status_sap: "LIB IMPR", data_inicio_prog: "2026-10-20", data_fim_prog: "2026-10-21" });
       passar(1);
       await ler();
       const criada = (await amb.db.select().from(os).where(eq(os.numeroOrdem, "P3")))[0]!;
-      // O SYNC OS reprogramou (a reprogramação vence); o SAP muda a data para outra.
+      // O SYNQ OS reprogramou (a reprogramação vence); o SAP muda a data para outra.
       await amb.db.update(os).set({ dataInicioProg: "2026-10-30", dataFimProg: "2026-10-31" }).where(eq(os.id, criada.id));
       const { reprogramacao } = await import("../src/db/schema");
       await amb.db.insert(reprogramacao).values({ osId: criada.id, dataAnterior: "2026-10-20", dataNova: "2026-10-30", justificativa: "Chuva", usuarioId: admin.id });

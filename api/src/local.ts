@@ -38,7 +38,7 @@ import { iniciarTarefas } from "./servicos/tarefas";
 import { garantirRepresentantes } from "./dominio/representacao";
 
 const PORTA = Number(process.env.PORT ?? 3333);
-const SENHA = "syncos123";
+const SENHA = "synqos123";
 const SEGREDO_JWT = "segredo-local-so-para-desenvolvimento-0123456789";
 const TOKEN_SAP = "token-de-desenvolvimento";
 const TOKEN_RH = "token-rh-de-desenvolvimento";
@@ -64,7 +64,7 @@ const config: Config = {
   rhAvisoUrl: `http://127.0.0.1:${PORTA}/rh/avisos`,
   rhLeituraHora: 3,
   smtpUrl: "",
-  emailRemetente: "syncos@localhost",
+  emailRemetente: "synqos@localhost",
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
   ia: lerConfigIA(),
   vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },

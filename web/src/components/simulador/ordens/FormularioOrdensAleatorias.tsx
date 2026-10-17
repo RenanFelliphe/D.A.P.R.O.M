@@ -25,7 +25,7 @@ const nova = (chave: number, quantidade: number): Linha => ({ chave, quantidade,
 
 /**
  * Criação aleatória em lotes (`POST /sap-simulado/gestao/ordens/aleatorias`): cada linha pede uma quantidade, com tipo, centro de
- * trabalho, status (liberada ou criada) e atividade (cadastrada no SYNC OS, nova ou qualquer uma). O início programado é sorteado nos
+ * trabalho, status (liberada ou criada) e atividade (cadastrada no SYNQ OS, nova ou qualquer uma). O início programado é sorteado nos
  * próximos N dias. No máximo 200 por envio: "10 preventivas liberadas para Serviços Especiais e 5 corretivas criadas para Instrumentação"
  * sai num envio só.
  */
@@ -69,7 +69,7 @@ export function FormularioOrdensAleatorias({ catalogo, aoConcluir }: { catalogo:
 
   return (
     <form onSubmit={enviar} className="stack g12">
-      <p className="small">Serviços, locais, números e datas são inventados. A atividade “do SYNC OS” é sorteada entre as cadastradas lá; a “nova” é um código que o SYNC OS não conhece, e a leitura o cadastra.</p>
+      <p className="small">Serviços, locais, números e datas são inventados. A atividade “do SYNQ OS” é sorteada entre as cadastradas lá; a “nova” é um código que o SYNQ OS não conhece, e a leitura o cadastra.</p>
       <div className="stack g8">
         {linhas.map((l, i) => (
           <div key={l.chave} className="sim-lote sim-lote-ordem">
@@ -108,9 +108,9 @@ export function FormularioOrdensAleatorias({ catalogo, aoConcluir }: { catalogo:
               <select className="input" value={l.atividade} onChange={(e) => mudar(l.chave, { atividade: e.target.value as Linha["atividade"] })} aria-label={`Atividade da linha ${i + 1}`}>
                 <option value="qualquer">Qualquer</option>
                 <option value="cadastrada" disabled={!temCadastrada}>
-                  Do SYNC OS (cadastrada)
+                  Do SYNQ OS (cadastrada)
                 </option>
-                <option value="nova">Nova (o SYNC OS não conhece)</option>
+                <option value="nova">Nova (o SYNQ OS não conhece)</option>
               </select>
             </label>
             <button type="button" className="ibtn del" aria-label={`Remover a linha ${i + 1}`} disabled={linhas.length === 1} onClick={() => setLinhas((atual) => atual.filter((x) => x.chave !== l.chave))}>

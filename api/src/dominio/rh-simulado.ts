@@ -11,8 +11,8 @@ import { emailDoNome } from "./usuarios";
 
 /*
  * O registro de funcionários simulado (`apifuncionarios.md`, seções 2 e 6): catálogo de setores e cargos, gerador de funcionários
- * fictícios e as operações de gestão da tela do simulador. Nada aqui conhece o SYNC OS além de duas consultas de demonstração: se
- * o funcionário já tem conta (`usuario`) e se o setor tem equipe. O SYNC OS só fala com o simulador pelo contrato HTTP.
+ * fictícios e as operações de gestão da tela do simulador. Nada aqui conhece o SYNQ OS além de duas consultas de demonstração: se
+ * o funcionário já tem conta (`usuario`) e se o setor tem equipe. O SYNQ OS só fala com o simulador pelo contrato HTTP.
  */
 
 type Linha = typeof funcionarioSimulado.$inferSelect;
@@ -25,7 +25,7 @@ export interface Setor {
   cargos: string[];
 }
 
-/** Os três centros de trabalho das equipes de demonstração, mais alguns sem equipe no SYNC OS (o caso "sem equipe correspondente"). */
+/** Os três centros de trabalho das equipes de demonstração, mais alguns sem equipe no SYNQ OS (o caso "sem equipe correspondente"). */
 export const SETORES: readonly Setor[] = [
   { centro: "SERV_ESP", nome: "Serviços Especiais", cargos: ["Técnico em Gás", "Eletricista", "Mecânico", "Técnico de Segurança", "Engenheiro Mecânico"] },
   { centro: "INSTRUM", nome: "Instrumentação", cargos: ["Instrumentista", "Técnico em Instrumentação", "Engenheiro de Automação"] },
@@ -60,7 +60,7 @@ export async function proximaMatricula(db: Db): Promise<string> {
   return String(Math.max(100000, Number(r?.maior ?? 0)) + 1);
 }
 
-/** O funcionário no formato do contrato (o que o SYNC OS lê). */
+/** O funcionário no formato do contrato (o que o SYNQ OS lê). */
 export function paraContrato(f: Linha): FuncionarioRh {
   return {
     matricula: f.matricula,
@@ -212,7 +212,7 @@ export const esquemaEmMassa = z
 
 const minusculas = (m: string) => m.trim().toLowerCase();
 
-/** Contas do SYNC OS com estas matrículas (sem diferenciar maiúsculas), indexadas pela matrícula em minúsculas. */
+/** Contas do SYNQ OS com estas matrículas (sem diferenciar maiúsculas), indexadas pela matrícula em minúsculas. */
 async function contasPorMatricula(db: Db, matriculas: string[]) {
   if (matriculas.length === 0) return new Map<string, { id: string; perfil: string; equipeId: string | null; ativo: boolean; liberacao: string }>();
   const contas = await db
@@ -225,7 +225,7 @@ async function contasPorMatricula(db: Db, matriculas: string[]) {
 const condicaoDaBusca = (busca?: string): SQL | undefined =>
   busca ? algum([funcionarioSimulado.nome, funcionarioSimulado.email, funcionarioSimulado.matricula], busca, contem) : undefined;
 
-/** Lista paginada, com a conta de cada um no SYNC OS (`null` se não tem) e o contador por situação (de todos, sem a busca). */
+/** Lista paginada, com a conta de cada um no SYNQ OS (`null` se não tem) e o contador por situação (de todos, sem a busca). */
 export async function listarFuncionarios(db: Db, o: { busca?: string; pagina: number; tamanho: number }) {
   const onde = condicaoDaBusca(o.busca);
   const linhas = await db
@@ -241,17 +241,17 @@ export async function listarFuncionarios(db: Db, o: { busca?: string; pagina: nu
   for (const p of porSituacao) contagem[p.situacao] = p.n;
   const funcionarios = linhas.map((l) => {
     const c = contas.get(minusculas(l.matricula));
-    return { ...l, contaNoSyncOs: c ? { id: c.id, perfil: c.perfil, equipeId: c.equipeId, ativo: c.ativo, liberacao: c.liberacao } : null };
+    return { ...l, contaNoSynqOs: c ? { id: c.id, perfil: c.perfil, equipeId: c.equipeId, ativo: c.ativo, liberacao: c.liberacao } : null };
   });
   return { funcionarios, total: await contar(db, funcionarioSimulado, onde), contagem };
 }
 
-/** Setores e cargos, a próxima matrícula livre e quais setores têm equipe no SYNC OS. */
+/** Setores e cargos, a próxima matrícula livre e quais setores têm equipe no SYNQ OS. */
 export async function catalogoDoSimulador(db: Db) {
   const equipes = await db.select({ centro: equipe.centroTrabalho, nome: equipe.nome }).from(equipe);
   const comEquipe = new Map(equipes.map((e) => [e.centro, e.nome]));
   return {
-    setores: SETORES.map((s) => ({ centroTrabalho: s.centro, nome: s.nome, cargos: s.cargos, equipeNoSyncOs: comEquipe.get(s.centro) ?? null })),
+    setores: SETORES.map((s) => ({ centroTrabalho: s.centro, nome: s.nome, cargos: s.cargos, equipeNoSynqOs: comEquipe.get(s.centro) ?? null })),
     situacoes: SITUACOES_FUNCIONARIO,
     proximaMatricula: await proximaMatricula(db),
   };
@@ -346,18 +346,18 @@ export async function editarFuncionario(db: Db, matricula: string, dados: z.infe
 
 export const MOTIVO_COM_CONTA = "Desligue o funcionário em vez de excluir";
 
-/** Exclui só quem não tem conta no SYNC OS: quem tem deve ser desligado, como numa empresa de verdade. */
+/** Exclui só quem não tem conta no SYNQ OS: quem tem deve ser desligado, como numa empresa de verdade. */
 export async function excluirFuncionario(db: Db, matricula: string): Promise<void> {
   const [f] = await db.select({ matricula: funcionarioSimulado.matricula }).from(funcionarioSimulado).where(eq(funcionarioSimulado.matricula, matricula));
   if (!f) throw naoEncontrado("Funcionário não encontrado");
-  if ((await contasPorMatricula(db, [matricula])).size > 0) throw conflito("funcionario_com_conta", `${MOTIVO_COM_CONTA}: ele já tem conta no SYNC OS`);
+  if ((await contasPorMatricula(db, [matricula])).size > 0) throw conflito("funcionario_com_conta", `${MOTIVO_COM_CONTA}: ele já tem conta no SYNQ OS`);
   await db.delete(funcionarioSimulado).where(eq(funcionarioSimulado.matricula, matricula));
 }
 
 export interface ResultadoEmMassa {
   afetados: number;
   recusados: { matricula: string; motivo: string }[];
-  /** Matrículas que passaram a desligado nesta ação: o simulador avisa o SYNC OS. */
+  /** Matrículas que passaram a desligado nesta ação: o simulador avisa o SYNQ OS. */
   desligados: string[];
 }
 

@@ -19,12 +19,12 @@ import { useToast } from "@/state/toast";
 import { FormularioOrdem } from "./FormularioOrdem";
 import { FormularioOrdensAleatorias } from "./FormularioOrdensAleatorias";
 import { JanelaEmMassaOrdens, type FiltrosDaBusca } from "./JanelaEmMassaOrdens";
-import { rotuloDaSituacaoNoSyncOs, type AcaoEmMassaDeOrdens, type CatalogoDeOrdens, type ListaDeOrdens, type Ordem, type SituacaoNoSyncOs } from "./tipos";
+import { rotuloDaSituacaoNoSynqOs, type AcaoEmMassaDeOrdens, type CatalogoDeOrdens, type ListaDeOrdens, type Ordem, type SituacaoNoSynqOs } from "./tipos";
 import { VerMaisOrdem } from "./VerMaisOrdem";
 
 type Janela = { tipo: "manual" } | { tipo: "aleatorio" } | { tipo: "editar"; o: Ordem } | { tipo: "excluir"; o: Ordem } | { tipo: "ver"; o: Ordem } | { tipo: "massa"; acao: AcaoEmMassaDeOrdens } | null;
 
-const tonsDaSituacao: Record<SituacaoNoSyncOs, BadgeTone> = { nao_lida: "neu", ignorada: "al", liberada: "lib", pendente: "al", em_execucao: "exe", encerrada: "enc", cancelada: "blq", devolvida: "neu" };
+const tonsDaSituacao: Record<SituacaoNoSynqOs, BadgeTone> = { nao_lida: "neu", ignorada: "al", liberada: "lib", pendente: "al", em_execucao: "exe", encerrada: "enc", cancelada: "blq", devolvida: "neu" };
 
 interface PainelOrdensProps {
   lista: ListaDeOrdens;
@@ -33,9 +33,9 @@ interface PainelOrdensProps {
 }
 
 /**
- * A tabela do simulador do SAP: busca e filtros (tipo, centro de trabalho e "No SYNC OS"), "Nova ordem" (manual ou aleatória), seleção com
- * ações em massa (mudar status, mudar centro, reprogramar e excluir), "ver mais", editar e excluir. A coluna "No SYNC OS" mostra como o
- * SYNC OS reagiu a cada ordem, e o selo "Alterada depois da última leitura" mostra o que ele vai pegar na próxima.
+ * A tabela do simulador do SAP: busca e filtros (tipo, centro de trabalho e "No SYNQ OS"), "Nova ordem" (manual ou aleatória), seleção com
+ * ações em massa (mudar status, mudar centro, reprogramar e excluir), "ver mais", editar e excluir. A coluna "No SYNQ OS" mostra como o
+ * SYNQ OS reagiu a cada ordem, e o selo "Alterada depois da última leitura" mostra o que ele vai pegar na próxima.
  */
 export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
   const router = useRouter();
@@ -77,7 +77,7 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
     }
   }
 
-  const noSyncOs = (o: Ordem) => o.no_sync_os.situacao !== "nao_lida" && o.no_sync_os.situacao !== "ignorada";
+  const noSynqOs = (o: Ordem) => o.no_synq_os.situacao !== "nao_lida" && o.no_synq_os.situacao !== "ignorada";
   const centroPorCodigo = new Map(catalogo.centros_de_trabalho.map((c) => [c.centro_trabalho, c.nome]));
 
   const colunas: ColunaDaTabela<Ordem>[] = [
@@ -100,13 +100,13 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
     { titulo: "Início", largura: 100, render: (o) => dataDoDia(o.data_inicio_prog) },
     { titulo: "Status SAP", render: (o) => <span className="mono">{o.status_sap ?? "—"}</span> },
     {
-      titulo: "No SYNC OS",
+      titulo: "No SYNQ OS",
       render: (o) => (
         <span className="stack g4" style={{ alignItems: "flex-start" }}>
-          <Badge tone={tonsDaSituacao[o.no_sync_os.situacao]} style={{ padding: "1px 8px", fontSize: 11 }}>
-            {rotuloDaSituacaoNoSyncOs[o.no_sync_os.situacao]}
+          <Badge tone={tonsDaSituacao[o.no_synq_os.situacao]} style={{ padding: "1px 8px", fontSize: 11 }}>
+            {rotuloDaSituacaoNoSynqOs[o.no_synq_os.situacao]}
           </Badge>
-          {o.no_sync_os.motivo && <span className="small" style={{ whiteSpace: "normal", maxWidth: 220 }}>{o.no_sync_os.motivo}</span>}
+          {o.no_synq_os.motivo && <span className="small" style={{ whiteSpace: "normal", maxWidth: 220 }}>{o.no_synq_os.motivo}</span>}
         </span>
       ),
     },
@@ -159,12 +159,12 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="f-no-sync-os">No SYNC OS</label>
-          <select id="f-no-sync-os" name="no_sync_os" className="select" defaultValue={filtros.no_sync_os ?? ""}>
+          <label htmlFor="f-no-synq-os">No SYNQ OS</label>
+          <select id="f-no-synq-os" name="no_synq_os" className="select" defaultValue={filtros.no_synq_os ?? ""}>
             <option value="">Todas</option>
-            {(Object.keys(rotuloDaSituacaoNoSyncOs) as SituacaoNoSyncOs[]).map((s) => (
+            {(Object.keys(rotuloDaSituacaoNoSynqOs) as SituacaoNoSynqOs[]).map((s) => (
               <option key={s} value={s}>
-                {rotuloDaSituacaoNoSyncOs[s]}
+                {rotuloDaSituacaoNoSynqOs[s]}
               </option>
             ))}
           </select>
@@ -216,7 +216,7 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
               rotulo={`Ações da ordem ${o.numero_ordem}`}
               itens={[
                 { rotulo: "Editar", aoClicar: () => setJanela({ tipo: "editar", o }) },
-                { rotulo: noSyncOs(o) ? "Excluir (já no SYNC OS)" : "Excluir", aoClicar: () => setJanela({ tipo: "excluir", o }), perigo: true, desabilitado: noSyncOs(o) },
+                { rotulo: noSynqOs(o) ? "Excluir (já no SYNQ OS)" : "Excluir", aoClicar: () => setJanela({ tipo: "excluir", o }), perigo: true, desabilitado: noSynqOs(o) },
               ]}
             />
           </span>
@@ -268,7 +268,7 @@ export function PainelOrdens({ lista, catalogo, filtros }: PainelOrdensProps) {
           numeros={[...selecionados]}
           todosDaBusca={todosDaBusca}
           filtros={filtros}
-          daPagina={daPagina.map((o) => ({ numero: o.numero_ordem, situacao: o.no_sync_os.situacao }))}
+          daPagina={daPagina.map((o) => ({ numero: o.numero_ordem, situacao: o.no_synq_os.situacao }))}
           aoFechar={fechar}
         />
       )}

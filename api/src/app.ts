@@ -32,7 +32,7 @@ import { rotasVitoria } from "./rotas/vitoria";
  * `autenticar()` (JWT do Supabase + usuário ativo) e, quando preciso, por `exigirPerfil(...)`: sem token é `401`, com
  * perfil sem permissão é `403`. Cada fatia da especificação é um módulo em `rotas/`.
  */
-export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa o SYNC OS; os testes trocam. */ enviarAvisoRh?: EnviarAvisoRh } = {}) {
+export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa o SYNQ OS; os testes trocam. */ enviarAvisoRh?: EnviarAvisoRh } = {}) {
   const auth = criarAutenticacao(deps);
   const app = new Hono();
 

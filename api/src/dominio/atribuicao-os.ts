@@ -62,7 +62,7 @@ export async function liberarReserva(db: Db, eu: UsuarioAutenticado, osId: strin
 
 /**
  * Devolve a OS ao SAP com a justificativa do supervisor: ela sai do quadro da equipe (`devolvida`), perde a reserva e vai
- * na próxima planilha de baixa. O SYNC OS não escreve no SAP; é quem lê a planilha que corrige a ordem. A OS de apoio nasce
+ * na próxima planilha de baixa. O SYNQ OS não escreve no SAP; é quem lê a planilha que corrige a ordem. A OS de apoio nasce
  * no sistema e não tem ordem para onde voltar: ela é cancelada, não devolvida.
  */
 export async function devolverOs(db: Db, eu: UsuarioAutenticado, osId: string, justificativa: string, agora: Date) {

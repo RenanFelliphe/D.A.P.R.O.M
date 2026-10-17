@@ -53,7 +53,7 @@ export function exigirSetorSupervisionado(eu: Pick<UsuarioAutenticado, "equipesS
   }
 }
 
-/** A situação que o SYNC OS grava: quem sumiu do registro é `fora_do_registro`. */
+/** A situação que o SYNQ OS grava: quem sumiu do registro é `fora_do_registro`. */
 export const situacaoNoRegistro = (f: FuncionarioRh | null): SituacaoRegistro => f?.situacao ?? "fora_do_registro";
 
 /** Desligado ou fora do registro: quem perde o acesso. */
@@ -260,9 +260,9 @@ async function lerRegistroInteiro(deps: Deps): Promise<Map<string, FuncionarioRh
 const mensagemDe = (erro: unknown) => (erro instanceof Error ? erro.message : String(erro)).slice(0, 500);
 
 /**
- * Uma leitura completa: lê o registro inteiro, página por página, e confere todos os usuários do SYNC OS pela matrícula (quem
+ * Uma leitura completa: lê o registro inteiro, página por página, e confere todos os usuários do SYNQ OS pela matrícula (quem
  * sumiu do registro vira `fora_do_registro`). Antes de aplicar, a trava de segurança: se a leitura desativaria mais da metade dos
- * usuários ativos, não aplica nada e termina com erro (um registro vazio ou mal configurado não pode esvaziar o SYNC OS). Falha de
+ * usuários ativos, não aplica nada e termina com erro (um registro vazio ou mal configurado não pode esvaziar o SYNQ OS). Falha de
  * rede lança, e a tarefa tenta de novo; o erro fica na leitura enquanto isso. A trava não lança: é definitiva.
  */
 export async function executarLeituraRh(deps: Deps, leituraId: string): Promise<void> {

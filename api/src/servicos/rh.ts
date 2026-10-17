@@ -1,11 +1,11 @@
 /**
- * Contrato da API do registro de funcionários (ver `apifuncionarios.md`, seção 3): o que o SYNC OS consulta do registro. O
+ * Contrato da API do registro de funcionários (ver `apifuncionarios.md`, seção 3): o que o SYNQ OS consulta do registro. O
  * simulador do próprio back-end responde nesse formato.
  */
 export interface FuncionarioRh {
   matricula: string;
   nome: string;
-  /** Institucional; é o login no SYNC OS. */
+  /** Institucional; é o login no SYNQ OS. */
   email: string;
   cargo: string;
   /** Código do centro de trabalho, o mesmo de `equipe.centro_trabalho`. */

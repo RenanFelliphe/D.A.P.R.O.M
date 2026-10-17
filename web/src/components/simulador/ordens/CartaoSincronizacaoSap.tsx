@@ -34,9 +34,9 @@ const INTERVALO_MS = 2_000;
 const TENTATIVAS = 40;
 
 /**
- * Cartão "Sincronização com o SYNC OS" da tela das ordens: a última leitura sem erro, se a automática está ligada, o intervalo e a
+ * Cartão "Sincronização com o SYNQ OS" da tela das ordens: a última leitura sem erro, se a automática está ligada, o intervalo e a
  * próxima prevista (`GET /sap/sincronizacao`), e o "Ler agora" (`POST /sap/leituras`). Quando a leitura termina, mostra o resultado
- * (OS criadas, atualizadas e as ordens ignoradas com o motivo, de `GET /importacoes`) e a coluna "No SYNC OS" se atualiza. O SYNC OS só lê
+ * (OS criadas, atualizadas e as ordens ignoradas com o motivo, de `GET /importacoes`) e a coluna "No SYNQ OS" se atualiza. O SYNQ OS só lê
  * o SAP, por intervalo ou sob demanda: o SAP real não avisa, então não há sincronização em tempo real.
  */
 export function CartaoSincronizacaoSap({ inicial, ultimaLeitura }: { inicial: SincronizacaoSap; ultimaLeitura: LeituraSap | null }) {
@@ -89,9 +89,9 @@ export function CartaoSincronizacaoSap({ inicial, ultimaLeitura }: { inicial: Si
     <Panel>
       <div className="row between wrap">
         <div className="stack g4">
-          <h2>Sincronização com o SYNC OS</h2>
+          <h2>Sincronização com o SYNQ OS</h2>
           <span className="small">
-            {sinc.automatica ? `O SYNC OS lê o SAP a cada ${sinc.intervalo_min} minutos` : "A leitura automática está desligada"}
+            {sinc.automatica ? `O SYNQ OS lê o SAP a cada ${sinc.intervalo_min} minutos` : "A leitura automática está desligada"}
             {sinc.ultima_leitura_sem_erro_em ? ` · última sem erro em ${dataHora(sinc.ultima_leitura_sem_erro_em)}` : " · ainda sem leitura"}
             {proxima ? ` · próxima prevista para ${dataHora(proxima)}` : ""}
           </span>

@@ -1,6 +1,6 @@
 # api
 
-Backend do SYNC OS (regras de negócio, autorização, integração com o SAP, eventos de campo (online e fila offline), geração de PDF e e-mail). Node + TypeScript, [Hono](https://hono.dev) para as rotas, [Drizzle](https://orm.drizzle.team) sobre Postgres (Supabase) e [zod](https://zod.dev) para validar a entrada.
+Backend do SYNQ OS (regras de negócio, autorização, integração com o SAP, eventos de campo (online e fila offline), geração de PDF e e-mail). Node + TypeScript, [Hono](https://hono.dev) para as rotas, [Drizzle](https://orm.drizzle.team) sobre Postgres (Supabase) e [zod](https://zod.dev) para validar a entrada.
 
 Ver a [especificação](../base/.design/especificacao.md) para escopo, contratos e decisões técnicas, e o [banco](db/README.md) para o schema.
 
@@ -16,7 +16,7 @@ pnpm dev:local   # sem Supabase: banco em memória (PGlite), auth e arquivos em 
 pnpm pdf:exemplo # grava ordens-exemplo.pdf: OS no layout impresso pelo SAP, com texto, para testar a importação por PDF
 ```
 
-**Modo local (`pnpm dev:local`, [`src/local.ts`](src/local.ts)):** a `api` inteira num só processo, para desenvolver o `web` e o `mobile`. Cria as equipes Serviços Especiais, Instrumentação e Laboratório Químico e um usuário por perfil (e as duas supervisoras), todos com a senha `syncos123`. O login é o e-mail institucional, no padrão primeiro nome e último sobrenome com domínio `@empresa.com.br` (`admin`, `sandra.supervisora`, `saulo.supervisor`, `tiago.tecnico`, `tais.tecnica`, `tomas.tecnico`); a `api` os lista ao subir. Lê as 11 OS das fixtures pelo simulador do SAP, cria um catálogo de serviço fictício (materiais de 4 serviços, [`src/db/seed/catalogo-demo.ts`](src/db/seed/catalogo-demo.ts)) e serve as fotos e os PDFs em `/arquivos-locais`. Tudo some quando o processo termina; nunca é para produção.
+**Modo local (`pnpm dev:local`, [`src/local.ts`](src/local.ts)):** a `api` inteira num só processo, para desenvolver o `web` e o `mobile`. Cria as equipes Serviços Especiais, Instrumentação e Laboratório Químico e um usuário por perfil (e as duas supervisoras), todos com a senha `synqos123`. O login é o e-mail institucional, no padrão primeiro nome e último sobrenome com domínio `@empresa.com.br` (`admin`, `sandra.supervisora`, `saulo.supervisor`, `tiago.tecnico`, `tais.tecnica`, `tomas.tecnico`); a `api` os lista ao subir. Lê as 11 OS das fixtures pelo simulador do SAP, cria um catálogo de serviço fictício (materiais de 4 serviços, [`src/db/seed/catalogo-demo.ts`](src/db/seed/catalogo-demo.ts)) e serve as fotos e os PDFs em `/arquivos-locais`. Tudo some quando o processo termina; nunca é para produção.
 
 Variáveis de ambiente (todas lidas em [`src/config.ts`](src/config.ts)): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_SIMULADO` (`true` liga o simulador em `/sap-simulado`), `SAP_LEITURA_INTERVALO_MIN` (padrão 15), `RH_SIMULADO` (`true` liga o registro de funcionários simulado em `/rh-simulado`), `RH_API_URL`, `RH_API_TOKEN`, `RH_AVISO_TOKEN`, `RH_AVISO_URL` e `RH_LEITURA_HORA` (padrão 3), `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`, `PORT` (padrão 3333). Com `SAP_SIMULADO=true`, aponte `SAP_API_URL` para `http://localhost:3333/sap-simulado` e `SAP_API_TOKEN` para o token que o simulador exige.
 

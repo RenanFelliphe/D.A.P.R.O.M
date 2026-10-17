@@ -36,7 +36,7 @@ interface PreviaDoCadastro {
     registro_profissional: string | null;
     situacao: SituacaoRegistro;
   };
-  /** A equipe que o setor da pessoa sugere; `null` quando o setor não tem equipe no SYNC OS. */
+  /** A equipe que o setor da pessoa sugere; `null` quando o setor não tem equipe no SYNQ OS. */
   equipe_sugerida: OpcaoEquipe | null;
   conta_existente: boolean;
 }
@@ -274,7 +274,7 @@ export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir
       {previa.conta_existente ? (
         <>
           <Notice tone="al" icon="alert">
-            Esta pessoa já tem conta no SYNC OS. Procure-a na lista de usuários.
+            Esta pessoa já tem conta no SYNQ OS. Procure-a na lista de usuários.
           </Notice>
           <div className="row g8" style={{ justifyContent: "flex-end" }}>
             <Button variant="line" sm onClick={() => setPrevia(null)}>
@@ -313,7 +313,7 @@ export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir
                       </option>
                     ))}
                   </select>
-                  {!previa.equipe_sugerida && <span className="small">O setor {f.setor} não tem equipe no SYNC OS.</span>}
+                  {!previa.equipe_sugerida && <span className="small">O setor {f.setor} não tem equipe no SYNQ OS.</span>}
                 </Field>
               </>
             )}

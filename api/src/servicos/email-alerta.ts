@@ -146,7 +146,7 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
     `<p><a href="${escaparHtml(link)}">Abrir a OS no painel</a></p>`,
   ].join("\n");
 
-  await deps.email.enviar({ para: destinatario.email, assunto: `[SYNC OS] Atividade impedida — OS ${numero}`, texto: linhas.join("\n"), html });
+  await deps.email.enviar({ para: destinatario.email, assunto: `[SYNQ OS] Atividade impedida — OS ${numero}`, texto: linhas.join("\n"), html });
 
   // Condicional: duas tarefas simultâneas (ou um reenvio) não marcam duas vezes.
   await db.update(alerta).set({ emailEnviadoEm: deps.agora() }).where(and(eq(alerta.id, a.id), isNull(alerta.emailEnviadoEm)));

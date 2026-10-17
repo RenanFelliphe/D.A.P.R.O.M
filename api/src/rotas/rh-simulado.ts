@@ -23,7 +23,7 @@ import { esquemaPaginacao } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { lerConsulta, lerCorpo } from "../http/validacao";
 
-/** Como o simulador avisa o SYNC OS de que estas matrículas mudaram (`POST /rh/avisos`). Não lança: falhar só vai ao log. */
+/** Como o simulador avisa o SYNQ OS de que estas matrículas mudaram (`POST /rh/avisos`). Não lança: falhar só vai ao log. */
 export type EnviarAvisoRh = (matriculas: string[]) => Promise<void>;
 
 const TEMPO_LIMITE_AVISO_MS = 10_000;
@@ -41,9 +41,9 @@ export function avisoPorHttp(deps: Deps, buscar: typeof fetch = fetch): EnviarAv
         body: JSON.stringify({ matriculas }),
         signal: AbortSignal.timeout(TEMPO_LIMITE_AVISO_MS),
       });
-      if (!r.ok) console.warn(`Aviso de desligamento ao SYNC OS: respondeu ${r.status}`);
+      if (!r.ok) console.warn(`Aviso de desligamento ao SYNQ OS: respondeu ${r.status}`);
     } catch (erro) {
-      console.warn(`Aviso de desligamento ao SYNC OS não enviado: ${erro instanceof Error ? erro.message : String(erro)}`);
+      console.warn(`Aviso de desligamento ao SYNQ OS não enviado: ${erro instanceof Error ? erro.message : String(erro)}`);
     }
   };
 }
@@ -54,10 +54,10 @@ const esquemaBusca = esquemaPaginacao.extend({ busca: z.string().trim().min(1).o
 /**
  * Simulador do registro de funcionários (RH), só montado com `RH_SIMULADO=true` (em `/rh-simulado`). Tem duas partes:
  * - **Contrato** (`GET /funcionarios`, `GET /funcionarios/{matricula}`), com `Authorization: Bearer <RH_API_TOKEN>`: o que o
- *   SYNC OS lê;
- * - **Gestão** (`/gestao/...`), com o admin logado no SYNC OS: o CRUD que a tela `/simulador/funcionarios` usa. Quando um
- *   funcionário passa a desligado, o simulador avisa o SYNC OS (`enviarAviso`).
- * Os dados ficam na tabela `funcionario_simulado`, no banco do SYNC OS. Ver `apifuncionarios.md`.
+ *   SYNQ OS lê;
+ * - **Gestão** (`/gestao/...`), com o admin logado no SYNQ OS: o CRUD que a tela `/simulador/funcionarios` usa. Quando um
+ *   funcionário passa a desligado, o simulador avisa o SYNQ OS (`enviarAviso`).
+ * Os dados ficam na tabela `funcionario_simulado`, no banco do SYNQ OS. Ver `apifuncionarios.md`.
  */
 export function rotasRhSimulado(deps: Deps, { autenticar, exigirPerfil }: Autenticacao, enviarAviso: EnviarAvisoRh) {
   const r = new Hono<Ambiente>();

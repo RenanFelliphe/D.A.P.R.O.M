@@ -22,7 +22,7 @@ function Marca({ subtitulo }: { subtitulo: string }) {
         <Icon name="shield" size={18} />
       </span>
       <span className="brand-txt">
-        SYNC OS
+        SYNQ OS
         <small>{subtitulo}</small>
       </span>
     </div>

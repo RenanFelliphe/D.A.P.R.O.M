@@ -50,7 +50,7 @@ export async function carregarOrdensDeExemplo(db: Db, agora: Date = new Date()):
 
 /**
  * Para a demonstração: grava no simulador as ordens das OS que a carga criou direto no banco com origem `sap`, com um status coerente
- * (com `LIB` nas ativas; sem ele nas encerradas e nas canceladas), para que o SAP e o SYNC OS concordem desde o início. As OS de apoio ficam
+ * (com `LIB` nas ativas; sem ele nas encerradas e nas canceladas), para que o SAP e o SYNQ OS concordem desde o início. As OS de apoio ficam
  * de fora: não existem no SAP. Não mexe nas ordens que já estão lá. Devolve quantas gravou.
  */
 export async function espelharOsDoSapNoSimulador(db: Db): Promise<number> {

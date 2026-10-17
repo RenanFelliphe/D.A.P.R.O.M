@@ -6,7 +6,7 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import type { OsStatus } from "@/lib/tipos";
 
 /** Onde o navegador guarda quais colunas a pessoa fechou (status separados por vírgula). */
-const CHAVE = "syncos:quadro:colunas-fechadas";
+const CHAVE = "synqos:quadro:colunas-fechadas";
 
 /**
  * As colunas fechadas valem para o navegador, não só para a tela: o filtro recarrega o quadro e as colunas não podem reabrir.

@@ -8,18 +8,18 @@ export const SITUACOES_FUNCIONARIO = ["ativo", "afastado", "desligado"] as const
 export type SituacaoFuncionario = (typeof SITUACOES_FUNCIONARIO)[number];
 
 /**
- * O registro de funcionários simulado: o que o RH da empresa teria, com os dados fictícios que o SYNC OS consulta para
- * cadastrar usuários e saber de desligamentos. Fica no banco do SYNC OS (e não na memória) para sobreviver a um reinício, mas
- * não tem chave para nenhuma tabela do SYNC OS: o vínculo com `usuario` é só a matrícula, como seria com o RH de verdade. Vazia
+ * O registro de funcionários simulado: o que o RH da empresa teria, com os dados fictícios que o SYNQ OS consulta para
+ * cadastrar usuários e saber de desligamentos. Fica no banco do SYNQ OS (e não na memória) para sobreviver a um reinício, mas
+ * não tem chave para nenhuma tabela do SYNQ OS: o vínculo com `usuario` é só a matrícula, como seria com o RH de verdade. Vazia
  * quando `RH_SIMULADO=false`.
  */
 export const funcionarioSimulado = pgTable(
   "funcionario_simulado",
   {
-    /** Única e fixa depois de criada: é o vínculo com o SYNC OS. */
+    /** Única e fixa depois de criada: é o vínculo com o SYNQ OS. */
     matricula: text().primaryKey(),
     nome: text().notNull(),
-    /** Institucional, em minúsculas: é o login no SYNC OS. */
+    /** Institucional, em minúsculas: é o login no SYNQ OS. */
     email: text().notNull().unique(),
     cargo: text().notNull(),
     /** Código do centro de trabalho; casa com `equipe.centro_trabalho`. */

@@ -44,7 +44,7 @@ export const configDeTeste: Config = {
   rhAvisoUrl: "http://api.local/rh/avisos",
   rhLeituraHora: 3,
   smtpUrl: "",
-  emailRemetente: "syncos@teste",
+  emailRemetente: "synqos@teste",
   painelUrl: "http://painel.local",
   // Sem chave real: os testes programam o `ProvedorIAEmMemoria` (amb.ia) quando precisam simular a IA ligada.
   ia: { provedor: "anthropic", apiKey: "", ligada: false, modelos: { vitoria: "modelo-vitoria-teste", rascunho: "modelo-rascunho-teste", digitalizacao: "modelo-digitalizacao-teste" } },
@@ -66,7 +66,7 @@ export class SapEmMemoria implements ClienteSap {
   }
 }
 
-/** Registro de funcionários em memória: o que o teste coloca em `funcionarios` (pela matrícula) é o que o SYNC OS enxerga. */
+/** Registro de funcionários em memória: o que o teste coloca em `funcionarios` (pela matrícula) é o que o SYNQ OS enxerga. */
 export class RhEmMemoria implements ClienteRh {
   funcionarios = new Map<string, FuncionarioRh>();
   falhar = false;
@@ -121,7 +121,7 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   const rh = new RhEmMemoria();
   const ia = new ProvedorIAEmMemoria();
   const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, ia, agora: () => relogio.agora };
-  // O aviso que o simulador do RH manda ao SYNC OS: fica anotado em `avisosRh` e, com `rhSimulador.encaminhar`, chega de verdade em `POST /rh/avisos`.
+  // O aviso que o simulador do RH manda ao SYNQ OS: fica anotado em `avisosRh` e, com `rhSimulador.encaminhar`, chega de verdade em `POST /rh/avisos`.
   const avisosRh: string[][] = [];
   const rhSimulador = { encaminhar: false };
   const app = criarApp(deps, {

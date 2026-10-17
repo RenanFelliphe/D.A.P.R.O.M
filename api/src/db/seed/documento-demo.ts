@@ -5,7 +5,7 @@
  */
 export function documentoDemo(titulo: string, linhas: string[] = []): Uint8Array<ArrayBuffer> {
   const escapar = (s: string) => s.replace(/[\\()]/g, "\\$&");
-  const texto = [titulo, "", ...linhas, "", "Documento fictício gerado para demonstração do SYNC OS."]
+  const texto = [titulo, "", ...linhas, "", "Documento fictício gerado para demonstração do SYNQ OS."]
     .map((linha, i) => `BT /F1 ${i === 0 ? 15 : 11} Tf 56 ${780 - i * 18} Td (${escapar(linha)}) Tj ET`)
     .join("\n");
 

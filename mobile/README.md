@@ -1,6 +1,6 @@
 # mobile
 
-Aplicativo de campo do SYNC OS (Android). Funciona online no dia a dia e tem um modo offline de contingência para aplicar a APR e executar a OS onde não há sinal.
+Aplicativo de campo do SYNQ OS (Android). Funciona online no dia a dia e tem um modo offline de contingência para aplicar a APR e executar a OS onde não há sinal.
 
 > **Ainda não iniciado.** O foco atual é a interface do painel web em [`../web`](../web). Esta pasta reserva o lugar do app no monorepo (`api`, `web`, `mobile`). As telas do app existem hoje como referência visual no protótipo (`/app/*` em `web`).
 

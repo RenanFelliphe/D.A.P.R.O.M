@@ -1,6 +1,6 @@
 # web
 
-Versão web do SYNC OS, em **Next.js 16 (App Router) + React 19 + TypeScript**, só para desktop. Há dois perfis, técnico e admin; supervisor não é perfil, é o técnico que a equipe aponta como supervisor (`equipes_supervisionadas` de `GET /me`). O técnico usa a área de campo (`/app`); o supervisor usa também o painel de gestão (`/web`) das equipes que supervisiona; o admin é só gestão (`/web`) e não executa OS. Os dados vêm da [`api`](../api/README.md); o `web` nunca fala com o Supabase.
+Versão web do SYNQ OS, em **Next.js 16 (App Router) + React 19 + TypeScript**, só para desktop. Há dois perfis, técnico e admin; supervisor não é perfil, é o técnico que a equipe aponta como supervisor (`equipes_supervisionadas` de `GET /me`). O técnico usa a área de campo (`/app`); o supervisor usa também o painel de gestão (`/web`) das equipes que supervisiona; o admin é só gestão (`/web`) e não executa OS. Os dados vêm da [`api`](../api/README.md); o `web` nunca fala com o Supabase.
 
 ## Executar
 
@@ -11,7 +11,7 @@ cd api && pnpm install && pnpm dev:local     # http://localhost:3333
 cd web && pnpm install && pnpm dev           # http://localhost:3000, abre na tela de entrada
 ```
 
-Usuários do modo local (senha `syncos123`): `tec1`, `tec2` (técnicos, Serviços Especiais), `tec3` (técnico, Instrumentação), `sup1`, `sup2` (técnicos que supervisionam equipes), `adm` (admin). Os dados somem quando a `api` reinicia.
+Usuários do modo local (senha `synqos123`): `tec1`, `tec2` (técnicos, Serviços Especiais), `tec3` (técnico, Instrumentação), `sup1`, `sup2` (técnicos que supervisionam equipes), `adm` (admin). Os dados somem quando a `api` reinicia.
 
 ```bash
 pnpm build       # build de produção
@@ -22,7 +22,7 @@ Variáveis de ambiente (só do servidor do `web`): `API_URL` (padrão `http://lo
 
 ## Como o `web` fala com a `api`
 
-- **Sessão:** o login (`/app/entrar`) chama `POST /auth/login` por uma ação do servidor e guarda os tokens em cookies `httpOnly` (`syncos_at`, `syncos_rt`): o JavaScript do navegador nunca vê o token. O [`proxy.ts`](src/proxy.ts) manda quem não tem sessão para a entrada e renova o token que está para vencer. Senha provisória leva a "Defina sua senha".
+- **Sessão:** o login (`/app/entrar`) chama `POST /auth/login` por uma ação do servidor e guarda os tokens em cookies `httpOnly` (`synqos_at`, `synqos_rt`): o JavaScript do navegador nunca vê o token. O [`proxy.ts`](src/proxy.ts) manda quem não tem sessão para a entrada e renova o token que está para vencer. Senha provisória leva a "Defina sua senha".
 - **Componentes de servidor** leem dados com `api()` de [`src/lib/api.ts`](src/lib/api.ts) (junta o token do cookie). **Componentes de cliente** (formulários, cronômetro, fotos) usam [`src/lib/cliente-api.ts`](src/lib/cliente-api.ts): `chamar`, `enviarArquivo` (fotos comprimidas a ~1600 px, assinaturas) e `enviarEvento` (APR e execução, pelo único canal de escrita de campo, `POST /eventos`). Essas chamadas vão por `/api/*`, um handler ([`src/app/api/[...caminho]`](src/app/api/%5B...caminho%5D/route.ts)) que junta o token e repassa para a `api`, que autoriza.
 - **Rascunho da APR:** fica no `localStorage` do navegador, por OS (com os ids das fotos já enviadas), até a APR ser concluída.
 - O modo offline (fila local, sincronização) e o selo "Online" são do app `mobile`; no `web` não há selo de conexão, porque só se acessa pela internet.
@@ -62,7 +62,7 @@ Excluir um modelo que já foi publicado o **arquiva**: ele some das listas, das 
 
 O supervisor cadastra técnicos nas equipes dele; o usuário nasce `liberacao: "pendente"` e só ganha o acesso geral quando um admin libera (`POST /usuarios/{id}/liberar`); recusar (`/recusar`, com `motivo`) impede a entrada e o motivo aparece no login (`403 acesso_recusado`). Regras no web:
 
-- **Pendente fora do treino**: a casca única (`Casca`, servidor) redireciona todo `/app/*` para `/app/aguardando`, exceto `/app/aguardando`, `/app/treino` (a página de escolha; as rotas `treino/entrar|sair` são handlers sem casca), `/app/trocar-senha` e `/app/entrar`. **Sem laço**: a tela de espera está na lista de liberadas e só lê o `/me` real (`lib/situacao-real.ts`, ignora o treino), que a `api` permite ao pendente. O endereço pedido vem do `proxy.ts` (`x-syncos-endereco`); sem ele a casca não redireciona. O menu mostra só "Campo de treino" e "Aguardando liberação", sem busca global.
+- **Pendente fora do treino**: a casca única (`Casca`, servidor) redireciona todo `/app/*` para `/app/aguardando`, exceto `/app/aguardando`, `/app/treino` (a página de escolha; as rotas `treino/entrar|sair` são handlers sem casca), `/app/trocar-senha` e `/app/entrar`. **Sem laço**: a tela de espera está na lista de liberadas e só lê o `/me` real (`lib/situacao-real.ts`, ignora o treino), que a `api` permite ao pendente. O endereço pedido vem do `proxy.ts` (`x-synqos-endereco`); sem ele a casca não redireciona. O menu mostra só "Campo de treino" e "Aguardando liberação", sem busca global.
 - **Pendente no treino** (cookie `treino`): menu completo (o tutorial aponta para ele) mais "Aguardando liberação"; a `api` fictícia atende tudo. Ao concluir o tutorial, "Ver situação do meu acesso" no lugar de "Ir ao sistema" (sair do treino cai na tela de espera).
 - **Rede de segurança**: `403 aguardando_liberacao` vindo de `chamarApi` (servidor) redireciona para `/app/aguardando`; `chamar` (navegador) faz o mesmo e devolve uma mensagem amigável. `403 acesso_recusado` volta à entrada. Com a sessão ainda aberta e `liberacao: "recusado"`, a casca mostra uma tela com o motivo e o botão Sair.
 - **Login**: `403 acesso_recusado` mostra a mensagem da `api` (com o motivo). Quem entra pendente vai à tela de espera (`inicioDoUsuario`).
