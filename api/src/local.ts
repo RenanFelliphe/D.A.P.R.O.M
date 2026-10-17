@@ -16,7 +16,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { criarApp } from "./app";
-import type { Config } from "./config";
+import { lerConfigIA, type Config } from "./config";
 import { PASTA_MIGRACOES, type Db } from "./db/conexao";
 import { equipe, usuario, type Perfil } from "./db/schema";
 import { popularCatalogoDemo } from "./db/seed/catalogo-demo";
@@ -31,7 +31,7 @@ import { ArmazenamentoEmMemoria } from "./servicos/armazenamento";
 import { DOMINIO_DEMO, emailDoNome } from "./dominio/usuarios";
 import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
-import { ProvedorIAAnthropic, ProvedorIAIndisponivel } from "./servicos/ia";
+import { criarProvedorIA } from "./servicos/ia";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
@@ -43,9 +43,6 @@ const SEGREDO_JWT = "segredo-local-so-para-desenvolvimento-0123456789";
 const TOKEN_SAP = "token-de-desenvolvimento";
 const TOKEN_RH = "token-rh-de-desenvolvimento";
 const TOKEN_AVISO_RH = "token-aviso-rh-de-desenvolvimento";
-// IA desligada por padrão também no modo local; definir ANTHROPIC_API_KEY no ambiente liga de verdade, sem mudar código.
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
-
 /** PNG de 1×1 pixel: serve de "assinatura" nos dados de exemplo. */
 const PNG = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
 
@@ -69,15 +66,7 @@ const config: Config = {
   smtpUrl: "",
   emailRemetente: "syncos@localhost",
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
-  ia: {
-    anthropicApiKey: ANTHROPIC_API_KEY,
-    ligada: Boolean(ANTHROPIC_API_KEY),
-    modelos: {
-      vitoria: process.env.ANTHROPIC_MODELO_VITORIA ?? "claude-haiku-5-5",
-      rascunho: process.env.ANTHROPIC_MODELO_RASCUNHO ?? "claude-opus-5-5",
-      digitalizacao: process.env.ANTHROPIC_MODELO_DIGITALIZACAO ?? "claude-haiku-5-5",
-    },
-  },
+  ia: lerConfigIA(),
   vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
 };
 
@@ -99,9 +88,7 @@ async function main() {
     email: new EmailEmMemoria(),
     sap: new ClienteSapHttp(config.sapApiUrl, TOKEN_SAP),
     rh: new ClienteRhHttp(config.rhApiUrl, TOKEN_RH),
-    ia: config.ia.ligada
-      ? new ProvedorIAAnthropic(config.ia.anthropicApiKey, config.ia.modelos, config.vitoria.maxTokensResposta)
-      : new ProvedorIAIndisponivel(),
+    ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),
     agora: () => new Date(),
   };
 

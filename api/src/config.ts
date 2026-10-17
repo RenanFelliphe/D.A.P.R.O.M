@@ -25,15 +25,26 @@ const esquema = z.object({
   SMTP_URL: z.string().default(""),
   EMAIL_REMETENTE: z.string().default("syncos@localhost"),
   PAINEL_URL: z.string().default("http://localhost:3000"),
-  // Módulo de IA (Claude/Anthropic): sem chave, a api sobe normalmente e fica "desligada" (vitoria.md, seção 1).
-  ANTHROPIC_API_KEY: z.string().default(""),
-  ANTHROPIC_MODELO_VITORIA: z.string().default("claude-haiku-5-5"),
-  ANTHROPIC_MODELO_RASCUNHO: z.string().default("claude-opus-5-5"),
-  ANTHROPIC_MODELO_DIGITALIZACAO: z.string().default("claude-haiku-5-5"),
   VITORIA_LIMITE_POR_CONVERSA: z.coerce.number().int().positive().default(20),
   VITORIA_LIMITE_POR_CONTA_DIA: z.coerce.number().int().positive().default(40),
   VITORIA_LIMITE_GLOBAL_DIA: z.coerce.number().int().positive().default(1000),
   VITORIA_MAX_TOKENS_RESPOSTA: z.coerce.number().int().positive().default(1024),
+});
+
+/**
+ * Módulo de IA: `IA_PROVEDOR` escolhe o fornecedor e cada um tem a sua chave e os seus modelos. Sem a chave do escolhido, a
+ * api sobe normalmente e fica "desligada" (vitoria.md, seção 1). Separado do esquema geral para o `local.ts` reaproveitar.
+ */
+const esquemaIA = z.object({
+  IA_PROVEDOR: z.enum(["anthropic", "gemini"]).default("anthropic"),
+  ANTHROPIC_API_KEY: z.string().trim().default(""),
+  ANTHROPIC_MODELO_VITORIA: z.string().default("claude-haiku-5-5"),
+  ANTHROPIC_MODELO_RASCUNHO: z.string().default("claude-opus-5-5"),
+  ANTHROPIC_MODELO_DIGITALIZACAO: z.string().default("claude-haiku-5-5"),
+  GEMINI_API_KEY: z.string().trim().default(""),
+  GEMINI_MODELO_VITORIA: z.string().default("gemini-3.8-flash"),
+  GEMINI_MODELO_RASCUNHO: z.string().default("gemini-3.8-flash"),
+  GEMINI_MODELO_DIGITALIZACAO: z.string().default("gemini-3.8-flash"),
 });
 
 export interface Config {
@@ -62,9 +73,11 @@ export interface Config {
   painelUrl: string;
   /** Módulo de IA genérico (`servicos/ia`): `ligada` é o único ponto de decisão "tem IA ou não" (vitoria.md, seção 1). */
   ia: {
-    anthropicApiKey: string;
+    provedor: "anthropic" | "gemini";
+    /** A chave do provedor escolhido (`ANTHROPIC_API_KEY` ou `GEMINI_API_KEY`). */
+    apiKey: string;
     ligada: boolean;
-    /** Nome real do modelo da Anthropic para cada uso lógico (`ProvedorIA`); troca sem mudar código. */
+    /** Nome real do modelo do provedor escolhido para cada uso lógico (`ProvedorIA`); troca sem mudar código. */
     modelos: { vitoria: string; rascunho: string; digitalizacao: string };
   };
   /** Limites de uso da Vitória (preenchidos já nesta fase; só passam a valer quando a rota dela existir). */
@@ -73,6 +86,25 @@ export interface Config {
     limitePorContaDia: number;
     limiteGlobalDia: number;
     maxTokensResposta: number;
+  };
+}
+
+/** Escolhe a chave e os modelos do provedor de IA indicado em `IA_PROVEDOR` (padrão: a Anthropic). */
+export function lerConfigIA(env: NodeJS.ProcessEnv = process.env): Config["ia"] {
+  const e = esquemaIA.parse(env);
+  if (e.IA_PROVEDOR === "gemini") {
+    return {
+      provedor: "gemini",
+      apiKey: e.GEMINI_API_KEY,
+      ligada: Boolean(e.GEMINI_API_KEY),
+      modelos: { vitoria: e.GEMINI_MODELO_VITORIA, rascunho: e.GEMINI_MODELO_RASCUNHO, digitalizacao: e.GEMINI_MODELO_DIGITALIZACAO },
+    };
+  }
+  return {
+    provedor: "anthropic",
+    apiKey: e.ANTHROPIC_API_KEY,
+    ligada: Boolean(e.ANTHROPIC_API_KEY),
+    modelos: { vitoria: e.ANTHROPIC_MODELO_VITORIA, rascunho: e.ANTHROPIC_MODELO_RASCUNHO, digitalizacao: e.ANTHROPIC_MODELO_DIGITALIZACAO },
   };
 }
 
@@ -102,11 +134,7 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     smtpUrl: e.SMTP_URL,
     emailRemetente: e.EMAIL_REMETENTE,
     painelUrl: e.PAINEL_URL.replace(/\/$/, ""),
-    ia: {
-      anthropicApiKey: e.ANTHROPIC_API_KEY,
-      ligada: Boolean(e.ANTHROPIC_API_KEY),
-      modelos: { vitoria: e.ANTHROPIC_MODELO_VITORIA, rascunho: e.ANTHROPIC_MODELO_RASCUNHO, digitalizacao: e.ANTHROPIC_MODELO_DIGITALIZACAO },
-    },
+    ia: lerConfigIA(env),
     vitoria: {
       limitePorConversa: e.VITORIA_LIMITE_POR_CONVERSA,
       limitePorContaDia: e.VITORIA_LIMITE_POR_CONTA_DIA,

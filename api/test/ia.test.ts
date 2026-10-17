@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { lerConfig } from "../src/config";
-import { IAIndisponivel, ProvedorIAEmMemoria, ProvedorIAIndisponivel } from "../src/servicos/ia";
+import { criarProvedorIA, IAIndisponivel, ProvedorIAAnthropic, ProvedorIAEmMemoria, ProvedorIAGemini, ProvedorIAIndisponivel } from "../src/servicos/ia";
 import { criarAmbiente } from "./ajuda";
 
 const ENV_BASE = {
@@ -13,7 +13,8 @@ const ENV_BASE = {
 describe("Módulo de IA genérico", () => {
   it("sem ANTHROPIC_API_KEY, a configuração sobe com a IA desligada", () => {
     const config = lerConfig({ ...ENV_BASE });
-    assert.equal(config.ia.anthropicApiKey, "");
+    assert.equal(config.ia.provedor, "anthropic");
+    assert.equal(config.ia.apiKey, "");
     assert.equal(config.ia.ligada, false);
     // Defaults seguros, nunca derrubam a subida.
     assert.equal(config.vitoria.limitePorConversa, 20);
@@ -26,7 +27,32 @@ describe("Módulo de IA genérico", () => {
   it("com ANTHROPIC_API_KEY, a configuração liga a IA", () => {
     const config = lerConfig({ ...ENV_BASE, ANTHROPIC_API_KEY: "chave-anthropic" });
     assert.equal(config.ia.ligada, true);
-    assert.equal(config.ia.anthropicApiKey, "chave-anthropic");
+    assert.equal(config.ia.apiKey, "chave-anthropic");
+    assert.equal(config.ia.modelos.vitoria, "claude-haiku-5-5");
+  });
+
+  it("com IA_PROVEDOR=gemini, a chave e os modelos são os do Gemini; a chave da Anthropic não liga a IA", () => {
+    const semChave = lerConfig({ ...ENV_BASE, IA_PROVEDOR: "gemini", ANTHROPIC_API_KEY: "chave-anthropic" });
+    assert.equal(semChave.ia.provedor, "gemini");
+    assert.equal(semChave.ia.ligada, false);
+
+    const config = lerConfig({ ...ENV_BASE, IA_PROVEDOR: "gemini", GEMINI_API_KEY: "  chave-gemini\n", GEMINI_MODELO_VITORIA: "gemini-3.5-flash-lite" });
+    assert.equal(config.ia.ligada, true);
+    assert.equal(config.ia.apiKey, "chave-gemini");
+    assert.equal(config.ia.modelos.vitoria, "gemini-3.5-flash-lite");
+    assert.equal(config.ia.modelos.rascunho, "gemini-3.8-flash");
+  });
+
+  it("IA_PROVEDOR desconhecido derruba a subida, em vez de cair em outro provedor sem avisar", () => {
+    assert.throws(() => lerConfig({ ...ENV_BASE, IA_PROVEDOR: "gemini-pro" }));
+  });
+
+  it("criarProvedorIA escolhe o provedor pela configuração", () => {
+    const maxTokens = 1024;
+    assert.ok(criarProvedorIA(lerConfig({ ...ENV_BASE }).ia, maxTokens) instanceof ProvedorIAIndisponivel);
+    assert.ok(criarProvedorIA(lerConfig({ ...ENV_BASE, ANTHROPIC_API_KEY: "a" }).ia, maxTokens) instanceof ProvedorIAAnthropic);
+    assert.ok(criarProvedorIA(lerConfig({ ...ENV_BASE, IA_PROVEDOR: "gemini", GEMINI_API_KEY: "g" }).ia, maxTokens) instanceof ProvedorIAGemini);
+    assert.ok(criarProvedorIA(lerConfig({ ...ENV_BASE, IA_PROVEDOR: "gemini" }).ia, maxTokens) instanceof ProvedorIAIndisponivel);
   });
 
   it("a api sobe normalmente sem ANTHROPIC_API_KEY", async () => {

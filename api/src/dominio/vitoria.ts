@@ -217,12 +217,16 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
   } catch (erro) {
     // Rede fora do ar, chave inválida, HTTP ruim ou qualquer outra falha do fornecedor: cai no fallback, nunca num 500
     // (a resposta da rota já pode estar em streaming, sem mais como virar um erro HTTP).
-    if (!(erro instanceof IAIndisponivel)) console.error("Vitória: IA falhou de um jeito inesperado", erro);
+    if (erro instanceof IAIndisponivel) console.warn(`Vitória: IA indisponível, respondendo sem IA (${erro.message})`);
+    else console.error("Vitória: IA falhou de um jeito inesperado", erro);
     return respostaSemIA(db, agora(), pedido, "sem_ia");
   }
 
   const interpretada = interpretarRespostaIA(bruto);
-  if (!interpretada) return respostaSemIA(db, agora(), pedido, "sem_ia");
+  if (!interpretada) {
+    console.warn(`Vitória: a IA respondeu fora do formato esperado, respondendo sem IA (${bruto.slice(0, 200)})`);
+    return respostaSemIA(db, agora(), pedido, "sem_ia");
+  }
 
   await registrarUso(db, pedido.usuarioId, dia);
 

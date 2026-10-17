@@ -10,7 +10,7 @@ import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servi
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
 import { EmailEmMemoria, EmailSmtp } from "./servicos/email";
-import { ProvedorIAAnthropic, ProvedorIAIndisponivel } from "./servicos/ia";
+import { criarProvedorIA } from "./servicos/ia";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
@@ -59,12 +59,11 @@ async function main() {
     email,
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
-    ia: config.ia.ligada
-      ? new ProvedorIAAnthropic(config.ia.anthropicApiKey, config.ia.modelos, config.vitoria.maxTokensResposta)
-      : new ProvedorIAIndisponivel(),
+    ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),
     agora: () => new Date(),
   };
-  if (!config.ia.ligada) console.warn("ANTHROPIC_API_KEY vazio: o módulo de IA fica desligado (fallback sem IA).");
+  if (config.ia.ligada) console.log(`IA ligada: ${config.ia.provedor} (Vitória: ${config.ia.modelos.vitoria})`);
+  else console.warn(`Chave de IA vazia para IA_PROVEDOR=${config.ia.provedor} (${config.ia.provedor === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY"}): o módulo de IA fica desligado (fallback sem IA).`);
 
   const parar = iniciarTarefas(deps);
   const servidor = serve({ fetch: criarApp(deps).fetch, port: config.porta }, ({ port }) => console.log(`api em http://localhost:${port}`));

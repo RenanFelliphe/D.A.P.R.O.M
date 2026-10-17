@@ -1,6 +1,7 @@
 /**
- * Contrato do módulo de IA genérico (Claude/Anthropic). Fica "desligado" (`ProvedorIAIndisponivel`) enquanto não há
- * chave configurada, e liga trocando só a variável de ambiente (`ProvedorIAAnthropic`), sem mudar quem chama.
+ * Contrato do módulo de IA genérico. Fica "desligado" (`ProvedorIAIndisponivel`) enquanto não há chave configurada, e
+ * liga só com variáveis de ambiente (`IA_PROVEDOR` mais a chave: `ProvedorIAAnthropic` ou `ProvedorIAGemini`, escolhidos
+ * em `criarProvedorIA`), sem mudar quem chama.
  */
 
 export type PapelDeMensagem = "sistema" | "usuario" | "assistente";
@@ -12,7 +13,7 @@ export interface BlocoDeMensagem {
   cache?: boolean;
 }
 
-/** Nome lógico do uso (não o nome do modelo real); a tradução para o modelo da Anthropic fica na configuração. */
+/** Nome lógico do uso (não o nome do modelo real); a tradução para o modelo do provedor fica na configuração. */
 export type ModeloLogico = "vitoria" | "rascunho" | "digitalizacao";
 
 export interface PedidoDeTexto {

@@ -17,7 +17,7 @@ export interface Deps {
   sap: ClienteSap;
   /** O registro de funcionários (RH), real ou simulado. */
   rh: ClienteRh;
-  /** Módulo de IA genérico (Claude/Anthropic); `ProvedorIAIndisponivel` até a chave existir (`config.ia.ligada`). */
+  /** Módulo de IA genérico (Anthropic ou Gemini, por `IA_PROVEDOR`); `ProvedorIAIndisponivel` até a chave existir (`config.ia.ligada`). */
   ia: ProvedorIA;
   /** Relógio da `api`; os testes o fixam. */
   agora: () => Date;
