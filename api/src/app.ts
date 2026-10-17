@@ -22,7 +22,9 @@ import { avisoPorHttp, rotasRhSimulado, type EnviarAvisoRh } from "./rotas/rh-si
 import { rotasSap } from "./rotas/sap";
 import { rotasSapSimulado } from "./rotas/sap-simulado";
 import { rotasSaude } from "./rotas/saude";
+import { rotasTreinamentos } from "./rotas/treinamentos";
 import { rotasUsuarios } from "./rotas/usuarios";
+import { rotasVitoria } from "./rotas/vitoria";
 
 /**
  * Monta a aplicação HTTP. Toda rota, menos `GET /saude`, `/auth/login`, `/auth/refresh`, `POST /rh/avisos` (token do registro),
@@ -55,6 +57,8 @@ export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa 
   app.route("/", rotasPdf(deps, auth));
   app.route("/", rotasAuditoria(deps, auth));
   app.route("/", rotasGamificacao(deps, auth));
+  app.route("/", rotasTreinamentos(deps, auth));
+  app.route("/", rotasVitoria(deps, auth));
   app.route("/", rotasRh(deps, auth));
   if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps, auth));
   if (deps.config.rhSimulado) app.route("/rh-simulado", rotasRhSimulado(deps, auth, opcoes.enviarAvisoRh ?? avisoPorHttp(deps)));

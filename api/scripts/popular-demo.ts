@@ -14,6 +14,7 @@ import { popularDemo } from "../src/db/seed/demo";
 import { ArmazenamentoSupabase } from "../src/servicos/armazenamento";
 import { AuthSupabase } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
+import { ProvedorIAAnthropic, ProvedorIAIndisponivel } from "../src/servicos/ia";
 import { ClienteRhHttp } from "../src/servicos/rh-http";
 import { ClienteSapHttp } from "../src/servicos/sap-http";
 
@@ -28,6 +29,9 @@ try {
     email: new EmailEmMemoria(),
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
+    ia: config.ia.ligada
+      ? new ProvedorIAAnthropic(config.ia.anthropicApiKey, config.ia.modelos, config.vitoria.maxTokensResposta)
+      : new ProvedorIAIndisponivel(),
     agora: () => new Date(),
   });
   if (resultado.jaPopulado) {

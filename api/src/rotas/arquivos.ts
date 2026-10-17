@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Deps } from "../deps";
-import { apr, aprParticipante, evidencia, execucao, execucaoAssinatura, os, usuario } from "../db/schema";
+import { apr, aprParticipante, evidencia, execucao, execucaoAssinatura, os, treinamentoServicoVersao, usuario } from "../db/schema";
 import { podeVerEquipe, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
 import { ErroApi, invalido, naoEncontrado, proibido } from "../http/erros";
 import { responder } from "../http/resposta";
@@ -19,6 +19,8 @@ const TIPOS = {
   foto: { bucket: "fotos", limite: 10 * MB, formato: "imagem" },
   assinatura: { bucket: "assinaturas", limite: 1 * MB, formato: "imagem" },
   pdf: { bucket: "documentos", limite: 10 * MB, formato: "pdf" },
+  /** Cenário e passos da explicação de um treinamento de serviço (editor do admin). */
+  treinamento_imagem: { bucket: "treinamentos", limite: 5 * MB, formato: "imagem" },
 } as const satisfies Record<string, { bucket: Bucket; limite: number; formato: "imagem" | "pdf" }>;
 type TipoDeEnvio = keyof typeof TIPOS;
 
@@ -26,7 +28,7 @@ type TipoDeEnvio = keyof typeof TIPOS;
 const ehPdf = (bytes: Uint8Array) => Buffer.from(bytes.subarray(0, 1024)).includes("%PDF-");
 
 /** Descobre de quem é o arquivo `id` e em qual bucket ele está, a partir do que o referencia; `null` = ninguém o referencia. */
-async function localizar(deps: Deps, id: string): Promise<{ bucket: Bucket; equipeId: string | null; donoId?: string } | null> {
+async function localizar(deps: Deps, id: string): Promise<{ bucket: Bucket; equipeId: string | null; donoId?: string; publico?: boolean } | null> {
   const [daExecucao] = await deps.db
     .select({ equipeId: os.equipeId, tipo: evidencia.tipo })
     .from(evidencia)
@@ -69,11 +71,29 @@ async function localizar(deps: Deps, id: string): Promise<{ bucket: Bucket; equi
 
   const [pdf] = await deps.db.select({ equipeId: os.equipeId }).from(os).where(eq(os.pdfPath, id)).limit(1);
   if (pdf) return { bucket: "pdfs", equipeId: pdf.equipeId };
+
+  // Cenário e passos da explicação de um treinamento de serviço: material de treino, não dado de campo; quem treina lê.
+  const [doTreinamento] = await deps.db
+    .select({ id: treinamentoServicoVersao.id })
+    .from(treinamentoServicoVersao)
+    .where(
+      or(
+        eq(treinamentoServicoVersao.cenarioPath, id),
+        sql`exists (select 1 from jsonb_array_elements(${treinamentoServicoVersao.explicacao}) passo where passo ->> 'imagem_path' = ${id})`,
+      ),
+    )
+    .limit(1);
+  if (doTreinamento) return { bucket: "treinamentos", equipeId: null, publico: true };
+
+  // Assinatura de quem publicou um treinamento de serviço: só o admin a revê (ninguém além dele vê a tela de versões).
+  const [daVersao] = await deps.db.select({ id: treinamentoServicoVersao.id }).from(treinamentoServicoVersao).where(eq(treinamentoServicoVersao.assinaturaPath, id)).limit(1);
+  if (daVersao) return { bucket: "assinaturas", equipeId: null };
+
   return null;
 }
 
-const podeLer = (u: UsuarioAutenticado, alvo: { equipeId: string | null; donoId?: string }) =>
-  alvo.donoId === u.id || (alvo.equipeId !== null ? podeVerEquipe(u, alvo.equipeId) : u.perfil === "admin");
+const podeLer = (u: UsuarioAutenticado, alvo: { equipeId: string | null; donoId?: string; publico?: boolean }) =>
+  alvo.publico || alvo.donoId === u.id || (alvo.equipeId !== null ? podeVerEquipe(u, alvo.equipeId) : u.perfil === "admin");
 
 /** Fotos, assinaturas e PDFs sobem com o id gerado no cliente, antes do evento que os referencia (Decisão-chave 3). */
 export function rotasArquivos(deps: Deps, { autenticar }: Autenticacao) {
@@ -86,7 +106,7 @@ export function rotasArquivos(deps: Deps, { autenticar }: Autenticacao) {
     const arquivo = form?.arquivo;
     const tipo = form?.tipo;
     if (!(arquivo instanceof File)) throw invalido("validacao", "arquivo: envie o arquivo no campo multipart \"arquivo\"");
-    if (typeof tipo !== "string" || !Object.hasOwn(TIPOS, tipo)) throw invalido("validacao", 'tipo: use "foto", "assinatura" ou "pdf"');
+    if (typeof tipo !== "string" || !Object.hasOwn(TIPOS, tipo)) throw invalido("validacao", 'tipo: use "foto", "assinatura", "pdf" ou "treinamento_imagem"');
     const { bucket, limite, formato } = TIPOS[tipo as TipoDeEnvio];
     if (formato === "imagem" && !arquivo.type.startsWith("image/")) throw invalido("tipo_de_arquivo", "Envie uma imagem");
     if (arquivo.size === 0) throw invalido("arquivo_vazio", "Arquivo vazio");

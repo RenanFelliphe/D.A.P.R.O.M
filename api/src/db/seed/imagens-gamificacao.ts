@@ -197,7 +197,8 @@ function brasao(corHex: string): Uint8Array {
 const NIVEIS: Record<string, string> = { bronze: "#CD7F32", prata: "#A8A9AD", ouro: "#D4AF37", equipe: "#4F86E8" };
 
 /** O troféu de uma conquista: taça com alças, haste e base, na cor do nível (bronze, prata, ouro; azul para as de equipe), e o emblema. */
-function trofeu(nivel: keyof typeof NIVEIS, emblema: Emblema): Uint8Array {
+/** Exportado também para `treinamento-servico-imagens.ts`, que desenha os troféus das conquistas dos treinamentos de serviço. */
+export function trofeu(nivel: keyof typeof NIVEIS, emblema: Emblema): Uint8Array {
   const metal = hex(NIVEIS[nivel]!);
   const sombra = tom(metal, 0.62);
   const luz = tom(metal, 1.28);
@@ -219,7 +220,7 @@ function trofeu(nivel: keyof typeof NIVEIS, emblema: Emblema): Uint8Array {
   });
 }
 
-const nivelDaConquista = (pontos: number, deEquipe: boolean): keyof typeof NIVEIS => (deEquipe ? "equipe" : pontos >= 100 ? "ouro" : pontos >= 50 ? "prata" : "bronze");
+export const nivelDaConquista = (pontos: number, deEquipe: boolean): keyof typeof NIVEIS => (deEquipe ? "equipe" : pontos >= 100 ? "ouro" : pontos >= 50 ? "prata" : "bronze");
 
 /** Todas as imagens da carga inicial, pelo id do arquivo no bucket `gamificacao`. */
 export function imagensDaCarga(): Map<string, Uint8Array> {

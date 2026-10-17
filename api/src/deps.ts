@@ -5,6 +5,7 @@ import type { ProvedorAuth } from "./servicos/auth";
 import type { Email } from "./servicos/email";
 import type { ClienteRh } from "./servicos/rh";
 import type { ClienteSap } from "./servicos/sap";
+import type { ProvedorIA } from "./servicos/ia";
 
 /** Tudo o que as rotas e as tarefas usam do mundo de fora; os testes trocam cada item por uma versão em memória. */
 export interface Deps {
@@ -16,6 +17,8 @@ export interface Deps {
   sap: ClienteSap;
   /** O registro de funcionários (RH), real ou simulado. */
   rh: ClienteRh;
+  /** Módulo de IA genérico (Claude/Anthropic); `ProvedorIAIndisponivel` até a chave existir (`config.ia.ligada`). */
+  ia: ProvedorIA;
   /** Relógio da `api`; os testes o fixam. */
   agora: () => Date;
 }

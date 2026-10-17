@@ -25,6 +25,8 @@ export const REGRA_CODIGOS = [
   "ciencia_no_prazo",
   "intervalo_definido",
   "conquista_obtida",
+  "treinamento_servico_concluido",
+  "treinamento_servico_fases",
 ] as const;
 export type RegraCodigo = (typeof REGRA_CODIGOS)[number];
 
@@ -42,6 +44,8 @@ export const CRITERIOS_DE_PESSOA = [
   "ciencias_no_prazo",
   "intervalos_definidos",
   "campo_de_treino",
+  "treinamentos_servico_concluidos",
+  "treinamentos_gabaritados",
   "pontos_gerais",
   "pontos_numa_temporada",
   "patente",

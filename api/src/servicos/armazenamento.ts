@@ -3,9 +3,9 @@ import { cabecalhosDeServico } from "./auth";
 
 /**
  * `pdfs` guarda o PDF gerado de cada OS; `documentos`, os PDFs anexados como evidência (laudos, atestados); `gamificacao`, as
- * imagens das patentes e das conquistas.
+ * imagens das patentes e das conquistas; `treinamentos`, o cenário e as imagens dos passos dos treinamentos de serviço.
  */
-export const BUCKETS = ["fotos", "assinaturas", "pdfs", "importacoes", "documentos", "gamificacao"] as const;
+export const BUCKETS = ["fotos", "assinaturas", "pdfs", "importacoes", "documentos", "gamificacao", "treinamentos"] as const;
 export type Bucket = (typeof BUCKETS)[number];
 
 /**

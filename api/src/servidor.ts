@@ -6,9 +6,11 @@ import { carregarDadosIniciais } from "./db/seed/carregar";
 import { carregarOrdensDeExemplo } from "./db/seed/ordens-sap";
 import { preencherHistoricoDaGamificacao } from "./db/seed/gamificacao-historico";
 import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
+import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servico-imagens";
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
 import { EmailEmMemoria, EmailSmtp } from "./servicos/email";
+import { ProvedorIAAnthropic, ProvedorIAIndisponivel } from "./servicos/ia";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
@@ -47,6 +49,7 @@ async function main() {
   await armazenamento.garantirBuckets().catch((erro) => console.warn(`Buckets do Storage não verificados: ${erro.message}`));
   // As imagens das patentes e das conquistas da carga inicial (as que o admin trocou não voltam).
   await garantirImagensDaGamificacao(armazenamento).catch((erro) => console.warn(`Imagens da gamificação não verificadas: ${erro.message}`));
+  await garantirImagensDeTreinamentoServico(armazenamento).catch((erro) => console.warn(`Imagens dos treinamentos de serviço não verificadas: ${erro.message}`));
 
   const deps = {
     db,
@@ -56,8 +59,12 @@ async function main() {
     email,
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
+    ia: config.ia.ligada
+      ? new ProvedorIAAnthropic(config.ia.anthropicApiKey, config.ia.modelos, config.vitoria.maxTokensResposta)
+      : new ProvedorIAIndisponivel(),
     agora: () => new Date(),
   };
+  if (!config.ia.ligada) console.warn("ANTHROPIC_API_KEY vazio: o módulo de IA fica desligado (fallback sem IA).");
 
   const parar = iniciarTarefas(deps);
   const servidor = serve({ fetch: criarApp(deps).fetch, port: config.porta }, ({ port }) => console.log(`api em http://localhost:${port}`));

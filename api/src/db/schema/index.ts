@@ -13,3 +13,5 @@ export * from "./gamificacao";
 export * from "./rh";
 export * from "./sap-simulado";
 export * from "./ausencia";
+export * from "./treinamento-servico";
+export * from "./vitoria";

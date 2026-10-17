@@ -1,4 +1,5 @@
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
 import {
   CRITERIOS_DE_EQUIPE,
@@ -12,6 +13,8 @@ import {
   temporada,
   temporadaEquipe,
   temporadaUsuario,
+  treinamentoServicoTentativa,
+  treinamentoServicoVersao,
   usuario,
   equipe,
   type Criterio,
@@ -53,6 +56,8 @@ export const CRITERIOS_INFO: Record<Criterio, InfoDoCriterio> = {
   ciencias_no_prazo: pessoa("Ciências no prazo (supervisor)", "ciências"),
   intervalos_definidos: pessoa("Intervalos de preventiva definidos (supervisor)", "planos"),
   campo_de_treino: pessoa("Campo de treino concluído", "", { pedeQuantidade: false }),
+  treinamentos_servico_concluidos: pessoa("Treinamentos de serviço concluídos", "treinamentos"),
+  treinamentos_gabaritados: pessoa("Treinamentos de serviço gabaritados", "treinamentos"),
   pontos_gerais: pessoa("Pontos gerais", "pontos"),
   pontos_numa_temporada: pessoa("Pontos numa temporada", "pontos"),
   patente: pessoa("Patente alcançada numa temporada", "", { pedeQuantidade: false, pedePatente: true }),
@@ -99,6 +104,10 @@ export function textoDaMeta(c: { criterio: Criterio; quantidade: number }, paten
       return `Defina o intervalo de ${pl(n, "plano", "planos")} de preventiva`;
     case "campo_de_treino":
       return "Conclua o Campo de treino";
+    case "treinamentos_servico_concluidos":
+      return `Conclua ${pl(n, "treinamento de serviço", "treinamentos de serviço")}`;
+    case "treinamentos_gabaritados":
+      return `Gabarite ${pl(n, "treinamento de serviço", "treinamentos de serviço")}`;
     case "pontos_gerais":
       return `Some ${pl(n, "ponto", "pontos")} no total`;
     case "pontos_numa_temporada":
@@ -155,6 +164,11 @@ export interface DadosDaPessoa {
   extrato: LinhaDoExtrato[];
   /** As temporadas fechadas em que a pessoa entrou: a posição e quando fecharam. */
   fechadas: { temporada: string; posicao: number; fechadaEm: Date | null }[];
+  /**
+   * Quando a pessoa gabaritou um treinamento de serviço (todas as fases certas na primeira resposta), na tentativa que
+   * pontuou (a primeira que ela concluiu daquele treinamento: abandonar e refazer não conta como "a primeira").
+   */
+  treinamentosGabaritados: Date[];
 }
 
 export async function carregarDadosDaPessoa(db: Db, usuarioId: string): Promise<DadosDaPessoa> {
@@ -175,7 +189,29 @@ export async function carregarDadosDaPessoa(db: Db, usuarioId: string): Promise<
     .from(temporadaUsuario)
     .innerJoin(temporada, eq(temporada.codigo, temporadaUsuario.temporada))
     .where(eq(temporadaUsuario.usuarioId, usuarioId));
-  return { extrato, fechadas };
+
+  const outraTentativa = alias(treinamentoServicoTentativa, "outra_tentativa");
+  const gabaritados = await db
+    .select({ ocorridoEm: treinamentoServicoTentativa.concluidaEm })
+    .from(treinamentoServicoTentativa)
+    .innerJoin(treinamentoServicoVersao, eq(treinamentoServicoVersao.id, treinamentoServicoTentativa.versaoId))
+    .where(
+      and(
+        eq(treinamentoServicoTentativa.usuarioId, usuarioId),
+        eq(treinamentoServicoTentativa.pontuada, true),
+        sql`${treinamentoServicoTentativa.fasesCertas} = jsonb_array_length(${treinamentoServicoVersao.fases})`,
+        // "Gabaritado" vale só na primeira tentativa já aberta do treinamento: abandonar a 1ª e gabaritar a 2ª não conta.
+        notExists(
+          db
+            .select({ um: sql`1` })
+            .from(outraTentativa)
+            .where(and(eq(outraTentativa.usuarioId, treinamentoServicoTentativa.usuarioId), eq(outraTentativa.treinamentoId, treinamentoServicoTentativa.treinamentoId), sql`${outraTentativa.iniciadaEm} < ${treinamentoServicoTentativa.iniciadaEm}`)),
+        ),
+      ),
+    )
+    .orderBy(asc(treinamentoServicoTentativa.concluidaEm));
+
+  return { extrato, fechadas, treinamentosGabaritados: gabaritados.map((g) => g.ocorridoEm).filter((d): d is Date => d !== null) };
 }
 
 const REGRA_DO_CRITERIO: Partial<Record<Criterio, RegraCodigo>> = {
@@ -190,6 +226,7 @@ const REGRA_DO_CRITERIO: Partial<Record<Criterio, RegraCodigo>> = {
   ciencias_no_prazo: "ciencia_no_prazo",
   intervalos_definidos: "intervalo_definido",
   campo_de_treino: "treinamento_concluido",
+  treinamentos_servico_concluidos: "treinamento_servico_concluido",
   aprs_da_equipe: "apr_completa",
   execucoes_da_equipe: "execucao_concluida",
   preventivas_em_dia_da_equipe: "preventiva_em_dia",
@@ -212,6 +249,8 @@ export function progressoDaPessoa(m: Meta, d: DadosDaPessoa): Progresso {
 
   if (regra) return por(contar(regra), m.criterio === "campo_de_treino" ? 1 : m.quantidade);
   switch (m.criterio) {
+    case "treinamentos_gabaritados":
+      return por(d.treinamentosGabaritados.length, m.quantidade);
     case "locais_diferentes":
       return por(new Set(d.extrato.filter((l) => l.regra === "execucao_concluida" && l.localId).map((l) => l.localId)).size, m.quantidade);
     case "pontos_gerais":
@@ -236,6 +275,8 @@ export function quandoBateuPessoa(m: Meta, d: DadosDaPessoa): Date | null {
   const regra = REGRA_DO_CRITERIO[m.criterio];
   if (regra) return d.extrato.filter((l) => l.regra === regra)[(m.criterio === "campo_de_treino" ? 1 : m.quantidade) - 1]?.ocorridoEm ?? null;
   switch (m.criterio) {
+    case "treinamentos_gabaritados":
+      return d.treinamentosGabaritados[m.quantidade - 1] ?? null;
     case "locais_diferentes": {
       const primeira = new Map<string, Date>();
       for (const l of d.extrato) if (l.regra === "execucao_concluida" && l.localId && !primeira.has(l.localId)) primeira.set(l.localId, l.ocorridoEm);

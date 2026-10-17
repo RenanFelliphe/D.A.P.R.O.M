@@ -182,3 +182,16 @@ export const pontuarAssinatura = async (c: ContextoDePontos, usuarioId: string, 
 /** Boas-vindas: o Campo de treino concluído (um por conta). */
 export const pontuarTreinamento = async (c: ContextoDePontos, usuarioId: string, quando: Date): Promise<Ganho[]> =>
   concluir(c, await lancar(c, [{ usuarioId, regra: "treinamento_concluido", chave: "treinamento", ocorridoEm: quando }]));
+
+/**
+ * Treinamento de serviço concluído, com as fases certas (até 10, pela primeira resposta de cada uma): no máximo 15 pontos
+ * por treinamento. Só a primeira conclusão de cada treinamento chega aqui (o domínio do jogo confere antes de chamar).
+ */
+export async function pontuarTreinamentoServico(c: ContextoDePontos, usuarioId: string, treinamentoId: string, fasesCertas: number, quando: Date): Promise<Ganho[]> {
+  const entradas: Entrada[] = [{ usuarioId, regra: "treinamento_servico_concluido", chave: `treinamento_servico:${treinamentoId}`, ocorridoEm: quando }];
+  if (fasesCertas > 0) {
+    const pontos = Math.min(fasesCertas, 10);
+    entradas.push({ usuarioId, regra: "treinamento_servico_fases", chave: `treinamento_servico_fases:${treinamentoId}`, pontos, nome: `${pontos} fase(s) certa(s)`, ocorridoEm: quando });
+  }
+  return concluir(c, await lancar(c, entradas));
+}

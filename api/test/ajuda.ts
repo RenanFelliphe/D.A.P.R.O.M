@@ -19,6 +19,7 @@ import type { Deps } from "../src/deps";
 import { ArmazenamentoEmMemoria } from "../src/servicos/armazenamento";
 import { AuthEmMemoria } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
+import { ProvedorIAEmMemoria } from "../src/servicos/ia";
 import { RegistroIndisponivel, type ClienteRh, type FuncionarioRh } from "../src/servicos/rh";
 import type { ClienteSap, OrdemSap } from "../src/servicos/sap";
 
@@ -45,6 +46,9 @@ export const configDeTeste: Config = {
   smtpUrl: "",
   emailRemetente: "daprom@teste",
   painelUrl: "http://painel.local",
+  // Sem chave real: os testes programam o `ProvedorIAEmMemoria` (amb.ia) quando precisam simular a IA ligada.
+  ia: { anthropicApiKey: "", ligada: false, modelos: { vitoria: "modelo-vitoria-teste", rascunho: "modelo-rascunho-teste", digitalizacao: "modelo-digitalizacao-teste" } },
+  vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
 };
 
 /** SAP em memória: o que o teste coloca em `ordens` é o que a leitura enxerga. */
@@ -115,7 +119,8 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   const email = new EmailEmMemoria();
   const sap = new SapEmMemoria();
   const rh = new RhEmMemoria();
-  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, agora: () => relogio.agora };
+  const ia = new ProvedorIAEmMemoria();
+  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, ia, agora: () => relogio.agora };
   // O aviso que o simulador do RH manda ao DAPROM: fica anotado em `avisosRh` e, com `rhSimulador.encaminhar`, chega de verdade em `POST /rh/avisos`.
   const avisosRh: string[][] = [];
   const rhSimulador = { encaminhar: false };
@@ -208,7 +213,7 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
 
   const sql = async <T = Record<string, unknown>>(texto: string, params: unknown[] = []) => (await cliente.query<T>(texto, params)).rows;
 
-  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, sql, fechar: () => cliente.close() };
+  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, sql, fechar: () => cliente.close() };
 }
 
 export type Ambiente = Awaited<ReturnType<typeof criarAmbiente>>;

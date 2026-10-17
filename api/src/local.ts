@@ -24,12 +24,14 @@ import { carregarDadosIniciais } from "./db/seed/carregar";
 import { carregarOrdensDeExemplo } from "./db/seed/ordens-sap";
 import { carregarRegistroDosUsuarios } from "./db/seed/registro-rh";
 import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
+import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servico-imagens";
 import type { Deps } from "./deps";
 import { executarLeitura } from "./servicos/leitura-sap";
 import { ArmazenamentoEmMemoria } from "./servicos/armazenamento";
 import { DOMINIO_DEMO, emailDoNome } from "./dominio/usuarios";
 import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
+import { ProvedorIAAnthropic, ProvedorIAIndisponivel } from "./servicos/ia";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
@@ -41,6 +43,8 @@ const SEGREDO_JWT = "segredo-local-so-para-desenvolvimento-0123456789";
 const TOKEN_SAP = "token-de-desenvolvimento";
 const TOKEN_RH = "token-rh-de-desenvolvimento";
 const TOKEN_AVISO_RH = "token-aviso-rh-de-desenvolvimento";
+// IA desligada por padrão também no modo local; definir ANTHROPIC_API_KEY no ambiente liga de verdade, sem mudar código.
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? "";
 
 /** PNG de 1×1 pixel: serve de "assinatura" nos dados de exemplo. */
 const PNG = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
@@ -65,6 +69,16 @@ const config: Config = {
   smtpUrl: "",
   emailRemetente: "daprom@localhost",
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
+  ia: {
+    anthropicApiKey: ANTHROPIC_API_KEY,
+    ligada: Boolean(ANTHROPIC_API_KEY),
+    modelos: {
+      vitoria: process.env.ANTHROPIC_MODELO_VITORIA ?? "claude-haiku-5-5",
+      rascunho: process.env.ANTHROPIC_MODELO_RASCUNHO ?? "claude-opus-5-5",
+      digitalizacao: process.env.ANTHROPIC_MODELO_DIGITALIZACAO ?? "claude-haiku-5-5",
+    },
+  },
+  vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
 };
 
 async function main() {
@@ -85,6 +99,9 @@ async function main() {
     email: new EmailEmMemoria(),
     sap: new ClienteSapHttp(config.sapApiUrl, TOKEN_SAP),
     rh: new ClienteRhHttp(config.rhApiUrl, TOKEN_RH),
+    ia: config.ia.ligada
+      ? new ProvedorIAAnthropic(config.ia.anthropicApiKey, config.ia.modelos, config.vitoria.maxTokensResposta)
+      : new ProvedorIAIndisponivel(),
     agora: () => new Date(),
   };
 
@@ -98,6 +115,7 @@ async function main() {
   const assinaturaId = "00000000-0000-4000-8000-000000000001";
   await armazenamento.gravar("assinaturas", assinaturaId, PNG, "image/png");
   console.log(`Gamificação: ${await garantirImagensDaGamificacao(armazenamento)} imagens de patentes e conquistas`);
+  await garantirImagensDeTreinamentoServico(armazenamento);
 
   const logins: string[] = [];
   async function criar(matricula: string, nome: string, perfil: Perfil, centro: string | null, extra: { cargo?: string; email?: string } = {}) {

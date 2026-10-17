@@ -17,7 +17,7 @@ export interface DescricaoDaRegra {
   limite: string;
 }
 
-export const GRUPOS_DE_REGRAS = ["Principais", "Bônus da OS", "Boas-vindas", "Supervisor", "Conquistas"] as const;
+export const GRUPOS_DE_REGRAS = ["Principais", "Bônus da OS", "Boas-vindas", "Treinamentos", "Supervisor", "Conquistas"] as const;
 export type GrupoDeRegras = (typeof GRUPOS_DE_REGRAS)[number];
 
 export const REGRAS: Record<RegraCodigo, DescricaoDaRegra> = {
@@ -121,6 +121,24 @@ export const REGRAS: Record<RegraCodigo, DescricaoDaRegra> = {
     quando: "Quando o treino passa a concluído.",
     limite: "Uma por conta.",
   },
+  treinamento_servico_concluido: {
+    nome: "Treinamento de serviço concluído",
+    descricao: "Concluir a explicação e o jogo de um treinamento de serviço.",
+    pontos: 5,
+    grupo: "Treinamentos",
+    quem: "O técnico, inclusive quem aguarda liberação.",
+    quando: "Ao terminar as duas partes do treinamento pela primeira vez.",
+    limite: "Uma por treinamento.",
+  },
+  treinamento_servico_fases: {
+    nome: "Fases certas no treinamento",
+    descricao: "Acertar fases do jogo de um treinamento de serviço.",
+    pontos: 1,
+    grupo: "Treinamentos",
+    quem: "O técnico, inclusive quem aguarda liberação.",
+    quando: "Junto com o concluído: 1 ponto por fase cuja primeira resposta foi certa, no máximo 10.",
+    limite: "Um lançamento por treinamento (o jogo tem até 10 fases).",
+  },
   ciencia_no_prazo: {
     nome: "Ciência no prazo",
     descricao: "Dar a ciência da OS encerrada em até 72 horas.",
@@ -163,6 +181,8 @@ export const ORDEM_DAS_REGRAS: RegraCodigo[] = [
   "tecnico_novo",
   "assinatura_cadastrada",
   "treinamento_concluido",
+  "treinamento_servico_concluido",
+  "treinamento_servico_fases",
   "ciencia_no_prazo",
   "intervalo_definido",
   "conquista_obtida",

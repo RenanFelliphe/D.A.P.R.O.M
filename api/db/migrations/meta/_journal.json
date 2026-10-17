@@ -190,6 +190,20 @@
       "when": 1792121596315,
       "tag": "0026_representante_da_equipe",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792191462144,
+      "tag": "0027_treinamentos_de_servico",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792197995241,
+      "tag": "0028_vitoria_assistente",
+      "breakpoints": true
     }
   ]
 }

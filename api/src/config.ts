@@ -25,6 +25,15 @@ const esquema = z.object({
   SMTP_URL: z.string().default(""),
   EMAIL_REMETENTE: z.string().default("daprom@localhost"),
   PAINEL_URL: z.string().default("http://localhost:3000"),
+  // Módulo de IA (Claude/Anthropic): sem chave, a api sobe normalmente e fica "desligada" (vitoria.md, seção 1).
+  ANTHROPIC_API_KEY: z.string().default(""),
+  ANTHROPIC_MODELO_VITORIA: z.string().default("claude-haiku-5-5"),
+  ANTHROPIC_MODELO_RASCUNHO: z.string().default("claude-opus-5-5"),
+  ANTHROPIC_MODELO_DIGITALIZACAO: z.string().default("claude-haiku-5-5"),
+  VITORIA_LIMITE_POR_CONVERSA: z.coerce.number().int().positive().default(20),
+  VITORIA_LIMITE_POR_CONTA_DIA: z.coerce.number().int().positive().default(40),
+  VITORIA_LIMITE_GLOBAL_DIA: z.coerce.number().int().positive().default(1000),
+  VITORIA_MAX_TOKENS_RESPOSTA: z.coerce.number().int().positive().default(1024),
 });
 
 export interface Config {
@@ -51,6 +60,20 @@ export interface Config {
   smtpUrl: string;
   emailRemetente: string;
   painelUrl: string;
+  /** Módulo de IA genérico (`servicos/ia`): `ligada` é o único ponto de decisão "tem IA ou não" (vitoria.md, seção 1). */
+  ia: {
+    anthropicApiKey: string;
+    ligada: boolean;
+    /** Nome real do modelo da Anthropic para cada uso lógico (`ProvedorIA`); troca sem mudar código. */
+    modelos: { vitoria: string; rascunho: string; digitalizacao: string };
+  };
+  /** Limites de uso da Vitória (preenchidos já nesta fase; só passam a valer quando a rota dela existir). */
+  vitoria: {
+    limitePorConversa: number;
+    limitePorContaDia: number;
+    limiteGlobalDia: number;
+    maxTokensResposta: number;
+  };
 }
 
 /** Lê as variáveis de ambiente da `api` (ver a seção Plataforma da especificação); falha na subida se faltar alguma. */
@@ -79,5 +102,16 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     smtpUrl: e.SMTP_URL,
     emailRemetente: e.EMAIL_REMETENTE,
     painelUrl: e.PAINEL_URL.replace(/\/$/, ""),
+    ia: {
+      anthropicApiKey: e.ANTHROPIC_API_KEY,
+      ligada: Boolean(e.ANTHROPIC_API_KEY),
+      modelos: { vitoria: e.ANTHROPIC_MODELO_VITORIA, rascunho: e.ANTHROPIC_MODELO_RASCUNHO, digitalizacao: e.ANTHROPIC_MODELO_DIGITALIZACAO },
+    },
+    vitoria: {
+      limitePorConversa: e.VITORIA_LIMITE_POR_CONVERSA,
+      limitePorContaDia: e.VITORIA_LIMITE_POR_CONTA_DIA,
+      limiteGlobalDia: e.VITORIA_LIMITE_GLOBAL_DIA,
+      maxTokensResposta: e.VITORIA_MAX_TOKENS_RESPOSTA,
+    },
   };
 }
