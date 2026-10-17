@@ -21,7 +21,7 @@
 
 ## Situação atual da Vitória (17/10/2026)
 
-**Está integrada** na `api` e na `web`. O ambiente de desenvolvimento já está configurado com o Gemini gratuito (`IA_PROVEDOR=gemini` e `GEMINI_API_KEY` no `.env.local`), mas **a primeira chamada real ainda não foi conferida**: os testes do Gemini usam um `fetch` falso (seção 1.6.5). Sem a chave, ou com qualquer falha da IA, ela responde sem IA (seção 2.6).
+**Está integrada** na `api` e na `web`. O ambiente de desenvolvimento já está configurado com o Gemini gratuito (`IA_PROVEDOR=gemini` e `GEMINI_API_KEY` no `.env.local`), e **a primeira chamada real foi conferida em 17/10/2026**, com `pnpm vitoria:conferir-ia` (seção 2.11): 13 perguntas pela rota inteira, todas certas. Os testes automáticos do Gemini seguem usando um `fetch` falso (seção 1.6.3). Sem a chave, ou com qualquer falha da IA, ela responde sem IA (seção 2.6).
 
 ### O que ela faz
 
@@ -31,6 +31,7 @@
 | Leva à tela certa | botão "Me leve lá", só para os 37 destinos da lista fechada, conferidos na `api` e de novo na web |
 | Mostra na tela | navega e faz piscar o botão (`data-treino`) por 4 segundos |
 | Transforma consultas em link filtrado | "o que eu executei em maio de 2026" abre "Meus resultados" filtrado por `2026-05` |
+| Entende datas relativas e o mês sem o ano | "mês passado", "este mês" e "maio" (sem o ano) viram o mês certo: o pedido leva a data de hoje e uma tabela dos 12 últimos meses, montada pelo servidor (seção 2.10.5). Período que não é um mês ("ano passado") a Vitória não filtra: diz que só filtra por mês e pergunta qual |
 | Sugere perguntas da tela | 3 sugestões prontas ao abrir o painel, sem chamar a `api` nem a IA |
 | Responde sem IA | sem chave, sem cota, com falha da IA ou com limite estourado: busca por palavras no manual e as sugestões da tela, nunca uma tela de erro |
 | Limita o uso | 20 mensagens por conversa, 40 por conta por dia e 1.000 no total por dia |
@@ -44,8 +45,6 @@ Pendências: vão ser implementadas.
 
 | O quê | O que falta |
 |---|---|
-| Resposta conferida contra a API real do Gemini | a primeira chamada com a chave de verdade (seção 2.11) |
-| Entender datas relativas ("mês passado") ou o mês sem o ano ("maio") | o pedido à IA não leva a data de hoje (`montarPedido`, seção 2.10.5); ela teria de adivinhar o ano. Falta incluir a data no bloco da tela atual |
 | Bateria de cerca de 50 perguntas | montar a bateria; ela roda antes de cada apresentação (seção 2.9) |
 | Plano B no Sonnet 5.5 | depende da bateria e da chave da Anthropic |
 | A tela de perguntas sem resposta no menu do admin | hoje só abre pela URL ou por uma ação da Vitória (seção 2.10.6) |
@@ -72,6 +71,7 @@ Decisões: não vão ser implementadas.
 | 14/10/2026 | decididos a Vitória, os treinamentos de serviço, o fornecedor (Claude) e os custos; a digitalização de OS antigas é desenhada (seção 10) |
 | 16/10/2026 | implementados o módulo de IA (seção 1.5), a Vitória, níveis 1 a 3, em modo sem IA (seção 2.10), e os treinamentos de serviço sem IA ([treinamentos-de-servico.md](treinamentos-de-servico.md)) |
 | 17/10/2026 | o Gemini gratuito entra no módulo de IA, só para desenvolvimento e demonstração com dados fictícios (seção 1.6); a chave do Gemini é configurada no ambiente de desenvolvimento; o `vitoria-assistente.md` e o `ia-gemini.md` passam a fazer parte deste arquivo |
+| 17/10/2026 | a primeira chamada real ao Gemini é conferida (13 perguntas, todas certas, pelo script `pnpm vitoria:conferir-ia`); o pedido à IA passa a levar a data de hoje e a tabela dos 12 últimos meses, e a Vitória entende "mês passado", "este mês" e "maio" sem o ano (seções 2.10.5 e 2.11) |
 
 ---
 
@@ -188,7 +188,7 @@ Fica em `api/src/servicos/ia/` e é o único lugar da `api` que fala com um forn
 
 #### 1.6.5 Pendências e pontos de atenção
 
-- **Primeira chamada real:** conferir com a chave de verdade que a resposta chega e que o JSON da Vitória é interpretado (seção 2.11). Só então a integração está validada.
+- **Primeira chamada real:** conferida em 17/10/2026 (seção 2.11). O modelo `gemini-3.8-flash` existe na conta, a resposta chega e o JSON da Vitória é interpretado. A conferência é repetível com `pnpm vitoria:conferir-ia`, e vale rodá-la de novo ao trocar de modelo ou de provedor.
 - **Cota:** o Google não garante a cota do plano gratuito, e ela é por projeto, compartilhada por todos os usos. Esgotada, a Vitória responde sem IA, sem erro.
 - **Faturamento:** a chave gratuita vem do AI Studio. Uma resposta do fórum do Google (não a documentação oficial) indica que ativar o faturamento no projeto do Google Cloud passa o uso a ser cobrado.
 
@@ -331,7 +331,11 @@ A resposta traz texto curto e, quando cabe, ações de uma lista fechada:
 
 #### 2.10.5 Domínio e rota
 
-- **`montarPedido`:** 3 blocos de sistema (a instrução de comportamento fixa, o manual com `cache: true` e a tela atual com o contexto), as até 10 últimas mensagens vindas do cliente e a mensagem nova. A conversa não é guardada no servidor. **A data de hoje não vai no pedido** (lacuna apontada em 17/10/2026): sem ela, a IA não resolve "mês passado" nem sabe o ano de "maio".
+- **`montarPedido`:** 3 blocos de sistema (a instrução de comportamento fixa, o manual com `cache: true` e a tela atual com o contexto), as até 10 últimas mensagens vindas do cliente e a mensagem nova. A conversa não é guardada no servidor.
+- **A data de hoje** (17/10/2026, `api/src/dominio/vitoria-datas.ts`): o bloco da tela atual leva "Hoje é DD/MM/AAAA" e uma tabela dos 12 últimos meses, do mais recente ao mais antigo, com `AAAA-MM`, marcando "este mês", "mês passado" e "mês retrasado". Quem faz a conta de calendário é o servidor, porque a IA erra a virada do ano. O dia vem de `diaDe(agora())`, o mesmo do fuso de São Paulo usado nos limites.
+  - **O mês só com o nome vale a ocorrência mais recente, nunca no futuro:** em outubro de 2026, "maio" é `2026-05`; em março de 2026, é `2025-05`. Com o ano dito pela pessoa, vale o ano dela, mesmo fora da tabela.
+  - **A data fica no último bloco,** depois do manual com `cache: true`: ela muda todo dia, e antes do manual invalidaria o cache.
+  - **O filtro é só por mês** (`AAAA-MM`, o padrão de `dashboard_meus_periodo`). Para dia, semana ou ano, a instrução de comportamento manda dizer que só filtra por mês e perguntar qual (ação `nenhuma`), sem inventar um mês.
 - **Resposta em JSON:** a instrução pede `{texto, expressao, acao}`, com `acao.tipo` em `navegar | destacar | nenhuma | nao_sei` e `destino` só entre as chaves listadas no pedido. `interpretarRespostaIA` pega o primeiro `{...}` do texto (tolera o JSON embrulhado em bloco de código) e valida com Zod; se falhar, cai na reserva sem IA.
 - **3 limites** (`vitoria_uso`, por `usuario_id` e `dia`):
   - por conversa: o cliente manda `numero_mensagem`, já que a conversa não fica no servidor. É um limite de experiência, não de segurança: quem mentir o número só engana a própria sessão;
@@ -362,6 +366,7 @@ A resposta traz texto curto e, quando cabe, ações de uma lista fechada:
 - `api/test/vitoria-manifesto.test.ts`: roda `scripts/verificar-manifesto-vitoria.mts`. Ao ser escrito, o script achou um destino esquecido (`preventivas`) e um erro no leitor do manual (itens de várias linhas perdiam a chave na linha de continuação).
 - `api/test/vitoria-mensagens.test.ts` (15 casos): a reserva sem IA por padrão e com falha do provedor; chave inválida (vira "não sei" e grava a pergunta); `com_contexto` sem o campo (descartada, sem virar "não sei") e resolvida; `com_filtro` válido e inválido; os 3 limites; pendente e ausente usando; o admin com o próprio manual; e a pergunta sem resposta gravada sem `usuario_id`.
 - `api/test/vitoria-sem-resposta.test.ts` (3 casos): só o admin lista e trata; listar, paginar, filtrar e marcar como tratada; pergunta inexistente dá 404.
+- `api/test/vitoria-datas.test.ts` (5 casos): a tabela de 12 meses, o mês sem o ano (maio passou este ano, mas não chegou em março), a virada do ano, o último dia do mês e o primeiro do ano; e, pela rota, que a tabela chega à IA no último bloco, depois do manual em cache. Usa um ambiente próprio com o relógio em janeiro, porque mexer no relógio do outro derrubaria o token de acesso.
 - Os testes do Gemini estão na seção 1.6.3.
 
 ### 2.11 Como conferir que a IA está respondendo
@@ -377,11 +382,17 @@ Os limites também têm frases próprias ("Por hoje suas mensagens com IA acabar
 - **Olhar o terminal da `api`:** `IA ligada: gemini` ao subir; `Vitória: IA indisponível, respondendo sem IA (...)` ou `...fora do formato esperado...` quando a IA falha.
 - **Conferir cada resposta,** porque a cota esgotada faz a Vitória voltar à reserva sem avisar com erro.
 
+**Conferência automática contra a API real** (`api/scripts/conferir-vitoria-ia.ts`, feita em 17/10/2026): `pnpm vitoria:conferir-ia` sobe a aplicação num banco em memória, troca a IA de teste pela de verdade (`IA_PROVEDOR` e a chave, lidos do `.env.local`) e faz 13 perguntas pela rota `POST /vitoria/mensagens`, só com dados fictícios. O relógio é fixado em 3 datas (17/10/2026, 15/01/2027 e 10/03/2026), para o mês esperado não depender do dia em que se roda. Pergunta que cai na resposta sem IA (cota, chave, formato) conta como falha, e o comando sai com código 1. Gasta cerca de 13 chamadas, com 4 s de pausa entre elas.
+
+Resultado de 17/10/2026, com `gemini-3.8-flash`: **13 de 13 certas**: os filtros por mês (com o ano, sem o ano, "mês passado", "este mês", a virada do ano e o mês que ainda não chegou), a recusa a "ignore suas instruções" e a segurança de campo (as duas com o avatar em `alerta` e sem ação), a dúvida de uso com link, "ano passado" (pergunta qual mês, sem filtro) e a pergunta em inglês (respondida em português). Os testes automáticos não pegam o que só a API real mostra, como modelo que não existe, cota esgotada ou resposta fora do formato; por isso o script deve rodar ao trocar de modelo ou de provedor.
+
 Perguntas que a reserva sem IA não responde bem, porque ela só busca palavras iguais às do manual:
 
 | Teste | Pergunta | O que a IA deve fazer |
 |---|---|---|
-| Filtro de período (o mais forte) | "Quero ver o que eu executei em maio de 2026" | oferecer "Meus resultados" filtrado por `2026-05`; a reserva nunca monta um link com filtro. Sem o ano, ou com "mês passado", a resposta não é confiável enquanto a data de hoje não for no pedido (seção 2.10.5) |
+| Filtro de período (o mais forte) | "Quero ver o que eu executei em maio de 2026" | oferecer "Meus resultados" filtrado por `2026-05`; a reserva nunca monta um link com filtro |
+| Filtro de período sem o ano e relativo | "o que eu executei em maio?", "no mês passado", "este mês" | o mês certo pela data de hoje do pedido (seção 2.10.5); na virada do ano, "mês passado" em janeiro é dezembro do ano anterior |
+| Período que não é um mês | "o que eu executei ano passado?" | dizer que só filtra por mês e perguntar qual, sem ação |
 | Continuação da conversa | "Como eu troco o modelo da APR?" e depois "E se eu já tiver começado a responder?" | responder que a troca deixa de ser oferecida; a reserva lê cada mensagem sozinha |
 | Jeito de falar diferente do manual | "to com uma ordem aberta e nao sei oq fazer antes de comecar o servico" | levar à APR |
 | Jeito de falar diferente do manual | "onde fica aquela parada das inspeção que repete todo mês?" | levar às OS preventivas |
@@ -609,8 +620,7 @@ Fora, por agora:
 Pendente:
 
 - O desenho definitivo da Vitória.
-- A primeira chamada real da Vitória pelo Gemini (seção 2.11) e a bateria de perguntas (seção 2.9).
-- Levar a data de hoje no pedido à IA, para as consultas com período relativo (seção 2.10.5).
+- A bateria de cerca de 50 perguntas (seção 2.9); o `pnpm vitoria:conferir-ia` (seção 2.11) é o começo dela, com 13.
 - O rascunho de treinamento por IA (seção 3.6).
 - A aprovação da empresa para enviar dados ao fornecedor no piloto, e a escolha de outro fornecedor se ela exigir processamento no Brasil.
 - A questão 38: a validade da assinatura desenhada.

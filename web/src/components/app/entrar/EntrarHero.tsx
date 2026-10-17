@@ -7,7 +7,7 @@ export function EntrarHero() {
       <div className="stack g8">
         <h1>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/marca/synq.png" alt="SYNQ OS" width={1000} height={308} />
+          <img src="/marca/synq.png" alt="SYNQ OS" width={782} height={170} />
         </h1>
         <p className="tagline">APR e Ordens de Manutenção 100% digitais</p>
       </div>

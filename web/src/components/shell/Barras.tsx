@@ -19,7 +19,7 @@ function Marca({ subtitulo }: { subtitulo: string }) {
     <div className="brand">
       <span className="brand-txt">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="brand-logo" src="/marca/synq.png" alt="SYNQ OS" width={1000} height={308} />
+        <img className="brand-logo" src="/marca/synq.png" alt="SYNQ OS" width={782} height={170} />
         <small>{subtitulo}</small>
       </span>
     </div>
