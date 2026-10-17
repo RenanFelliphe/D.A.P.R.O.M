@@ -2,7 +2,7 @@
 
 > Registro da discussão sobre as três funcionalidades com IA: a **Vitória**, assistente que orienta o usuário dentro do sistema; os **treinamentos de serviço**, um jogo por serviço do catálogo que o admin cria à mão ou com apoio da IA; e a **digitalização de OS antigas**, em que uma IA de visão lê as folhas preenchidas à mão. Traz as decisões, o fornecedor e os custos, as regras, os riscos, a proposta de dados, rotas e páginas, e a ordem de implementação.
 >
-> **Situação:** decidido, não implementado. Só existe o avatar provisório da Vitória, em [vitoria/](vitoria/). Na digitalização, a leitura por IA está decidida; o modelo e mais sete pontos seguem em aberto (seção 10.13).
+> **Situação:** os treinamentos de serviço (seção 3), sem IA, foram implementados em 16/10/2026 — ver [treinamentos-de-servico.md](treinamentos-de-servico.md). No mesmo dia, o módulo de IA genérico (seção 1) e a Vitória, níveis 1 a 3 (seção 2), também foram implementados, em modo sem IA (a chave da Anthropic ainda não existe) — ver [vitoria-assistente.md](vitoria-assistente.md). A digitalização de OS antigas (seção 10) segue decidida, não implementada: a leitura por IA está decidida, e o modelo e mais sete pontos seguem em aberto (seção 10.13).
 >
 > Fontes: o pedido do Iago na [Reunião 2](base/reunioes/Transcricao_Reuniao2.md) (1:15:12), a análise das extras em [funcionalidades.md](funcionalidades.md) (seção 2.3), as regras da [gamificação](gameficacao.md) e as páginas oficiais de preço dos fornecedores, consultadas em 14/10/2026. Para a digitalização, ainda: as prioridades do [DesignDoc](DesignDoc.md) ("Escaneamento das OS e APR antigas") e o processo em papel da [Reunião 1](base/reunioes/Transcricao_Reuniao1.md).
 
@@ -75,6 +75,8 @@ Premissas: PTAX de 13/10/2026 (R$ 5,01); cada mensagem da Vitória com o manual 
 ---
 
 ## 2. Vitória
+
+> **Implementado em 16/10/2026, em modo sem IA** (Fase 3 do plano da seção 8). O que mudou na implementação, as decisões de desenho que esta seção deixava em aberto e os testes estão em [vitoria-assistente.md](vitoria-assistente.md). O módulo de IA genérico da seção 1 também foi implementado nesta rodada. A bateria de perguntas (seção 2.9) e o nível 4 (fora de escopo) seguem como estavam.
 
 ### 2.1 O que ela faz
 
@@ -173,6 +175,8 @@ A resposta traz texto curto e, quando cabe, ações de uma lista fechada:
 ---
 
 ## 3. Treinamentos de serviço
+
+> **Implementado em 16/10/2026, sem IA** (Fase 1 do plano da seção 8). O que mudou na implementação, as decisões de desenho que esta seção deixava em aberto e os testes estão em [treinamentos-de-servico.md](treinamentos-de-servico.md). A geração de rascunho por IA (seção 3.6) e a Vitória de verdade (seção 2) seguem não implementadas.
 
 ### 3.1 Regras
 
