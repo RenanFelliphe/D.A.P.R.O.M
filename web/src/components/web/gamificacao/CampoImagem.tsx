@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo } from "react";
 import { Field, Req } from "@/components/ui/Field";
 
 /** O limite que a `api` aceita para a imagem de uma patente ou conquista. */
-export const LIMITE_DA_IMAGEM = 1024 * 1024;
+export const LIMITE_DA_IMAGEM = 5 * 1024 * 1024;
 const TIPOS_ACEITOS = ["image/png", "image/jpeg", "image/webp"];
 
 /** Lê a largura e a altura da imagem escolhida; `null` se o navegador não a decodifica. */
@@ -25,12 +25,12 @@ function medir(arquivo: File): Promise<{ largura: number; altura: number } | nul
 }
 
 /**
- * Confere o arquivo antes de enviar (a `api` confere de novo): PNG, JPEG ou WebP, até 1 MB e quadrada. Devolve a mensagem de
+ * Confere o arquivo antes de enviar (a `api` confere de novo): PNG, JPEG ou WebP, até 5 MB e quadrada. Devolve a mensagem de
  * recusa, ou `null` se o arquivo serve.
  */
 export async function recusarImagem(arquivo: File): Promise<string | null> {
   if (!TIPOS_ACEITOS.includes(arquivo.type)) return "Use uma imagem PNG, JPEG ou WebP.";
-  if (arquivo.size > LIMITE_DA_IMAGEM) return "A imagem tem mais de 1 MB.";
+  if (arquivo.size > LIMITE_DA_IMAGEM) return "A imagem tem mais de 5 MB.";
   const lado = await medir(arquivo);
   if (!lado) return "Não foi possível ler a imagem.";
   if (lado.largura !== lado.altura) return `A imagem precisa ser quadrada (512 × 512 é o recomendado); esta tem ${lado.largura} × ${lado.altura}.`;
@@ -78,16 +78,16 @@ export function CampoImagem({ rotulo = "Imagem", arquivo, aoEscolher, urlAtual, 
       }
       htmlFor={id}
     >
-      <div className="row g12" style={{ alignItems: "center" }}>
+      <div className="campo-imagem">
         {mostrada ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={mostrada} alt="Prévia da imagem" width={64} height={64} style={{ objectFit: "contain", flex: "none" }} />
+          <img src={mostrada} alt="Prévia da imagem" width={64} height={64} />
         ) : (
-          <span style={{ width: 64, height: 64, flex: "none", border: "1px dashed var(--line3)", borderRadius: 8 }} aria-hidden />
+          <span className="campo-imagem-vazia" aria-hidden />
         )}
         <input id={id} type="file" accept={TIPOS_ACEITOS.join(",")} disabled={desabilitado} onChange={(e) => void escolher(e.target.files?.[0] ?? null)} />
       </div>
-      <span className="small muted">PNG, JPEG ou WebP, até 1 MB, quadrada (512 × 512 é o recomendado).</span>
+      <span className="small muted">PNG, JPEG ou WebP, até 5 MB, quadrada (512 × 512 é o recomendado).</span>
       {erro && (
         <span role="alert" className="small" style={{ color: "var(--blq)" }}>
           {erro}

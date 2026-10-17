@@ -28,12 +28,12 @@ import { REGRAS } from "./regras-de-pontuacao";
 
 /**
  * O cadastro do admin (seções 3.2, 7.2 e 2 do `gameficacao.md`): o valor e o estado de cada tarefa, as patentes e as
- * conquistas, cada um com a auditoria. As imagens (PNG, JPEG ou WebP, até 1 MB, quadradas) ficam no bucket `gamificacao`; cada
+ * conquistas, cada um com a auditoria. As imagens (PNG, JPEG ou WebP, até 5 MB, quadradas) ficam no bucket `gamificacao`; cada
  * patente tem duas, uma para as pessoas e uma para as equipes.
  */
 
 const MB = 1024 * 1024;
-export const LIMITE_DA_IMAGEM = 1 * MB;
+export const LIMITE_DA_IMAGEM = 5 * MB;
 const LADO_MINIMO = 64;
 const LADO_MAXIMO = 4096;
 
@@ -48,7 +48,7 @@ const vazioViraNulo = (v: unknown) => (typeof v === "string" && v.trim() === "" 
 async function salvarImagem(deps: Deps, arquivo: unknown, campo = "imagem"): Promise<string> {
   if (!(arquivo instanceof File)) throw invalido("validacao", `${campo}: envie a imagem no campo multipart "${campo}"`);
   if (arquivo.size === 0) throw invalido("arquivo_vazio", "Arquivo vazio");
-  if (arquivo.size > LIMITE_DA_IMAGEM) throw new ErroApi(413, "arquivo_grande", "A imagem tem mais de 1 MB");
+  if (arquivo.size > LIMITE_DA_IMAGEM) throw new ErroApi(413, "arquivo_grande", "A imagem tem mais de 5 MB");
   const bytes = new Uint8Array(await arquivo.arrayBuffer());
   const lida = lerImagem(bytes);
   if (!lida) throw invalido("tipo_de_arquivo", "Envie uma imagem PNG, JPEG ou WebP");

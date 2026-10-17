@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // Permite rodar várias instâncias do `next dev` ao mesmo tempo, cada uma com a própria pasta de build.
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
+  // O `proxy` guarda o corpo da requisição em memória e corta em 10 MB sem avisar quem enviou. A patente nova leva duas
+  // imagens de até 5 MB cada (a das pessoas e a das equipes) no mesmo envio, então o limite sobe um pouco acima disso.
+  experimental: { proxyClientMaxBodySize: "12mb" },
   // Quadro, detalhe da OS, perfil, equipe e busca são telas únicas para todos os perfis (em `/app`): os endereços antigos de
   // `/web` seguem funcionando, com a query repassada. O Dashboard e Equipes e usuários (Minha equipe) também são telas únicas, em `/app/dashboard` e `/app/usuarios`.
   // Quadro e Importação viraram abas da seção Ordem de Serviço: os endereços antigos (favoritos, links salvos) seguem

@@ -1387,12 +1387,20 @@ details.excluidos > summary {
   color: var(--ink)
 }
 
+/* Aberta, a janela é uma coluna: o cabeçalho fica fixo e só o corpo rola quando o conteúdo passa da altura da tela. */
+.dlg[open] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden
+}
+
 .dlg::backdrop {
   background: rgba(23, 33, 43, .5)
 }
 
 .dlg-cab {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1401,25 +1409,32 @@ details.excluidos > summary {
 }
 
 .dlg-cab h2 {
-  font-size: 18px
+  font-size: 18px;
+  overflow-wrap: anywhere
 }
 
 .dlg-corpo {
   padding: 18px 20px 20px;
   display: flex;
   flex-direction: column;
-  gap: 14px
+  gap: 14px;
+  min-height: 0
 }
 
+/* `minmax(0, 1fr)`: com `1fr` puro a coluna não encolhe abaixo do conteúdo (o seletor de arquivo, por exemplo) e estoura a janela. */
 .grade2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px
+}
+
+.grade2 > * {
+  min-width: 0
 }
 
 @media (max-width: 560px) {
   .grade2 {
-    grid-template-columns: 1fr
+    grid-template-columns: minmax(0, 1fr)
   }
 }
 

@@ -24,7 +24,7 @@ export function NovaPatente() {
         Nova patente
       </Button>
       {aberta && (
-        <JanelaModal titulo="Nova patente" aoFechar={() => setAberta(false)}>
+        <JanelaModal titulo="Nova patente" aoFechar={() => setAberta(false)} className="dlg-larga">
           <FormularioPatente
             aoCancelar={() => setAberta(false)}
             aoConcluir={(mensagem) => {
@@ -82,7 +82,7 @@ export function BotoesDaPatente({ patente }: { patente: Patente }) {
         </span>
       )}
       {editando && (
-        <JanelaModal titulo={`Editar patente · ${patente.nome}`} aoFechar={() => setEditando(false)}>
+        <JanelaModal titulo={`Editar patente · ${patente.nome}`} aoFechar={() => setEditando(false)} className="dlg-larga">
           <FormularioPatente
             patente={patente}
             aoCancelar={() => setEditando(false)}

@@ -135,7 +135,7 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
     assert.equal(paraTecnico.voce.patente_id, paraTecnico.patentes[0].id);
   });
 
-  it("imagem: só PNG, JPEG ou WebP, quadrada, até 1 MB; trocar apaga a antiga", async () => {
+  it("imagem: só PNG, JPEG ou WebP, quadrada, até 5 MB; trocar apaga a antiga", async () => {
     const criada = await c.amb.esperar(201, "POST", "/gamificacao/patentes", { como: admin(), form: formularioDePatente({ nome: "Imagem", pontos_necessarios: 7000, cor: "#abcdef" }) });
     const url = `/gamificacao/patentes/${criada.id}/imagem`;
     const [antes] = await c.amb.db.select().from(patente).where(eq(patente.id, criada.id));
@@ -147,7 +147,7 @@ describe("Gamificação: cadastros do admin (patentes, tarefas, imagens, auditor
     const texto = await c.amb.req("PUT", url, { como: admin(), form: formulario({}, new File(["isto não é uma imagem"], "x.png", { type: "image/png" })) });
     assert.equal(texto.status, 422);
     assert.equal(texto.corpo.erro.codigo, "tipo_de_arquivo");
-    const grande = new Uint8Array(1024 * 1024 + 1);
+    const grande = new Uint8Array(5 * 1024 * 1024 + 1);
     grande.set(pngDeTeste(128, 128));
     const enorme = await c.amb.req("PUT", url, { como: admin(), form: formulario({}, new File([grande], "g.png", { type: "image/png" })) });
     assert.equal(enorme.status, 413);

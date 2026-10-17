@@ -661,3 +661,76 @@
     display: none
   }
 }
+
+/* ===== Cadastro de patente e conquista (janela do admin) ===== */
+
+/* A prévia fica à esquerda e o seletor de arquivo usa o resto da linha, encolhendo (e cortando o nome) em vez de estourar a janela. */
+.campo-imagem {
+  display: flex;
+  align-items: center;
+  gap: 12px
+}
+
+.campo-imagem img,
+.campo-imagem .campo-imagem-vazia {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 8px
+}
+
+.campo-imagem img {
+  object-fit: contain
+}
+
+.campo-imagem .campo-imagem-vazia {
+  border: 1px dashed var(--line3)
+}
+
+.campo-imagem input[type=file] {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 13px
+}
+
+/* Seletor de cor + código hexadecimal, na altura dos outros campos (44px). */
+.campo-cor {
+  display: flex;
+  align-items: center;
+  gap: 8px
+}
+
+.campo-cor input[type=color] {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  padding: 2px;
+  border: 1px solid var(--line3);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer
+}
+
+.campo-cor .input {
+  flex: 1 1 0;
+  min-width: 0
+}
+
+/* Caixa de marcar com texto que quebra em várias linhas: a caixa fica no alto, alinhada à primeira linha, e a altura cresce com o texto. */
+.campo-marca {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 44px;
+  padding-top: 11px;
+  font-size: 14px;
+  line-height: 1.35
+}
+
+.campo-marca input[type=checkbox] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0
+}

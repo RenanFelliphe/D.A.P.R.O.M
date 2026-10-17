@@ -145,7 +145,7 @@ Exemplos (pontos de cada participante):
 |---|---|---|
 | Nome | sim | único |
 | Pontuação necessária | sim | inteiro ≥ 0, único entre as ativas; define a ordem das patentes |
-| Imagem das pessoas | sim | o admin envia; PNG, JPEG ou WebP, até 1 MB, quadrada (512 × 512 recomendado); aparece no ranking de pessoas, no perfil, na barra e na equipe (a linha de cada membro) |
+| Imagem das pessoas | sim | o admin envia; PNG, JPEG ou WebP, até 5 MB, quadrada (512 × 512 recomendado); aparece no ranking de pessoas, no perfil, na barra e na equipe (a linha de cada membro) |
 | Imagem das equipes | sim | outra imagem, enviada à parte, com as mesmas regras; aparece no ranking de equipes e no bloco da equipe. **Só é igual à das pessoas se o admin enviar a mesma imagem nos dois campos:** o sistema nunca reaproveita uma pela outra, e cada uma vira um arquivo próprio |
 | Cor | sim | hexadecimal; destaca o nome e a barra de progresso |
 | Descrição | não | texto livre |
@@ -251,7 +251,7 @@ Como chegamos nos limites:
 | Título | sim | único |
 | Descrição | sim | texto livre |
 | Meta | sim | um critério da lista 7.3 e a quantidade (a patente, quando o critério é de patente). O sistema mostra a meta em texto, por exemplo "Complete 50 APRs" |
-| Imagem | sim | o troféu; o admin envia; PNG, JPEG ou WebP, até 1 MB, quadrada (512 × 512 recomendado) |
+| Imagem | sim | o troféu; o admin envia; PNG, JPEG ou WebP, até 5 MB, quadrada (512 × 512 recomendado) |
 | Pontos | sim | inteiro ≥ 0; o que a pessoa ganha ao obter a conquista (sugestão: 25 fácil, 50 média, 100 difícil). Nas conquistas de equipe, sempre 0 |
 | Ativa | sim | |
 

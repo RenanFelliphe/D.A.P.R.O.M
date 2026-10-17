@@ -142,7 +142,7 @@ export function FormularioConquista({ conquista, criterios, patentes, aoConcluir
           <input id="conquista-pontos" className="input" inputMode="numeric" disabled={deEquipe} value={deEquipe ? "0" : pontos} onChange={(e) => setPontos(e.target.value.replace(/\D/g, ""))} />
         </Field>
         <Field label="Situação" htmlFor="conquista-ativa">
-          <label className="row g8" style={{ height: 40 }}>
+          <label className="campo-marca">
             <input id="conquista-ativa" type="checkbox" checked={ativa} onChange={(e) => setAtiva(e.target.checked)} />
             Ativa (a desativada deixa de ser dada; quem a tem continua com ela)
           </label>

@@ -88,13 +88,13 @@ export function FormularioPatente({ patente, aoConcluir, aoCancelar }: Formulari
           <input id="patente-pontos" className="input" required inputMode="numeric" value={pontosNecessarios} onChange={(e) => setPontosNecessarios(e.target.value.replace(/\D/g, ""))} placeholder="1500" />
         </Field>
         <Field label="Cor (destaca o nome e a barra)" htmlFor="patente-cor">
-          <div className="row g8">
-            <input aria-label="Escolher a cor" type="color" value={corValida ? cor : COR_PADRAO} onChange={(e) => setCor(e.target.value.toUpperCase())} style={{ width: 44, height: 40, padding: 2 }} />
+          <div className="campo-cor">
+            <input aria-label="Escolher a cor" type="color" value={corValida ? cor : COR_PADRAO} onChange={(e) => setCor(e.target.value.toUpperCase())} />
             <input id="patente-cor" className="input mono" maxLength={7} value={cor} onChange={(e) => setCor(e.target.value.toUpperCase())} aria-invalid={!corValida} />
           </div>
         </Field>
         <Field label="Situação" htmlFor="patente-ativa">
-          <label className="row g8" style={{ height: 40 }}>
+          <label className="campo-marca">
             <input id="patente-ativa" type="checkbox" checked={ativa} onChange={(e) => setAtiva(e.target.checked)} />
             Ativa (a desativada deixa de ser atribuída, mas continua no histórico)
           </label>
