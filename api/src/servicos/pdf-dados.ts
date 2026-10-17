@@ -201,7 +201,8 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
       .select({ nome: usuario.nome, cargo: usuario.cargo, registro: usuario.registroProfissional, assinaturaPath: usuario.assinaturaPath })
       .from(usuario)
       .where(eq(usuario.id, base.os.cienciaPor));
-    if (u) ciencia = { ...u, em: base.os.cienciaEm };
+    // A imagem que o supervisor usou na ciência; as ciências anteriores à assinatura mostram a atual do perfil.
+    if (u) ciencia = { ...u, assinaturaPath: base.os.cienciaAssinaturaPath ?? u.assinaturaPath, em: base.os.cienciaEm };
   }
 
   // Imagens: lidas todas de uma vez; falha de leitura ou arquivo ausente vira `null` ("[imagem indisponível]").

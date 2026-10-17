@@ -33,6 +33,7 @@ import { checklistsDasOs } from "./checklist-inspecao";
 import { servicoDaAtividade } from "./catalogo";
 import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
 import { ganhosDe } from "./lancamentos";
+import { assinaturaDoAto } from "./assinatura";
 import { pontuarCiencia } from "./pontuacao";
 import {
   condicaoEscopo,
@@ -641,7 +642,7 @@ export async function darCiencia(db: Db, eu: UsuarioAutenticado, osId: string, a
       throw conflito("ciencia_propria", "Quem participou da execução não dá a ciência da própria OS");
     }
 
-    await tx.update(os).set({ cienciaPor: eu.id, cienciaEm: agora }).where(eq(os.id, osId));
+    await tx.update(os).set({ cienciaPor: eu.id, cienciaEm: agora, cienciaAssinaturaPath: assinaturaDoAto(eu) }).where(eq(os.id, osId));
     await enfileirarTarefa(tx as unknown as Db, "pdf_os", osId, agora);
     // Ciência no prazo (até 72 h depois do encerramento) pontua o supervisor, na mesma transação.
     const ganhos = eu.perfil === "tecnico" ? await pontuarCiencia({ tx: tx as unknown as Db, agora }, osId, eu.id, agora) : [];

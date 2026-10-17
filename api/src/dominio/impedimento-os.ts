@@ -3,6 +3,7 @@ import type { Db } from "../db/conexao";
 import { equipe, os, reprogramacao, type OsStatus } from "../db/schema";
 import { podeSupervisionarEquipe, type UsuarioAutenticado } from "../http/autenticacao";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
+import { assinaturaDoAto } from "./assinatura";
 
 /** Status em que a OS de apoio ainda pode ser cancelada pelo sistema. */
 const STATUS_CANCELAVEIS: readonly OsStatus[] = ["liberada", "pendente"];
@@ -64,6 +65,7 @@ export async function reprogramarOs(
       equipeAnteriorId: atual.equipeId,
       equipeNovaId,
       justificativa: dados.justificativa,
+      assinaturaPath: assinaturaDoAto(eu),
     });
     return { id: osId, status: atual.status };
   });
@@ -80,7 +82,7 @@ export async function cancelarOsDeApoio(db: Db, eu: UsuarioAutenticado, osId: st
     }
     await tx
       .update(os)
-      .set({ status: "cancelada", canceladaEm: agora, canceladaPor: eu.id, justificativaCancelamento: justificativa })
+      .set({ status: "cancelada", canceladaEm: agora, canceladaPor: eu.id, justificativaCancelamento: justificativa, canceladaAssinaturaPath: assinaturaDoAto(eu) })
       .where(eq(os.id, osId));
     return { id: osId, status: "cancelada" as const };
   });

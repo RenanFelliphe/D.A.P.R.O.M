@@ -87,11 +87,15 @@ export const os = pgTable(
     pdfEm: instante(),
     cienciaPor: uuid().references(() => usuario.id),
     cienciaEm: instante(),
+    /** A assinatura do perfil que o supervisor usou na ciência (cópia: refazer a do perfil não muda esta). Nula nas ciências anteriores à assinatura. */
+    cienciaAssinaturaPath: text(),
     exportadaSapEm: instante(),
     /** Cancelamento: a OS de apoio é cancelada na web com justificativa; quando o SAP cancela, só `canceladaEm` é preenchido. */
     canceladaEm: instante(),
     canceladaPor: uuid().references(() => usuario.id),
     justificativaCancelamento: text(),
+    /** A assinatura do perfil de quem cancelou a OS de apoio (cópia). Nula nos cancelamentos anteriores à assinatura e nos do SAP. */
+    canceladaAssinaturaPath: text(),
     /**
      * Atribuição individual: a pessoa da equipe para quem o supervisor reservou a OS. A OS continua no quadro da equipe,
      * mas só ela inicia a APR e a execução. Nula = a OS é da equipe toda (o padrão). A leitura do SAP não mexe aqui.
@@ -103,6 +107,8 @@ export const os = pgTable(
     devolvidaEm: instante(),
     devolvidaPor: uuid().references(() => usuario.id),
     justificativaDevolucao: text(),
+    /** A assinatura do perfil de quem devolveu a OS (cópia). Nula nas devoluções anteriores à assinatura. */
+    devolvidaAssinaturaPath: text(),
     /** Quando a devolução foi na planilha de baixa; nulo enquanto ainda não saiu. */
     devolucaoExportadaEm: instante(),
     /** Cursor do snapshot do modo offline; atualizado por gatilho. */

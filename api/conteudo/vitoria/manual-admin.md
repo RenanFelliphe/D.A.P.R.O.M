@@ -12,7 +12,8 @@
 
 - A tela "Equipes e usuários" lista todo mundo cadastrado; "Novo usuário" pede a matrícula e confere com o registro
   de funcionários antes de criar a conta. [usuarios]
-- Cadastros pendentes de liberação aparecem destacados; abra o perfil da pessoa para liberar ou recusar o acesso.
+- Cadastros pendentes de liberação aparecem destacados; abra o perfil da pessoa para liberar ou recusar o acesso. Liberar,
+  recusar, reprogramar e cancelar OS pedem a sua assinatura do perfil, que também é a primeira coisa a cadastrar no primeiro acesso.
 - Qualquer perfil pode ser o supervisor de uma equipe — é um campo da equipe, não um perfil à parte.
 
 ## Modelos de APR

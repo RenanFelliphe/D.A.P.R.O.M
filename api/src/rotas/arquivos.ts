@@ -1,7 +1,7 @@
 import { eq, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Deps } from "../deps";
-import { apr, aprParticipante, evidencia, execucao, execucaoAssinatura, os, treinamentoServicoVersao, usuario } from "../db/schema";
+import { apr, aprParticipante, evidencia, execucao, execucaoAssinatura, os, reprogramacao, treinamentoServicoVersao, usuario } from "../db/schema";
 import { podeVerEquipe, type Autenticacao, type Ambiente, type UsuarioAutenticado } from "../http/autenticacao";
 import { ErroApi, invalido, naoEncontrado, proibido } from "../http/erros";
 import { responder } from "../http/resposta";
@@ -69,6 +69,34 @@ async function localizar(deps: Deps, id: string): Promise<{ bucket: Bucket; equi
     .limit(1);
   if (naExecucao) return { bucket: "assinaturas", equipeId: naExecucao.equipeId };
 
+  // Cópia da assinatura que um ato da OS usou (ciência, devolução, cancelamento da OS de apoio): quem vê a equipe da OS a lê.
+  const [noAtoDaOs] = await deps.db
+    .select({ equipeId: os.equipeId })
+    .from(os)
+    .where(or(eq(os.cienciaAssinaturaPath, id), eq(os.devolvidaAssinaturaPath, id), eq(os.canceladaAssinaturaPath, id)))
+    .limit(1);
+  if (noAtoDaOs) return { bucket: "assinaturas", equipeId: noAtoDaOs.equipeId };
+
+  const [naReprogramacao] = await deps.db
+    .select({ equipeId: os.equipeId })
+    .from(reprogramacao)
+    .innerJoin(os, eq(os.id, reprogramacao.osId))
+    .where(eq(reprogramacao.assinaturaPath, id))
+    .limit(1);
+  if (naReprogramacao) return { bucket: "assinaturas", equipeId: naReprogramacao.equipeId };
+
+  const [noResultado] = await deps.db
+    .select({ equipeId: os.equipeId })
+    .from(execucao)
+    .innerJoin(os, eq(os.id, execucao.osId))
+    .where(eq(execucao.assinaturaDoResultadoPath, id))
+    .limit(1);
+  if (noResultado) return { bucket: "assinaturas", equipeId: noResultado.equipeId };
+
+  // Assinatura de quem liberou ou recusou um cadastro: só o admin a revê.
+  const [naLiberacao] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.liberacaoAssinaturaPath, id)).limit(1);
+  if (naLiberacao) return { bucket: "assinaturas", equipeId: null };
+
   const [pdf] = await deps.db.select({ equipeId: os.equipeId }).from(os).where(eq(os.pdfPath, id)).limit(1);
   if (pdf) return { bucket: "pdfs", equipeId: pdf.equipeId };
 
@@ -100,7 +128,7 @@ export function rotasArquivos(deps: Deps, { autenticar }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
   // Um usuário desativado ou ausente ainda envia a fila offline pendente (do que fez antes), e os arquivos vêm antes dos eventos.
-  r.put("/arquivos/:id", autenticar({ permitirDesativado: true, permitirAusente: true }), async (c) => {
+  r.put("/arquivos/:id", autenticar({ permitirDesativado: true, permitirAusente: true, permitirSemAssinatura: true }), async (c) => {
     const id = lerId(c);
     const form = await c.req.parseBody().catch(() => null);
     const arquivo = form?.arquivo;
@@ -125,7 +153,7 @@ export function rotasArquivos(deps: Deps, { autenticar }: Autenticacao) {
     return responder(c, { id, caminho: id });
   });
 
-  r.get("/arquivos/:id/url", autenticar(), async (c) => {
+  r.get("/arquivos/:id/url", autenticar({ permitirSemAssinatura: true }), async (c) => {
     const id = lerId(c);
     const alvo = await localizar(deps, id);
     if (!alvo) throw naoEncontrado("Arquivo não encontrado");

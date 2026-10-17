@@ -302,6 +302,11 @@ describe("Dashboards de Indicadores e exportação", () => {
   });
 
   describe("GET /indicadores/meus", () => {
+    // O Bruno é o técnico sem assinatura do cadastro (acima); sem ela nada abre, então ele a cadastra antes de ver os próprios números.
+    before(async () => {
+      await amb.cadastrarAssinatura(u.bruno!);
+    });
+
     it("traz só o que a própria pessoa fez", async () => {
       const r = await pedir("/indicadores/meus", u.ana!);
       assert.equal(r.encerradas.total, 1); // o1; o8 é do período anterior

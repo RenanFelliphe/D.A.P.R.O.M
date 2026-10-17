@@ -258,6 +258,7 @@ describe("Atribuição individual e devolução de OS", () => {
       const depois = await lerOs(o.id);
       assert.equal(depois.status, "devolvida");
       assert.equal(depois.devolvidaPor, supervisor.id);
+      assert.equal(depois.devolvidaAssinaturaPath, await amb.assinaturaDe(supervisor));
       assert.deepEqual(depois.devolvidaEm, amb.relogio.agora);
       assert.equal(depois.justificativaDevolucao, "Local de instalação errado na ordem");
       assert.equal(depois.responsavelId, null);

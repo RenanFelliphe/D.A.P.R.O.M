@@ -28,6 +28,12 @@ const MAX_FOTOS = 10;
 const MAX_PDFS = 5;
 const CANCELAR_ATE_MS = 10 * 60_000;
 
+/** A assinatura do perfil de quem interrompe por risco ou cancela por engano, copiada para a execução; sem ela o evento é recusado (o `autenticar` já exige o cadastro). */
+function assinarEvento(ctx: Contexto): string {
+  if (!ctx.usuario.assinaturaPath) throw rejeitar("assinatura_ausente", "Cadastre a sua assinatura no perfil antes de assinar");
+  return ctx.usuario.assinaturaPath;
+}
+
 /** Execução do evento, ainda em andamento e do usuário logado (ninguém encerra a execução de outro). */
 async function carregarExecucaoDoUsuario(ctx: Contexto, id: string, opcoes: { aceitarFinalizada?: boolean } = {}) {
   const [e] = await ctx.tx.select().from(execucao).where(eq(execucao.id, id));
@@ -269,7 +275,7 @@ export async function aplicarExecucaoInterrompida(ctx: Contexto, bruto: unknown)
   await exigirArquivosDasEvidencias(ctx, p.evidencias);
 
   await fecharPausaAberta(ctx, e.id, p.fim);
-  await ctx.tx.update(execucao).set({ fim: p.fim, resultado: "interrompida", motivo: p.motivo!.trim() }).where(eq(execucao.id, e.id));
+  await ctx.tx.update(execucao).set({ fim: p.fim, resultado: "interrompida", motivo: p.motivo!.trim(), assinaturaDoResultadoPath: assinarEvento(ctx) }).where(eq(execucao.id, e.id));
   await gravarEvidencias(ctx, e.id, p.evidencias);
 
   const [ordem] = await ctx.tx.select().from(os).where(eq(os.id, e.osId));
@@ -303,5 +309,5 @@ export async function aplicarExecucaoCancelada(ctx: Contexto, bruto: unknown) {
   const [pausa] = await ctx.tx.select({ id: execucaoPausa.id }).from(execucaoPausa).where(eq(execucaoPausa.execucaoId, e.id)).limit(1);
   const [foto] = await ctx.tx.select({ id: evidencia.id }).from(evidencia).where(eq(evidencia.execucaoId, e.id)).limit(1);
   if (pausa || foto) throw rejeitar("cancelamento_invalido", "Execução com pausa ou foto não pode ser cancelada");
-  await ctx.tx.update(execucao).set({ fim: ctx.evento.ocorridoEm < e.inicio ? e.inicio : ctx.evento.ocorridoEm, resultado: "cancelada" }).where(eq(execucao.id, e.id));
+  await ctx.tx.update(execucao).set({ fim: ctx.evento.ocorridoEm < e.inicio ? e.inicio : ctx.evento.ocorridoEm, resultado: "cancelada", assinaturaDoResultadoPath: assinarEvento(ctx) }).where(eq(execucao.id, e.id));
 }

@@ -205,6 +205,14 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   }
 
   /** `req` que já confere o status esperado e devolve o corpo. */
+  /** Cadastra a assinatura do perfil de quem ainda não tem (grava a imagem e chama `PUT /me/assinatura`): o que a tela de cadastro faz depois da liberação. */
+  async function cadastrarAssinatura(usuario: UsuarioDeTeste) {
+    const arquivo = randomUUID();
+    await armazenamento.gravar("assinaturas", arquivo, new Uint8Array([1, 2, 3]), "image/png");
+    await esperar(200, "PUT", "/me/assinatura", { como: usuario, json: { arquivo_id: arquivo } });
+    return arquivo;
+  }
+
   async function esperar(status: number, metodo: string, caminho: string, o: OpcoesReq = {}) {
     const r = await req(metodo, caminho, o);
     assert.equal(r.status, status, `${metodo} ${caminho} → ${r.status} (esperado ${status}): ${JSON.stringify(r.corpo)}`);
@@ -212,8 +220,10 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   }
 
   const sql = async <T = Record<string, unknown>>(texto: string, params: unknown[] = []) => (await cliente.query<T>(texto, params)).rows;
+  /** A imagem da assinatura que está no perfil agora: é a que cada ato assinado copia para si. */
+  const assinaturaDe = async (usuario: UsuarioDeTeste) => (await sql<{ assinatura_path: string | null }>("select assinatura_path from usuario where id = $1", [usuario.id]))[0]!.assinatura_path;
 
-  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, sql, fechar: () => cliente.close() };
+  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, cadastrarAssinatura, assinaturaDe, sql, fechar: () => cliente.close() };
 }
 
 export type Ambiente = Awaited<ReturnType<typeof criarAmbiente>>;

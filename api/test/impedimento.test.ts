@@ -93,6 +93,7 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
       assert.equal(h!.equipeNovaId, equipeA);
       assert.equal(h!.justificativa, "Aguardando drenagem");
       assert.equal(h!.usuarioId, supervisorA.id);
+      assert.equal(h!.assinaturaPath, await amb.assinaturaDe(supervisorA));
     });
 
     it("data fim nula continua nula e antecipar a data desloca o fim para trás", async () => {
@@ -212,6 +213,7 @@ describe("Impedimento: reprogramar, cancelar OS de apoio e alertas", () => {
         assert.equal(depois.canceladaPor, admin.id);
         assert.deepEqual(depois.canceladaEm, new Date("2026-10-11T12:00:00Z"));
         assert.equal(depois.justificativaCancelamento, "Aberta em duplicidade");
+        assert.equal(depois.canceladaAssinaturaPath, await amb.assinaturaDe(admin));
       }
     });
 

@@ -203,14 +203,14 @@ describe("Usuário ausente", () => {
       assert.equal((await amb.req("POST", `/ausencias/${id}/aprovar`, { como: supervisor, json: { assinar: false } })).status, 422);
       assert.equal((await lerAusencia(id)).estado, "pedida");
 
-      // O supervisor sem assinatura cadastrada: o cadastro vem antes.
+      // O supervisor sem assinatura cadastrada: o cadastro vem antes de qualquer ação (o bloqueio é da autenticação).
       const supSemAssinatura = await amb.criarUsuario({ perfil: "tecnico", comAssinatura: false });
       const eq2 = await amb.criarEquipe({ supervisorId: supSemAssinatura.id });
       const membro = await amb.criarUsuario({ perfil: "tecnico", equipeId: eq2.id });
       const pedido = (await amb.esperar(201, "POST", "/ausencias", { como: membro, json: { motivo: "Férias", inicio: "2026-10-20", dias: 3 } })).ausencia.id;
       const r = await acao(supSemAssinatura, pedido, "aprovar");
-      assert.equal(r.status, 422);
-      assert.equal(r.corpo.erro.codigo, "assinatura_ausente");
+      assert.equal(r.status, 403);
+      assert.equal(r.corpo.erro.codigo, "assinatura_pendente");
     });
 
     it("recusa com o motivo (assinada) e avisa o técnico; sem motivo é 422", async () => {
@@ -805,14 +805,14 @@ describe("Usuário ausente", () => {
     });
   });
 
-  it("a assinatura que não está cadastrada impede o técnico de confirmar", async () => {
+  it("quem não cadastrou a assinatura não pede nem confirma nada: o bloqueio vem antes de qualquer ação", async () => {
     comeco();
-    const id = (await amb.esperar(201, "POST", "/ausencias", { como: semAssinatura, json: { motivo: "Férias", inicio: "2026-10-20", dias: 3 } })).ausencia.id;
-    await acao(supervisor, id, "aprovar");
-    const r = await acao(semAssinatura, id, "confirmar");
-    assert.equal(r.status, 422);
-    assert.equal(r.corpo.erro.codigo, "assinatura_ausente");
-    assert.equal((await lerAusencia(id)).estado, "aguardando_confirmacao");
+    const r = await amb.req("POST", "/ausencias", { como: semAssinatura, json: { motivo: "Férias", inicio: "2026-10-20", dias: 3 } });
+    assert.equal(r.status, 403);
+    assert.equal(r.corpo.erro.codigo, "assinatura_pendente");
+    // Cadastrando a assinatura, o pedido passa.
+    await amb.cadastrarAssinatura(semAssinatura);
+    await amb.esperar(201, "POST", "/ausencias", { como: semAssinatura, json: { motivo: "Férias", inicio: "2026-10-20", dias: 3 } });
   });
 
   it("o banco recusa o que as regras proíbem (retorno antes do início, estado sem encerramento)", async () => {

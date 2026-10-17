@@ -88,6 +88,8 @@ export const usuario = pgTable(
     /** Admin que liberou o acesso; nulo enquanto `pendente` e nas contas criadas já liberadas. */
     liberadoPorId: uuid().references((): AnyPgColumn => usuario.id),
     liberadoEm: instante(),
+    /** A assinatura do perfil do admin que liberou ou recusou o acesso (cópia). Nula nas decisões anteriores à assinatura e nas contas criadas já liberadas. */
+    liberacaoAssinaturaPath: text(),
     /** Por que o admin recusou; só em `recusado`. */
     recusaMotivo: text(),
     /** Quem não quer aparecer pelo nome no ranking da gamificação: os outros veem "Participante anônimo"; os pontos continuam valendo. */

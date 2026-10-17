@@ -102,6 +102,8 @@ export const reprogramacao = pgTable(
     equipeAnteriorId: uuid().references(() => equipe.id),
     equipeNovaId: uuid().references(() => equipe.id),
     justificativa: text().notNull(),
+    /** A assinatura do perfil de quem reprogramou (cópia). Nula nas reprogramações anteriores à assinatura. */
+    assinaturaPath: text(),
     criadaEm: instante().notNull().defaultNow(),
   },
   (t) => [

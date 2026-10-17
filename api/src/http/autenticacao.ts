@@ -68,6 +68,12 @@ export interface OpcoesAutenticacao {
   /** Com a senha inicial, só a troca de senha (e a leitura de `/me`) passa. */
   permitirSenhaProvisoria?: boolean;
   /**
+   * Quem já foi liberado e ainda não cadastrou a assinatura só passa nas rotas que ligam esta opção (ler `/me`, sair, trocar a
+   * senha, enviar a imagem e gravá-la em `PUT /me/assinatura`). Nas demais, `403 assinatura_pendente`: a assinatura é a primeira
+   * coisa a fazer depois da liberação. Quem aguarda a liberação não é cobrado ainda.
+   */
+  permitirSemAssinatura?: boolean;
+  /**
    * Usuário `pendente` (aguarda a liberação de um admin) só passa nas rotas que ligam esta opção: as que ele precisa para
    * entrar, trocar a senha e fazer o Campo de treino. Nas demais, `403 aguardando_liberacao`.
    */
@@ -119,6 +125,9 @@ export function criarAutenticacao(deps: Deps) {
     }
     if (linha.senhaProvisoria && !opcoes.permitirSenhaProvisoria) {
       throw new ErroApi(403, "senha_provisoria", "Defina sua senha antes de continuar");
+    }
+    if (linha.liberacao === "liberado" && !linha.assinaturaPath && !opcoes.permitirSemAssinatura) {
+      throw new ErroApi(403, "assinatura_pendente", "Cadastre a sua assinatura antes de continuar");
     }
 
     // Quem usa o sistema está ativo: o supervisor que voltou a usá-lo, depois de dias parado, retoma a equipe do representante na hora.

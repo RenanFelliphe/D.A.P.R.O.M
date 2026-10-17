@@ -611,6 +611,8 @@ describe("Painel: quadro, detalhe e ciência", () => {
       const [o] = await amb.db.select().from(os).where(eq(os.id, osEncerrada.id));
       assert.equal(o!.cienciaPor, supA.id);
       assert.equal(o!.cienciaEm?.toISOString(), AGORA.toISOString());
+      // A ciência é assinada: guarda a imagem do perfil do supervisor que a deu.
+      assert.equal(o!.cienciaAssinaturaPath, await amb.assinaturaDe(supA));
 
       const tarefas = await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, osEncerrada.id));
       assert.equal(tarefas.length, 1);
@@ -623,6 +625,16 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.equal(detalhe.linha_do_tempo.at(-1).tipo, "ciencia");
       const quadro = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { numero_ordem: "4007" } });
       assert.equal(quadro.os[0].ciencia_em, AGORA.toISOString());
+    });
+
+    it("a imagem usada na ciência continua legível (para quem vê a OS) depois de o supervisor refazer a assinatura do perfil", async () => {
+      const [o] = await amb.db.select().from(os).where(eq(os.id, osEncerrada.id));
+      const usada = o!.cienciaAssinaturaPath!;
+      const nova = await amb.cadastrarAssinatura(supA);
+      assert.notEqual(nova, usada);
+      assert.equal(o!.cienciaAssinaturaPath, usada, "a ciência não muda com a assinatura nova");
+      await amb.esperar(200, "GET", `/arquivos/${usada}/url`, { como: supA });
+      assert.equal((await amb.req("GET", `/arquivos/${usada}/url`, { como: supB })).status, 403);
     });
 
     it("segunda ciência é 409 e não enfileira outra tarefa", async () => {

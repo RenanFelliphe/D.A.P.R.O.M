@@ -319,7 +319,7 @@ describe("Gamificação: pontuação (seção 2)", () => {
 
   it("remover um usuário apaga os pontos dele (assinatura e treino pontuam já no cadastro); o histórico de campo continua impedindo a remoção", async () => {
     voltarAoRelogio();
-    const pendente = await c.amb.criarUsuario({ perfil: "tecnico", equipeId: c.equipe.id, comAssinatura: false });
+    const pendente = await c.amb.criarUsuario({ perfil: "tecnico", equipeId: c.equipe.id });
     await c.como(pendente, "PUT", "/me/treinamento", { json: { estado: "concluido" } });
     assert.ok((await c.extrato(pendente.id, true)).length >= 2, "o treino pontuou e concedeu 'Pronto para o campo'");
     const removido = await c.como(c.admin, "DELETE", `/usuarios/${pendente.id}`);

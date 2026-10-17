@@ -89,6 +89,12 @@ describe("Plataforma, usuários e equipes", () => {
     assert.equal(errada.corpo.erro.codigo, "senha_atual_incorreta");
     await amb.esperar(200, "POST", "/auth/trocar-senha", { como: novo, json: { senha_atual: "senha-inicial-1", senha_nova: "outra-senha-9" } });
 
+    // Cadastrado pelo admin e liberado, sem assinatura: ela vem antes de qualquer outra coisa (só ler o perfil e cadastrá-la passam).
+    const semAssinatura = await amb.req("GET", "/equipes", { como: novo });
+    assert.equal(semAssinatura.status, 403);
+    assert.equal(semAssinatura.corpo.erro.codigo, "assinatura_pendente");
+    await amb.esperar(200, "GET", "/me", { como: novo });
+    await amb.cadastrarAssinatura(novo);
     await amb.esperar(200, "GET", "/equipes", { como: novo });
     assert.equal((await amb.req("POST", "/auth/login", { json: { email: "maria.souza@empresa.com.br", senha: "senha-inicial-1" } })).status, 401);
     const de_novo = await amb.esperar(200, "POST", "/auth/login", { json: { email: "Maria.Souza@empresa.com.br", senha: "outra-senha-9" } });

@@ -4,6 +4,7 @@ import { os, usuario, type OsStatus } from "../db/schema";
 import { podeVerEquipe, type UsuarioAutenticado } from "../http/autenticacao";
 import { conflito, invalido, naoEncontrado, proibido } from "../http/erros";
 import { ausentesEm } from "./ausencia";
+import { assinaturaDoAto } from "./assinatura";
 import { diaDe } from "./tempo";
 
 /** Enquanto a OS não começou, o supervisor pode reservá-la a uma pessoa, trocar o responsável ou liberá-la para a equipe. */
@@ -79,6 +80,7 @@ export async function devolverOs(db: Db, eu: UsuarioAutenticado, osId: string, j
         devolvidaEm: agora,
         devolvidaPor: eu.id,
         justificativaDevolucao: justificativa,
+        devolvidaAssinaturaPath: assinaturaDoAto(eu),
         devolucaoExportadaEm: null,
         responsavelId: null,
         reservadaPor: null,

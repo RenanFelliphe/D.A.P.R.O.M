@@ -255,6 +255,8 @@ describe("Eventos de campo: APR, execução e sync", () => {
 
     const r = await enviar(tecnico, evento("execucao_cancelada", { execucao_id: id }));
     assert.equal(r.os[0].status, "liberada");
+    // O cancelamento por engano é assinado: a execução guarda a imagem do perfil de quem cancelou.
+    assert.equal((await amb.sql<{ p: string | null }>("select assinatura_do_resultado_path as p from execucao where id = $1", [id]))[0]!.p, await amb.assinaturaDe(tecnico));
     const de_novo = iniciar(o.id, apr.id);
     assert.deepEqual((await enviar(tecnico, de_novo.ev)).confirmados, [de_novo.ev.id]);
 
@@ -290,6 +292,8 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const ok = await enviar(tecnico, evento("execucao_interrompida", { execucao_id: e2.id, fim: agora(), motivo: "Vazamento", evidencias: [{ id: await foto(), capturada_em: agora() }] }));
     assert.deepEqual(ok.os, [{ id: o2.id, status: "pendente" }]);
     assert.equal(ok.alertas.length, 1);
+    // A interrupção por risco é assinada: a execução guarda a imagem do perfil de quem interrompeu.
+    assert.equal((await amb.sql<{ p: string | null }>("select assinatura_do_resultado_path as p from execucao where id = $1", [e2.id]))[0]!.p, await amb.assinaturaDe(tecnico));
     assert.equal((await amb.sql<{ tipo: string }>("select tipo from alerta where id = $1", [ok.alertas[0]]))[0]!.tipo, "bloqueio");
   });
 

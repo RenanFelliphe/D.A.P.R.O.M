@@ -58,6 +58,8 @@ export const execucao = pgTable(
      * por isso é JSON.
      */
     dadosInspecao: jsonb(),
+    /** A assinatura do perfil de quem interrompeu por risco ou cancelou por engano (cópia). Nula nas demais execuções e nas anteriores à assinatura. */
+    assinaturaDoResultadoPath: text(),
   },
   (t) => [
     check("execucao_resultado_check", emLista(t.resultado, EXECUCAO_RESULTADOS)),

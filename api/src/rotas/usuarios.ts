@@ -17,6 +17,7 @@ import { codigoPostgres, conflito, invalido, naoEncontrado, proibido } from "../
 import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { booleanoDaConsulta, emailInstitucional, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
+import { assinaturaDoAto } from "../dominio/assinatura";
 import { garantirRepresentantes } from "../dominio/representacao";
 import { senhaNova } from "./auth";
 
@@ -244,7 +245,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
   r.post("/usuarios/:id/liberar", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const eu = c.get("usuario");
-    const nome = await decidirPendente(id, { liberacao: "liberado", liberadoPorId: eu.id, liberadoEm: deps.agora() });
+    const nome = await decidirPendente(id, { liberacao: "liberado", liberadoPorId: eu.id, liberadoEm: deps.agora(), liberacaoAssinaturaPath: assinaturaDoAto(eu) });
     await garantirRepresentantes(deps.db);
     await registrarAuditoria(deps.db, eu, { entidade: "usuario", verbo: "liberar", entidadeId: id, alvo: nome, resumo: `Liberou o acesso de ${nome}` });
     return responder(c, {});
@@ -253,7 +254,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
   r.post("/usuarios/:id/recusar", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const { motivo } = await lerCorpo(c, z.object({ motivo: textoObrigatorio }));
-    const nome = await decidirPendente(id, { liberacao: "recusado", ativo: false, recusaMotivo: motivo });
+    const nome = await decidirPendente(id, { liberacao: "recusado", ativo: false, recusaMotivo: motivo, liberacaoAssinaturaPath: assinaturaDoAto(c.get("usuario")) });
     await deps.auth.revogar(id);
     await registrarAuditoria(deps.db, c.get("usuario"), { entidade: "usuario", verbo: "recusar", entidadeId: id, alvo: nome, resumo: `Recusou o acesso de ${nome}`, detalhes: { motivo } });
     return responder(c, {});

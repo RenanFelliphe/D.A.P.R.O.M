@@ -42,6 +42,8 @@
 - Durante a execução é possível registrar uma pausa (por exemplo, para almoço) e retomar depois.
 - Para encerrar, é preciso descrever o que foi feito, anexar ao menos uma foto de evidência e confirmar a assinatura
   de quem participou.
+- Interromper por risco e cancelar por engano também são assinados: o sistema abre a confirmação com a sua assinatura
+  do perfil antes de concluir.
 - Esqueceu de encerrar no mesmo dia? Ao abrir a OS de novo, o sistema pede a hora real em que o trabalho parou antes
   de deixar continuar.
 
@@ -50,12 +52,16 @@
 - Em "Meu perfil" você vê seus dados, troca a assinatura cadastrada e consulta o histórico de OS já executadas.
   [perfil]
 - A troca de senha e de assinatura valem a partir do momento em que são salvas; execuções anteriores não mudam.
+- A assinatura é a primeira coisa a fazer depois do primeiro acesso e da liberação do admin: sem ela nenhuma outra
+  tela abre. Ela valida o que você faz de importante no sistema (APR, encerramento, interrupção, ausência).
 
 ## Minha equipe
 
 - A tela da sua equipe (ou "Minha equipe", se você é supervisor) mostra quem faz parte dela, o total de OS e quem é
   o supervisor. [equipe]
 - Quem supervisiona pode cadastrar novos técnicos ali; quem não supervisiona só consulta.
+- Quem supervisiona assina, com a assinatura do perfil, ao dar ciência numa OS encerrada, ao reprogramar uma OS e ao
+  devolvê-la ao SAP; a assinatura da ciência vai para o PDF da OS.
 - O representante da equipe é quem assume as tarefas do supervisor quando ele está ausente ou fica alguns dias sem
   usar o sistema — a equipe continua funcionando normalmente nesse meio-tempo.
 

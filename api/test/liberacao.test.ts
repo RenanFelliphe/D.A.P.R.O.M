@@ -222,9 +222,15 @@ describe("Cadastro pelo supervisor e liberação de acesso", () => {
       assert.equal(u.liberacao, "liberado");
       assert.ok(u.liberado_em);
       assert.equal((await amb.sql<{ liberado_por_id: string }>("select liberado_por_id from usuario where id = $1", [novo.id]))[0]!.liberado_por_id, admin.id);
+      // A liberação é assinada: guarda a imagem do perfil do admin.
+      assert.equal((await amb.sql<{ p: string | null }>("select liberacao_assinatura_path as p from usuario where id = $1", [novo.id]))[0]!.p, await amb.assinaturaDe(admin));
 
-      // Troca a senha provisória e passa a acessar o resto.
+      // Troca a senha provisória; liberado e sem assinatura, só cadastra a assinatura, e depois acessa o resto.
       await amb.esperar(200, "POST", "/auth/trocar-senha", { como: novo, json: { senha_atual: "senha-inicial-1", senha_nova: "senha-nova-123" } });
+      const semAssinatura = await amb.req("GET", "/os", { como: novo });
+      assert.equal(semAssinatura.status, 403);
+      assert.equal(semAssinatura.corpo.erro.codigo, "assinatura_pendente");
+      await amb.cadastrarAssinatura(novo);
       await amb.esperar(200, "GET", "/os", { como: novo });
       await amb.esperar(200, "GET", "/equipes", { como: novo });
     });
@@ -239,6 +245,7 @@ describe("Cadastro pelo supervisor e liberação de acesso", () => {
       assert.equal(u.liberacao, "recusado");
       assert.equal(u.ativo, false);
       assert.equal(u.recusa_motivo, "Matrícula não confere");
+      assert.equal((await amb.sql<{ p: string | null }>("select liberacao_assinatura_path as p from usuario where id = $1", [novo.id]))[0]!.p, await amb.assinaturaDe(admin));
 
       const login = await amb.req("POST", "/auth/login", { json: { email: novo.email, senha: "senha-inicial-1" } });
       assert.equal(login.status, 403);
