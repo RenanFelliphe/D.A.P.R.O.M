@@ -8,7 +8,7 @@
 
 ## 1. O projeto
 
-- **SYNC OS** digitaliza as Ordens de Serviço de manutenção (OS) e as Análises Preliminares de Risco (APR), do recebimento da ordem até o encerramento em campo, com fotos, assinaturas e um PDF de registro.
+- **SYNQ OS** digitaliza as Ordens de Serviço de manutenção (OS) e as Análises Preliminares de Risco (APR), do recebimento da ordem até o encerramento em campo, com fotos, assinaturas e um PDF de registro.
 - **O problema que resolve:** as OS eram impressas pelo SAP, separadas por equipe, preenchidas à mão em campo, grampeadas com a APR em papel e escaneadas uma a uma pelo analista. São de 200 a 400 OS encerradas por mês, com papel sujo, incompleto ou perdido, e nenhuma barreira real contra começar um serviço sem a APR aprovada.
 - **A regra que define o sistema:** nenhum serviço começa sem uma APR nova e aprovada. O técnico responde ao checklist inteiro sem saber quais itens são eliminatórios; o servidor decide.
 - **Duas frentes:** a experiência de campo (celular, para o técnico) e o painel de gestão (web, para o admin e os supervisores).

@@ -300,7 +300,7 @@ Legenda de impacto: 🔴 muda tabela ou contrato de sync · 🟡 muda tela ou re
 ## 8. Protótipo visual
 
 - **Link:** https://claude.ai/artifact/D5sSptiQuFiNTVpuUaB1jK
-- **Formato:** canvas de design "Protótipo SYNC OS", privado. Para outras pessoas abrirem, compartilhar pelo menu Share.
+- **Formato:** canvas de design "Protótipo SYNQ OS", privado. Para outras pessoas abrirem, compartilhar pelo menu Share.
 - **Fonte das telas:** os arquivos `.dc.html` ficam no próprio canvas e podem ser recuperados pelo link.
 - **Escopo:** mostra a visão completa da especificação, não só o MVP (inclui editor de modelos, OS de apoio, e-mail e indicadores).
 - **Estado:** telas estáticas, sem navegação. A renderização não foi conferida depois de publicada.
@@ -488,7 +488,7 @@ A v5 da APR 03 acrescenta "Os participantes conhecem o plano de emergência do c
 ### Premissas e divergências do protótipo
 
 - **Dados fictícios:** pessoas, clientes e números de OS são inventados; os clientes críticos reais citados na Reunião 1 foram trocados por nomes fictícios.
-- **Sem marca da empresa:** o produto aparece só como SYNC OS.
+- **Sem marca da empresa:** o produto aparece só como SYNQ OS.
 - **Versões dos modelos:** começam na revisão do papel (REV 03 → v3). **Diverge da especificação**, que manda a carga inicial entrar como versão 1.
 - **Questões em aberto mostradas com a proposta atual:** APR bloqueada bloqueia todas as OS cobertas (questão 1); e-mail só para bloqueio (questão 20); função de campo chamada "encarregado".
 - **"Resposta crítica":** nome usado no editor de modelos para o campo `resposta_bloqueante`.
@@ -497,7 +497,7 @@ A v5 da APR 03 acrescenta "Os participantes conhecem o plano de emergência do c
 
 ## 9. Relatório das telas
 
-- **Link:** https://claude.ai/code/artifact/3fbdec31-97fb-4c43-847a-c2dc6e14772f (documento "Telas do protótipo SYNC OS", privado; compartilhar pelo menu Share).
+- **Link:** https://claude.ai/code/artifact/3fbdec31-97fb-4c43-847a-c2dc6e14772f (documento "Telas do protótipo SYNQ OS", privado; compartilhar pelo menu Share).
 - **Público:** banca e mentores da maratona, na apresentação das telas.
 - **Formato:** para cada uma das 16 telas, título numerado, descrição de 2 a 5 linhas e lista de "Principais funcionalidades". Abre com uma visão geral (9 telas do app, 6 do painel web e o PDF, todas no mesmo dia de trabalho) e o link do canvas.
 - **Agrupamento:**

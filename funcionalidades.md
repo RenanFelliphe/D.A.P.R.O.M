@@ -273,10 +273,10 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 
 - **Onde está o desenho:** [apifuncionarios.md](apifuncionarios.md) e [apiSAP.md](apiSAP.md), com o que mudou na implementação em cada um.
 - **O que fazem:**
-  - o SYNC OS só cadastra quem está no registro de funcionários: o admin ou o supervisor informa a matrícula e o e-mail institucional, e o nome, o cargo e o registro profissional vêm de lá e deixam de ser editáveis (o botão "Atualizar do registro" os traz de novo);
-  - o desligamento vale em tempo real: o registro avisa o SYNC OS, e a conta é desativada em segundos; uma leitura completa por dia (e o "Ler agora") pega o que o aviso perdeu;
+  - o SYNQ OS só cadastra quem está no registro de funcionários: o admin ou o supervisor informa a matrícula e o e-mail institucional, e o nome, o cargo e o registro profissional vêm de lá e deixam de ser editáveis (o botão "Atualizar do registro" os traz de novo);
+  - o desligamento vale em tempo real: o registro avisa o SYNQ OS, e a conta é desativada em segundos; uma leitura completa por dia (e o "Ler agora") pega o que o aviso perdeu;
   - o registro de funcionários e as ordens do SAP são simulados, com tabelas no banco e uma tela de CRUD cada, em `/simulador/funcionarios` e `/simulador/ordens` (só o admin): criação manual e aleatória, busca, seleção com ações em massa, "ver mais", editar e excluir;
-  - a tela do SAP mostra, em cada ordem, como o SYNC OS reagiu (ainda não lida, ignorada com o motivo, ou o status da OS) e o que ele vai pegar na próxima leitura.
+  - a tela do SAP mostra, em cada ordem, como o SYNQ OS reagiu (ainda não lida, ignorada com o motivo, ou o status da OS) e o que ele vai pegar na próxima leitura.
 - **Falta:**
   - o alerta no sino quando a leitura diária falha, e reativar a conta na readmissão, ficaram fora do escopo;
   - o cartão da tela do SAP não mostra os avisos da leitura (por exemplo, o intervalo entre ciclos que não foi reconhecido), porque a `api` não os guarda.
@@ -422,7 +422,7 @@ Decidida e feita em 15/10/2026. A regra está também na especificação (fatias
   - **A OS reservada continua no quadro da equipe,** com a marca de quem a fará. Os colegas precisam saber quais serviços existem, então a OS não some do quadro deles.
   - **Os colegas podem ser participantes da APR.** A restrição vale para iniciar e preencher a APR, não para quem acompanha o serviço. O responsável da APR é a pessoa designada.
   - **Só o supervisor da equipe reserva e devolve.** Nem o admin faz isso.
-  - **Devolução.** A OS com erro sai do quadro e segue na planilha de baixa, com uma justificativa que o supervisor escreve e que fica na OS, como um apêndice. O SYNC OS continua sem escrever no SAP.
+  - **Devolução.** A OS com erro sai do quadro e segue na planilha de baixa, com uma justificativa que o supervisor escreve e que fica na OS, como um apêndice. O SYNQ OS continua sem escrever no SAP.
 - **O que foi descartado:** o atraso na entrega, em que a OS nova apareceria primeiro só para o supervisor ("em triagem") e depois de um intervalo iria para a equipe. A reserva visível resolve o mesmo problema (a OS que "some" do quadro) sem custo, e o atraso:
   - atrasaria todas as OS por causa de uma exceção, inclusive as urgentes;
   - dependeria de o supervisor, que também é técnico de campo, olhar a tela dentro do intervalo;
