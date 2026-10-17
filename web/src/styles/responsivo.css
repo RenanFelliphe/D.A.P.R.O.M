@@ -177,8 +177,7 @@
     font-size: 22px
   }
 
-  .topbar .brand small,
-  .topbar .net {
+  .topbar .brand small {
     display: none
   }
 

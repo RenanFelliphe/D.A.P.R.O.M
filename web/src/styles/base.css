@@ -251,29 +251,6 @@ button:focus-visible,
   text-align: center
 }
 
-.net {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap
-}
-
-.net.off {
-  background: #2B3846;
-  color: #F6C453
-}
-
-.net.on {
-  background: #1F3A2B;
-  color: #8FE0AE
-}
-
 .who-u {
   display: flex;
   align-items: center;

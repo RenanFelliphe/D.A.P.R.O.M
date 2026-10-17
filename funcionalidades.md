@@ -37,7 +37,7 @@
 
 **Depende de terceiros** (seção 7.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos e a aprovação da empresa para enviar dados ao fornecedor de IA.
 
-**Documentação e arrumação** (seções 7.2 e 7.3): README da raiz, especificação, `api/README.md` e `web/README.md` ainda têm trechos desatualizados; há um pouco de código sem uso na web e o indicador "Online" é texto fixo.
+**Documentação e arrumação** (seções 7.2 e 7.3): README da raiz, especificação, `api/README.md` e `web/README.md` ainda têm trechos desatualizados; há um pouco de código sem uso na web.
 
 **Já resolvido em 15/10/2026:** a atribuição individual de OS a uma pessoa da equipe e a devolução da OS com erro ao SAP, com a justificativa na planilha de baixa (seção 6).
 
@@ -536,7 +536,7 @@ Decidida e feita em 15/10/2026. A regra está também na especificação (fatias
 - **Resolvidos em 14/10/2026:**
   - **Carga de demonstração.** O `pnpm demo:popular` quebrava entre a meia-noite e cerca de 2h10, porque o cenário "em pausa neste momento" criava a APR no dia anterior e a `api` recusa APR de outro dia. Agora o cenário começa logo depois da meia-noite (`api/src/db/seed/demo.ts`).
   - **Campo de treino.** Os dashboards respondiam 404. Agora a API fictícia atende os indicadores (`web/src/treino/indicadores.ts`), sem dados por pessoa nem pendências de gestão.
-- **Indicador "Online".** O da barra é um texto fixo, que não confere a conexão.
+- **Indicador "Online".** Saiu da barra da web em 17/10/2026: na web só se acessa pela internet, então o selo não informa nada. Fica para o app `mobile`, onde a conexão pode cair.
 - **Código sem uso na web:** a propriedade `aviso` do `Button` e um `return` inalcançável em `app/app/treino/estado/route.ts`. Em 16/10/2026 saíram `ui/Aviso.tsx`, `ui/Assinatura.tsx`, `treino/recomecar.ts`, as classes `.sync-row` e `.sync-ic` e os SVG de exemplo do Next em `public/`.
 
 ### 7.4 Fora do escopo, por decisão

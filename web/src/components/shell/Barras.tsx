@@ -35,7 +35,7 @@ interface BarraProps {
   subtitulo: string;
   /** Os alertas de quem está logado (os das equipes, para o admin e o supervisor; os da própria ausência, para o técnico); sem isso o sino não aparece. */
   alertas?: { naoLidos: number; recentes: Alerta[]; /** Quem acompanha os alertas da gestão abre a tela de alertas. */ gestao: boolean };
-  /** Campo de treino: troca a situação da conexão pelo selo do treino. */
+  /** Campo de treino: mostra o selo do treino no lugar do sino. */
   treino?: boolean;
   /** Técnico pendente fora do treino: a busca global é da `api` real e ele ainda não pode usá-la. */
   semBusca?: boolean;
@@ -43,7 +43,7 @@ interface BarraProps {
   gamificacao?: ResumoDaBarra;
 }
 
-/** Barra superior das áreas logadas: marca, busca global e, à direita, o que cada papel usa (alertas, conexão ou treino) e o usuário. */
+/** Barra superior das áreas logadas: marca, busca global e, à direita, o que cada papel usa (alertas ou treino) e o usuário. O selo "Online" é só do app mobile: na web só se acessa pela internet. */
 export function Barra({ usuario, subtitulo, alertas, treino, semBusca, gamificacao }: BarraProps) {
   return (
     <header className="topbar">
@@ -52,22 +52,8 @@ export function Barra({ usuario, subtitulo, alertas, treino, semBusca, gamificac
       <div className="right">
         {treino ? (
           <SeloTreino />
-        ) : alertas ? (
-          <>
-            {/* O técnico ganha o sino sem perder a situação da conexão (a gestão não a mostra). */}
-            {!alertas.gestao && (
-              <span className="net on">
-                <Icon name="check" size={16} />
-                Online
-              </span>
-            )}
-            <SinoAlertas naoLidos={alertas.naoLidos} recentes={alertas.recentes} gestao={alertas.gestao} />
-          </>
         ) : (
-          <span className="net on">
-            <Icon name="check" size={16} />
-            Online
-          </span>
+          alertas && <SinoAlertas naoLidos={alertas.naoLidos} recentes={alertas.recentes} gestao={alertas.gestao} />
         )}
         {gamificacao && (
           <Link
