@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { chamarEmStream } from "@/lib/cliente-api";
+import { chamar, chamarEmStream } from "@/lib/cliente-api";
 import { cx } from "@/lib/cx";
 import type { ExpressaoVitoria } from "@/lib/treinamento-servico";
 import { movimentoReduzido } from "@/lib/reacao-vitoria";
+import { rotas } from "@/lib/rotas";
 import { novoUuid } from "@/lib/uuid";
 import {
   HISTORICO_MAXIMO,
@@ -93,6 +95,11 @@ export function Vitoria() {
     pararFigurinhas();
   }
 
+  /** Os números do perfil dela (seção 2.8.7) contam também o que a web resolve sozinha. Só soma; uma falha não aparece para ninguém. */
+  function avisarEvento(tipo: "ida_a_tela" | "sugestao") {
+    chamar("POST", "/vitoria/eventos", { tipo }).catch(() => {});
+  }
+
   /** Dupla checagem (vitoria.md, 2.4): refaz a validação contra o manifesto com o contexto que a web tem agora, antes de navegar. */
   function irPara(acao: AcaoResolvida) {
     setErro(null);
@@ -102,6 +109,7 @@ export function Vitoria() {
       return;
     }
     router.push(resolvida.url);
+    avisarEvento("ida_a_tela");
     if (resolvida.tipo === "destacar" && resolvida.alvo) setDestaque((d) => ({ alvo: resolvida.alvo!, pedido: d.pedido + 1 }));
     if (window.matchMedia("(max-width: 640px)").matches) fechar();
   }
@@ -109,6 +117,7 @@ export function Vitoria() {
   /** As sugestões fixas nunca chamam a IA: a pergunta e a resposta já vêm prontas de `shared/vitoria/sugestoes.ts`. */
   function responderComSugestao(s: SugestaoFixa) {
     pararFigurinhas();
+    avisarEvento("sugestao");
     const { resolvida } = s.acao ? resolverAcao(s.acao, contexto) : { resolvida: null };
     setMensagens((atual) => [
       ...atual,
@@ -199,23 +208,33 @@ export function Vitoria() {
       {aberto && (
         <div className="vt-painel" role="dialog" aria-label="Vitória, assistente de ajuda">
           <div className="vt-cab">
-            <span className={cx("vt-avatar-cab", carregando && "vt-avatar-ativo")}>
-              <Avatar tamanho={40} />
-              <span className={cx("vt-luz", carregando && "vt-luz-ativa")} aria-hidden="true" />
-            </span>
-            <div className="vt-cab-texto">
-              <strong>Vitória</strong>
-              <span key={situacao} className="vt-situacao" aria-live="polite">
-                {situacao}
-                {carregando && (
-                  <span className="vt-reticencias" aria-hidden="true">
-                    <i>.</i>
-                    <i>.</i>
-                    <i>.</i>
-                  </span>
-                )}
+            {/* O avatar e o nome levam ao perfil dela (seção 2.8.7); no celular o painel fecha para a página aparecer. */}
+            <Link
+              href={rotas.app.perfilDaVitoria}
+              className="vt-cab-perfil"
+              title="Ver o perfil da Vitória"
+              onClick={() => {
+                if (window.matchMedia("(max-width: 640px)").matches) fechar();
+              }}
+            >
+              <span className={cx("vt-avatar-cab", carregando && "vt-avatar-ativo")}>
+                <Avatar tamanho={40} />
+                <span className={cx("vt-luz", carregando && "vt-luz-ativa")} aria-hidden="true" />
               </span>
-            </div>
+              <span className="vt-cab-texto">
+                <strong>Vitória</strong>
+                <span key={situacao} className="vt-situacao" aria-live="polite">
+                  {situacao}
+                  {carregando && (
+                    <span className="vt-reticencias" aria-hidden="true">
+                      <i>.</i>
+                      <i>.</i>
+                      <i>.</i>
+                    </span>
+                  )}
+                </span>
+              </span>
+            </Link>
             <button type="button" className="vt-fechar" onClick={fechar} aria-label="Fechar o painel da Vitória">
               <Icon name="x" size={16} />
             </button>

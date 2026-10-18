@@ -27,8 +27,8 @@ const itensDoPendente: ItemMenu[] = [
   { href: rotas.app.aguardando, icone: "clock", rotulo: "Aguardando liberação" },
 ];
 
-/** Telas que o técnico pendente alcança fora do treino. Qualquer outra volta para "Aguardando liberação" (que está na lista: sem laço). */
-const livresParaPendente = [rotas.app.aguardando, rotas.app.treino, rotas.app.trocarSenha, rotas.app.entrar];
+/** Telas que o técnico pendente alcança fora do treino (o perfil da Vitória abre pelo chat, que ele também usa). Qualquer outra volta para "Aguardando liberação" (que está na lista: sem laço). */
+const livresParaPendente = [rotas.app.aguardando, rotas.app.treino, rotas.app.trocarSenha, rotas.app.entrar, rotas.app.perfilDaVitoria];
 const ehLivre = (endereco: string) => livresParaPendente.some((r) => endereco === r || endereco.startsWith(`${r}/`));
 
 /** Telas de quem executa em campo (treino, espera, APR e execução): o admin é só gestão e não tem o que fazer nelas. */
@@ -71,19 +71,21 @@ export async function Casca({ children }: { children: ReactNode }) {
   // O sino é de todos: alertas não lidos das equipes do supervisor ou de todas (admin); o técnico vê só os endereçados a ele (os da
   // própria ausência). O selo do menu do admin conta os cadastros de supervisores que esperam.
   const comAlertas = liberado;
-  const [alertas, recentes, pendentes] = comAlertas
+  const [alertas, recentes, pendentes, semResposta] = comAlertas
     ? await Promise.all([
         api<{ total: number }>("/alertas", { consulta: { lido: false, tamanho: 1 } }),
         api<{ alertas: Alerta[] }>("/alertas", { consulta: { tamanho: 5 } }),
         // Falha aqui não derruba o painel.
         admin ? api<{ total: number }>("/usuarios", { consulta: { liberacao: "pendente", tamanho: 1 } }).catch(() => ({ total: 0 })) : null,
+        // O selo de "Perguntas à Vitória": as que ela não soube responder e o admin ainda não tratou.
+        admin ? api<{ total: number }>("/vitoria/sem-resposta", { consulta: { tratada: false, tamanho: 1 } }).catch(() => ({ total: 0 })) : null,
       ])
-    : [null, null, null];
+    : [null, null, null, null];
 
   // Menu: o campo de treino mostra o menu do técnico (o tutorial aponta para ele) e o atalho para a tela de espera. Fora dele,
   // todos veem Ordem de Serviço, equipe e Dashboard (cada um com o seu escopo); o admin tem ainda APR e Auditoria.
   const itensDoCampo = restrito ? itensDoPendente : pendente ? [...itensDeCampo, itensDoPendente[1]!] : itensDeCampo;
-  const itens = liberado ? [...itensDeNavegacao(usuario, pendentes?.total), ...(admin ? [] : [itemDoTreino])] : itensDoCampo;
+  const itens = liberado ? [...itensDeNavegacao(usuario, pendentes?.total, semResposta?.total), ...(admin ? [] : [itemDoTreino])] : itensDoCampo;
   // O Campo de treino fica sempre num grupo separado, no fim (o perfil está no menu do usuário, na barra superior).
   const secoes: SecaoMenu[] | undefined = admin
     ? undefined

@@ -29,6 +29,8 @@ export const rotas = {
     perfil: "/app/perfil",
     /** Perfil de outra pessoa (aberto pela busca). */
     perfilDe: (id: string) => `/app/perfil/${id}`,
+    /** O perfil da Vitória (fictício, com o modelo de IA de verdade): aberto pelo cabeçalho do chat. */
+    perfilDaVitoria: "/app/perfil/vitoria",
     /** Perfil da equipe. */
     equipe: (id: string) => `/app/equipes/${id}`,
     /** Resultados da busca global (`?q=`). */

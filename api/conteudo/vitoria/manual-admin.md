@@ -89,6 +89,8 @@
 
 - Quando a Vitória não sabe responder algo, a pergunta fica registrada sem identificar quem perguntou: só o texto, a
   tela, o perfil e a data. [vitoria_sem_resposta]
+- A lista fica no menu "Perguntas à Vitória", com um selo que conta as que ainda não foram tratadas. Depois de melhorar o
+  manual com a resposta, marque a pergunta como tratada. [vitoria_sem_resposta]
 - Depois de melhorar o manual com essa resposta, marque a pergunta como tratada na mesma tela.
 
 ## Sobre a Vitória

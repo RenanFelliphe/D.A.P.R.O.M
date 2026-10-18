@@ -46,6 +46,7 @@ const REGRAS_DE_TELA: RegraDeTela[] = [
   { padrao: /^\/app\/os\/([^/]+)\/execucao(\/|$)/, tela: "execucao", contexto: (m) => ({ os_id: m[1]! }) },
   { padrao: /^\/app\/os\/([^/]+)/, tela: "os_detalhe", contexto: (m) => ({ os_id: m[1]! }) },
   { padrao: /^\/app\/lista/, tela: "quadro_os" },
+  { padrao: /^\/app\/perfil\/vitoria(\/|$)/, tela: "vitoria_perfil" },
   { padrao: /^\/app\/perfil/, tela: "perfil" },
   { padrao: /^\/app\/equipes\/([^/]+)/, tela: "equipe", contexto: (m) => ({ equipe_id: m[1]! }) },
   { padrao: /^\/app\/busca/, tela: "busca" },

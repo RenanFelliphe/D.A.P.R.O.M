@@ -99,6 +99,27 @@
   background: #ffd25e;
   animation: vt-luz 1.2s ease-in-out infinite;
 }
+/* O avatar e o nome são um link para o perfil da Vitória: um realce discreto mostra que dá para tocar. */
+.vt-cab-perfil {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  margin: -4px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+.vt-cab-perfil:hover,
+.vt-cab-perfil:focus-visible {
+  background: rgba(255, 255, 255, 0.14);
+}
+.vt-cab-perfil:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .vt-cab-texto {
   display: flex;
   flex-direction: column;
@@ -850,6 +871,150 @@
   .vt-enviar,
   .vt-campo,
   .vt-fechar {
+    transition: none;
+  }
+}
+
+/* ---------- Perfil da Vitória (/app/perfil/vitoria, PerfilDaVitoria.tsx) ---------- */
+
+.vp-capa {
+  background-image:
+    radial-gradient(circle at 96% 10%, rgba(15, 92, 120, 0.12) 0 90px, transparent 91px),
+    linear-gradient(135deg, var(--brand-bg), #fff 60%);
+}
+.perfil-foto.vp-foto {
+  overflow: hidden;
+  padding: 0;
+  background: var(--surface);
+}
+.vp-foto img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.vp-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.55;
+}
+.vp-texto p {
+  margin: 0;
+}
+
+.vp-direitos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.vp-direitos h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink3);
+}
+.vp-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.vp-lista li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.vp-lista svg {
+  flex: none;
+  margin-top: 2px;
+}
+.vp-pode svg {
+  color: var(--enc);
+}
+.vp-nao-pode svg {
+  color: var(--blq);
+}
+
+.vp-linha-do-tempo {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-left: 2px solid var(--line2);
+}
+.vp-linha-do-tempo li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.vp-linha-do-tempo li::before {
+  content: "";
+  position: absolute;
+  left: -25px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 3px var(--surface);
+}
+
+.vp-figurinhas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 14px 10px;
+}
+.vp-figurinhas li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.vp-figurinhas .vt-figurinha {
+  animation: none;
+  transform-origin: center;
+  transition: transform 0.15s ease;
+}
+.vp-figurinhas .vt-figurinha:hover {
+  transform: scale(1.06);
+}
+
+/* O modelo da IA: o único bloco verdadeiro do perfil, destacado na cor da marca. */
+.vp-ia {
+  border-color: var(--brand-bd);
+  background: linear-gradient(160deg, var(--brand-bg), var(--surface) 55%);
+}
+.vp-ia h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--brand-ink);
+}
+.vp-ia dd.mono {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .vp-direitos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vt-cab-perfil,
+  .vp-figurinhas .vt-figurinha {
     transition: none;
   }
 }

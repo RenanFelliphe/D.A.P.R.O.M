@@ -92,7 +92,7 @@ export const DESTINOS: Record<string, Destino> = {
   simulador_funcionarios: { forma: "fixo", caminho: "/simulador/funcionarios" },
   simulador_ordens: { forma: "fixo", caminho: "/simulador/ordens" },
   treinamento_servico_editor: { forma: "com_contexto", campo: "servico_codigo", modelo: "/app/catalogo/servicos/{servico_codigo}/treinamento" },
-  vitoria_sem_resposta: { forma: "fixo", caminho: "/app/vitoria/sem-resposta" },
+  vitoria_sem_resposta: { forma: "fixo", caminho: "/app/vitoria/sem-resposta", alvo: "menu-vitoria" },
 };
 
 export type ChaveDeDestino = keyof typeof DESTINOS;

@@ -13,12 +13,13 @@ import type { ItemMenu } from "./MenuLateral";
  * abas, "APR" reúne Modelos e Atividades, "Catálogo" reúne Serviços e Materiais, "Gamificação" reúne Minha pontuação, Ranking,
  * Conquistas, Patentes e Como pontuar, e "Dashboard" reúne os dashboards; o menu também lista as abas como dropdown. Quais abas
  * aparecem fica com cada seção (`secao.ts` em `components/web/os`, `apr`, `catalogo`, `gamificacao` e `indicadores`).
- * - Admin: Ordem de Serviço, APR, Catálogo, Equipes e usuários, Auditoria, Gamificação (sem Minha pontuação: o admin não joga) e Dashboard.
+ * - Admin: Ordem de Serviço, APR, Catálogo, Equipes e usuários, Auditoria, Perguntas à Vitória, Gamificação (sem Minha pontuação:
+ *   o admin não joga) e Dashboard.
  * - Supervisor e técnico: Ordem de Serviço (o técnico, "OS da equipe"), Minha equipe, Catálogo (só para consulta), Gamificação e
  *   Dashboard; o supervisor com cadastro de técnicos e o técnico só para consulta.
  * O Dashboard é sempre o último; o Campo de treino vem depois, num grupo à parte (ver `Casca`).
  */
-export function itensDeNavegacao(usuario: Usuario, pendentes?: number): ItemMenu[] {
+export function itensDeNavegacao(usuario: Usuario, pendentes?: number, perguntasSemResposta?: number): ItemMenu[] {
   const admin = ehAdmin(usuario);
   // As abas de cada seção viram o dropdown do item; quem só tem uma fica com o link simples.
   const comAbas = (item: ItemMenu, abas: AbaDaSecao[]): ItemMenu => (abas.length > 1 ? { ...item, subitens: abas } : item);
@@ -45,6 +46,14 @@ export function itensDeNavegacao(usuario: Usuario, pendentes?: number): ItemMenu
     },
     // Só o admin: quem fez o quê nas telas de gestão.
     { href: rotas.web.auditoria, icone: "shield", rotulo: "Auditoria", chave: "menu-auditoria" },
+    // Só o admin: o que a Vitória não soube responder, para melhorar o manual; o selo conta as que ainda não foram tratadas.
+    {
+      href: rotas.app.vitoriaSemResposta,
+      icone: "chat",
+      rotulo: "Perguntas à Vitória",
+      chave: "menu-vitoria",
+      ...(perguntasSemResposta ? { contador: perguntasSemResposta, rotuloDoContador: `${perguntasSemResposta} perguntas sem resposta da Vitória` } : {}),
+    },
     gamificacao,
     // O Dashboard é sempre o último item antes do campo.
     dashboard,
