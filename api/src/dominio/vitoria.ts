@@ -3,7 +3,7 @@ import { z } from "zod";
 import { resolverAcao, type AcaoBruta, type AcaoResolvida, DESTINOS } from "../../../shared/vitoria/destinos";
 import { sugestoesDaTela, type SugestaoFixa } from "../../../shared/vitoria/sugestoes";
 import type { Db } from "../db/conexao";
-import { vitoriaPerguntaSemResposta, vitoriaUso, type Perfil } from "../db/schema";
+import { treinamentoServicoVersao, vitoriaEstatistica, vitoriaPerguntaSemResposta, vitoriaUso, type Perfil } from "../db/schema";
 import type { Deps } from "../deps";
 import type { ExpressaoVitoria } from "./treinamento-servico-esquema";
 import { contar, type limiteEDeslocamento } from "../http/paginacao";
@@ -138,6 +138,35 @@ async function registrarUso(db: Db, usuarioId: string, dia: string): Promise<voi
     .onConflictDoUpdate({ target: [vitoriaUso.usuarioId, vitoriaUso.dia], set: { mensagens: sql`${vitoriaUso.mensagens} + 1` } });
 }
 
+// ---- Números do perfil (seção 2.8.7) ----------------------------------------------------------------------------------
+
+type CampoDaEstatistica = "respondidas" | "naoSei" | "comAcao" | "idasATela" | "respostasComIa" | "tempoIaMs";
+
+/**
+ * Soma os contadores do dia (`vitoria_estatistica`). Só números, sem texto nem pessoa. Uma falha aqui nunca derruba a
+ * resposta: os números do perfil são um enfeite, a resposta não.
+ */
+async function somarEstatistica(db: Db, dia: string, campos: Partial<Record<CampoDaEstatistica, number>>): Promise<void> {
+  const somas = Object.entries(campos).filter(([, v]) => v);
+  if (somas.length === 0) return;
+  const set = Object.fromEntries(somas.map(([campo, v]) => [campo, sql`${vitoriaEstatistica[campo as CampoDaEstatistica]} + ${v}`]));
+  try {
+    await db
+      .insert(vitoriaEstatistica)
+      .values({ dia, ...Object.fromEntries(somas) })
+      .onConflictDoUpdate({ target: vitoriaEstatistica.dia, set });
+  } catch (erro) {
+    console.warn("Vitória: não consegui somar os números do dia", erro);
+  }
+}
+
+/** O que a web avisa por conta própria: o toque em "Me leve lá" ou "Mostrar na tela", e a sugestão fixa respondida sem a `api`. */
+export type EventoDaVitoria = "ida_a_tela" | "sugestao";
+
+export async function registrarEventoDaVitoria(db: Db, agora: Date, evento: EventoDaVitoria): Promise<void> {
+  await somarEstatistica(db, diaDe(agora), evento === "ida_a_tela" ? { idasATela: 1 } : { respondidas: 1 });
+}
+
 // ---- Pergunta sem resposta (seção 2.7) ---------------------------------------------------------------------------------
 
 async function registrarPerguntaSemResposta(db: Db, dados: { pergunta: string; tela: string; perfil: Perfil }, agora: Date): Promise<void> {
@@ -187,11 +216,93 @@ async function respostaSemIA(db: Db, agora: Date, pedido: PedidoVitoria, motivo:
   if (achado) {
     const bruta = acaoDoFallback(achado.chave);
     const { resolvida } = bruta ? resolverAcao(bruta, pedido.contexto) : { resolvida: null };
+    await somarEstatistica(db, diaDe(agora), { respondidas: 1, comAcao: resolvida ? 1 : 0 });
     return { texto: `${intro} ${achado.texto}`, expressao: "padrao", acao: resolvida, motivo, sugestoes };
   }
 
   await registrarPerguntaSemResposta(db, { pergunta: pedido.mensagem, tela: pedido.tela, perfil: pedido.perfil }, agora);
+  await somarEstatistica(db, diaDe(agora), { naoSei: 1 });
   return { texto: TEXTO_NAO_SEI, expressao: "ops", acao: null, motivo, sugestoes };
+}
+
+// ---- Perfil da Vitória ----------------------------------------------------------------------------------------------
+
+export interface SobreAVitoria {
+  provedor: "anthropic" | "gemini";
+  /** `false` sem a chave, sem crédito ou com o provedor desligado: ela responde sem IA (seção 2.6). */
+  ligada: boolean;
+  /** O modelo real de cada uso, como está na configuração; nunca a chave. */
+  modelos: { conversa: string; rascunho: string };
+  limites: { porConversa: number; porContaDia: number };
+  /** Quantas respostas com IA a pessoa logada já recebeu hoje (o mesmo contador do limite por conta). */
+  mensagensHoje: number;
+  /** Os números de verdade do perfil, somados desde o primeiro dia contado (`desde`, `null` antes da primeira resposta). */
+  estatisticas: {
+    desde: string | null;
+    respondidas: number;
+    naoSei: number;
+    comAcao: number;
+    /** Toques em "Me leve lá" e "Mostrar na tela" (a coluna `idas_a_tela`). */
+    idasNaTela: number;
+    /** Média do tempo da IA por resposta; `null` enquanto nenhuma resposta veio da IA. */
+    tempoMedioMs: number | null;
+    /** Treinamentos de serviço com ao menos uma versão montada pelo rascunho da IA, e quantos deles já têm uma dessas versões publicada. */
+    treinamentosCriados: number;
+    treinamentosPublicados: number;
+    /**
+     * OS e APR antigas digitalizadas pela leitura da IA (seção 10). A digitalização ainda não foi implementada e nenhuma OS
+     * tem essa origem (`OS_ORIGENS`), então o número de verdade é zero; passa a contar quando ela existir.
+     */
+    digitalizadas: number;
+  };
+}
+
+async function estatisticasDaVitoria(db: Db): Promise<SobreAVitoria["estatisticas"]> {
+  const e = vitoriaEstatistica;
+  const [t] = await db
+    .select({
+      desde: sql<string | null>`min(${e.dia})::text`,
+      respondidas: sql<number>`coalesce(sum(${e.respondidas}), 0)::int`,
+      naoSei: sql<number>`coalesce(sum(${e.naoSei}), 0)::int`,
+      comAcao: sql<number>`coalesce(sum(${e.comAcao}), 0)::int`,
+      idasNaTela: sql<number>`coalesce(sum(${e.idasATela}), 0)::int`,
+      respostasComIa: sql<number>`coalesce(sum(${e.respostasComIa}), 0)::int`,
+      tempoIaMs: sql<number>`coalesce(sum(${e.tempoIaMs}), 0)::float8`,
+    })
+    .from(e);
+  const v = treinamentoServicoVersao;
+  const [treinos] = await db
+    .select({
+      criados: sql<number>`count(distinct ${v.treinamentoId})::int`,
+      publicados: sql<number>`count(distinct ${v.treinamentoId}) filter (where ${v.estado} = 'publicada')::int`,
+    })
+    .from(v)
+    .where(eq(v.geradoComIa, true));
+  const { respostasComIa, tempoIaMs, ...resto } = t!;
+  return {
+    ...resto,
+    tempoMedioMs: respostasComIa > 0 ? Math.round(Number(tempoIaMs) / respostasComIa) : null,
+    treinamentosCriados: treinos?.criados ?? 0,
+    treinamentosPublicados: treinos?.publicados ?? 0,
+    digitalizadas: 0,
+  };
+}
+
+/**
+ * O lado verdadeiro do perfil da Vitória (`/app/perfil/vitoria`, seção 2.8.7): o provedor e os modelos que estão
+ * respondendo agora, os limites, o uso do dia de quem pergunta e os números dela (`vitoria_estatistica`). O resto do
+ * perfil (equipe, matrícula, histórico) é fictício e fica na web.
+ */
+export async function sobreAVitoria(deps: Pick<Deps, "db" | "ia" | "config" | "agora">, usuarioId: string): Promise<SobreAVitoria> {
+  const { db, ia, config, agora } = deps;
+  return {
+    provedor: config.ia.provedor,
+    ligada: ia.disponivel(),
+    modelos: { conversa: config.ia.modelos.vitoria, rascunho: config.ia.modelos.rascunho },
+    limites: { porConversa: config.vitoria.limitePorConversa, porContaDia: config.vitoria.limitePorContaDia },
+    mensagensHoje: await usoDoDia(db, usuarioId, diaDe(agora())),
+    estatisticas: await estatisticasDaVitoria(db),
+  };
 }
 
 // ---- Orquestração -------------------------------------------------------------------------------------------------
@@ -216,6 +327,8 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
   if (!ia.disponivel()) return respostaSemIA(db, agora(), pedido, "sem_ia");
 
   let bruto: string;
+  // O tempo da IA vem do relógio de verdade, não do `agora` (que nos testes fica parado).
+  const inicio = performance.now();
   try {
     bruto = await ia.conversar(montarPedido(pedido.perfil, pedido.tela, pedido.contexto, pedido.historico, pedido.mensagem, dia));
   } catch (erro) {
@@ -233,10 +346,12 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
   }
 
   await registrarUso(db, pedido.usuarioId, dia);
+  const daIA = { respostasComIa: 1, tempoIaMs: Math.round(performance.now() - inicio) };
 
   const acaoBruta = interpretada.acao ?? { tipo: "nenhuma" as const };
   if (acaoBruta.tipo === "nao_sei") {
     await registrarPerguntaSemResposta(db, { pergunta: pedido.mensagem, tela: pedido.tela, perfil: pedido.perfil }, agora());
+    await somarEstatistica(db, dia, { ...daIA, naoSei: 1 });
     return { texto: TEXTO_NAO_SEI, expressao: "ops", acao: null };
   }
 
@@ -244,8 +359,10 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
   if (destinoDesconhecido) {
     // A IA citou uma chave que não existe no manifesto: é uma alucinação, tratada como "não sei" (vitoria.md, seção 2.4).
     await registrarPerguntaSemResposta(db, { pergunta: pedido.mensagem, tela: pedido.tela, perfil: pedido.perfil }, agora());
+    await somarEstatistica(db, dia, { ...daIA, naoSei: 1 });
     return { texto: TEXTO_NAO_SEI, expressao: "ops", acao: null };
   }
 
+  await somarEstatistica(db, dia, { ...daIA, respondidas: 1, comAcao: resolvida ? 1 : 0 });
   return { texto: interpretada.texto, expressao: interpretada.expressao ?? "padrao", acao: resolvida };
 }

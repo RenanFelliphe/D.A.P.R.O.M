@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
-import { listarPerguntasSemResposta, marcarPerguntaTratada, responderVitoria } from "../dominio/vitoria";
+import { listarPerguntasSemResposta, marcarPerguntaTratada, registrarEventoDaVitoria, responderVitoria, sobreAVitoria } from "../dominio/vitoria";
 import type { Deps } from "../deps";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { emSnakeCase, responder } from "../http/resposta";
@@ -20,6 +20,8 @@ const esquemaPedido = z.object({
   /** Quantas mensagens a conversa já tem, 1-based, contando esta; sem isso o limite por conversa não teria como ser conferido. */
   numero_mensagem: z.number().int().positive().max(1_000_000).optional(),
 });
+
+const esquemaEvento = z.object({ tipo: z.enum(["ida_a_tela", "sugestao"]) });
 
 /** Agrupa o texto em pedaços de uns 20-30 caracteres (quebrando só em espaços) para simular a digitação em streaming. */
 function dividirEmPedacos(texto: string): string[] {
@@ -66,6 +68,16 @@ export function rotasVitoria(deps: Deps, { autenticar, exigirPerfil }: Autentica
         data: JSON.stringify(emSnakeCase({ acao: resultado.acao, expressao: resultado.expressao, motivo: resultado.motivo, sugestoes: resultado.sugestoes })),
       });
     });
+  });
+
+  /** O perfil da Vitória (seção 2.8.7): o provedor e os modelos de agora, os limites e o uso do dia de quem pergunta. */
+  r.get("/vitoria/sobre", autenticar({ permitirPendente: true, permitirAusente: true }), async (c) => responder(c, await sobreAVitoria(deps, c.get("usuario").id)));
+
+  /** O que a web avisa sozinha, para os números do perfil (seção 2.8.7): o toque em "Me leve lá" e a sugestão fixa respondida. Só soma. */
+  r.post("/vitoria/eventos", autenticar({ permitirPendente: true, permitirAusente: true }), async (c) => {
+    const { tipo } = await lerCorpo(c, esquemaEvento);
+    await registrarEventoDaVitoria(deps.db, deps.agora(), tipo);
+    return c.body(null, 204);
   });
 
   r.get("/vitoria/sem-resposta", autenticar(), soAdmin, async (c) => {

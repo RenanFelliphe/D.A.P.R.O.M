@@ -110,3 +110,11 @@
 - Enquanto seu cadastro aguarda a liberação de um administrador, as telas de OS ficam fechadas; o Campo de treino e
   os treinamentos de serviço já publicados continuam abertos para você praticar. [aguardando]
 - Não há um prazo fixo para a liberação; se estiver demorando, fale com seu supervisor.
+
+## Sobre a Vitória
+
+- A Vitória é a assistente virtual do SYNQ OS. O perfil dela mostra quem ela é, o que pode e o que não pode fazer no
+  sistema e qual modelo de IA está respondendo agora. Também abre tocando no nome dela, no topo do chat. [vitoria_perfil]
+- Ela não vê as OS, as respostas da APR nem os dados de ninguém: só consulta este manual. A conversa não fica guardada
+  no servidor.
+- Ela não aprova nem reprova APR, não assina nada e não decide nada por ninguém.

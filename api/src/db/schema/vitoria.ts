@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, date, index, integer, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
+import { bigint, check, date, index, integer, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 import { PERFIS, usuario } from "./usuarios";
 
@@ -51,5 +51,33 @@ export const vitoriaPerguntaSemResposta = pgTable(
     check("vitoria_pergunta_sem_resposta_perfil_check", emLista(t.perfil, PERFIS)),
     check("vitoria_pergunta_sem_resposta_tratamento", sql`(${t.tratadaEm} is null) = (${t.tratadaPor} is null)`),
     index("vitoria_pergunta_sem_resposta_pendentes_idx").on(t.criadaEm).where(sql`${t.tratadaEm} is null`),
+  ],
+).enableRLS();
+
+/**
+ * Os números do perfil da Vitória (`vitoria.md`, seção 2.8.7), somados por dia. Só contadores: nenhum texto de conversa e
+ * nenhuma pessoa, para continuar valendo que a conversa não é guardada (seção 2.2).
+ * - `respondidas`: respostas com conteúdo, pela IA ou pelo manual, e as sugestões fixas tocadas na web;
+ * - `naoSei`: as vezes em que ela disse que não sabia (pela IA, pelo manual ou por um destino inventado);
+ * - `comAcao`: respostas que ofereceram "Me leve lá" ou "Mostrar na tela";
+ * - `idasATela`: toques nesses botões, avisados pela web;
+ * - `respostasComIa` e `tempoIaMs`: quantas respostas vieram da IA e a soma do tempo que ela levou, para a média.
+ */
+export const vitoriaEstatistica = pgTable(
+  "vitoria_estatistica",
+  {
+    dia: date({ mode: "string" }).primaryKey(),
+    respondidas: integer().notNull().default(0),
+    naoSei: integer().notNull().default(0),
+    comAcao: integer().notNull().default(0),
+    idasATela: integer().notNull().default(0),
+    respostasComIa: integer().notNull().default(0),
+    tempoIaMs: bigint({ mode: "number" }).notNull().default(0),
+  },
+  (t) => [
+    check(
+      "vitoria_estatistica_nao_negativos",
+      sql`${t.respondidas} >= 0 and ${t.naoSei} >= 0 and ${t.comAcao} >= 0 and ${t.idasATela} >= 0 and ${t.respostasComIa} >= 0 and ${t.tempoIaMs} >= 0`,
+    ),
   ],
 ).enableRLS();

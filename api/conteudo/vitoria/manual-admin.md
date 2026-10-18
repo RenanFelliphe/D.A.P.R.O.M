@@ -90,3 +90,11 @@
 - Quando a Vitória não sabe responder algo, a pergunta fica registrada sem identificar quem perguntou: só o texto, a
   tela, o perfil e a data. [vitoria_sem_resposta]
 - Depois de melhorar o manual com essa resposta, marque a pergunta como tratada na mesma tela.
+
+## Sobre a Vitória
+
+- A Vitória é a assistente virtual do SYNQ OS. O perfil dela mostra quem ela é, o que pode e o que não pode fazer no
+  sistema e qual modelo de IA está respondendo agora. Também abre tocando no nome dela, no topo do chat. [vitoria_perfil]
+- Ela não vê as OS, as respostas da APR nem os dados de ninguém: só consulta este manual. A conversa não fica guardada
+  no servidor; só as perguntas que ela não soube responder, sem identificar quem perguntou.
+- Ela não aprova nem reprova APR, não assina nada e não decide nada por ninguém.

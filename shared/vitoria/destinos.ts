@@ -59,6 +59,7 @@ export const DESTINOS: Record<string, Destino> = {
   apr_nova: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}/apr", alvo: "os-nova-apr" },
   execucao: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}/execucao", alvo: "os-iniciar-execucao" },
   perfil: { forma: "fixo", caminho: "/app/perfil" },
+  vitoria_perfil: { forma: "fixo", caminho: "/app/perfil/vitoria" },
   equipe: { forma: "com_contexto", campo: "equipe_id", modelo: "/app/equipes/{equipe_id}" },
   busca: { forma: "fixo", caminho: "/app/busca" },
   dashboard_geral: { forma: "fixo", caminho: "/app/dashboard/geral", alvo: "menu-dashboard" },

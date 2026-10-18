@@ -211,6 +211,13 @@
       "when": 1792239200633,
       "tag": "0029_assinatura_nas_acoes_importantes",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792285644554,
+      "tag": "0030_vitoria_estatistica",
+      "breakpoints": true
     }
   ]
 }

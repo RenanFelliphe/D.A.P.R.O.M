@@ -108,13 +108,18 @@ export const SUGESTOES_POR_TELA: Record<string, SugestaoFixa[]> = {
     },
     { pergunta: "Como publico um treinamento?", resposta: "Com as pendências resolvidas, toque em \"Publicar\": você aceita o termo e assina." },
   ],
+  vitoria_perfil: [
+    { pergunta: "Quem é você?", resposta: "Sou a Vitória, a assistente do SYNQ OS. Tiro dúvidas de uso do sistema pelo manual, levo você à tela certa e mostro onde fica cada botão." },
+    { pergunta: "Você vê as minhas OS?", resposta: "Não. Eu só consulto o manual do seu perfil; suas OS, suas respostas e seus dados não chegam a mim, e a conversa não fica guardada no servidor." },
+    { pergunta: "Você pode aprovar a minha APR?", resposta: "Não. Quem decide a APR é o sistema, pelas suas respostas, e quem revisa um bloqueio é o supervisor. Eu não aprovo, não reprovo e não assino nada." },
+  ],
   vitoria_sem_resposta: [
     { pergunta: "O que é esta lista?", resposta: "As perguntas que a Vitória não soube responder, sem identificar quem perguntou: só o texto, a tela, o perfil e a data." },
     { pergunta: "Como marco uma pergunta como tratada?", resposta: "Toque em \"Marcar como tratada\" depois de melhorar o manual com essa resposta." },
     { pergunta: "Por que não tem o nome de quem perguntou?", resposta: "É por desenho: a pergunta sem resposta nunca guarda quem fez, só o contexto." },
   ],
   [PADRAO]: [
-    { pergunta: "O que você faz?", resposta: "Respondo dúvidas de uso do sistema, levo você à tela certa e mostro onde fica um botão. Não vejo suas OS nem decido nada por você." },
+    { pergunta: "O que você faz?", resposta: "Respondo dúvidas de uso do sistema, levo você à tela certa e mostro onde fica um botão. Não vejo suas OS nem decido nada por você.", acao: { tipo: "navegar", destino: "vitoria_perfil" } },
     { pergunta: "Como volto para o quadro de OS?", resposta: "Toque no ícone do quadro no menu lateral.", acao: { tipo: "navegar", destino: "quadro_os" } },
     { pergunta: "Quem eu procuro se você não souber responder?", resposta: "Seu supervisor ou o administrador. Vou anotar sua pergunta para melhorarmos o manual." },
   ],
