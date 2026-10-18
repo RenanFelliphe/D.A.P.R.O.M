@@ -10,16 +10,16 @@
 - **Falta das essenciais o app Android e, com ele, o modo offline** (fila local, cópia da equipe e login sem sinal). A `api` já está pronta para os dois. Sem eles, o critério de sucesso da demo não fecha.
 - **O formulário de inspeção das preventivas** virou o checklist de inspeção, implementado em 15/10/2026 ([inspecao-preventivas.md](inspecao-preventivas.md)); a pergunta ao Iago (questão 57) fica para conferir se ele cobre o uso real.
 - **Os materiais recomendados foram decididos e feitos em 15/10/2026:** a conferência obrigatória (foto e bloqueio) saiu, e a lista do serviço virou só consulta (seção 4).
-- **O usuário ausente foi feito em 15/10/2026** ([ausencia.md](ausencia.md)): o ausente continua ativo, mas só visualiza; a ausência é pedida pelo técnico ou registrada pelo supervisor, sempre assinada. Quem responde pela equipe com o supervisor ausente é o representante, feito em 16/10/2026 ([representante.md](representante.md)). Ficou de fora só a equipe sem supervisor.
+- **O usuário ausente foi feito em 15/10/2026** ([ausencia.md](ausencia.md)): o ausente continua ativo, mas só visualiza; a ausência é pedida pelo técnico ou registrada pelo supervisor, sempre assinada. Quem responde pela equipe com o supervisor ausente é o representante, feito em 16/10/2026 ([representante.md](representante.md)); desde 17/10/2026 ele também responde pela equipe sem supervisor ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.4).
 - **A assinatura nas ações importantes foi feita em 17/10/2026** ([assinaturas.md](funcionalidades/assinaturas.md)): depois da liberação a assinatura é a primeira coisa a cadastrar (todos os perfis), e a ciência do supervisor, a liberação de cadastro, a reprogramação, o cancelamento e a devolução de OS e a interrupção ou o cancelamento por engano da execução passaram a ser assinados.
-- **Os treinamentos de serviço foram feitos em 16/10/2026, sem IA** ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)): o jogo por serviço do catálogo (explicação da Vitória + até 10 fases), publicado pelo admin com termo e assinatura, jogado pelo técnico (inclusive quem aguarda liberação) e pontuado pela gamificação. No mesmo dia, o **módulo de IA genérico** (desligado até a chave existir) e a **Vitória assistente, níveis 1 a 3**, também foram feitos ([vitoria.md](funcionalidades/vitoria.md), seções 1.5 e 2.10): botão flutuante em toda tela, respostas pelo manual do perfil, "Me leve lá", "mostrar na tela" e consultas filtradas. Em 17/10/2026 o módulo ganhou o Gemini gratuito, para a demonstração (seção 1.6); a primeira chamada real foi conferida no mesmo dia (13 perguntas, todas certas, inclusive "mês passado" e "maio" sem o ano), e sem IA ela responde por palavra-chave. O rascunho de treinamento por IA (seção 3.6 do [vitoria.md](funcionalidades/vitoria.md)) segue não iniciado.
+- **Os treinamentos de serviço foram feitos em 16/10/2026, sem IA** ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)): o jogo por serviço do catálogo (explicação da Vitória + até 10 fases), publicado pelo admin com termo e assinatura, jogado pelo técnico (inclusive quem aguarda liberação) e pontuado pela gamificação. No mesmo dia, o **módulo de IA genérico** (desligado até a chave existir) e a **Vitória assistente, níveis 1 a 3**, também foram feitos ([vitoria.md](funcionalidades/vitoria.md), seções 1.5 e 2.10): botão flutuante em toda tela, respostas pelo manual do perfil, "Me leve lá", "mostrar na tela" e consultas filtradas. Em 17/10/2026 o módulo ganhou o Gemini gratuito, para a demonstração (seção 1.6); a primeira chamada real foi conferida no mesmo dia (13 perguntas, todas certas, inclusive "mês passado" e "maio" sem o ano), e sem IA ela responde por palavra-chave. Ainda em 17/10/2026 entraram o rascunho de treinamento pela IA, a bateria de 53 perguntas e "Perguntas à Vitória" no menu do admin (seções 3.9, 2.9.1 e 2.10.6 do [vitoria.md](funcionalidades/vitoria.md)).
+- **Os avisos e os e-mails foram feitos em 17/10/2026** ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md)): todo aviso do sino pode sair também por e-mail, conforme as categorias que cada pessoa deixa ligadas no perfil, e de manhã sai um resumo diário. A varredura acrescentou 18 avisos (OS reservada, ciência, conta criada, acesso liberado, cadastro aguardando liberação, readmissão, equipe sem supervisor, falhas do registro e do PDF, Vitória sem IA, treinamentos). No mesmo dia saíram as pendências menores: o alerta da leitura do registro de funcionários que falha, a reativação na readmissão (um clique no aviso), os avisos da leitura do SAP no cartão, a equipe sem supervisor (o representante assume) e o e-mail dos avisos de ausência. **Para os e-mails saírem, falta só configurar o SMTP** (seção 6 do arquivo).
 - **A escolha do modelo da APR foi decidida e feita em 14/10/2026:** o técnico escolhe o modelo a cada APR, entre os publicados, e o sistema só recomenda um pela leitura da OS (seção 5).
 - **A atribuição individual e a devolução de OS foram decididas e feitas em 15/10/2026:** o supervisor da equipe reserva a OS a uma pessoa, que passa a ser a única a iniciar a APR e a execução, e devolve ao SAP a OS com erro, com uma justificativa que vai na planilha de baixa (seção 6).
 - **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com os materiais recomendados, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
 - **Extras não iniciadas:**
-  - a digitalização de OS e APR antigas, decidida com leitura por IA em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (a câmera é só protótipo);
-  - o rascunho de treinamento de serviço por IA (seção 3.6 do [vitoria.md](funcionalidades/vitoria.md)).
-- **Números:** 144 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 26 migrações (`0000` a `0025`) e 649 testes em 33 arquivos. Os 649 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
+  - a digitalização de OS e APR antigas, decidida com leitura por IA em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (a câmera é só protótipo).
+- **Números (17/10/2026):** 166 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 32 migrações (`0000` a `0031`) e 828 testes em 46 arquivos. Os 828 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
 
 ## O que ainda falta, num relance
 
@@ -31,12 +31,15 @@
 - [x] **Checklist de inspeção das preventivas**, com a preventiva valendo o dobro na gamificação: [inspecao-preventivas.md](inspecao-preventivas.md).
 - [x] **Materiais recomendados** no lugar da conferência obrigatória na APR: [materiais-recomendados.md](materiais-recomendados.md).
 - [x] **Treinamentos de serviço (sem IA)**: [treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md) (seção 3.3).
-- [x] **Vitória (o assistente), níveis 1 a 3, e o módulo de IA genérico**, com o Gemini na demonstração: [vitoria.md](funcionalidades/vitoria.md) (seção 3.2). O rascunho de treinamento por IA segue não iniciado.
+- [x] **Vitória (o assistente), níveis 1 a 3, e o módulo de IA genérico**, com o Gemini na demonstração: [vitoria.md](funcionalidades/vitoria.md) (seção 3.2). O rascunho de treinamento por IA e a bateria de perguntas entraram em 17/10/2026.
 - [ ] **Escaneamento de OS e APR antigas**, decidida com leitura por IA, em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (seção 3.3).
-- [x] **Usuário ausente:** [ausencia.md](ausencia.md); o supervisor ausente é coberto pelo representante da equipe ([representante.md](representante.md)); só a equipe sem supervisor segue em aberto.
-- [ ] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão (seção 3.2).
+- [x] **Usuário ausente:** [ausencia.md](ausencia.md); o supervisor ausente e a equipe sem supervisor são cobertos pelo representante da equipe ([representante.md](representante.md) e [avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.4).
+- [x] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão, com um clique no aviso ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seções 5.1 e 5.2).
+- [x] Os avisos da leitura no cartão da tela do SAP ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.3).
+- [x] **Avisos e e-mails:** o e-mail de todos os avisos, as preferências no perfil e o resumo diário ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md)).
+- [ ] **Configurar o servidor de e-mail (SMTP):** é o único passo para os e-mails saírem; espera a empresa liberar a conta, o remetente e o SPF/DKIM do domínio (questão 68; seção 6 do [avisos-e-emails.md](funcionalidades/avisos-e-emails.md)).
 
-**Depende de terceiros** (seção 7.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos e a aprovação da empresa para enviar dados ao fornecedor de IA.
+**Depende de terceiros** (seção 7.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos, a aprovação da empresa para enviar dados ao fornecedor de IA e o servidor de e-mail (SMTP).
 
 **Documentação e arrumação** (seções 7.2 e 7.3): README da raiz, especificação, `api/README.md` e `web/README.md` ainda têm trechos desatualizados; há um pouco de código sem uso na web.
 
@@ -115,8 +118,8 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale 
 | Gamificação | **Pronta.** Pontos por tarefa, temporadas trimestrais, ranking, patentes de pessoa e de equipe, conquistas e anonimato |
 | Eventos e sincronização | **Pronta na `api`.** Envio idempotente, snapshot da equipe (`POST /sync/pull`) e tolerância à fila offline. Hoje só a web usa, e só online |
 | App Android e modo offline | **Não iniciados.** A pasta [`mobile/`](mobile/) só tem o README |
-| Treinamentos de serviço | **Prontos, sem IA**, em 16/10/2026 ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)) |
-| Vitória (assistente) e módulo de IA | **Prontos** em 16/10/2026, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)). Provedor por `IA_PROVEDOR` (Claude ou Gemini); o Gemini gratuito, da demonstração, entrou em 17/10/2026 e teve a primeira chamada real conferida no mesmo dia (`pnpm vitoria:conferir-ia`) |
+| Treinamentos de serviço | **Prontos** em 16/10/2026 ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)); o rascunho pela IA entrou em 17/10/2026 ([vitoria.md](funcionalidades/vitoria.md), seção 3.9) |
+| Vitória (assistente) e módulo de IA | **Prontos** em 16/10/2026, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)). Provedor por `IA_PROVEDOR` (Claude ou Gemini); o Gemini gratuito, da demonstração, entrou em 17/10/2026 e teve a primeira chamada real conferida no mesmo dia. A bateria de 53 perguntas (`pnpm vitoria:bateria`) foi montada no mesmo dia e falta rodar inteira |
 
 ---
 
@@ -210,12 +213,13 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 | Catálogo de serviço com os materiais | DesignDoc (prioridades) | **Pronto**, com os materiais recomendados (seção 4) |
 | Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | **Pronto** |
 | Gamificação | Time, na Reunião 2 | **Pronta** |
-| Chatbot de consulta | Iago, na Reunião 2 | **Virou a Vitória e os treinamentos de serviço** ([vitoria.md](funcionalidades/vitoria.md)). Os dois estão prontos: os treinamentos, sem IA ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)), e a Vitória assistente, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)) |
+| Chatbot de consulta | Iago, na Reunião 2 | **Virou a Vitória e os treinamentos de serviço** ([vitoria.md](funcionalidades/vitoria.md)). Os dois estão prontos: os treinamentos, com o rascunho pela IA ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)), e a Vitória assistente, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)) |
 | Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Decidida com leitura por IA, não iniciada** ([vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A Digitalização da tela de importação só abre a câmera |
 | API de funcionários para cadastro rápido | DesignDoc (extras) | **Pronta com o simulador.** Registro de funcionários simulado, com tela própria; cadastro só de quem está nele e desligamento em tempo real ([apifuncionarios.md](apifuncionarios.md)) |
 | Tela do simulador do SAP | Time, em 14/10/2026 | **Pronta** ([apiSAP.md](apiSAP.md)) |
 | Atribuição individual e devolução de OS | Time, em 15/10/2026 | **Pronta** (seção 6) |
-| Usuário ausente | Time, em 15/10/2026 | **Pronto**, menos o que espera a questão 67 ([ausencia.md](ausencia.md)) |
+| Usuário ausente | Time, em 15/10/2026 | **Pronto** ([ausencia.md](ausencia.md)); a equipe sem supervisor entrou em 17/10/2026 |
+| Avisos e e-mails | Time, em 17/10/2026 | **Pronto, menos a configuração do SMTP** ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md)) |
 
 ### 3.2 As prontas: o que fazem e o que falta
 
@@ -277,9 +281,11 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
   - o desligamento vale em tempo real: o registro avisa o SYNQ OS, e a conta é desativada em segundos; uma leitura completa por dia (e o "Ler agora") pega o que o aviso perdeu;
   - o registro de funcionários e as ordens do SAP são simulados, com tabelas no banco e uma tela de CRUD cada, em `/simulador/funcionarios` e `/simulador/ordens` (só o admin): criação manual e aleatória, busca, seleção com ações em massa, "ver mais", editar e excluir;
   - a tela do SAP mostra, em cada ordem, como o SYNQ OS reagiu (ainda não lida, ignorada com o motivo, ou o status da OS) e o que ele vai pegar na próxima leitura.
-- **Falta:**
-  - o alerta no sino quando a leitura diária falha, e reativar a conta na readmissão, ficaram fora do escopo;
-  - o cartão da tela do SAP não mostra os avisos da leitura (por exemplo, o intervalo entre ciclos que não foi reconhecido), porque a `api` não os guarda.
+- **Feito em 17/10/2026** ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5):
+  - a leitura do registro que falha de vez (as tentativas acabaram ou a trava de segurança parou) vira aviso no sino e e-mail para os administradores;
+  - a readmissão avisa os administradores, com o botão "Reativar a conta" no aviso (o automático continua só tirando acesso);
+  - o membro da equipe desligado avisa o supervisor, com as OS que continuam reservadas para ele;
+  - os avisos da leitura do SAP (o intervalo entre ciclos que não foi reconhecido) ficam na importação e aparecem no cartão da tela do SAP.
 
 **Usuário ausente**
 
@@ -289,24 +295,23 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
   - o técnico pede (motivo, início e dias ou data de retorno), o supervisor da equipe aprova (com ajuste das datas), recusa, registra a de alguém ou a própria, prorroga e encerra, e o técnico confirma; tudo é assinado, menos o pedido inicial;
   - a ausência não termina sozinha: passada a data fica vencida até o ausente confirmar o retorno ou o supervisor encerrar;
   - no início, as reservas de OS caem para a equipe toda e a execução aberta é suspensa; os avisos vão pelo sino, que agora o técnico também tem.
-- **Falta:**
-  - a equipe sem supervisor (o supervisor ausente é coberto pelo representante, [representante.md](representante.md));
-  - o e-mail dos avisos, que espera a curadoria do SMTP;
-  - o app, quando existir.
+- **Feito em 17/10/2026** ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md)): a equipe sem supervisor (o representante assume e responde aos pedidos, e os administradores são avisados) e o e-mail dos avisos, que só espera a configuração do SMTP.
+- **Falta:** o app, quando existir.
 
 **Treinamentos de serviço**
 
 - **Onde está o desenho e o que mudou na implementação:** [treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md) (seção 3 do [vitoria.md](funcionalidades/vitoria.md)).
-- **O que faz:** o admin cria, por serviço do catálogo, uma explicação em passos (a Vitória narrando) e um jogo de 3 a 10 fases (quiz, decisão, separar itens, ligar, pôr em ordem), publica com termo e assinatura; o técnico (inclusive quem aguarda liberação) joga, pontua e pode reportar problema; é 100% manual nesta fase, sem o rascunho por IA.
-- **Falta:** o rascunho gerado por IA e os ajustes por chat (seção 3.6 do [vitoria.md](funcionalidades/vitoria.md)), que esperam a geração por IA (o módulo de IA genérico já existe, desligado até a chave).
+- **O que faz:** o admin cria, por serviço do catálogo, uma explicação em passos (a Vitória narrando) e um jogo de 3 a 10 fases (quiz, decisão, separar itens, ligar, pôr em ordem), à mão ou a partir de um rascunho da IA, e publica com termo e assinatura; o técnico (inclusive quem aguarda liberação) joga, pontua e pode reportar problema.
+- **Rascunho pela IA (17/10/2026):** o admin cola o texto do procedimento e a Vitória monta o rascunho, com o trecho de origem de cada item; as conferências viram pendências que impedem publicar até o admin editar ou confirmar; ajustes pelo chat, fase regerada e limites da demonstração (seção 3.9 do [vitoria.md](funcionalidades/vitoria.md)).
 
 **Vitória (o assistente) e o módulo de IA genérico**
 
 - **Onde está o desenho, o que mudou na implementação e o que ela faz, ainda não faz e não deve fazer:** [vitoria.md](funcionalidades/vitoria.md) (seções 1 e 2 e "Situação atual da Vitória"), feitos em 16/10/2026.
-- **O que faz:** botão flutuante em toda tela do portal e da gestão, inclusive o Campo de treino; responde pelo manual do perfil de quem pergunta (técnico ou admin, cada um sem o que o outro não deve ver); oferece "Me leve lá" e "mostrar na tela" por uma lista fechada de destinos (nunca uma URL livre); interpreta consultas simples como um link já filtrado (ex.: período); grava, sem identificar quem perguntou, o que não soube responder, numa tela própria do admin.
+- **O que faz:** botão flutuante em toda tela do portal e da gestão, inclusive o Campo de treino; responde pelo manual do perfil de quem pergunta (técnico ou admin, cada um sem o que o outro não deve ver); oferece "Me leve lá" e "mostrar na tela" por uma lista fechada de destinos (nunca uma URL livre); interpreta consultas simples como um link já filtrado (ex.: período); grava, sem identificar quem perguntou, o que não soube responder, numa tela própria do admin ("Perguntas à Vitória", no menu, desde 17/10/2026).
 - **A IA:** o provedor sai de `IA_PROVEDOR` (`ANTHROPIC_API_KEY` ou `GEMINI_API_KEY`); o Gemini gratuito, só com dados fictícios, está configurado no desenvolvimento desde 17/10/2026 (seção 1.6 do [vitoria.md](funcionalidades/vitoria.md)). Sem chave ou com falha, as respostas vêm de 3 sugestões fixas por tela e de uma busca por palavra-chave no manual.
 - **Conferida em 17/10/2026:** a primeira chamada real pelo Gemini (13 perguntas, todas certas) e as datas relativas ("mês passado", "este mês", "maio" sem o ano), pela data de hoje que o pedido à IA agora leva.
-- **Falta:** a bateria de cerca de 50 perguntas (seção 2.9) e o plano B no Sonnet 5.5; o nível 4 (a IA lendo as OS) está fora de escopo por decisão (LGPD e números inventados).
+- **Bateria de perguntas (17/10/2026):** 53 casos, 15 deles provocações e tentativas de descobrir o que reprova a APR, com o plano B por `--modelo` (`pnpm vitoria:bateria`, seção 2.9.1 do [vitoria.md](funcionalidades/vitoria.md)).
+- **Falta:** rodar a bateria inteira (a primeira rodada parou na cota diária do Gemini gratuito), os ajustes do desenho definitivo do avatar (marca, capacete) e a Vitória no app; o nível 4 (a IA lendo as OS) está fora de escopo por decisão (LGPD e números inventados).
 
 ### 3.3 As que não começaram
 
@@ -320,7 +325,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 
 ### 3.4 Ordem sugerida para as extras
 
-- **Os treinamentos de serviço e a Vitória já estão prontos** (modo sem IA), seguindo a ordem do [vitoria.md](funcionalidades/vitoria.md#8-ordem-de-implementação). Ficam para antes do app, ou em paralelo, se outra pessoa assumir.
+- **Os treinamentos de serviço e a Vitória já estão prontos,** com e sem IA, seguindo a ordem do [vitoria.md](funcionalidades/vitoria.md#8-ordem-de-implementação). Ficam para antes do app, ou em paralelo, se outra pessoa assumir.
   - É a única extra pedida pelo cliente.
   - Roda sobre a web pronta.
   - É a vitrine da feira. Se a feira cair antes de o app ter algo para mostrar, ela passa à frente do app.
@@ -481,14 +486,14 @@ Decidida e feita em 15/10/2026. A regra está também na especificação (fatias
 
 - **O atraso na entrega** (seção 6.1).
 - **Desativar a conta do responsável ou trocá-lo de equipe** não desfaz a reserva: só o supervisor a libera, ou o início de uma ausência dele (seção 3.2, usuário ausente).
-- **Aviso ao responsável.** Ele não recebe alerta nem e-mail; vê a marca no quadro.
+- **Aviso ao responsável.** Desde 17/10/2026 ele recebe o aviso `os_reservada` (e quem perdeu a reserva, `os_reserva_desfeita`), no sino e por e-mail ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md)).
 - **O app.** Ainda não existe; quando existir, precisa mostrar a reserva e a devolução.
 
 ### 6.5 Pontos em aberto
 
 - **O caminho da devolução até o SAP.** A aba Devolvidas é lida por uma pessoa. Falta combinar com o Iago quem a lê e como corrige a ordem.
 - **A APR de hoje de outra pessoa.** Se a OS já tem uma APR aprovada de hoje e o supervisor a reserva a outra pessoa, a APR fica sem uso: só o responsável inicia a execução, e ele precisa participar da APR (ou fazer outra).
-- **O admin.** Hoje ele não reserva nem devolve. Se a equipe ficar sem supervisor, só a troca de supervisor, na tela da equipe, destrava.
+- **O admin.** Hoje ele não reserva nem devolve. Na equipe sem supervisor, desde 17/10/2026, o representante assume e reserva e devolve por ela, e o admin é avisado para escolher um supervisor ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.4).
 
 ---
 
@@ -506,6 +511,7 @@ Decidida e feita em 15/10/2026. A regra está também na especificação (fatias
 | ES Gás | Lista de materiais por serviço | Catálogo de materiais recomendados reais | 65 |
 | Mario e Segurança do Trabalho | Critério de bloqueio dos 8 modelos, medidas só dos riscos marcados e "NA" na APR 06 | Modelos reais | 59 e 61 |
 | Empresa | Aprovação para enviar dados ao fornecedor de IA | Vitória, rascunhos e digitalização das OS antigas no piloto | — |
+| Empresa (TI), pelo Iago | Servidor de e-mail (SMTP): endereço, porta, usuário e senha, o remetente e o SPF/DKIM do domínio; e o aceite do que vai nos e-mails | E-mails dos avisos e o resumo diário ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 6) | 68 |
 
 ### 7.2 Documentação desatualizada
 

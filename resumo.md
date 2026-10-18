@@ -207,7 +207,8 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 - Responde pelo **manual** do perfil de quem pergunta (técnico ou admin), com 3 sugestões por tela.
 - **"Me leve lá"** leva à tela certa, a partir de uma lista fechada de destinos. **"Mostrar na tela"** navega e faz o botão piscar. Consultas simples viram link já filtrado.
 - **O que ela não faz**: não lê as OS, não orienta segurança de campo e nunca diz o que é eliminatório.
-- **Privacidade**: a conversa não é guardada no servidor. As perguntas que ela não soube responder são gravadas sem identificar quem perguntou, e o admin as trata numa tela própria.
+- **Privacidade**: a conversa não é guardada no servidor. As perguntas que ela não soube responder são gravadas sem identificar quem perguntou, e o admin as trata em "Perguntas à Vitória", no menu.
+- **Bateria de 53 perguntas** para rodar antes de cada apresentação, 15 delas provocações e tentativas de descobrir o que reprova a APR.
 - **IA configurável** (Gemini gratuito na demonstração, só com dados fictícios, ou Claude). Sem IA, com a cota estourada ou com falha, ela responde por busca no manual e nunca mostra tela de erro.
 - Limites: 20 mensagens por conversa, 40 por conta por dia e 1.000 no total por dia.
 
@@ -218,6 +219,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 - O técnico joga, inclusive quem aguarda liberação. O gabarito só aparece depois da resposta.
 - Pontua até 15 por treinamento (5 pela conclusão e 1 por fase certa de primeira) e rende 3 conquistas.
 - O técnico pode **reportar problema** em qualquer fase, e o admin trata os reportes.
+- **Rascunho com a Vitória (IA)**: o admin cola o texto do procedimento e a Vitória monta a explicação e as fases, usando só esse texto e os materiais do serviço. Cada item mostra o trecho de onde saiu; o que a conferência não confirmou (número fora do texto, trecho que não existe, fase sem resposta certa) vira pendência, e o treinamento só é publicado depois de o admin editar ou confirmar cada uma. Dá para pedir ajustes no chat e regerar uma fase, com limite de uso na demonstração.
 
 ### 20. Campo de treino
 
@@ -257,8 +259,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 
 - **App Android e modo offline** (fila local, login sem sinal): não iniciados. O servidor já está pronto para eles, e a web funciona no navegador do celular, sem instalação.
 - **Digitalização de OS antigas por IA**: decidida, não iniciada. A tela de câmera só abre a câmera, sem ler nada, e PDF escaneado (sem texto) é recusado.
-- **Rascunho de treinamento gerado por IA**: não iniciado.
-- **Vitória com IA**: a primeira chamada real ao Gemini ainda não foi conferida. Perguntas como "mês passado" ainda não são confiáveis.
+- **Vitória com IA**: a bateria de perguntas está pronta, mas ainda não rodou inteira (a cota diária do Gemini gratuito acabou na primeira rodada).
 - **E-mail**: só o alerta de bloqueio é enviado, e só com o SMTP configurado. Os avisos de ausência e representação ficam no sino.
 - **Equipe sem supervisor** e reativação da conta na readmissão: fora do escopo atual.
 - **Dados reais**: o critério de bloqueio dos modelos, os 116 serviços do catálogo e a lista de materiais por serviço são provisórios ou fictícios, e dependem da Segurança do Trabalho e da operação.
