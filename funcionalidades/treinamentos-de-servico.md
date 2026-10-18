@@ -2,7 +2,7 @@
 
 > O jogo por serviço do catálogo (seção 3 do [vitoria.md](vitoria.md)): o admin cria manualmente uma explicação em passos (narrada pela Vitória) e um jogo de 3 a 10 fases, publica com termo e assinatura, e o técnico (inclusive quem aguarda liberação) joga e pontua. Esta rodada é 100% sem IA: nenhuma rota, coluna ou botão de geração por IA entra agora — é a Fase 1 do plano de implementação da Vitória, que funciona sozinha (seção 8 do vitoria.md).
 >
-> **Situação:** implementado na `api` e na `web` em 16/10/2026. A Fase 2 (módulo de IA) e a Fase 3 (Vitória assistente) não entraram nesta rodada; o rascunho por IA dos treinamentos (seção 3.6 do vitoria.md) depende delas.
+> **Situação:** implementado na `api` e na `web` em 16/10/2026. O rascunho pela IA (seção 3.6 do vitoria.md) entrou em 17/10/2026, sobre este editor: o que foi feito está na seção 3.9 do [vitoria.md](vitoria.md), e o resumo, na seção 7 abaixo.
 >
 > Fontes: [vitoria.md](vitoria.md) (seção 3) e [gameficacao.md](gameficacao.md) (seção 13), já decididos; o código em `api/src/db/schema/treinamento-servico.ts`, `api/src/dominio/treinamento-servico*.ts`, `api/src/rotas/treinamentos.ts` e `web/src/components/web/treinamento-servico/`.
 
@@ -10,7 +10,7 @@
 
 - **Nomenclatura:** tudo usa o prefixo/sufixo `treinamento_servico` / `treinamento-servico` (tabelas, arquivos, rotas), nunca `treinamento` sozinho, para não colidir com o Campo de treino (tutorial fictício, outra funcionalidade, intocado).
 - **Um treinamento por serviço do catálogo** (a `atividade`), versionado como o modelo de APR: rascunho → publicada → substituída. Editar sempre cria um rascunho novo; a versão publicada não muda.
-- **Parte 1 (explicação):** até 12 passos, cada um com texto, a expressão da Vitória (reaproveita o avatar provisório de `vitoria/`) e uma imagem opcional.
+- **Parte 1 (explicação):** até 12 passos, cada um com texto, a reação da Vitória ao mostrar o passo (a foto é a mesma; só `pensando`, `alerta`, `comemorando` e `ops` animam, seção 2.8 do [vitoria.md](vitoria.md)) e uma imagem opcional.
 - **Parte 2 (jogo):** 3 a 10 fases para publicar (0 a 10 em rascunho), dos 5 tipos da especificação — quiz, decisão, separar os itens, ligar, pôr em ordem —, todas por toque (sem arrastar). O gabarito nunca chega ao cliente antes da resposta; o embaralhamento é gerado uma vez por tentativa e guardado (`apresentacao`), sem revelar a resposta certa.
 - **Publicação:** termo fixo ("Declaro que revisei este treinamento...") + assinatura, no mesmo padrão de `PUT /me/assinatura`/`AssinaturaCanvas` já usado nas APRs.
 - **Pontuação:** 5 pontos por treinamento concluído (primeira vez) + 1 ponto por fase certa na primeira resposta (até 10), no máximo 15 por treinamento; refazer não pontua, abandonar e recomeçar não melhora a nota. Quem aguarda liberação pontua, como no Campo de treino. O admin não joga, só pré-visualiza (nunca pontua).
@@ -42,9 +42,9 @@ Admin: `GET`/`PUT /treinamentos/{atividade}/rascunho`, `POST /treinamentos/{ativ
 
 - `CartaoServico.tsx` ganhou as abas "Materiais" (como já era) e "Treinamento" (`AbaTreinamento.tsx`): "Treinar"/"Jogar de novo" com o selo de concluído para o técnico, a situação (publicado/rascunho) e o link do editor para o admin. A página de serviços busca `GET /treinamentos` uma vez e repassa por código.
 - Editor do admin em `/app/catalogo/servicos/{codigo}/treinamento` (`EditorTreinamentoServico.tsx` + `EditorFase.tsx`, um sub-editor por tipo de fase): explicação, fases, cenário, pré-visualizar (reaproveita o motor do jogo, `pontua={false}`), publicar (termo + `AssinaturaCanvas`), versões e reportes.
-- Jogador em `/app/catalogo/servicos/{codigo}/treinar` (`JogoTreinamentoServico.tsx`, o motor comum entre jogo de verdade e pré-visualização): abertura, Parte 1 com `AvatarVitoria.tsx` (resolve sempre por `expressoes.json`, nunca pelo nome do arquivo), Parte 2 com `FaseJogavel.tsx` (os 5 tipos, tudo por toque) e o resultado (`PontosGanhos`, já existente na gamificação).
+- Jogador em `/app/catalogo/servicos/{codigo}/treinar` (`JogoTreinamentoServico.tsx`, o motor comum entre jogo de verdade e pré-visualização): abertura, Parte 1 com `AvatarVitoria.tsx` (a foto de perfil, e `FigurinhaVitoria` no lugar dela quando há reação), Parte 2 com `FaseJogavel.tsx` (os 5 tipos, tudo por toque) e o resultado (`PontosGanhos`, já existente na gamificação).
 - Bloco "Treinamentos de serviço" na tela de "Aguardando liberação" (`TreinamentosDeServicoAguardando.tsx`), ao lado do Campo de treino.
-- O avatar provisório foi copiado de `vitoria/` para `web/public/vitoria/` (SVGs + `expressoes.json`).
+- **Atualizado em 17/10/2026:** o avatar provisório (SVGs e `expressoes.json`) foi substituído pelo desenho definitivo: uma foto de perfil e 10 animações em `web/public/vitoria/` (seção 2.8 do [vitoria.md](vitoria.md)). O feedback de cada fase mostra a figurinha `certo` ou `errada`, e o resultado mostra a `comemorando`.
 - "Como pontuar" da gamificação já reflete as 2 regras novas sozinho: a tela itera `GET /gamificacao/regras` por grupo, sem lista fixa na web.
 
 ## 5. Decisões tomadas nesta implementação
@@ -65,7 +65,7 @@ A migração também obrigou a atualizar `api/test/gamificacao-conquistas.test.t
 
 ## 7. O que ficou de fora e pontos em aberto
 
-- **Rascunho por IA, conferências automáticas e ajustes por chat** (seção 3.6 do vitoria.md): esperam o módulo de IA genérico (Fase 2) e a licença da Anthropic.
+- **Rascunho por IA, conferências automáticas e ajustes por chat** (seção 3.6 do vitoria.md): **feitos em 17/10/2026** (seção 3.9 do [vitoria.md](vitoria.md)). O que muda neste editor: o painel "Rascunho com a Vitória (IA)" no topo; o trecho de origem, as pendências e "Confirmar como está" em cada item da IA; "Regerar esta fase com a Vitória"; e o "Publicar" desativado enquanto houver pendência (`422 pendencias_abertas` na `api`). A auditoria da publicação passou a registrar `gerado_com_ia` e o texto de origem, e editar um treinamento publicado passou a partir da versão publicada, em vez de um rascunho vazio.
 - **Imagem do cenário gerada por IA:** fora de escopo (o admin envia a imagem).
 - **Procedimento em PDF:** fora de escopo; o admin edita direto no editor.
 - **Questão 38** (validade da assinatura desenhada para auditoria): vale para a publicação do treinamento do mesmo jeito que já vale para a APR.
