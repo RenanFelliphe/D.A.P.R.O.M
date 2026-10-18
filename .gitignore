@@ -1,3 +1,6 @@
 *env
 .env*
 !.env.example
+
+# Originais pesados da Vitória (GIFs de 20 a 38 MB): a web serve as versões leves de web/public/vitoria/, geradas por web/scripts/gerar-vitoria.mjs
+/vitoria/NovaVitória/

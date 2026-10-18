@@ -1,20 +1,33 @@
 import { DESTINOS, resolverAcao, type AcaoBruta, type AcaoResolvida } from "../../../shared/vitoria/destinos";
+import { duracaoDaReacao, REACOES, reacaoDaExpressao, respostaLocalDaVitoria, type Reacao, type RespostaLocal } from "../../../shared/vitoria/reacoes";
 import { PADRAO, sugestoesDaTela, type SugestaoFixa } from "../../../shared/vitoria/sugestoes";
 import type { ExpressaoVitoria } from "./treinamento-servico";
 
-export { DESTINOS, resolverAcao, sugestoesDaTela, PADRAO };
-export type { AcaoBruta, AcaoResolvida, SugestaoFixa };
+export { DESTINOS, resolverAcao, sugestoesDaTela, PADRAO, REACOES, duracaoDaReacao, reacaoDaExpressao, respostaLocalDaVitoria };
+export type { AcaoBruta, AcaoResolvida, SugestaoFixa, Reacao, RespostaLocal };
 
 /** Até quantas mensagens anteriores a web reenvia a cada pedido (a conversa não é guardada no servidor). */
 export const HISTORICO_MAXIMO = 10;
+
+export interface FigurinhaDaMensagem {
+  reacao: Reacao;
+  /** `true` quando a pessoa pediu a emoção: a animação toca inteira. */
+  completa: boolean;
+  /** Falso quando a animação já tocou, quando a mensagem chegou com o painel fechado ou com "reduzir movimento": fica o quadro parado. */
+  tocar: boolean;
+}
 
 export interface MensagemVitoria {
   id: string;
   papel: "usuario" | "assistente";
   texto: string;
-  /** Só nas respostas da Vitória, para o avatar; o limite ou o fallback já vêm prontos do servidor. */
+  /** Só nas respostas da Vitória: a `api` devolve `padrao`, `alerta` ou `ops`, e a web transforma em figurinha (`reacaoDaExpressao`). */
   expressao?: ExpressaoVitoria;
   acao?: AcaoResolvida | null;
+  /** A reação da Vitória a esta mensagem, como uma figurinha logo abaixo do balão (`shared/vitoria/reacoes.ts`). */
+  figurinha?: FigurinhaDaMensagem;
+  /** Saudação, agradecimento ou pedido para imitar uma emoção, respondidos pela web sem a `api`: não vão no histórico nem contam no limite da conversa. */
+  local?: boolean;
 }
 
 interface RegraDeTela {

@@ -285,8 +285,46 @@
   border: 1px solid var(--line2);
   box-shadow: 0 1px 3px rgba(23, 33, 43, 0.08);
 }
-.vt-bolha {
+/* O corpo da mensagem: o balão e, quando a Vitória reage, a figurinha logo abaixo dele. */
+.vt-corpo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
   max-width: 82%;
+}
+.vt-msg-vitoria .vt-corpo {
+  align-items: flex-start;
+}
+.vt-msg-usuario .vt-corpo {
+  align-items: flex-end;
+}
+/* Com figurinha, o ícone fica ao lado do balão, não da figurinha. */
+.vt-msg-com-figurinha {
+  align-items: flex-start;
+}
+/* A reação da Vitória como figurinha de conversa (Figurinha.tsx): entra com um "pop" e fica no quadro parado. */
+.vt-figurinha {
+  display: block;
+  flex: none;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  filter: drop-shadow(0 3px 8px rgba(23, 33, 43, 0.2));
+  transform-origin: bottom left;
+  animation: vt-figurinha 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+}
+.vt-figurinha img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  -webkit-user-drag: none;
+}
+.vt-bolha {
+  max-width: 100%;
   padding: 9px 12px;
   border-radius: 16px;
   font-size: 13.5px;
@@ -452,10 +490,7 @@
 
 /* ---------- Espera da IA: a resposta pode levar alguns segundos e a tela nunca pode parecer travada ---------- */
 
-/* Troca de expressão suave; enquanto ela pensa, ondas saem do avatar e ele flutua. */
-.vt-avatar-troca {
-  animation: vt-trocar 0.3s ease-out;
-}
+/* Enquanto ela pensa, ondas saem do avatar e ele flutua. */
 .vt-avatar-ativo::before,
 .vt-avatar-pensando::before,
 .vt-avatar-pensando::after {
@@ -594,6 +629,16 @@
     transform: none;
   }
 }
+@keyframes vt-figurinha {
+  from {
+    opacity: 0;
+    transform: scale(0.35) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @keyframes vt-entrar {
   from {
     opacity: 0;
@@ -618,16 +663,6 @@
   from {
     opacity: 0;
     transform: translateY(3px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-@keyframes vt-trocar {
-  from {
-    opacity: 0.2;
-    transform: scale(0.85) rotate(-6deg);
   }
   to {
     opacity: 1;
@@ -784,11 +819,11 @@
   .vt-boas-vindas-avatar,
   .vt-sugestao,
   .vt-acao,
+  .vt-figurinha,
   .vt-erro,
   .vt-situacao,
   .vt-luz-ativa,
   .vt-progresso::before,
-  .vt-avatar-troca,
   .vt-avatar-ativo::before,
   .vt-avatar-pensando::before,
   .vt-avatar-pensando::after,

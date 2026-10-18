@@ -4,11 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
 import { PontosGanhos } from "@/components/web/gamificacao/PontosGanhos";
-import { AvatarVitoria } from "@/components/web/treinamento-servico/AvatarVitoria";
+import { AvatarVitoria, FigurinhaVitoria } from "@/components/web/treinamento-servico/AvatarVitoria";
 import { FaseJogavel } from "@/components/web/treinamento-servico/FaseJogavel";
 import { ImagemDoTreinamento } from "@/components/web/treinamento-servico/ImagemDoTreinamento";
 import { chamar, ErroCliente } from "@/lib/cliente-api";
 import { data } from "@/lib/formatar";
+import { reacaoDaExpressao, type Reacao } from "@/lib/vitoria";
 import type { PassoExplicacao, ResultadoDaConclusao, ResultadoDaResposta, TentativaAberta } from "@/lib/treinamento-servico";
 
 type Etapa = "abertura" | "explicacao" | "jogo" | "resultado";
@@ -38,6 +39,18 @@ const duracaoEstimada = (passos: number, fases: number) => Math.max(2, Math.roun
  * resultado. Usado tanto por `/app/catalogo/servicos/{codigo}/treinar` quanto pela pré-visualização do rascunho (o admin
  * não pontua: `pontua={false}`).
  */
+/**
+ * A Vitória ao lado do texto de uma cena do treinamento: a foto de perfil e, quando há reação, a figurinha tocando uma vez
+ * (`vitoria.md`, seção 2.8). A coluna tem sempre a mesma largura, para o texto não pular de um passo para o outro.
+ */
+function VitoriaDaCena({ reacao }: { reacao: Reacao | null }) {
+  return (
+    <span style={{ display: "flex", flex: "none", justifyContent: "center", width: 88 }}>
+      {reacao ? <FigurinhaVitoria reacao={reacao} tocar tamanho={88} /> : <AvatarVitoria tamanho={64} />}
+    </span>
+  );
+}
+
 export function JogoTreinamentoServico(p: JogoTreinamentoServicoProps) {
   const [etapa, setEtapa] = useState<Etapa>("abertura");
   const [passo, setPasso] = useState(0);
@@ -129,7 +142,7 @@ export function JogoTreinamentoServico(p: JogoTreinamentoServicoProps) {
       <div className="stack g14" style={{ maxWidth: 560 }}>
         {p.cenarioPath && <ImagemDoTreinamento arquivoId={p.cenarioPath} alt={`Cenário de ${p.descricao}`} />}
         <div className="row g12" style={{ alignItems: "flex-start" }}>
-          <AvatarVitoria expressao="feliz" tamanho={56} />
+          <AvatarVitoria tamanho={56} />
           <div className="stack g6">
             <h2 style={{ fontSize: 17 }}>Treinamento: {p.descricao}</h2>
             <span className="small muted">Duração estimada: ~{duracaoEstimada(p.explicacao.length, 1)} min</span>
@@ -177,10 +190,11 @@ export function JogoTreinamentoServico(p: JogoTreinamentoServicoProps) {
       );
     }
     const ultimo = passo === p.explicacao.length - 1;
+    const reacaoDoPasso = reacaoDaExpressao(atual.expressao);
     return (
       <div className="stack g14" style={{ maxWidth: 560 }}>
         <div className="row g12" style={{ alignItems: "flex-start" }}>
-          <AvatarVitoria expressao={atual.expressao} tamanho={64} />
+          <VitoriaDaCena key={`passo-${passo}`} reacao={reacaoDoPasso} />
           <p style={{ fontSize: 15.5, lineHeight: 1.5 }}>{atual.texto}</p>
         </div>
         {atual.imagem_path && <ImagemDoTreinamento arquivoId={atual.imagem_path} alt={`Passo ${passo + 1}`} />}
@@ -237,7 +251,7 @@ export function JogoTreinamentoServico(p: JogoTreinamentoServicoProps) {
         ) : (
           <div className="stack g12">
             <div className="row g10" style={{ alignItems: "flex-start" }}>
-              <AvatarVitoria expressao={feedback.certa ? "feliz" : "ops"} tamanho={56} />
+              <VitoriaDaCena key={`fase-${faseAtual}`} reacao={feedback.certa ? "certo" : "errada"} />
               <div className="stack g6">
                 <strong>{feedback.certa ? "Isso mesmo!" : "Não foi dessa vez."}</strong>
                 <p style={{ fontSize: 14 }}>{feedback.explicacao}</p>
@@ -264,7 +278,7 @@ export function JogoTreinamentoServico(p: JogoTreinamentoServicoProps) {
     return (
       <div className="stack g14" style={{ maxWidth: 560 }}>
         <div className="row g12" style={{ alignItems: "flex-start" }}>
-          <AvatarVitoria expressao="comemorando" tamanho={64} />
+          <VitoriaDaCena reacao="comemorando" />
           <div className="stack g6">
             <h2 style={{ fontSize: 17 }}>Treinamento concluído!</h2>
             <p>

@@ -12,7 +12,7 @@ import { textoObrigatorio, uuid } from "../http/validacao";
  * de `check` com `jsonb_array_length`.
  */
 
-/** Expressões da Vitória usáveis num passo da explicação (as de `vitoria/expressoes.json`, exceto `icone`, que é só o botão). */
+/** Expressões da Vitória usáveis num passo da explicação (cada uma vira uma reação da Vitória: `shared/vitoria/reacoes.ts`). */
 export const EXPRESSOES_VITORIA = ["padrao", "feliz", "explicando", "pensando", "alerta", "comemorando", "ops"] as const;
 export type ExpressaoVitoria = (typeof EXPRESSOES_VITORIA)[number];
 

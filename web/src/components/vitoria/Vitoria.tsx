@@ -6,10 +6,25 @@ import { Icon } from "@/components/ui/Icon";
 import { chamarEmStream } from "@/lib/cliente-api";
 import { cx } from "@/lib/cx";
 import type { ExpressaoVitoria } from "@/lib/treinamento-servico";
+import { movimentoReduzido } from "@/lib/reacao-vitoria";
 import { novoUuid } from "@/lib/uuid";
-import { HISTORICO_MAXIMO, resolverAcao, sugestoesDaTela, telaAtualDe, type AcaoResolvida, type MensagemVitoria, type SugestaoFixa } from "@/lib/vitoria";
+import {
+  HISTORICO_MAXIMO,
+  reacaoDaExpressao,
+  resolverAcao,
+  respostaLocalDaVitoria,
+  sugestoesDaTela,
+  telaAtualDe,
+  type AcaoResolvida,
+  type FigurinhaDaMensagem,
+  type MensagemVitoria,
+  type Reacao,
+  type RespostaLocal,
+  type SugestaoFixa,
+} from "@/lib/vitoria";
 import { Avatar } from "./Avatar";
 import { DestaqueVitoria } from "./DestaqueVitoria";
+import { Figurinha } from "./Figurinha";
 import { IndicadorPensando } from "./IndicadorPensando";
 
 interface RespostaFinalDaVitoria {
@@ -37,8 +52,11 @@ export function Vitoria() {
   const [respondendo, setRespondendo] = useState<string | null>(null);
   /** Resposta que chegou com o painel fechado: o botão flutuante ganha um selo até a pessoa abrir. */
   const [naoLida, setNaoLida] = useState(false);
+  /** O aceno da tela de boas-vindas, que toca uma vez por visita, na primeira vez que o painel abre. */
+  const [saudando, setSaudando] = useState(false);
   const listaRef = useRef<HTMLDivElement>(null);
   const abertoRef = useRef(aberto);
+  const saudouRef = useRef(false);
 
   useEffect(() => {
     abertoRef.current = aberto;
@@ -51,10 +69,29 @@ export function Vitoria() {
     if (aberto) listaRef.current?.scrollTo({ top: listaRef.current.scrollHeight, behavior: "smooth" });
   }, [mensagens, aberto]);
 
-  const ultimaDaVitoria = [...mensagens].reverse().find((m) => m.papel === "assistente");
-  const expressaoDoCabecalho: ExpressaoVitoria = carregando ? "pensando" : (ultimaDaVitoria?.expressao ?? "feliz");
   const textoChegando = mensagens.find((m) => m.id === respondendo)?.texto ?? "";
   const situacao = !carregando ? "Pronta para ajudar" : textoChegando ? "Escrevendo" : "Pensando";
+
+  /**
+   * A reação como figurinha na mensagem (`vitoria.md`, seção 2.8). Só toca com o painel aberto e sem "reduzir movimento"; do
+   * contrário a figurinha fica no quadro parado, esperando a pessoa abrir.
+   */
+  function figurinhaDe(qual: Reacao, completa: boolean): FigurinhaDaMensagem {
+    return { reacao: qual, completa, tocar: abertoRef.current && !movimentoReduzido() };
+  }
+
+  const mudarFigurinha = (quais: (m: MensagemVitoria) => boolean) =>
+    setMensagens((atual) => (atual.some(quais) ? atual.map((m) => (quais(m) && m.figurinha ? { ...m, figurinha: { ...m.figurinha, tocar: false } } : m)) : atual));
+
+  /** A figurinha que ainda toca vira quadro parado: chegou outra mensagem, o painel fechou ou a animação acabou. */
+  const pararFigurinhas = () => mudarFigurinha((m) => !!m.figurinha?.tocar);
+  const aoTerminarFigurinha = (id: string) => mudarFigurinha((m) => m.id === id);
+
+  function fechar() {
+    setAberto(false);
+    setSaudando(false);
+    pararFigurinhas();
+  }
 
   /** Dupla checagem (vitoria.md, 2.4): refaz a validação contra o manifesto com o contexto que a web tem agora, antes de navegar. */
   function irPara(acao: AcaoResolvida) {
@@ -66,11 +103,12 @@ export function Vitoria() {
     }
     router.push(resolvida.url);
     if (resolvida.tipo === "destacar" && resolvida.alvo) setDestaque((d) => ({ alvo: resolvida.alvo!, pedido: d.pedido + 1 }));
-    if (window.matchMedia("(max-width: 640px)").matches) setAberto(false);
+    if (window.matchMedia("(max-width: 640px)").matches) fechar();
   }
 
   /** As sugestões fixas nunca chamam a IA: a pergunta e a resposta já vêm prontas de `shared/vitoria/sugestoes.ts`. */
   function responderComSugestao(s: SugestaoFixa) {
+    pararFigurinhas();
     const { resolvida } = s.acao ? resolverAcao(s.acao, contexto) : { resolvida: null };
     setMensagens((atual) => [
       ...atual,
@@ -79,13 +117,34 @@ export function Vitoria() {
     ]);
   }
 
+  /**
+   * Saudação, agradecimento e pedido para a Vitória imitar uma emoção ("fique triste"): ela responde na hora e reage, sem
+   * chamar a `api`. Essas mensagens não vão no histórico da IA, não contam no limite da conversa e não viram "pergunta
+   * sem resposta" (`shared/vitoria/reacoes.ts`).
+   */
+  function responderLocalmente(pergunta: string, resposta: RespostaLocal) {
+    const idResposta = novoUuid();
+    setMensagens((atual) => [
+      ...atual,
+      { id: novoUuid(), papel: "usuario", texto: pergunta, local: true },
+      { id: idResposta, papel: "assistente", texto: resposta.texto, expressao: "padrao", local: true, figurinha: figurinhaDe(resposta.reacao, resposta.completa) },
+    ]);
+  }
+
   async function enviar() {
     const texto = digitando.trim();
     if (!texto || carregando) return;
     setDigitando("");
     setErro(null);
-    const historico = mensagens.slice(-HISTORICO_MAXIMO).map((m) => ({ papel: m.papel, texto: m.texto }));
-    const numeroMensagem = mensagens.filter((m) => m.papel === "usuario").length + 1;
+    pararFigurinhas();
+    const local = respostaLocalDaVitoria(texto);
+    if (local) {
+      responderLocalmente(texto, local);
+      return;
+    }
+    const daConversa = mensagens.filter((m) => !m.local);
+    const historico = daConversa.slice(-HISTORICO_MAXIMO).map((m) => ({ papel: m.papel, texto: m.texto }));
+    const numeroMensagem = daConversa.filter((m) => m.papel === "usuario").length + 1;
     const idResposta = novoUuid();
     setMensagens((atual) => [...atual, { id: novoUuid(), papel: "usuario", texto }, { id: idResposta, papel: "assistente", texto: "" }]);
     setCarregando(true);
@@ -96,11 +155,14 @@ export function Vitoria() {
           setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, texto: m.texto + evento.data } : m)));
         } else if (evento.event === "final") {
           const final: RespostaFinalDaVitoria = JSON.parse(evento.data);
-          setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, expressao: final.expressao ?? "padrao", acao: final.acao } : m)));
+          const reacaoDaResposta = reacaoDaExpressao(final.expressao);
+          const figurinha = reacaoDaResposta ? figurinhaDe(reacaoDaResposta, false) : undefined;
+          setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, expressao: final.expressao ?? "padrao", acao: final.acao, figurinha } : m)));
         }
       });
     } catch {
-      setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, texto: "Não consegui falar com o servidor agora. Tente de novo em instantes.", expressao: "ops" } : m)));
+      const figurinha = figurinhaDe("errada", false);
+      setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, texto: "Não consegui falar com o servidor agora. Tente de novo em instantes.", expressao: "ops", figurinha } : m)));
     } finally {
       setCarregando(false);
       setRespondendo(null);
@@ -109,8 +171,16 @@ export function Vitoria() {
   }
 
   function alternarPainel() {
-    setAberto((v) => !v);
+    if (aberto) {
+      fechar();
+      return;
+    }
+    setAberto(true);
     setNaoLida(false);
+    if (mensagens.length === 0 && !saudouRef.current) {
+      saudouRef.current = true;
+      setSaudando(!movimentoReduzido());
+    }
   }
 
   return (
@@ -123,14 +193,14 @@ export function Vitoria() {
         aria-expanded={aberto}
         aria-label={aberto ? "Fechar a Vitória" : naoLida ? "Abrir a Vitória: tem resposta nova" : "Abrir a Vitória, o assistente de ajuda"}
       >
-        <Avatar expressao="icone" tamanho={40} />
+        <Avatar tamanho={52} />
         {naoLida && !aberto && <span className="vt-selo" aria-hidden="true" />}
       </button>
       {aberto && (
         <div className="vt-painel" role="dialog" aria-label="Vitória, assistente de ajuda">
           <div className="vt-cab">
             <span className={cx("vt-avatar-cab", carregando && "vt-avatar-ativo")}>
-              <Avatar key={expressaoDoCabecalho} expressao={expressaoDoCabecalho} tamanho={34} className="vt-avatar-troca" />
+              <Avatar tamanho={40} />
               <span className={cx("vt-luz", carregando && "vt-luz-ativa")} aria-hidden="true" />
             </span>
             <div className="vt-cab-texto">
@@ -146,7 +216,7 @@ export function Vitoria() {
                 )}
               </span>
             </div>
-            <button type="button" className="vt-fechar" onClick={() => setAberto(false)} aria-label="Fechar o painel da Vitória">
+            <button type="button" className="vt-fechar" onClick={fechar} aria-label="Fechar o painel da Vitória">
               <Icon name="x" size={16} />
             </button>
             {carregando && <span className="vt-progresso" aria-hidden="true" />}
@@ -155,7 +225,7 @@ export function Vitoria() {
             {mensagens.length === 0 && (
               <div className="vt-boas-vindas">
                 <span className="vt-boas-vindas-avatar">
-                  <Avatar expressao="feliz" tamanho={64} />
+                  {saudando ? <Figurinha reacao="ola" tocar tamanho={88} aoTerminar={() => setSaudando(false)} /> : <Avatar tamanho={64} />}
                 </span>
                 <strong>Oi, eu sou a Vitória!</strong>
                 <p>Tiro dúvidas de uso do sistema. Toque numa pergunta abaixo ou escreva a sua.</p>
@@ -175,28 +245,32 @@ export function Vitoria() {
             {mensagens.map((m) => {
               const chegando = m.id === respondendo;
               const pensando = chegando && !m.texto;
-              const expressao: ExpressaoVitoria = pensando ? "pensando" : (m.expressao ?? "padrao");
               return (
-                <div key={m.id} className={cx("vt-msg", m.papel === "usuario" ? "vt-msg-usuario" : "vt-msg-vitoria")}>
+                <div key={m.id} className={cx("vt-msg", m.papel === "usuario" ? "vt-msg-usuario" : "vt-msg-vitoria", m.figurinha && !chegando && "vt-msg-com-figurinha")}>
                   {m.papel === "assistente" && (
                     <span className={cx("vt-avatar-msg", pensando && "vt-avatar-pensando")}>
-                      <Avatar key={expressao} expressao={expressao} tamanho={28} className="vt-avatar-troca" />
+                      <Avatar tamanho={30} />
                     </span>
                   )}
-                  <div className={cx("vt-bolha", pensando && "vt-bolha-pensando")}>
-                    {pensando ? (
-                      <IndicadorPensando />
-                    ) : (
-                      <p>
-                        {m.texto}
-                        {chegando && <span className="vt-cursor" aria-hidden="true" />}
-                      </p>
-                    )}
-                    {m.acao && !chegando && (
-                      <button type="button" className="vt-acao" onClick={() => irPara(m.acao!)}>
-                        {m.acao.tipo === "destacar" ? "Mostrar na tela" : "Me leve lá"}
-                        <Icon name="right" size={13} />
-                      </button>
+                  <div className="vt-corpo">
+                    <div className={cx("vt-bolha", pensando && "vt-bolha-pensando")}>
+                      {pensando ? (
+                        <IndicadorPensando />
+                      ) : (
+                        <p>
+                          {m.texto}
+                          {chegando && <span className="vt-cursor" aria-hidden="true" />}
+                        </p>
+                      )}
+                      {m.acao && !chegando && (
+                        <button type="button" className="vt-acao" onClick={() => irPara(m.acao!)}>
+                          {m.acao.tipo === "destacar" ? "Mostrar na tela" : "Me leve lá"}
+                          <Icon name="right" size={13} />
+                        </button>
+                      )}
+                    </div>
+                    {m.figurinha && !chegando && (
+                      <Figurinha reacao={m.figurinha.reacao} completa={m.figurinha.completa} tocar={m.figurinha.tocar} aoTerminar={() => aoTerminarFigurinha(m.id)} />
                     )}
                   </div>
                 </div>
