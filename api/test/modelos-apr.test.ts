@@ -104,11 +104,17 @@ describe("Modelo de APR", () => {
         "data_documento",
         "id",
         "itens_total",
+        "participantes_com_assinatura",
         "publicado_em",
         "rascunho",
         "titulo",
         "versao",
       ]);
+      // A coluna "Assinatura" dos participantes só existe nos modelos APR 04, 05 e 06 (como o papel).
+      assert.deepEqual(
+        c.modelos.filter((m: any) => m.participantes_com_assinatura).map((m: any) => m.codigo),
+        ["APR 04", "APR 05", "APR 06"],
+      );
       assert.equal(apr01.versao, 4);
       assert.equal(apr01.arquivado_em, null);
       assert.equal(apr01.aprs_total, 0);

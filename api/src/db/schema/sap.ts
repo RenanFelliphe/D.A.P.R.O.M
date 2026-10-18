@@ -6,10 +6,14 @@ import { equipe, usuario } from "./usuarios";
 
 export const OS_TIPOS = ["corretiva", "preventiva"] as const;
 /**
+ * `encerrando` e `aguardando_supervisor` são os dois passos entre o fim da execução e a conclusão (Reunião 3): o tempo parou, e
+ * o responsável preenche e assina o encerramento (`encerrando`); depois a OS espera o supervisor ler o relatório da execução e
+ * assinar (`aguardando_supervisor`). Só com a assinatura do supervisor a OS fica `encerrada` (concluída): é aí que sai o PDF e
+ * que ela entra na planilha de baixa do SAP.
  * `devolvida`: o supervisor a devolveu ao SAP com uma justificativa (erro na ordem). Sai do quadro da equipe, como a
  * `cancelada`, e a justificativa vai na planilha de baixa; só o SAP a traz de volta, ao alterar a ordem.
  */
-export const OS_STATUS = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"] as const;
+export const OS_STATUS = ["liberada", "pendente", "em_execucao", "encerrando", "aguardando_supervisor", "encerrada", "cancelada", "devolvida"] as const;
 /**
  * A OS entra pela leitura do SAP (API), pela planilha exportada do SAP ou pelo PDF da OS impressa pelo SAP; só a de apoio
  * nasce no sistema, ligada à OS que ela destrava.

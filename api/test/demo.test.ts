@@ -38,18 +38,38 @@ describe("Dados de demonstração", () => {
   it("cobre todos os estados do fluxo", async () => {
     const status = await amb.sql<{ status: string; n: number }>("select status, count(*)::int n from os group by status");
     const por = Object.fromEntries(status.map((s) => [s.status, s.n])) as Record<string, number>;
-    for (const s of ["liberada", "pendente", "em_execucao", "encerrada", "cancelada"]) assert.ok(por[s]! > 0, `sem OS ${s}: ${JSON.stringify(por)}`);
-    assert.ok(por.encerrada! >= 6 && por.liberada! >= 10);
+    // Depois da execução a OS passa por `encerrando` (o responsável ainda não assinou) e `aguardando_supervisor` até a assinatura final.
+    for (const s of ["liberada", "pendente", "em_execucao", "encerrando", "aguardando_supervisor", "encerrada", "cancelada"]) assert.ok(por[s]! > 0, `sem OS ${s}: ${JSON.stringify(por)}`);
+    assert.ok(por.encerrada! >= 3 && por.aguardando_supervisor! >= 3 && por.liberada! >= 10);
+    assert.ok(por.encerrando! + por.aguardando_supervisor! + por.encerrada! >= 7, "as sete OS executadas até o fim, em cada etapa da assinatura");
 
     const resultados = await amb.sql<{ resultado: string | null; n: number }>("select resultado, count(*)::int n from execucao group by resultado");
     const r = Object.fromEntries(resultados.map((x) => [String(x.resultado), x.n])) as Record<string, number>;
     assert.ok(r.encerrada! >= 6 && r.suspensa! >= 1 && r.interrompida! >= 1 && r["null"]! >= 3, JSON.stringify(r));
+    // Só a execução da OS `encerrando` tem o tempo parado e o encerramento sem a assinatura do responsável; as demais encerradas estão assinadas.
+    const [semAssinar] = await amb.sql<{ n: number; encerrando: number }>(
+      "select count(*)::int n, count(*) filter (where o.status = 'encerrando')::int encerrando from execucao e join os o on o.id = e.os_id where e.resultado = 'encerrada' and e.encerramento_assinado_em is null",
+    );
+    assert.equal(semAssinar!.n, 1);
+    assert.equal(semAssinar!.encerrando, 1);
+    const [assinadas] = await amb.sql<{ n: number }>("select count(*)::int n from execucao e join os o on o.id = e.os_id where e.resultado = 'encerrada' and e.encerramento_assinado_em is not null and o.status in ('aguardando_supervisor', 'encerrada')");
+    assert.ok(assinadas!.n >= 6, `encerramentos assinados: ${assinadas!.n}`);
 
     const aprs = await amb.sql<{ resultado: string; n: number }>("select resultado, count(*)::int n from apr group by resultado");
     assert.ok(aprs.some((a) => a.resultado === "bloqueada") && aprs.some((a) => a.resultado === "aprovada"));
+    // Toda APR tem ao menos 2 participantes, e há uma aprovada esperando a assinatura de um técnico (ainda sem execução).
+    const poucos = await amb.sql("select apr_id from apr_participante group by apr_id having count(*) < 2");
+    assert.equal(poucos.length, 0, "APR com menos de 2 participantes");
+    const esperando = await amb.sql<{ id: string }>(
+      "select a.id from apr a join apr_participante p on p.apr_id = a.id where a.resultado = 'aprovada' and not exists (select 1 from execucao e where e.apr_id = a.id) group by a.id having count(*) filter (where p.assinada_em is null) > 0",
+    );
+    assert.equal(esperando.length, 1, "uma APR aguardando a assinatura");
+    // As aprovadas que viraram execução foram assinadas por todos.
+    const naoAssinadas = await amb.sql("select 1 from execucao e join apr_participante p on p.apr_id = e.apr_id where p.assinada_em is null and p.recusou_em is null");
+    assert.equal(naoAssinadas.length, 0, "execução iniciada com APR sem todas as assinaturas");
 
     const tipos = await amb.sql<{ tipo: string }>("select distinct tipo from alerta");
-    assert.ok(["bloqueio", "apoio_encerrado"].every((t) => tipos.some((x) => x.tipo === t)), JSON.stringify(tipos));
+    assert.ok(["bloqueio", "apoio_encerrado", "apr_para_assinar", "os_para_assinar"].every((t) => tipos.some((x) => x.tipo === t)), JSON.stringify(tipos));
     const lidos = await amb.sql<{ lido: boolean; n: number }>("select lido_em is not null as lido, count(*)::int n from alerta group by 1");
     assert.equal(lidos.length, 2, "há alertas lidos e não lidos");
   });
@@ -59,8 +79,19 @@ describe("Dados de demonstração", () => {
     assert.ok(apoio);
     assert.ok((await amb.sql("select 1 from reprogramacao")).length >= 1);
     assert.ok((await amb.sql("select 1 from os where status = 'cancelada' and cancelada_por is not null")).length >= 1);
-    const ciencia = await amb.sql<{ com: boolean; n: number }>("select ciencia_em is not null com, count(*)::int n from os where status = 'encerrada' group by 1");
-    assert.equal(ciencia.length, 2, "encerradas com e sem ciência");
+    // A ciência é a assinatura final do supervisor: com ela a OS está `encerrada`; sem ela, `aguardando_supervisor` (ou `encerrando`, antes da assinatura do responsável).
+    const ciencia = await amb.sql<{ status: string; com: boolean; n: number }>(
+      "select status, ciencia_em is not null com, count(*)::int n from os where status in ('encerrada', 'aguardando_supervisor', 'encerrando') group by 1, 2",
+    );
+    const por = Object.fromEntries(ciencia.map((x) => [`${x.status}:${x.com}`, x.n])) as Record<string, number>;
+    assert.ok(por["encerrada:true"]! >= 3, JSON.stringify(por));
+    assert.ok(por["aguardando_supervisor:false"]! >= 3, JSON.stringify(por));
+    assert.ok(por["encerrando:false"]! >= 1, JSON.stringify(por));
+    assert.equal(por["encerrada:false"], undefined, "encerrada sem ciência não existe mais");
+    assert.equal(por["aguardando_supervisor:true"], undefined);
+    // Pausas e suspensões da demonstração têm o motivo obrigatório.
+    assert.equal((await amb.sql("select 1 from execucao_pausa where motivo is null")).length, 0);
+    assert.equal((await amb.sql("select 1 from execucao where resultado = 'suspensa' and suspensao_motivo is null")).length, 0);
     const velha = await amb.sql("select 1 from execucao where resultado is null and inicio < now() - interval '12 hours'");
     assert.ok(velha.length >= 1);
     // pausa aberta agora
@@ -75,13 +106,21 @@ describe("Dados de demonstração", () => {
     assert.equal(sem.length, 0, `encerradas sem PDF: ${JSON.stringify(sem)}`);
     const falhas = await amb.sql<{ erro: string }>("select erro from tarefa where estado = 'falhou' or erro is not null");
     assert.equal(falhas.length, 0, JSON.stringify(falhas));
+    // O PDF só nasce com a assinatura final do supervisor: as OS que ainda esperam por ela não têm PDF.
+    const antes = await amb.sql<{ numero_ordem: string }>("select numero_ordem from os where status in ('encerrando', 'aguardando_supervisor') and pdf_path is not null");
+    assert.equal(antes.length, 0, `OS sem a assinatura final já com PDF: ${JSON.stringify(antes)}`);
   });
 
   it("o supervisor e o técnico enxergam os dados pela api", async () => {
     const eu = await amb.criarUsuario({ perfil: "admin" });
     const quadro = await amb.esperar(200, "GET", "/os", { como: eu, consulta: { tamanho: 100 } });
     assert.ok(quadro.os.length >= 24);
-    assert.ok(Object.values(quadro.contagem_por_status as Record<string, number>).filter((n) => n > 0).length === 5);
+    const contagem = quadro.contagem_por_status as Record<string, number>;
+    // Liberada, pendente, em execução, encerrando, aguardando o supervisor, encerrada e cancelada (só a devolvida ao SAP fica vazia).
+    assert.equal(Object.values(contagem).filter((n) => n > 0).length, 7, JSON.stringify(contagem));
+    assert.ok(contagem.encerrando! >= 1 && contagem.aguardando_supervisor! >= 3, JSON.stringify(contagem));
+    const aguardando = await amb.esperar(200, "GET", "/os", { como: eu, consulta: { status: "aguardando_supervisor", tamanho: 100 } });
+    assert.ok(aguardando.os.length >= 3 && aguardando.os.every((o: { status: string }) => o.status === "aguardando_supervisor"));
   });
 
   it("tem uma ausência em curso, uma agendada, uma vencida e um pedido aguardando o supervisor", async () => {

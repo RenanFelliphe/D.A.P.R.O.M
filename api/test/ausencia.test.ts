@@ -497,16 +497,20 @@ describe("Usuário ausente", () => {
       const { evidencias: _e, id: _id, ...paraAvaliar } = payloadApr([beto, ana]);
       const v = await amb.req("POST", "/aprs/avaliar", { como: beto, json: { ...paraAvaliar, id: randomUUID(), os_id: o.id } });
       assert.equal(v.corpo.erro.codigo, "participante_ausente");
-      // Sem a Ana, a APR passa.
-      assert.equal((await enviar(beto, evento("apr_concluida", payloadApr([beto]), o.id))).confirmados.length, 1);
+      // Sem a Ana, a APR passa (com ao menos 2 participantes).
+      const carla = await novo("Carla");
+      assert.equal((await enviar(beto, evento("apr_concluida", payloadApr([beto, carla]), o.id))).confirmados.length, 1);
     });
 
     it("a execução aberta é suspensa no início (a OS fica pendente), e o supervisor é avisado na resposta do registro", async () => {
       comeco();
       const ana = await novo("Ana");
+      const beto = await novo("Beto");
       const o = await novaOs();
-      const p = payloadApr([ana]);
+      const p = payloadApr([ana, beto]);
       await enviar(ana, evento("apr_concluida", p, o.id));
+      // Cada participante assina a APR na própria conta; só então a execução começa.
+      for (const quem of [ana, beto]) assert.deepEqual((await enviar(quem, evento("apr_assinada", { apr_id: p.id }, o.id))).rejeitados, []);
       const execId = randomUUID();
       const e = await enviar(ana, evento("execucao_iniciada", { id: execId, apr_id: p.id, inicio: agora() }, o.id));
       assert.deepEqual(e.os, [{ id: o.id, status: "em_execucao" }]);
@@ -517,12 +521,13 @@ describe("Usuário ausente", () => {
       assert.equal(r.execucao_aberta, true);
       const [depois] = await amb.db.select().from(execucao).where(eq(execucao.id, execId));
       assert.equal(depois!.resultado, "suspensa");
+      assert.equal(depois!.suspensaoMotivo, "outro", "a suspensão da ausência grava o motivo \"outro\"");
       assert.deepEqual(depois!.fim, amb.relogio.agora);
       assert.equal((await amb.sql("select 1 from execucao_pausa where execucao_id = $1 and fim is null", [execId])).length, 0, "a pausa aberta é fechada");
       assert.equal((await lerOs(o.id)).status, "pendente");
-      // A equipe a retoma com uma APR nova.
-      const beto = await novo("Beto");
-      const nova = payloadApr([beto], agora());
+      // A equipe a retoma com uma APR nova (Ana está ausente: entram Beto e Carla).
+      const carla = await novo("Carla");
+      const nova = payloadApr([beto, carla], agora());
       assert.equal((await enviar(beto, evento("apr_concluida", nova, o.id))).confirmados.length, 1);
       comeco();
     });
@@ -531,11 +536,12 @@ describe("Usuário ausente", () => {
       comeco();
       const ana = await novo("Ana");
       await registrar(ana, { inicio: "2026-10-15", dias: 3 }); // começa às 0h de 15/10 em São Paulo (03:00Z)
+      const beto = await novo("Beto");
       const o = await novaOs();
       const antes = "2026-10-14T20:00:00Z";
       const depois = "2026-10-15T14:00:00Z";
-      const doPassado = payloadApr([ana], antes);
-      const dePresente = payloadApr([ana], depois);
+      const doPassado = payloadApr([ana, beto], antes);
+      const dePresente = payloadApr([ana, beto], depois);
       const r = await enviar(ana, evento("apr_concluida", doPassado, o.id, antes), evento("apr_concluida", dePresente, o.id, depois));
       assert.deepEqual(r.confirmados.length, 1);
       assert.equal(r.aprs[0].id, doPassado.id);

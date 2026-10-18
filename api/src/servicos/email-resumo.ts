@@ -72,10 +72,8 @@ export async function montarResumo(deps: Deps, pessoa: { id: string; perfil: "te
   const representadas = (await representacoesEmVigor(db, agora, { representanteId: pessoa.id })).map((r) => r.equipeId);
   const supervisionadas = [...new Set([...titulares, ...representadas])];
   if (supervisionadas.length > 0) {
-    const participou = sql`(exists (select 1 from ${execucao} where ${execucao.osId} = ${os.id} and ${execucao.executorId} = ${pessoa.id})
-      or exists (select 1 from ${apr} where ${apr.osId} = ${os.id} and ${apr.preenchidaPor} = ${pessoa.id})
-      or exists (select 1 from ${aprParticipante} inner join ${apr} on ${apr.id} = ${aprParticipante.aprId} where ${apr.osId} = ${os.id} and ${aprParticipante.usuarioId} = ${pessoa.id}))`;
-    const semCiencia = and(inArray(os.equipeId, supervisionadas), eq(os.status, "encerrada"), isNull(os.cienciaEm), sql`not ${participou}`);
+    // O supervisor assina por último mesmo que tenha participado do serviço (Reunião 3).
+    const semCiencia = and(inArray(os.equipeId, supervisionadas), eq(os.status, "aguardando_supervisor"));
     const [{ total } = { total: 0 }] = await db.select({ total: count() }).from(os).where(semCiencia);
     if (total > 0) {
       const encerradas = await db
@@ -85,7 +83,7 @@ export async function montarResumo(deps: Deps, pessoa: { id: string; perfil: "te
         .orderBy(asc(os.dataInicioProg), asc(os.id))
         .limit(LINHAS_POR_SECAO);
       secoes.push({
-        titulo: `OS encerradas aguardando a sua ciência (${total})`,
+        titulo: `OS aguardando a sua assinatura (${total})`,
         ...linhas(encerradas, total, (o) => ({ texto: `OS ${o.numero ?? "de apoio"} — ${o.titulo}${o.fim ? ` (encerrada em ${dataBr(diaDe(new Date(o.fim)))})` : ""}`, url: `${painel}/app/os/${o.id}` })),
       });
     }

@@ -113,7 +113,7 @@ export async function interrupcoes(db: Db, filtroOs: SQL | undefined, p: ReturnT
 }
 
 /**
- * O que pede ação agora: baixa no SAP, ciência do supervisor e execução esquecida aberta. Quem não
+ * O que pede ação agora: baixa no SAP, a assinatura do supervisor (a OS em `aguardando_supervisor`) e execução esquecida aberta. Quem não
  * acompanha a equipe recebe só a execução esquecida (as demais são de gestão: `null`).
  */
 async function pendencias(db: Db, filtroOs: SQL | undefined, agora: Date, gestao: boolean) {
@@ -123,7 +123,7 @@ async function pendencias(db: Db, filtroOs: SQL | undefined, agora: Date, gestao
       ? db
           .select({
             aExportar: contarSe(sql`${os.status} = 'encerrada' and ${os.exportadaSapEm} is null`),
-            semCiencia: contarSe(sql`${os.status} = 'encerrada' and ${os.cienciaEm} is null`),
+            semCiencia: contarSe(sql`${os.status} = 'aguardando_supervisor'`),
           })
           .from(os)
           .where(filtroOs)

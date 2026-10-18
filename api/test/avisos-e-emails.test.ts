@@ -384,12 +384,16 @@ describe("Reserva e ciência de OS", () => {
     assert.equal((await avisos(amb, "os_reservada", supervisor.id)).length, 0);
   });
 
-  it("a ciência do supervisor avisa quem executou a OS", async () => {
-    const o = await criarOs(amb, { equipeId, encerrada: true });
+  it("a assinatura final do supervisor avisa quem executou a OS (a OS está concluída)", async () => {
+    // A OS só aceita a assinatura do supervisor depois que o responsável assinou o encerramento (`aguardando_supervisor`).
+    const o = await criarOs(amb, { equipeId, encerrada: true, status: "aguardando_supervisor" });
     await amb.esperar(200, "POST", `/os/${o.osId}/ciencia`, { como: supervisor });
     const [aviso] = await avisos(amb, "os_ciencia", o.supervisorDaAprId);
     assert.equal(aviso!.osId, o.osId);
-    assert.match(aviso!.detalhe, /Sérgio Supervisor deu a ciência da OS .*, que você executou/);
+    assert.match(aviso!.detalhe, /Sérgio Supervisor assinou como supervisor a OS .*, que você executou: a OS está concluída/);
+    // Assinada, a OS não aceita outra assinatura final (e o aviso não se repete).
+    assert.equal((await amb.req("POST", `/os/${o.osId}/ciencia`, { como: supervisor })).status, 409);
+    assert.equal((await avisos(amb, "os_ciencia", o.supervisorDaAprId)).length, 1);
   });
 });
 
@@ -469,8 +473,9 @@ describe("Preferências de e-mail e resumo diário", () => {
   });
 
   it("cada um recebe o que espera por ele; quem não tem nada não recebe", async () => {
-    // Para o supervisor: uma OS encerrada sem ciência. Para o técnico: uma OS reservada. Para o admin: um cadastro pendente.
-    const encerrada = await criarOs(amb, { equipeId, encerrada: true });
+    // Para o supervisor: uma OS aguardando a assinatura dele (a já concluída não entra). Para o técnico: uma OS reservada. Para o admin: um cadastro pendente.
+    const encerrada = await criarOs(amb, { equipeId, encerrada: true, status: "aguardando_supervisor" });
+    await criarOs(amb, { equipeId, encerrada: true });
     const reservada = await criarOs(amb, { equipeId });
     await amb.db.update(os).set({ responsavelId: tecnico.id, reservadaPor: supervisor.id, reservadaEm: amb.relogio.agora }).where(eq(os.id, reservada.osId));
     const pendente = await amb.criarUsuario({ perfil: "tecnico", equipeId, nome: "Paulo Pendente" });
@@ -481,7 +486,7 @@ describe("Preferências de e-mail e resumo diário", () => {
     const resumos = amb.email.enviados.slice(antes).filter((m) => m.assunto === "[SYNQ OS] Resumo do dia 17/10/2026");
     const de = (para: string) => resumos.find((m) => m.para === para);
 
-    assert.ok(de(supervisor.email)!.texto.includes("OS encerradas aguardando a sua ciência (1)"));
+    assert.ok(de(supervisor.email)!.texto.includes("OS aguardando a sua assinatura (1)"));
     assert.ok(de(supervisor.email)!.texto.includes(`http://painel.local/app/os/${encerrada.osId}`));
     assert.ok(de(tecnico.email)!.texto.includes("OS reservadas para você (1)"));
     assert.ok(de(admin.email)!.texto.includes("Cadastros aguardando a liberação (1)"));

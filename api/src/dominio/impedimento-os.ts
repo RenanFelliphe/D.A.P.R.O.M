@@ -8,7 +8,7 @@ import { assinaturaDoAto } from "./assinatura";
 /** Status em que a OS de apoio ainda pode ser cancelada pelo sistema. */
 const STATUS_CANCELAVEIS: readonly OsStatus[] = ["liberada", "pendente"];
 /** Reprogramar não faz sentido depois do fim da OS. */
-const STATUS_REPROGRAMAVEIS_NEGADOS: readonly OsStatus[] = ["encerrada", "cancelada"];
+const STATUS_REPROGRAMAVEIS_NEGADOS: readonly OsStatus[] = ["encerrando", "aguardando_supervisor", "encerrada", "cancelada"];
 
 /** Soma `dias` a uma data `AAAA-MM-DD` (calendário UTC, sem fuso nem horário de verão). */
 function somarDias(data: string, dias: number): string {
@@ -38,7 +38,7 @@ export async function reprogramarOs(
     const [atual] = await tx.select().from(os).where(eq(os.id, osId)).for("update");
     if (!atual || !podeSupervisionarEquipe(eu, atual.equipeId)) throw naoEncontrado("OS não encontrada");
     if (STATUS_REPROGRAMAVEIS_NEGADOS.includes(atual.status)) {
-      throw conflito("os_finalizada", `OS ${atual.status === "encerrada" ? "encerrada" : "cancelada"} não pode ser reprogramada`);
+      throw conflito("os_finalizada", `OS ${atual.status === "cancelada" ? "cancelada" : "encerrada"} não pode ser reprogramada`);
     }
 
     let equipeNovaId = atual.equipeId;

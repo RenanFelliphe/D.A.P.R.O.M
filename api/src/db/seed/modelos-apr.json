@@ -7,6 +7,7 @@
       "versao": 4,
       "dataDocumento": "2026-07-24",
       "titulo": "OPERAÇÃO",
+      "participantesComAssinatura": false,
       "pae": {
         "titulo": "Plano de atendimento a Emergências - PAE",
         "subtitulo": "Rede de gás natural do Espirito Santo",
@@ -735,6 +736,7 @@
       "versao": 4,
       "dataDocumento": "2026-07-24",
       "titulo": "INSTRUMENTAÇÃO",
+      "participantesComAssinatura": false,
       "pae": {
         "titulo": "Plano de atendimento a Emergências - PAE",
         "subtitulo": "Rede de gás natural do Espirito Santo",
@@ -1368,6 +1370,7 @@
       "versao": 4,
       "dataDocumento": "2026-07-24",
       "titulo": "OPERAÇÃO MANUTENÇÃO",
+      "participantesComAssinatura": false,
       "pae": {
         "titulo": "Plano de atendimento a Emergências - PAE",
         "subtitulo": "Rede de gás natural do Espirito Santo",
@@ -2151,6 +2154,7 @@
       "versao": 3,
       "dataDocumento": "2026-07-07",
       "titulo": "CONSTRUÇÃO DE REDE DE DISTRIBUIÇÃO DE GÁS NATURAL",
+      "participantesComAssinatura": true,
       "pae": {
         "titulo": "Plano de atendimento a Emergências - PAE",
         "subtitulo": "Rede de gás natural do Espirito Santo",
@@ -2855,6 +2859,7 @@
       "versao": 3,
       "dataDocumento": "2026-07-07",
       "titulo": "CONVERSÃO E ATIVAÇÃO DE CLIENTES",
+      "participantesComAssinatura": true,
       "pae": {
         "titulo": "Plano de atendimento a Emergências - PAE",
         "subtitulo": "Rede de gás natural do Espirito Santo",
@@ -3668,6 +3673,7 @@
       "versao": 3,
       "dataDocumento": "2026-07-01",
       "titulo": "ESPAÇO CONFINADO E/OU TRABALHO EM ALTURA",
+      "participantesComAssinatura": true,
       "pae": {
         "titulo": "Plano de atendimento a Emergências - PAE",
         "subtitulo": "Rede de gás natural do Espirito Santo",
@@ -4256,6 +4262,7 @@
       "versao": 4,
       "dataDocumento": "2026-07-24",
       "titulo": "INSPEÇÃO E ACOMPANHAMENTO DE REDE DE GÁS",
+      "participantesComAssinatura": false,
       "pae": {
         "titulo": "Plano de atendimento a Emergências - PAE",
         "subtitulo": "Rede de gás natural do Espirito Santo",
@@ -4799,6 +4806,7 @@
       "versao": 2,
       "dataDocumento": "2026-07-24",
       "titulo": "MOVIMENTAÇÃO ALMOXARIFADO",
+      "participantesComAssinatura": false,
       "pae": {
         "titulo": "Plano de atendimento a Emergências - PAE",
         "subtitulo": "Rede de gás natural do Espirito Santo",

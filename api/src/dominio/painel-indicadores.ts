@@ -1,6 +1,6 @@
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { equipe, execucao, execucaoPausa, os, reprogramacao, usuario } from "../db/schema";
+import { PAUSA_MOTIVOS, equipe, execucao, execucaoPausa, os, reprogramacao, usuario } from "../db/schema";
 import { equipesDoEscopo, type UsuarioAutenticado } from "../http/autenticacao";
 import { proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
@@ -112,7 +112,7 @@ function medir(tempos: TempoMedido[]): MedidaDeTempo {
 }
 
 /** Os motivos de pausa do app, na ordem em que aparecem; `sem_motivo` é a pausa registrada sem escolher um. */
-const MOTIVOS_DE_PAUSA = ["almoco", "descanso", "outro", "sem_motivo"] as const;
+const MOTIVOS_DE_PAUSA = [...PAUSA_MOTIVOS, "sem_motivo"] as const;
 type MotivoDaPausa = (typeof MOTIVOS_DE_PAUSA)[number];
 const OS_COM_MAIS_PAUSA = 5;
 

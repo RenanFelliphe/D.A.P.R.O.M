@@ -5,10 +5,17 @@ import { usuario } from "./usuarios";
 
 export const EVENTO_TIPOS = [
   "apr_concluida",
+  /** Um participante assina a APR na própria conta (a execução só começa com a assinatura de todos). */
+  "apr_assinada",
+  /** Direito de recusa: o participante não concorda, sai da APR e deixa o motivo. */
+  "apr_recusada",
   "execucao_iniciada",
   "pausa_iniciada",
   "pausa_encerrada",
+  /** O clique em "Encerrar OS": grava o fim e a localização, e o tempo para. */
   "execucao_encerrada",
+  /** Depois do fim: a descrição, as fotos e o checklist (opcionais) e a assinatura do responsável. */
+  "encerramento_assinado",
   "execucao_interrompida",
   "execucao_suspensa",
   "execucao_cancelada",

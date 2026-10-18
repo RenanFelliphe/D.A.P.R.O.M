@@ -69,6 +69,21 @@ export const evidenciaPayload = z
   .refine((e) => (e.latitude == null) === (e.longitude == null), { message: "Informe latitude e longitude juntas" });
 export type EvidenciaPayload = z.infer<typeof evidenciaPayload>;
 
+/**
+ * Onde a pessoa estava no momento do evento (início, pausa, suspensão, interrupção e encerramento; não na assinatura da APR).
+ * Os dois campos vêm juntos ou nenhum: sem GPS (permissão negada, local coberto) o serviço não é bloqueado, fica "sem localização".
+ */
+export const posicaoPayload = {
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+};
+
+/** A posição do payload no formato das colunas (`null` = sem localização); só uma das duas coordenadas é recusada. */
+export function lerPosicao(p: { latitude?: number | null; longitude?: number | null }): { latitude: number | null; longitude: number | null } {
+  if ((p.latitude == null) !== (p.longitude == null)) throw rejeitar("posicao_incompleta", "Informe latitude e longitude juntas");
+  return { latitude: p.latitude ?? null, longitude: p.longitude ?? null };
+}
+
 /** A linha de `evidencia` de uma evidência do payload, ligada à execução ou ao item da APR. */
 export const linhaDeEvidencia = (e: EvidenciaPayload, dono: { execucaoId: string } | { aprId: string; itemId: string }) => ({
   id: e.id,

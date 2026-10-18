@@ -5,7 +5,7 @@ import type { Deps } from "../deps";
 import { avisarAdmins } from "../dominio/alertas";
 import { carregarDadosPdf } from "./pdf-dados";
 import { abrirEscala, fecharEscala, MARGEM, novoCursor, rodape, type Cursor, type Doc } from "./pdf-layout";
-import { paginaApr, paginaOs } from "./pdf-paginas";
+import { folhaDaExecucao, folhaDaOrdem, paginaApr } from "./pdf-paginas";
 
 export { manipularEmailAlerta } from "./email-alerta";
 
@@ -47,10 +47,11 @@ function desenharPagina(doc: Doc, pagina: Pagina) {
 }
 
 /**
- * PDF de 2 páginas da OS, como o papel: página 1 = APR da Execução que encerrou; página 2 = a OS (execução com tempo
- * líquido somado dos trechos, assinaturas, ciência e fotos). Cada página é reduzida até caber numa folha A4, como a
- * planilha da APR impressa; só o que não couber nem na menor escala (APR muito longa, fotos demais) continua em outra
- * folha, em vez de cortar. Lança erro se a OS não tem Execução encerrada.
+ * PDF da OS, idêntico aos documentos originais e sem nada a mais: a APR da Execução que encerrou, como o modelo, e as 2 folhas
+ * da OS do SAP (a "Ordem de Manutenção" e a de execução, com a descrição, as assinaturas dos executantes, do responsável e do
+ * supervisor). A APR é reduzida até caber numa folha A4, como a planilha impressa; só o que não couber nem na menor escala
+ * continua em outra folha, em vez de cortar. Tempos, pausas, fotos e checklist ficam no relatório da execução
+ * (`relatorio-execucao.ts`). Lança erro se a OS não tem Execução encerrada e assinada.
  */
 export async function gerarPdfOs(deps: Deps, osId: string, opcoes: { comprimir?: boolean } = {}): Promise<Uint8Array> {
   const dados = await carregarDadosPdf(deps, osId);
@@ -69,9 +70,13 @@ export async function gerarPdfOs(deps: Deps, osId: string, opcoes: { comprimir?:
     doc.on("error", rejeitar);
   });
 
+  // "Data de Impr." da folha do SAP: o dia da assinatura final do supervisor (a geração pode ser refeita depois), ou o da geração.
+  const opcoesDaFolha = { impressao: dados.ciencia?.em ?? geradoEm };
   desenharPagina(doc, (c) => paginaApr(c, dados));
   doc.addPage();
-  desenharPagina(doc, (c) => paginaOs(c, dados, geradoEm));
+  folhaDaOrdem(doc, dados, opcoesDaFolha);
+  doc.addPage();
+  folhaDaExecucao(doc, dados, opcoesDaFolha);
   doc.end();
   await pronto;
   return new Uint8Array(Buffer.concat(pedacos));

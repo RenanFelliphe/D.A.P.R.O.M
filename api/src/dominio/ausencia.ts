@@ -114,7 +114,7 @@ export async function aplicarInicioDaAusencia(db: Db, a: LinhaAusencia, agora: D
   for (const e of abertas) {
     const fim = agora < e.inicio ? e.inicio : agora;
     await db.update(execucaoPausa).set({ fim }).where(and(eq(execucaoPausa.execucaoId, e.id), isNull(execucaoPausa.fim)));
-    await db.update(execucao).set({ fim, resultado: "suspensa" }).where(eq(execucao.id, e.id));
+    await db.update(execucao).set({ fim, resultado: "suspensa", suspensaoMotivo: "outro", suspensaoComplemento: "Início da ausência de quem executava" }).where(eq(execucao.id, e.id));
     await recalcularStatusOs(db, e.osId);
   }
 

@@ -120,7 +120,11 @@ await recusa("resposta repetida", `insert into apr_resposta values ('${id(50)}',
 await deve("execução", `insert into execucao (id,os_id,apr_id,executor_id,numero_pessoas,inicio) values ('${id(60)}','${id(40)}','${id(50)}','${id(10)}',2,'2026-10-13 09:31')`);
 await recusa("2ª execução na mesma APR", `insert into execucao (id,os_id,apr_id,executor_id,numero_pessoas,inicio) values ('${id(61)}','${id(40)}','${id(50)}','${id(10)}',2,'2026-10-13 09:40')`);
 await recusa("0 pessoas", `update execucao set numero_pessoas=0 where id='${id(60)}'`);
-await recusa("encerrar sem descrição", `update execucao set resultado='encerrada', fim='2026-10-13 11:18' where id='${id(60)}'`);
+// A descrição do encerramento é opcional (Reunião 3): a encerrada só exige o fim.
+await recusa("encerrar sem o fim", `update execucao set resultado='encerrada' where id='${id(60)}'`);
+await recusa("localização do início pela metade", `update execucao set inicio_latitude=-20.3 where id='${id(60)}'`);
+await recusa("latitude do fim fora da faixa", `update execucao set fim_latitude=95, fim_longitude=0 where id='${id(60)}'`);
+await recusa("motivo de suspensão inválido", `update execucao set suspensao_motivo='ferias' where id='${id(60)}'`);
 await recusa("interromper sem motivo", `update execucao set resultado='interrompida', fim='2026-10-13 10:00' where id='${id(60)}'`);
 await recusa("fim antes do início", `update execucao set fim='2026-10-13 08:00' where id='${id(60)}'`);
 await deve("pausa", `insert into execucao_pausa (id,execucao_id,inicio) values ('${id(70)}','${id(60)}','2026-10-13 10:15')`);

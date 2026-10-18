@@ -4,10 +4,11 @@ import { EVENTO_TIPOS, apr, eventoCampo, os } from "../db/schema";
 import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid } from "../http/validacao";
-import { aplicarAprConcluida } from "./eventos-apr";
+import { aplicarAprAssinada, aplicarAprConcluida, aplicarAprRecusada } from "./eventos-apr";
 import { ganhosDe, type ganhoParaApi } from "./lancamentos";
 import { ATRASO_OFFLINE_MS, RejeicaoEvento, rejeitar, type Contexto } from "./eventos-base";
 import {
+  aplicarEncerramentoAssinado,
   aplicarExecucaoCancelada,
   aplicarExecucaoEncerrada,
   aplicarExecucaoIniciada,
@@ -57,6 +58,10 @@ async function despachar(ctx: Contexto, e: EventoRecebido) {
   switch (e.tipo) {
     case "apr_concluida":
       return aplicarAprConcluida(ctx, osId, e.payload);
+    case "apr_assinada":
+      return aplicarAprAssinada(ctx, e.payload);
+    case "apr_recusada":
+      return aplicarAprRecusada(ctx, e.payload);
     case "execucao_iniciada":
       return aplicarExecucaoIniciada(ctx, osId, e.payload);
     case "pausa_iniciada":
@@ -65,6 +70,8 @@ async function despachar(ctx: Contexto, e: EventoRecebido) {
       return aplicarPausaEncerrada(ctx, e.payload);
     case "execucao_encerrada":
       return aplicarExecucaoEncerrada(ctx, e.payload);
+    case "encerramento_assinado":
+      return aplicarEncerramentoAssinado(ctx, e.payload);
     case "execucao_interrompida":
       return aplicarExecucaoInterrompida(ctx, e.payload);
     case "execucao_suspensa":

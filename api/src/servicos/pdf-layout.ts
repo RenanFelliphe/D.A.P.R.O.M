@@ -20,7 +20,7 @@ export const LIMITE_Y = 792;
  */
 const SEM_LIMITE = 1e6;
 
-export const COR = { borda: "#555555", cinza: "#e6e6e6", rotulo: "#666666", reprovado: "#f8d7d7", alerta: "#fff1c2", texto: "#111111" };
+export const COR = { borda: "#555555", cinza: "#e6e6e6", rotulo: "#666666", reprovado: "#f8d7d7", alerta: "#fff1c2", texto: "#111111", link: "#1a4fa0", saude: "#f9c9c9" };
 
 export interface Cursor {
   doc: Doc;
@@ -133,6 +133,8 @@ export interface Coluna {
   largura: number;
   texto: string;
   negrito?: boolean;
+  /** Torna o texto da célula um link clicável (azul e sublinhado), como o ponto no mapa do relatório da execução. */
+  link?: string;
 }
 
 /**
@@ -152,8 +154,8 @@ export function linhaDeTabela(c: Cursor, colunas: Coluna[], opcoes: { fundo?: st
     doc
       .font(col.negrito ? "Helvetica-Bold" : "Helvetica")
       .fontSize(tamanho)
-      .fillColor(COR.texto);
-    escrever(doc, col.texto, x + 3, c.y + respiro / 2, { width: col.largura - 6 });
+      .fillColor(col.link ? COR.link : COR.texto);
+    escrever(doc, col.texto, x + 3, c.y + respiro / 2, { width: col.largura - 6, ...(col.link ? { link: col.link, underline: true } : {}) });
     x += col.largura;
   }
   c.y += altura;

@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { alerta, evidencia, itemModeloApr, localInstalacao, modeloApr, os } from "../src/db/schema";
 import { documentoDemo } from "../src/db/seed/documento-demo";
 import { manipularEmailAlerta } from "../src/servicos/email-alerta";
-import { gerarPdfOs } from "../src/servicos/pdf-os";
+import { gerarRelatorioDaExecucao } from "../src/servicos/relatorio-execucao";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 import { textoDoPdf } from "./fixture-os";
 
@@ -227,31 +227,26 @@ describe("Evidência em PDF", () => {
     async function emExecucao() {
       const o = await novaOs();
       const p = apr(o.id, []);
-      await enviar(tecnico, evento("apr_concluida", { ...p, comEvidencia: undefined, participantes: p.participantes.map((x) => ({ ...x, assinada_em: agora() })) }, o.id));
+      await enviar(tecnico, evento("apr_concluida", { ...p, comEvidencia: undefined, assinatura_presencial: true, participantes: p.participantes.map((x) => ({ ...x, assinada_em: agora() })) }, o.id));
       const execucaoId = randomUUID();
       await enviar(tecnico, evento("execucao_iniciada", { id: execucaoId, apr_id: p.id, inicio: agora() }, o.id));
       return { osId: o.id, execucaoId };
     }
-    const encerramento = (execucaoId: string, evidencias: object[]) =>
-      evento("execucao_encerrada", {
-        execucao_id: execucaoId,
-        fim: agora(),
-        descricao_atividade: "Ramal reparado e testado",
-        evidencias,
-        assinaturas: [tecnico, colega].map((u) => ({ usuario_id: u.id })),
-      });
+    /** O encerramento em dois passos: o clique em "Encerrar OS" e o preenchimento (fotos e PDFs opcionais) assinado pelo responsável; devolve a resposta do segundo. */
+    const encerramento = async (osId: string, execucaoId: string, evidencias: object[]) => {
+      await enviar(tecnico, evento("execucao_encerrada", { execucao_id: execucaoId, fim: agora() }, osId));
+      return enviar(tecnico, evento("encerramento_assinado", { execucao_id: execucaoId, descricao_atividade: "Ramal reparado e testado", evidencias }, osId));
+    };
 
-    it("encerrar com PDF exige ao menos uma foto; com foto e PDFs, eles aparecem como documentos", async () => {
+    it("encerrar aceita só o PDF (a foto é opcional); com foto e PDFs, eles aparecem como documentos", async () => {
+      const soPdf = await emExecucao();
+      const r1 = await encerramento(soPdf.osId, soPdf.execucaoId, [{ id: await subir("pdf"), tipo: "pdf", nome: "laudo.pdf", capturada_em: agora() }]);
+      assert.deepEqual(r1.rejeitados, []);
+
       const { osId, execucaoId } = await emExecucao();
-      const semFoto = await enviar(tecnico, encerramento(execucaoId, [{ id: await subir("pdf"), tipo: "pdf", capturada_em: agora() }]));
-      assert.equal(semFoto.rejeitados[0]?.codigo, "encerramento_incompleto");
-
       const foto = await subir("foto");
       const laudos = [await subir("pdf"), await subir("pdf")];
-      const r = await enviar(
-        tecnico,
-        encerramento(execucaoId, [{ id: foto, capturada_em: agora() }, ...laudos.map((id, i) => ({ id, tipo: "pdf", nome: `laudo-${i + 1}.pdf`, capturada_em: agora() }))]),
-      );
+      const r = await encerramento(osId, execucaoId, [{ id: foto, capturada_em: agora() }, ...laudos.map((id, i) => ({ id, tipo: "pdf", nome: `laudo-${i + 1}.pdf`, capturada_em: agora() }))]);
       assert.deepEqual(r.rejeitados, []);
       const detalhe = await amb.esperar(200, "GET", `/os/${osId}`, { como: supervisor });
       const [execucao] = detalhe.execucoes;
@@ -260,10 +255,10 @@ describe("Evidência em PDF", () => {
     });
 
     it("no máximo 5 PDFs por execução", async () => {
-      const { execucaoId } = await emExecucao();
+      const { osId, execucaoId } = await emExecucao();
       const pdfs = [];
       for (let i = 0; i < 6; i++) pdfs.push({ id: await subir("pdf"), tipo: "pdf", capturada_em: agora() });
-      const r = await enviar(tecnico, encerramento(execucaoId, [{ id: await subir("foto"), capturada_em: agora() }, ...pdfs]));
+      const r = await encerramento(osId, execucaoId, [{ id: await subir("foto"), capturada_em: agora() }, ...pdfs]);
       assert.equal(r.rejeitados[0]?.codigo, "pdfs_demais");
     });
 
@@ -279,14 +274,11 @@ describe("Evidência em PDF", () => {
       assert.deepEqual(r.rejeitados, []);
     });
 
-    it("o PDF da OS lista os documentos anexados e desenha só as fotos", async () => {
+    it("o relatório da execução lista os documentos anexados e desenha só as fotos (o PDF da OS não os traz)", async () => {
       const { osId, execucaoId } = await emExecucao();
-      const r = await enviar(
-        tecnico,
-        encerramento(execucaoId, [{ id: await subir("foto"), capturada_em: agora() }, { id: await subir("pdf"), tipo: "pdf", nome: "relatorio-medicao.pdf", capturada_em: agora() }]),
-      );
+      const r = await encerramento(osId, execucaoId, [{ id: await subir("foto"), capturada_em: agora() }, { id: await subir("pdf"), tipo: "pdf", nome: "relatorio-medicao.pdf", capturada_em: agora() }]);
       assert.deepEqual(r.rejeitados, []);
-      const texto = textoDoPdf(await gerarPdfOs(amb.deps, osId, { comprimir: false }));
+      const texto = textoDoPdf(await gerarRelatorioDaExecucao(amb.deps, osId, { comprimir: false }));
       assert.ok(texto.includes("DOCUMENTOS ANEXADOS (PDF)"), texto);
       assert.ok(texto.includes("relatorio-medicao.pdf"));
     });

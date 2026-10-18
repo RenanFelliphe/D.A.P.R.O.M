@@ -1,6 +1,7 @@
 import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Db } from "../conexao";
 import { apr, conquistaEquipe, conquistaUsuario, evidencia, execucao, lancamentoPontos, os, planoPreventiva, temporada, usuario } from "../schema";
+import { participantesDaApr, situacaoDasAssinaturas } from "../../dominio/apr-assinaturas";
 import { conferirTodos } from "../../dominio/conquistas";
 import { fecharTemporada } from "../../dominio/fechamento-temporada";
 import { aprEstaCompleta } from "../../dominio/eventos-apr";
@@ -36,10 +37,17 @@ export async function preencherHistoricoDaGamificacao(db: Db, agora: Date, opcoe
     const tx = transacao as unknown as Db;
     const c: ContextoDePontos = { tx, agora, historico: true };
 
-    // APRs, na ordem em que foram concluídas. A bloqueada só pontua com a evidência completa (a data é a da última evidência).
+    // APRs, na ordem em que foram concluídas. A aprovada só pontua quando todos os que ficaram nela assinaram (a data é a da última
+    // assinatura); a bloqueada, com a evidência completa (a data é a da última evidência).
     const aprs = await tx.select({ id: apr.id, resultado: apr.resultado, concluidaEm: apr.concluidaEm }).from(apr).orderBy(asc(apr.concluidaEm), asc(apr.id));
     for (const a of aprs) {
       let quando = a.concluidaEm;
+      if (a.resultado === "aprovada") {
+        const situacao = situacaoDasAssinaturas(await participantesDaApr(tx, a.id));
+        if (!situacao.pronta) continue;
+        const ultima = Math.max(...situacao.ativos.map((p) => p.assinadaEm!.getTime()));
+        if (ultima > quando.getTime()) quando = new Date(ultima);
+      }
       if (a.resultado === "bloqueada") {
         if (!(await aprEstaCompleta(tx, a.id))) continue;
         const [ultima] = await tx.select({ em: sql<Date | string>`max(${evidencia.capturadaEm})` }).from(evidencia).where(eq(evidencia.aprId, a.id));
@@ -53,7 +61,8 @@ export async function preencherHistoricoDaGamificacao(db: Db, agora: Date, opcoe
     const execucoes = await tx
       .select({ id: execucao.id, osId: execucao.osId, resultado: execucao.resultado, fim: execucao.fim })
       .from(execucao)
-      .where(and(isNotNull(execucao.fim), sql`${execucao.resultado} in ('encerrada', 'interrompida')`))
+      // A encerrada só pontua depois que o responsável assinou o encerramento.
+      .where(and(isNotNull(execucao.fim), sql`${execucao.resultado} in ('encerrada', 'interrompida')`, sql`(${execucao.resultado} <> 'encerrada' or ${execucao.encerramentoAssinadoEm} is not null)`))
       .orderBy(asc(execucao.fim), asc(execucao.id));
     const encerradas = new Set<string>();
     for (const e of execucoes) {

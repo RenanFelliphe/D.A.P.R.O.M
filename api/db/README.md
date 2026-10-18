@@ -54,6 +54,7 @@ Geradas pelo `drizzle-kit`, aplicadas em ordem, uma única vez cada, e registrad
 | `0021_modelo_escolhido_pelo_tecnico.sql` | o técnico escolhe o modelo da APR (questão 58): cria `orientacao_modelo_apr` (chave `codigo`, `descricao`, `exemplos text[]`, `palavras_chave text[]` e `atualizada_em`, com RLS ligado) e tira a coluna `atividade.modelo_apr_codigo` e o índice `atividade_sem_modelo_idx`; a orientação inicial dos 8 modelos entra pela carga, não pela migração; gerada do schema |
 | `0022_atribuicao_e_devolucao_de_os.sql` | atribuição individual e devolução de OS: `devolvida` entra no `CHECK` de `os.status`; colunas novas em `os` (`responsavel_id`, `reservada_por`, `reservada_em`, `devolvida_em`, `devolvida_por`, `justificativa_devolucao` e `devolucao_exportada_em`), com `CHECK`s que mantêm a reserva e a devolução completas e a justificativa obrigatória, e dois índices parciais (devolvidas a exportar e responsável); só acrescenta, nenhuma linha muda; gerada do schema |
 | `0023_checklist_de_inspecao.sql` | checklist de inspeção das preventivas: tabela `plano_preventiva_pergunta` (`plano_id`, `texto` de até 300 caracteres, `posicao`; RLS ligado), `inspecao_com_pendencia` no `CHECK` de `alerta.tipo` e `preventiva_concluida` no de `regra_pontuacao.codigo`; a linha da tarefa nova (+10) na carga, escrita à mão; só acrescenta; gerada do schema |
+| `0032_execucao_em_dois_passos_e_assinaturas.sql` | correções da Reunião 3: `os.status` ganha `encerrando` e `aguardando_supervisor`; `apr_participante.assinatura_path` e `assinada_em` passam a aceitar nulo (até o participante assinar) e ganha `assinatura_presencial`, `recusou_em` e `recusa_motivo` (com restrições de consistência); `modelo_apr.participantes_com_assinatura`; em `execucao`, `inicio_latitude`, `inicio_longitude`, `fim_latitude`, `fim_longitude`, `suspensao_motivo`, `suspensao_complemento` e `encerramento_assinado_em` (e a descrição do encerramento deixa de ser obrigatória); em `execucao_pausa`, `complemento`, `latitude` e `longitude` e os motivos novos; `apr_assinada`, `apr_recusada` e `encerramento_assinado` entram em `evento_campo.tipo`; os avisos `apr_para_assinar`, `direito_de_recusa`, `lesao_ou_enfermidade` e `os_para_assinar` entram em `alerta.tipo` e `alerta_alvo`. À mão, no fim: o que já existia vale como era (assinaturas antigas viram presenciais, encerramentos antigos viram assinados no `fim`, e só as APR 04, 05 e 06 mantêm a coluna "Assinatura" na folha de participantes, com o gatilho de modelo publicado desligado só para essa coluna) |
 
 O Painel não tem tabela própria: lê as acima.
 
@@ -104,7 +105,7 @@ erDiagram
   apr ||--o| execucao : ampara
   os ||--o{ execucao : "trechos"
   execucao ||--o{ execucao_pausa : pausas
-  execucao ||--o{ execucao_assinatura : "assinam o encerramento"
+  execucao ||--o{ execucao_assinatura : "o responsável assina o encerramento"
   execucao ||--o{ evidencia : fotos
   apr_resposta ||--o{ evidencia : "foto do item reprovado"
   os ||--o{ alerta : gera
@@ -123,7 +124,7 @@ O banco recusa o que é sempre inválido, em qualquer cliente. As regras que dep
 - Unicidade: matrícula, centro de trabalho, número da ordem SAP, versão de modelo, resposta por item, assinatura por participante.
 - Origem da OS: `sap`, `planilha`, `pdf` ou `apoio`. Só a OS de apoio pode ficar sem número da ordem, e toda OS de apoio tem `os_origem_id` (e só ela): `origem = 'apoio'` se e somente se há `os_origem_id` (`os_apoio_ligada`).
 - Exatamente um `responsavel` por APR, no máximo uma pausa aberta por execução, e uma APR amparando uma única execução (a cancelada não conta, porque cancelar por engano devolve a APR para uso).
-- Execução encerrada exige fim e descrição; interrompida exige fim e motivo; "NA" exige observação; reprogramação exige justificativa; usuário exige e-mail institucional único e em minúsculas (é o login); a matrícula é só identificação.
+- Execução encerrada exige fim (a descrição é opcional); GPS de início, fim e pausa vem completo ou não vem; motivo da suspensão e da pausa só nos valores da lista; participante da APR que recusou não tem assinatura; interrompida exige fim e motivo; "NA" exige observação; reprogramação exige justificativa; usuário exige e-mail institucional único e em minúsculas (é o login); a matrícula é só identificação.
 - Toda medida preventiva pertence a um risco, e item de verificação não tem risco.
 - Foto de item só vale para um item que a APR respondeu; foto precisa de uma execução ou de uma APR; GPS vem completo ou não vem.
 - Modelo publicado, seus riscos e seus itens são imutáveis (gatilho em `0001_gatilhos.sql`).

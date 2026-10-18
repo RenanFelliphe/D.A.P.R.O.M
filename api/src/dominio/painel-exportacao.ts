@@ -2,7 +2,9 @@ import ExcelJS from "exceljs";
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
-import { alerta, apr, equipe, execucao, execucaoAssinatura, execucaoPausa, os, usuario } from "../db/schema";
+import { alerta, apr, aprParticipante, equipe, execucao, execucaoPausa, os, usuario } from "../db/schema";
+import { DESCRICAO_SEM_OCORRENCIAS } from "./encerramento";
+import { ROTULO_DA_SUSPENSAO, descreverMotivo } from "./motivos-de-parada";
 import { dataBr, dataHoraBr, emMinutos, horaBr, tempoDaExecucao } from "./painel-comum";
 
 export const TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -86,12 +88,15 @@ export async function exportarParaSap(db: Db, painelUrl: string, agora: Date): P
       : [];
     const execIds = execucoes.map((e) => e.id);
     const pausas = execIds.length ? await tdb.select().from(execucaoPausa).where(inArray(execucaoPausa.execucaoId, execIds)) : [];
-    const assinaturas = execIds.length
+    // Os executantes são os participantes da APR que ficaram nela (quem recusou saiu); eles assinaram a APR no começo, e só o
+    // responsável assina o encerramento.
+    const aprIds = execucoes.map((e) => e.aprId);
+    const participantes = aprIds.length
       ? await tdb
-          .select({ execucaoId: execucaoAssinatura.execucaoId, matricula: usuario.matricula })
-          .from(execucaoAssinatura)
-          .innerJoin(usuario, eq(usuario.id, execucaoAssinatura.usuarioId))
-          .where(inArray(execucaoAssinatura.execucaoId, execIds))
+          .select({ aprId: aprParticipante.aprId, matricula: usuario.matricula })
+          .from(aprParticipante)
+          .innerJoin(usuario, eq(usuario.id, aprParticipante.usuarioId))
+          .where(and(inArray(aprParticipante.aprId, aprIds), isNull(aprParticipante.recusouEm)))
       : [];
 
     const comNumero: Linha[] = [];
@@ -108,13 +113,13 @@ export async function exportarParaSap(db: Db, painelUrl: string, agora: Date): P
         pausa_min: tempo ? emMinutos(tempo.pausaMs) : null,
         numero_pessoas: e?.numeroPessoas ?? null,
         executantes: e
-          ? assinaturas
-              .filter((a) => a.execucaoId === e.id)
+          ? participantes
+              .filter((a) => a.aprId === e.aprId)
               .map((a) => a.matricula)
               .sort()
               .join(",")
           : null,
-        descricao_atividade: e?.descricaoAtividade ?? null,
+        descricao_atividade: e ? (e.descricaoAtividade?.trim() || DESCRICAO_SEM_OCORRENCIAS) : null,
         link_pdf: `${painelUrl}/doc/os/${o.id}`,
         ciencia_supervisor: o.cienciaEm ? `${o.cienciaPorNome ?? ""} ${dataHoraBr(o.cienciaEm)}`.trim() : null,
       };
@@ -178,7 +183,7 @@ async function linhasDeDevolvida(db: Db, agora: Date): Promise<Linha[]> {
 
 /**
  * OS `pendente` com o motivo. O motivo é o do evento mais recente entre os alertas `bloqueio` (o detalhe do alerta)
- * e as Execuções interrompidas ou suspensas (o motivo informado; suspensa não tem motivo). `desde` é o instante da
+ * e as Execuções interrompidas ou suspensas (o motivo informado). `desde` é o instante da
  * última APR bloqueada ou Execução interrompida/suspensa, a que deixou a OS pendente.
  */
 async function linhasDeImpedimento(db: Db): Promise<Linha[]> {
@@ -194,7 +199,7 @@ async function linhasDeImpedimento(db: Db): Promise<Linha[]> {
   const [alertas, paradas, bloqueadas] = await Promise.all([
     db.select({ osId: alerta.osId, detalhe: alerta.detalhe, em: alerta.criadoEm }).from(alerta).where(and(inArray(alerta.osId, ids), eq(alerta.tipo, "bloqueio"))),
     db
-      .select({ osId: execucao.osId, resultado: execucao.resultado, motivo: execucao.motivo, em: execucao.fim })
+      .select({ osId: execucao.osId, resultado: execucao.resultado, motivo: execucao.motivo, suspensaoMotivo: execucao.suspensaoMotivo, suspensaoComplemento: execucao.suspensaoComplemento, em: execucao.fim })
       .from(execucao)
       .where(and(inArray(execucao.osId, ids), inArray(execucao.resultado, ["interrompida", "suspensa"]))),
     db.select({ osId: apr.osId, em: apr.concluidaEm }).from(apr).where(and(inArray(apr.osId, ids), eq(apr.resultado, "bloqueada"))),
@@ -206,7 +211,7 @@ async function linhasDeImpedimento(db: Db): Promise<Linha[]> {
       ...alertas.filter((a) => a.osId === p.id).map((a) => ({ em: a.em, texto: a.detalhe, prioridade: 0 })),
       ...paradas
         .filter((x) => x.osId === p.id && x.em)
-        .map((x) => ({ em: x.em!, texto: x.motivo ?? "Execução suspensa", prioridade: 1 })),
+        .map((x) => ({ em: x.em!, texto: x.motivo ?? (x.suspensaoMotivo ? `Execução suspensa: ${descreverMotivo(ROTULO_DA_SUSPENSAO, x.suspensaoMotivo, x.suspensaoComplemento)}` : "Execução suspensa"), prioridade: 1 })),
     ].sort((a, b) => b.em.getTime() - a.em.getTime() || a.prioridade - b.prioridade);
 
     const marcos = [...bloqueadas.filter((b) => b.osId === p.id).map((b) => b.em), ...paradas.filter((x) => x.osId === p.id && x.em).map((x) => x.em!)];

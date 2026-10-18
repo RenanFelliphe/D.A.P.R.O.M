@@ -241,7 +241,7 @@ async function planoDaOrdem(db: Db, ctx: Contexto, tipo: string, plano: string |
 
 async function cancelarNoSap(db: Db, ctx: Contexto, existente: typeof os.$inferSelect, statusSap: string | null): Promise<Resultado> {
   // OS já finalizada no app (encerrada ou cancelada): o SAP só a acompanha; status e execução ficam como estão.
-  if (existente.status === "encerrada" || existente.status === "cancelada") {
+  if (existente.status === "encerrada" || existente.status === "cancelada" || existente.status === "encerrando" || existente.status === "aguardando_supervisor") {
     await db.update(os).set({ statusSap }).where(eq(os.id, existente.id));
     return { tipo: "atualizada" };
   }

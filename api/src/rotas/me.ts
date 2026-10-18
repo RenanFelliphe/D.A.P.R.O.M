@@ -5,6 +5,7 @@ import { CATEGORIAS_DE_EMAIL, ehCategoriaObrigatoria, ROTULO_DA_CATEGORIA } from
 import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
 import { ESTADOS_TREINAMENTO, ausencia, equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
+import { aprsParaAssinar } from "../dominio/apr-assinaturas";
 import { ausenciaDaPessoaParaApi, ausenciaVigenteDe } from "../dominio/ausencia";
 import { representacoesEmVigor, rotuloDoMotivo } from "../dominio/representacao";
 import { resumoParaMe } from "../dominio/gamificacao-leituras";
@@ -146,6 +147,14 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
       .where(and(eq(execucao.executorId, eu.id), isNull(execucao.resultado)))
       .orderBy(execucao.inicio);
     return responder(c, { execucoes: linhas });
+  });
+
+  /**
+   * As APRs aprovadas de hoje que esperam a assinatura de quem pergunta: cada participante assina na própria conta, e a execução só
+   * começa quando todos assinaram. A tela do técnico mostra a faixa "APR aguardando a sua assinatura" com o que vem daqui.
+   */
+  r.get("/me/aprs-para-assinar", autenticar(), async (c) => {
+    return responder(c, { aprs: await aprsParaAssinar(deps.db, c.get("usuario").id, deps.agora()) });
   });
 
   /** Histórico do técnico: as execuções que ele encerrou nos últimos 60 dias, da mais recente à mais antiga. */

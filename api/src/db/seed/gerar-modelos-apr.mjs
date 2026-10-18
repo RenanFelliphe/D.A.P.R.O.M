@@ -90,6 +90,10 @@ function lerModelo(arquivo, wb) {
   const pae = achar(/^Plano de atendimento a Emerg/);
   if (!verif || !classif || !riscos || !medidas || !obs || !pae) throw new Error(`${arquivo}: estrutura da planilha não reconhecida`);
 
+  // A folha de participantes tem a coluna "Assinatura" (APR 04, 05 e 06) ou só nome e matrícula (as demais): o PDF da OS a reproduz.
+  const cabecalhoDosParticipantes = cel.find((c) => c.texto === "Ord.");
+  const participantesComAssinatura = cabecalhoDosParticipantes ? cel.some((c) => c.linha === cabecalhoDosParticipantes.linha && /^Assinatura$/i.test(c.texto)) : true;
+
   const temNa = (linha) => cel.some((c) => c.linha === linha && c.texto === "NA");
   const naVerificacao = temNa(verif.linha);
   const naMedidas = temNa(classif.linha);
@@ -162,6 +166,7 @@ function lerModelo(arquivo, wb) {
       versao,
       dataDocumento,
       titulo,
+      participantesComAssinatura,
       pae: { titulo: tituloPae, subtitulo: subtituloPae, fluxo: fluxoPae, linhas: linhasPae },
       riscos: riscosDoModelo.map(({ medidas: _, ...r }) => r),
       itens,

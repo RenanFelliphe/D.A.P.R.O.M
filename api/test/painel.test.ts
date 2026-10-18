@@ -46,7 +46,7 @@ interface DadosOs {
   localId: string;
   numero?: string | null;
   tipo?: "corretiva" | "preventiva";
-  status?: "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada";
+  status?: "liberada" | "pendente" | "em_execucao" | "encerrando" | "aguardando_supervisor" | "encerrada" | "cancelada";
   titulo?: string;
   inicio?: string;
   fim?: string | null;
@@ -128,11 +128,15 @@ interface DadosExecucao {
   descricao?: string;
   motivo?: string;
   pessoas?: number;
+  /** Quem participa da APR que ampara a execução (o primeiro é o responsável); por padrão, só o executor. Todos assinaram a APR. */
+  participantes?: { usuarioId: string; funcao: "responsavel" | "executor" }[];
+  /** A execução encerrada cujo responsável ainda não assinou o encerramento (a OS está `encerrando`). */
+  semAssinaturaDoEncerramento?: boolean;
 }
 
 /** Cria a APR aprovada que ampara a Execução (um minuto antes do início) e a própria Execução. */
 async function criarExecucao(amb: Ambiente, d: DadosExecucao) {
-  const aprId = await criarApr(amb, { osId: d.osId, modeloId: d.modelo.modeloId, por: d.executorId, resultado: "aprovada", concluidaEm: new Date(d.inicio.getTime() - 60_000) });
+  const aprId = await criarApr(amb, { osId: d.osId, modeloId: d.modelo.modeloId, por: d.executorId, resultado: "aprovada", concluidaEm: new Date(d.inicio.getTime() - 60_000), participantes: d.participantes });
   const id = randomUUID();
   const resultado = d.resultado === undefined ? (d.fim ? "encerrada" : null) : d.resultado;
   await amb.db.insert(execucao).values({
@@ -144,7 +148,8 @@ async function criarExecucao(amb: Ambiente, d: DadosExecucao) {
     inicio: d.inicio,
     fim: d.fim ?? null,
     resultado,
-    descricaoAtividade: resultado === "encerrada" ? (d.descricao ?? "Atividade concluída") : (d.descricao ?? null),
+    descricaoAtividade: resultado === "encerrada" && !d.semAssinaturaDoEncerramento ? (d.descricao ?? "Atividade concluída") : (d.descricao ?? null),
+    encerramentoAssinadoEm: resultado === "encerrada" && !d.semAssinaturaDoEncerramento ? (d.fim ?? d.inicio) : null,
     motivo: resultado === "interrompida" ? (d.motivo ?? "Risco no local") : (d.motivo ?? null),
   });
   for (const p of d.pausas ?? []) await amb.db.insert(execucaoPausa).values({ id: randomUUID(), execucaoId: id, inicio: p.inicio, fim: p.fim, motivo: p.motivo ?? null });
@@ -177,7 +182,7 @@ const numerosDe = (corpo: { os: { numero_ordem: string | null }[] }) => corpo.os
 // Quadro, detalhe e ciência
 // ---------------------------------------------------------------------------------------------------------------
 
-describe("Painel: quadro, detalhe e ciência", () => {
+describe("Painel: quadro, detalhe e assinatura final do supervisor (a ciência)", () => {
   let amb: Ambiente;
   let modelo: Modelo;
   let equipeA: string, equipeB: string;
@@ -185,7 +190,7 @@ describe("Painel: quadro, detalhe e ciência", () => {
   let admin: UsuarioDeTeste;
   let osLiberada: typeof os.$inferSelect, osPendente: typeof os.$inferSelect;
   let osAberta14h: typeof os.$inferSelect, osAberta11h: typeof os.$inferSelect;
-  let osEncerrada: typeof os.$inferSelect;
+  let osEncerrada: typeof os.$inferSelect, osAguardando: typeof os.$inferSelect, osEncerrando: typeof os.$inferSelect;
   let localCritico: typeof localInstalacao.$inferSelect, localComum: typeof localInstalacao.$inferSelect;
   let detalheIds: { apr1: string; apr2: string; exec: string; foto: string; itemReprovado: string };
 
@@ -210,12 +215,17 @@ describe("Painel: quadro, detalhe e ciência", () => {
     await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4004", inicio: "2026-10-01", fim: "2026-10-16" });
     osAberta14h = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4005", status: "em_execucao", inicio: "2026-10-14" });
     osAberta11h = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4006", status: "em_execucao", inicio: "2026-10-14" });
-    osEncerrada = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4007", status: "encerrada", inicio: "2026-10-05", comPdf: true });
+    // A concluída (o supervisor já assinou por último, e o PDF existe), a que espera essa assinatura e a que espera o responsável.
+    osEncerrada = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4007", status: "encerrada", inicio: "2026-10-05", comPdf: true, ciencia: { por: supA.id, em: h("2026-10-06T10:00:00Z") } });
     await criarOs(amb, { equipeId: equipeB, localId: localComum.id, numero: "4008", inicio: "2026-11-02" });
+    osAguardando = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4009", status: "aguardando_supervisor", inicio: "2026-10-06" });
+    osEncerrando = await criarOs(amb, { equipeId: equipeA, localId: localComum.id, numero: "4010", status: "encerrando", inicio: "2026-10-07" });
 
     await criarExecucao(amb, { osId: osAberta14h.id, modelo, executorId: tecA.id, inicio: new Date(AGORA.getTime() - 14.5 * 3_600_000) });
     await criarExecucao(amb, { osId: osAberta11h.id, modelo, executorId: tecA.id, inicio: new Date(AGORA.getTime() - 11 * 3_600_000) });
     await criarExecucao(amb, { osId: osEncerrada.id, modelo, executorId: tecA.id, inicio: h("2026-10-05T12:00:00Z"), fim: h("2026-10-05T14:00:00Z") });
+    await criarExecucao(amb, { osId: osAguardando.id, modelo, executorId: tecA.id, inicio: h("2026-10-06T12:00:00Z"), fim: h("2026-10-06T14:00:00Z") });
+    await criarExecucao(amb, { osId: osEncerrando.id, modelo, executorId: tecA.id, inicio: h("2026-10-07T12:00:00Z"), fim: h("2026-10-07T14:00:00Z"), semAssinaturaDoEncerramento: true });
 
     // Detalhe da OS pendente: APR bloqueada com foto, alerta, reprogramação, APR aprovada e uma execução suspensa com pausa.
     const [i1, i2, i3] = modelo.itens as [typeof modelo.itens[0], typeof modelo.itens[0], typeof modelo.itens[0]];
@@ -267,15 +277,15 @@ describe("Painel: quadro, detalhe e ciência", () => {
     });
 
     it("técnico e supervisor só veem a própria equipe; os demais perfis veem todas", async () => {
-      const daA = ["4001", "4002", "4003", "4004", "4005", "4006", "4007"];
+      const daA = ["4001", "4002", "4003", "4004", "4005", "4006", "4007", "4009", "4010"];
       for (const u of [tecA, supA]) {
         const c = await amb.esperar(200, "GET", "/os", { como: u });
         assert.deepEqual(numerosDe(c).sort(), daA);
-        assert.equal(c.total, 7);
+        assert.equal(c.total, 9);
       }
       assert.deepEqual(numerosDe(await amb.esperar(200, "GET", "/os", { como: supB })), ["4008"]);
       assert.deepEqual(numerosDe(await amb.esperar(200, "GET", "/os", { como: tecB })), ["4008"]);
-      for (const u of [admin]) assert.equal((await amb.esperar(200, "GET", "/os", { como: u })).total, 8);
+      for (const u of [admin]) assert.equal((await amb.esperar(200, "GET", "/os", { como: u })).total, 10);
       assert.equal((await amb.esperar(200, "GET", "/os", { como: tecSemEquipe })).total, 0);
     });
 
@@ -287,12 +297,12 @@ describe("Painel: quadro, detalhe e ciência", () => {
 
     it("ordena por prioridade (padrão): maior peso primeiro e, nas empatadas, a data limite mais próxima", async () => {
       const c = await amb.esperar(200, "GET", "/os", { como: supA });
-      assert.deepEqual(numerosDe(c), ["4001", "4007", "4003", "4005", "4006", "4004", "4002"]);
+      assert.deepEqual(numerosDe(c), ["4001", "4007", "4009", "4010", "4003", "4005", "4006", "4004", "4002"]);
     });
 
     it("ordena por data limite (data_fim_prog, ou o início se não houver), desempatando por prioridade", async () => {
       const c = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { ordem: "data_limite" } });
-      assert.deepEqual(numerosDe(c), ["4007", "4003", "4005", "4006", "4004", "4001", "4002"]);
+      assert.deepEqual(numerosDe(c), ["4007", "4009", "4010", "4003", "4005", "4006", "4004", "4001", "4002"]);
     });
 
     it("cada item traz os campos do quadro, o atraso e a execução aberta há mais de 12 h", async () => {
@@ -323,6 +333,18 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.equal(por("4007").pdf_pronto, true);
       assert.equal(por("4001").pdf_pronto, false);
       assert.equal(por("4001").ciencia_em, null);
+
+      // Depois da execução a OS espera o responsável (`encerrando`) e, depois, o supervisor (`aguardando_supervisor`): sem PDF nem
+      // assinatura final até a OS ficar `encerrada`; a execução já parou, então não há execução aberta nem atraso.
+      for (const n of ["4009", "4010"]) {
+        assert.equal(por(n).pdf_pronto, false, n);
+        assert.equal(por(n).ciencia_em, null, n);
+        assert.equal(por(n).atrasada, false, n);
+        assert.equal(por(n).execucao_aberta_ha_horas, null, n);
+      }
+      assert.equal(por("4009").status, "aguardando_supervisor");
+      assert.equal(por("4010").status, "encerrando");
+      assert.ok(por("4007").ciencia_em, "a concluída traz a hora da assinatura final do supervisor");
     });
 
     it("OS atrasada só conta depois do dia de hoje no fuso de São Paulo", async () => {
@@ -350,9 +372,12 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.deepEqual(await consulta({ equipe_id: equipeB }), ["4008"]);
       assert.deepEqual(await consulta({ tipo: "corretiva" }), ["4002", "4003"]);
       assert.deepEqual(await consulta({ critica: "true" }), ["4002"]);
-      assert.equal((await consulta({ critica: "false" })).length, 7);
+      assert.equal((await consulta({ critica: "false" })).length, 9);
       assert.deepEqual(await consulta({ periodo: "2026-11" }), ["4008"]);
-      assert.deepEqual((await consulta({ periodo: "2026-10" })).length, 7);
+      assert.deepEqual((await consulta({ periodo: "2026-10" })).length, 9);
+      assert.deepEqual(await consulta({ status: "aguardando_supervisor" }), ["4009"]);
+      assert.deepEqual(await consulta({ status: "encerrando" }), ["4010"]);
+      assert.deepEqual(await consulta({ status: "encerrada" }), ["4007"]);
       assert.deepEqual(await consulta({ status: "pendente" }), ["4003"]);
       assert.deepEqual(await consulta({ status: "em_execucao" }), ["4005", "4006"]);
       assert.deepEqual(await consulta({ numero_ordem: "4003" }), ["4003"]);
@@ -367,17 +392,17 @@ describe("Painel: quadro, detalhe e ciência", () => {
 
     it("contagem_por_status ignora o filtro de status e respeita os demais e o escopo", async () => {
       const todas = await amb.esperar(200, "GET", "/os", { como: supA });
-      assert.deepEqual(todas.contagem_por_status, { liberada: 3, pendente: 1, em_execucao: 2, encerrada: 1, cancelada: 0, devolvida: 0 });
+      assert.deepEqual(todas.contagem_por_status, { liberada: 3, pendente: 1, em_execucao: 2, encerrando: 1, aguardando_supervisor: 1, encerrada: 1, cancelada: 0, devolvida: 0 });
 
       const soPendentes = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { status: "pendente" } });
       assert.equal(soPendentes.total, 1);
       assert.deepEqual(soPendentes.contagem_por_status, todas.contagem_por_status);
 
       const soCorretivas = await amb.esperar(200, "GET", "/os", { como: admin, consulta: { tipo: "corretiva", status: "liberada" } });
-      assert.deepEqual(soCorretivas.contagem_por_status, { liberada: 1, pendente: 1, em_execucao: 0, encerrada: 0, cancelada: 0, devolvida: 0 });
+      assert.deepEqual(soCorretivas.contagem_por_status, { liberada: 1, pendente: 1, em_execucao: 0, encerrando: 0, aguardando_supervisor: 0, encerrada: 0, cancelada: 0, devolvida: 0 });
 
       const equipeBcontagem = await amb.esperar(200, "GET", "/os", { como: supB });
-      assert.deepEqual(equipeBcontagem.contagem_por_status, { liberada: 1, pendente: 0, em_execucao: 0, encerrada: 0, cancelada: 0, devolvida: 0 });
+      assert.deepEqual(equipeBcontagem.contagem_por_status, { liberada: 1, pendente: 0, em_execucao: 0, encerrando: 0, aguardando_supervisor: 0, encerrada: 0, cancelada: 0, devolvida: 0 });
     });
 
     it("exportada separa as OS já exportadas para o SAP das que ainda não foram (pré-visualização da exportação)", async () => {
@@ -398,10 +423,10 @@ describe("Painel: quadro, detalhe e ciência", () => {
       const p1 = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { tamanho: 3, pagina: 1 } });
       const p3 = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { tamanho: 3, pagina: 3 } });
       assert.equal(p1.os.length, 3);
-      assert.equal(p1.total, 7);
+      assert.equal(p1.total, 9);
       assert.equal(p1.pagina, 1);
       assert.equal(p1.tamanho, 3);
-      assert.deepEqual(numerosDe(p3), ["4002"]);
+      assert.deepEqual(numerosDe(p3), ["4006", "4004", "4002"]);
     });
 
     it("recusa filtros inválidos com 422", async () => {
@@ -509,20 +534,59 @@ describe("Painel: quadro, detalhe e ciência", () => {
       }
     });
 
-    it("a linha do tempo une APRs, execução, pausas, alertas e reprogramações em ordem cronológica", async () => {
+    it("a linha do tempo une APRs (e as assinaturas de cada participante), execução, pausas, alertas e reprogramações em ordem cronológica", async () => {
       const c = await amb.esperar(200, "GET", `/os/${osPendente.id}`, { como: admin });
       const tempos = c.linha_do_tempo.map((i: any) => i.em);
       assert.deepEqual(tempos, [...tempos].sort());
       assert.deepEqual(
         c.linha_do_tempo.map((i: any) => i.tipo),
-        ["apr_concluida", "alerta", "reprogramacao", "apr_concluida", "execucao_iniciada", "pausa_iniciada", "pausa_encerrada", "execucao_suspensa"],
+        [
+          "apr_concluida",
+          "apr_assinada", // os dois participantes da APR bloqueada assinaram
+          "apr_assinada",
+          "alerta",
+          "reprogramacao",
+          "apr_concluida",
+          "apr_assinada", // o executor, na APR que amparou a execução
+          "execucao_iniciada",
+          "pausa_iniciada",
+          "pausa_encerrada",
+          "execucao_suspensa",
+        ],
       );
       for (const item of c.linha_do_tempo) {
         assert.deepEqual(Object.keys(item).sort(), ["descricao", "em", "tipo"]);
         assert.ok(item.descricao.length > 0);
       }
       assert.match(c.linha_do_tempo[0].descricao, /bloqueada/);
-      assert.match(c.linha_do_tempo[2].descricao, /Aguardando a equipe civil/);
+      assert.match(c.linha_do_tempo[1].descricao, /assinou a APR/);
+      assert.match(c.linha_do_tempo[4].descricao, /Aguardando a equipe civil/);
+    });
+
+    it("depois da execução, o detalhe mostra o encerramento (a hora da assinatura do responsável) e a assinatura final do supervisor na linha do tempo", async () => {
+      const aguardando = await amb.esperar(200, "GET", `/os/${osAguardando.id}`, { como: supA });
+      assert.equal(aguardando.os.status, "aguardando_supervisor");
+      assert.equal(aguardando.os.ciencia_em, null);
+      assert.equal(aguardando.execucoes[0].resultado, "encerrada");
+      assert.equal(aguardando.execucoes[0].encerramento_assinado_em, "2026-10-06T14:00:00.000Z");
+      const tipos = aguardando.linha_do_tempo.map((i: any) => i.tipo);
+      assert.ok(tipos.includes("encerramento_assinado"));
+      assert.ok(!tipos.includes("ciencia"), "o supervisor ainda não assinou");
+
+      // O responsável ainda não assinou: a execução parou, mas `encerramento_assinado_em` é nulo e a OS está `encerrando`.
+      const encerrando = await amb.esperar(200, "GET", `/os/${osEncerrando.id}`, { como: supA });
+      assert.equal(encerrando.os.status, "encerrando");
+      assert.equal(encerrando.execucoes[0].resultado, "encerrada");
+      assert.equal(encerrando.execucoes[0].encerramento_assinado_em, null);
+      assert.ok(!encerrando.linha_do_tempo.some((i: any) => i.tipo === "encerramento_assinado"));
+
+      // A concluída traz a assinatura final do supervisor na linha do tempo e o PDF pronto.
+      const concluida = await amb.esperar(200, "GET", `/os/${osEncerrada.id}`, { como: supA });
+      assert.equal(concluida.os.status, "encerrada");
+      assert.equal(concluida.os.ciencia_por_nome, "Sara Supervisora");
+      assert.equal(concluida.os.pdf_pronto, true);
+      assert.equal(concluida.linha_do_tempo.at(-1).tipo, "ciencia");
+      assert.match(concluida.linha_do_tempo.at(-1).descricao, /Assinatura final do supervisor Sara Supervisora/);
     });
 
     it("execução em andamento não tem tempo líquido e o PDF pronto aparece em os", async () => {
@@ -580,55 +644,73 @@ describe("Painel: quadro, detalhe e ciência", () => {
     });
   });
 
-  describe("POST /os/{id}/ciencia", () => {
+  describe("POST /os/{id}/ciencia (a assinatura final do supervisor)", () => {
     it("só o supervisor da equipe da OS pode: os outros perfis recebem 403", async () => {
       for (const u of [admin, tecA]) {
-        assert.equal((await amb.req("POST", `/os/${osEncerrada.id}/ciencia`, { como: u })).status, 403, u.perfil);
+        assert.equal((await amb.req("POST", `/os/${osAguardando.id}/ciencia`, { como: u })).status, 403, u.perfil);
       }
-      assert.equal((await amb.req("POST", `/os/${osEncerrada.id}/ciencia`)).status, 401);
+      assert.equal((await amb.req("POST", `/os/${osAguardando.id}/ciencia`)).status, 401);
     });
 
     it("supervisor de outra equipe recebe 404 e nada é gravado", async () => {
-      assert.equal((await amb.req("POST", `/os/${osEncerrada.id}/ciencia`, { como: supB })).status, 404);
-      const [o] = await amb.db.select().from(os).where(eq(os.id, osEncerrada.id));
+      assert.equal((await amb.req("POST", `/os/${osAguardando.id}/ciencia`, { como: supB })).status, 404);
+      const [o] = await amb.db.select().from(os).where(eq(os.id, osAguardando.id));
       assert.equal(o!.cienciaEm, null);
+      assert.equal(o!.status, "aguardando_supervisor");
       assert.equal((await amb.req("POST", `/os/${randomUUID()}/ciencia`, { como: supA })).status, 404);
     });
 
-    it("OS que não está encerrada é 409, sem tarefa nem ciência", async () => {
+    it("OS que não está aguardando o supervisor é 409, sem tarefa nem assinatura", async () => {
       for (const o of [osLiberada, osPendente, osAberta14h]) {
         const r = await amb.req("POST", `/os/${o.id}/ciencia`, { como: supA });
         assert.equal(r.status, 409, o.numeroOrdem!);
-        assert.equal(r.corpo.erro.codigo, "os_nao_encerrada");
+        assert.equal(r.corpo.erro.codigo, "os_nao_aguardando_supervisor");
       }
+      // A que ainda espera o responsável assinar o encerramento diz isso.
+      const encerrando = await amb.req("POST", `/os/${osEncerrando.id}/ciencia`, { como: supA });
+      assert.equal(encerrando.status, 409);
+      assert.equal(encerrando.corpo.erro.codigo, "os_nao_aguardando_supervisor");
+      assert.match(encerrando.corpo.erro.mensagem, /responsável ainda não assinou/);
+      // A já concluída (o supervisor assinou antes) não se assina de novo.
+      const concluida = await amb.req("POST", `/os/${osEncerrada.id}/ciencia`, { como: supA });
+      assert.equal(concluida.status, 409);
+      assert.equal(concluida.corpo.erro.codigo, "ciencia_ja_dada");
       assert.deepEqual(await amb.db.select().from(tarefa), []);
     });
 
-    it("supervisor da equipe dá a ciência: grava quem e quando e enfileira o PDF na mesma transação", async () => {
-      const c = await amb.esperar(200, "POST", `/os/${osEncerrada.id}/ciencia`, { como: supA });
-      assert.equal(c.ciencia_em, AGORA.toISOString());
+    it("supervisor da equipe assina por último: grava quem e quando, a OS fica encerrada e o PDF é enfileirado na mesma transação", async () => {
+      // Antes da assinatura final não há PDF nem tarefa para ele.
+      assert.equal((await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, osAguardando.id))).length, 0);
+      assert.equal((await amb.esperar(200, "GET", `/os/${osAguardando.id}`, { como: supA })).os.pdf_pronto, false);
 
-      const [o] = await amb.db.select().from(os).where(eq(os.id, osEncerrada.id));
+      const c = await amb.esperar(200, "POST", `/os/${osAguardando.id}/ciencia`, { como: supA });
+      assert.equal(c.ciencia_em, AGORA.toISOString());
+      assert.equal(c.status, "encerrada");
+
+      const [o] = await amb.db.select().from(os).where(eq(os.id, osAguardando.id));
+      assert.equal(o!.status, "encerrada");
       assert.equal(o!.cienciaPor, supA.id);
       assert.equal(o!.cienciaEm?.toISOString(), AGORA.toISOString());
-      // A ciência é assinada: guarda a imagem do perfil do supervisor que a deu.
+      // A assinatura final é assinada: guarda a imagem do perfil do supervisor que a deu.
       assert.equal(o!.cienciaAssinaturaPath, await amb.assinaturaDe(supA));
 
-      const tarefas = await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, osEncerrada.id));
+      const tarefas = await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, osAguardando.id));
       assert.equal(tarefas.length, 1);
       assert.equal(tarefas[0]!.tipo, "pdf_os");
       assert.equal(tarefas[0]!.estado, "pendente");
 
-      const detalhe = await amb.esperar(200, "GET", `/os/${osEncerrada.id}`, { como: supA });
+      const detalhe = await amb.esperar(200, "GET", `/os/${osAguardando.id}`, { como: supA });
+      assert.equal(detalhe.os.status, "encerrada");
       assert.equal(detalhe.os.ciencia_em, AGORA.toISOString());
       assert.equal(detalhe.os.ciencia_por_nome, "Sara Supervisora");
       assert.equal(detalhe.linha_do_tempo.at(-1).tipo, "ciencia");
-      const quadro = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { numero_ordem: "4007" } });
+      const quadro = await amb.esperar(200, "GET", "/os", { como: supA, consulta: { numero_ordem: "4009" } });
       assert.equal(quadro.os[0].ciencia_em, AGORA.toISOString());
+      assert.equal(quadro.os[0].status, "encerrada");
     });
 
-    it("a imagem usada na ciência continua legível (para quem vê a OS) depois de o supervisor refazer a assinatura do perfil", async () => {
-      const [o] = await amb.db.select().from(os).where(eq(os.id, osEncerrada.id));
+    it("a imagem usada na assinatura final continua legível (para quem vê a OS) depois de o supervisor refazer a assinatura do perfil", async () => {
+      const [o] = await amb.db.select().from(os).where(eq(os.id, osAguardando.id));
       const usada = o!.cienciaAssinaturaPath!;
       const nova = await amb.cadastrarAssinatura(supA);
       assert.notEqual(nova, usada);
@@ -637,11 +719,11 @@ describe("Painel: quadro, detalhe e ciência", () => {
       assert.equal((await amb.req("GET", `/arquivos/${usada}/url`, { como: supB })).status, 403);
     });
 
-    it("segunda ciência é 409 e não enfileira outra tarefa", async () => {
-      const r = await amb.req("POST", `/os/${osEncerrada.id}/ciencia`, { como: supA });
+    it("segunda assinatura final é 409 e não enfileira outra tarefa", async () => {
+      const r = await amb.req("POST", `/os/${osAguardando.id}/ciencia`, { como: supA });
       assert.equal(r.status, 409);
       assert.equal(r.corpo.erro.codigo, "ciencia_ja_dada");
-      assert.equal((await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, osEncerrada.id))).length, 1);
+      assert.equal((await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, osAguardando.id))).length, 1);
     });
   });
 });
@@ -944,20 +1026,26 @@ describe("Painel: exportação para o SAP", () => {
     const local = await criarLocal(amb, "ERS SERRA");
     const base = { localId: local.id, equipeId: equipeA };
 
-    // Encerradas com número: uma com ciência e duas pessoas, outra que cruza o dia no fuso de SP.
+    // Concluídas (o supervisor assinou por último) com número: uma com duas pessoas, outra que cruza o dia no fuso de SP.
     o.e1 = await criarOs(amb, { ...base, numero: "5002", status: "encerrada", ciencia: { por: supA.id, em: h("2026-10-14T18:00:00Z") } });
-    o.e2 = await criarOs(amb, { ...base, numero: "5001", status: "encerrada" });
-    o.apoio = await criarOs(amb, { ...base, equipeId: equipeB, numero: null, status: "encerrada", titulo: "Troca de manômetro", origem: "apoio", osOrigemId: o.e1.id });
-    o.antiga = await criarOs(amb, { ...base, numero: "5003", status: "encerrada", exportadaEm: jaExportada });
+    o.e2 = await criarOs(amb, { ...base, numero: "5001", status: "encerrada", ciencia: { por: supA.id, em: h("2026-10-14T19:00:00Z") } });
+    o.apoio = await criarOs(amb, { ...base, equipeId: equipeB, numero: null, status: "encerrada", titulo: "Troca de manômetro", origem: "apoio", osOrigemId: o.e1.id, ciencia: { por: supA.id, em: h("2026-10-13T18:00:00Z") } });
+    o.antiga = await criarOs(amb, { ...base, numero: "5003", status: "encerrada", exportadaEm: jaExportada, ciencia: { por: supA.id, em: h("2026-09-21T12:00:00Z") } });
+    // A execução já terminou, mas a OS ainda espera a assinatura do supervisor (ou a do responsável): fica fora da baixa até ser concluída.
+    o.aguardando = await criarOs(amb, { ...base, numero: "5011", status: "aguardando_supervisor" });
+    o.encerrando = await criarOs(amb, { ...base, numero: "5012", status: "encerrando" });
     o.p1 = await criarOs(amb, { ...base, numero: "5005", status: "pendente", titulo: "Caixa cheia" });
     o.p2 = await criarOs(amb, { ...base, numero: "5006", status: "pendente", titulo: "Válvula" });
     o.p3 = await criarOs(amb, { ...base, numero: null, status: "pendente", titulo: "Apoio civil", origem: "apoio", osOrigemId: o.e1.id });
     o.liberada = await criarOs(amb, { ...base, numero: "5008", status: "liberada" });
 
-    await criarExecucao(amb, { osId: o.e1.id, modelo, executorId: tecA.id, inicio: h("2026-10-14T12:00:00Z"), fim: h("2026-10-14T15:30:00Z"), pessoas: 2, assinaturas: [tecB.id, tecA.id], pausas: [{ inicio: h("2026-10-14T13:00:00Z"), fim: h("2026-10-14T13:30:00Z") }], descricao: "Retificador inspecionado" });
+    // Os executantes da planilha são os participantes da APR (o responsável e o outro), que assinaram a APR no começo.
+    await criarExecucao(amb, { osId: o.e1.id, modelo, executorId: tecA.id, inicio: h("2026-10-14T12:00:00Z"), fim: h("2026-10-14T15:30:00Z"), pessoas: 2, participantes: [{ usuarioId: tecA.id, funcao: "responsavel" }, { usuarioId: tecB.id, funcao: "executor" }], pausas: [{ inicio: h("2026-10-14T13:00:00Z"), fim: h("2026-10-14T13:30:00Z") }], descricao: "Retificador inspecionado" });
     await criarExecucao(amb, { osId: o.e2.id, modelo, executorId: tecA.id, inicio: h("2026-10-14T01:00:00Z"), fim: h("2026-10-14T02:30:00Z"), descricao: "Leitura concluída" });
     await criarExecucao(amb, { osId: o.apoio.id, modelo, executorId: tecB.id, inicio: h("2026-10-13T12:00:00Z"), fim: h("2026-10-13T13:00:00Z"), descricao: "Troca feita" });
     await criarExecucao(amb, { osId: o.antiga.id, modelo, executorId: tecA.id, inicio: h("2026-09-20T12:00:00Z"), fim: h("2026-09-20T13:00:00Z") });
+    await criarExecucao(amb, { osId: o.aguardando.id, modelo, executorId: tecA.id, inicio: h("2026-10-14T16:00:00Z"), fim: h("2026-10-14T17:00:00Z"), descricao: "Aguardando o supervisor" });
+    await criarExecucao(amb, { osId: o.encerrando.id, modelo, executorId: tecA.id, inicio: h("2026-10-14T18:00:00Z"), fim: h("2026-10-14T19:00:00Z"), semAssinaturaDoEncerramento: true });
 
     await amb.db.insert(alerta).values({ tipo: "bloqueio", osId: o.p1.id, destinatarioId: supA.id, detalhe: "APR bloqueada: Há EPI adequado?", criadoEm: h("2026-10-13T12:05:00Z") });
     await criarApr(amb, { osId: o.p1.id, modeloId: modelo.modeloId, por: tecA.id, resultado: "bloqueada", concluidaEm: h("2026-10-13T12:00:00Z") });
@@ -988,7 +1076,7 @@ describe("Painel: exportação para o SAP", () => {
     assert.deepEqual(enc.cabecalho, [
       "numero_ordem", "data_inicio", "hora_inicio", "data_fim", "hora_fim", "tempo_liquido_min", "pausa_min", "numero_pessoas", "executantes", "descricao_atividade", "link_pdf", "ciencia_supervisor",
     ]);
-    assert.equal(enc.linhas.length, 2, "a já exportada e a sem número não entram");
+    assert.equal(enc.linhas.length, 2, "a já exportada, a sem número e as que esperam a assinatura final do supervisor (ou a do responsável) não entram");
     assert.deepEqual(enc.linhas[0], {
       numero_ordem: "5001",
       data_inicio: "13/10/2026",
@@ -1001,7 +1089,7 @@ describe("Painel: exportação para o SAP", () => {
       executantes: "M-A",
       descricao_atividade: "Leitura concluída",
       link_pdf: `http://painel.local/doc/os/${o.e2!.id}`,
-      ciencia_supervisor: null,
+      ciencia_supervisor: "Sara Supervisora 14/10/2026 16:00",
     });
     assert.deepEqual(enc.linhas[1], {
       numero_ordem: "5002",
@@ -1048,7 +1136,7 @@ describe("Painel: exportação para o SAP", () => {
     assert.equal(em(o.e2!.id), AGORA.toISOString());
     assert.equal(em(o.apoio!.id), AGORA.toISOString());
     assert.equal(em(o.antiga!.id), jaExportada.toISOString(), "a exportação anterior não é sobrescrita");
-    for (const k of ["p1", "p2", "p3", "liberada"]) assert.equal(em(o[k]!.id), null, `${k} não é exportada`);
+    for (const k of ["aguardando", "encerrando", "p1", "p2", "p3", "liberada"]) assert.equal(em(o[k]!.id), null, `${k} não é exportada`);
   });
 
   it("exportar de novo sem OS novas devolve 200 com planilha vazia e X-Mensagem", async () => {
@@ -1067,14 +1155,18 @@ describe("Painel: exportação para o SAP", () => {
     assert.equal(linhasDaAba(livro, "Impedimentos").linhas.length, 3, "os impedimentos continuam listados");
   });
 
-  it("uma OS encerrada depois entra na exportação seguinte, e a ciência não a segura", async () => {
+  it("a OS que esperava o supervisor entra na exportação seguinte, depois da assinatura final", async () => {
     const local = (await amb.db.select().from(localInstalacao))[0]!;
-    const nova = await criarOs(amb, { localId: local.id, equipeId: equipeA, numero: "5010", status: "encerrada" });
+    const nova = await criarOs(amb, { localId: local.id, equipeId: equipeA, numero: "5010", status: "encerrada", ciencia: { por: supA.id, em: h("2026-10-15T14:00:00Z") } });
     await criarExecucao(amb, { osId: nova.id, modelo, executorId: tecA.id, inicio: h("2026-10-15T11:00:00Z"), fim: h("2026-10-15T12:00:00Z") });
+    // A que esperava o supervisor só entra quando ele assina (pela API, como a tela faz): a OS passa a encerrada.
+    await amb.esperar(200, "POST", `/os/${o.aguardando!.id}/ciencia`, { como: supA });
     const r = await amb.req("POST", "/exportacoes/sap", { como: admin });
     assert.equal(r.cabecalhos.get("x-mensagem"), null);
     const enc = linhasDaAba(await lerPlanilha(r.corpo), "Encerradas");
-    assert.deepEqual(enc.linhas.map((l) => [l.numero_ordem, l.ciencia_supervisor]), [["5010", null]]);
+    assert.deepEqual(enc.linhas.map((l) => [l.numero_ordem, l.ciencia_supervisor]).sort(), [["5010", "Sara Supervisora 15/10/2026 11:00"], ["5011", "Sara Supervisora 15/10/2026 12:00"]]);
+    // A encerrando segue de fora: o responsável ainda não assinou.
+    assert.equal((await amb.db.select({ em: os.exportadaSapEm }).from(os).where(eq(os.id, o.encerrando!.id)))[0]!.em, null);
   });
 });
 
@@ -1099,11 +1191,12 @@ describe("Painel: técnico que supervisa outra equipe", () => {
     await amb.db.update(equipe).set({ supervisorId: tecnicoSupervisor.id }).where(eq(equipe.id, supervisionada));
 
     const local = await criarLocal(amb, "ERS SERRA");
-    const encerrada = (equipeId: string, numero: string) => criarOs(amb, { equipeId, localId: local.id, numero, status: "encerrada", comPdf: true });
-    osDaOutra = await encerrada(outra, "7001");
-    osProprias = await encerrada(propria, "7002");
-    osSupervisionada = await encerrada(supervisionada, "7003");
-    osQueEleExecutou = await encerrada(supervisionada, "7004");
+    // Todas esperam a assinatura final do supervisor (o responsável já assinou o encerramento).
+    const aguardando = (equipeId: string, numero: string) => criarOs(amb, { equipeId, localId: local.id, numero, status: "aguardando_supervisor" });
+    osDaOutra = await aguardando(outra, "7001");
+    osProprias = await aguardando(propria, "7002");
+    osSupervisionada = await aguardando(supervisionada, "7003");
+    osQueEleExecutou = await aguardando(supervisionada, "7004");
     await criarExecucao(amb, { osId: osSupervisionada.id, modelo, executorId: tecDaEquipeSupervisionada.id, inicio: h("2026-10-05T12:00:00Z"), fim: h("2026-10-05T14:00:00Z") });
     await criarExecucao(amb, { osId: osQueEleExecutou.id, modelo, executorId: tecnicoSupervisor.id, inicio: h("2026-10-06T12:00:00Z"), fim: h("2026-10-06T14:00:00Z") });
   });
@@ -1118,7 +1211,7 @@ describe("Painel: técnico que supervisa outra equipe", () => {
     assert.equal((await amb.req("GET", `/os/${osDaOutra.id}`, { como: tecnicoSupervisor })).status, 404);
   });
 
-  it("dá a ciência nas OS da equipe que supervisiona, mas não nas da própria equipe nem de outra", async () => {
+  it("assina por último nas OS da equipe que supervisiona, mas não nas da própria equipe nem de outra", async () => {
     assert.equal((await amb.req("POST", `/os/${osProprias.id}/ciencia`, { como: tecnicoSupervisor })).status, 403);
     assert.equal((await amb.req("POST", `/os/${osDaOutra.id}/ciencia`, { como: tecnicoSupervisor })).status, 404);
     assert.equal((await amb.req("POST", `/os/${osSupervisionada.id}/ciencia`, { como: semSupervisao })).status, 403);
@@ -1126,14 +1219,18 @@ describe("Painel: técnico que supervisa outra equipe", () => {
     await amb.esperar(200, "POST", `/os/${osSupervisionada.id}/ciencia`, { como: tecnicoSupervisor });
     const [o] = await amb.db.select().from(os).where(eq(os.id, osSupervisionada.id));
     assert.equal(o!.cienciaPor, tecnicoSupervisor.id);
+    assert.equal(o!.status, "encerrada");
   });
 
-  it("não dá a ciência numa OS em que participou da execução", async () => {
+  it("o supervisor que participou da execução também assina por último (não há mais o bloqueio da ciência própria)", async () => {
     const r = await amb.req("POST", `/os/${osQueEleExecutou.id}/ciencia`, { como: tecnicoSupervisor });
-    assert.equal(r.status, 409);
-    assert.equal(r.corpo.erro.codigo, "ciencia_propria");
+    assert.equal(r.status, 200, JSON.stringify(r.corpo));
+    assert.equal(r.corpo.status, "encerrada");
     const [o] = await amb.db.select().from(os).where(eq(os.id, osQueEleExecutou.id));
-    assert.equal(o!.cienciaEm, null);
+    assert.equal(o!.cienciaPor, tecnicoSupervisor.id);
+    assert.ok(o!.cienciaEm);
+    assert.equal(o!.status, "encerrada");
+    assert.equal((await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, osQueEleExecutou.id))).length, 1, "o PDF é enfileirado");
   });
 
   it("acessa a caixa de alertas e os indicadores só das equipes do próprio escopo", async () => {

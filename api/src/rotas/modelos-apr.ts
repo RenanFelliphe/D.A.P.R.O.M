@@ -53,6 +53,7 @@ const resumoDaVersao = {
   versao: modeloApr.versao,
   titulo: modeloApr.titulo,
   dataDocumento: modeloApr.dataDocumento,
+  participantesComAssinatura: modeloApr.participantesComAssinatura,
   publicadoEm: modeloApr.publicadoEm,
   arquivadoEm: modeloApr.arquivadoEm,
   rascunho: sql<boolean>`${modeloApr.publicadoEm} is null`,
@@ -265,6 +266,8 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         titulo: textoObrigatorio.optional(),
         pae: esquemaPae.nullable().optional(),
         data_documento: dataDoDocumento.nullable().optional(),
+        /** A folha tem a coluna "Assinatura" na tabela de participantes; omitida, copia a versão anterior (modelo novo: sim). */
+        participantes_com_assinatura: z.boolean().optional(),
         riscos: z.array(esquemaRisco).optional(),
         itens: z.array(esquemaItem).optional(),
         versao: z.number().int().min(1).max(999).optional(),
@@ -303,6 +306,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
           titulo: dados.titulo ?? base!.titulo,
           pae: dados.pae === undefined ? (base?.pae ?? null) : dados.pae,
           dataDocumento: dados.data_documento ?? null,
+          participantesComAssinatura: dados.participantes_com_assinatura ?? base?.participantesComAssinatura ?? true,
           riscos: dados.riscos ?? base!.riscos,
           itens: dados.itens ?? base!.itens,
         };
@@ -311,7 +315,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         const versao = existentes.length > 0 ? Math.max(...existentes.map((e) => e.versao)) + 1 : (dados.versao ?? 1);
         const [linha] = await tx
           .insert(modeloApr)
-          .values({ codigo, versao, titulo: conteudo.titulo, pae: conteudo.pae, dataDocumento: conteudo.dataDocumento })
+          .values({ codigo, versao, titulo: conteudo.titulo, pae: conteudo.pae, dataDocumento: conteudo.dataDocumento, participantesComAssinatura: conteudo.participantesComAssinatura })
           .returning({ id: modeloApr.id, versao: modeloApr.versao });
         await gravarRiscosEItens(tx, linha!.id, conteudo.riscos, conteudo.itens);
         return linha!;
@@ -338,6 +342,7 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
         titulo: textoObrigatorio,
         pae: esquemaPae.nullable().optional(),
         data_documento: dataDoDocumento.nullable().optional(),
+        participantes_com_assinatura: z.boolean().optional(),
         riscos: z.array(esquemaRisco),
         itens: z.array(esquemaItem),
       }),
@@ -352,7 +357,12 @@ export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autent
 
         await tx
           .update(modeloApr)
-          .set({ titulo: dados.titulo, pae: dados.pae ?? null, dataDocumento: dados.data_documento ?? null })
+          .set({
+            titulo: dados.titulo,
+            pae: dados.pae ?? null,
+            dataDocumento: dados.data_documento ?? null,
+            ...(dados.participantes_com_assinatura === undefined ? {} : { participantesComAssinatura: dados.participantes_com_assinatura }),
+          })
           .where(eq(modeloApr.id, linha.id));
         await tx.delete(itemModeloApr).where(eq(itemModeloApr.modeloAprId, linha.id));
         await tx.delete(riscoModeloApr).where(eq(riscoModeloApr.modeloAprId, linha.id));

@@ -33,7 +33,10 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
     .where(
       and(
         eq(os.equipeId, usuarioLogado.equipeId),
-        or(inArray(os.status, ["liberada", "pendente", "em_execucao"]), and(eq(os.status, "encerrada"), inArray(os.id, minhasEncerradas))),
+        or(
+          inArray(os.status, ["liberada", "pendente", "em_execucao"]),
+          and(inArray(os.status, ["encerrando", "aguardando_supervisor", "encerrada"]), inArray(os.id, minhasEncerradas)),
+        ),
       ),
     );
   const osIds = ordens.map((o) => o.id);
@@ -46,7 +49,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
         .orderBy(desc(apr.concluidaEm))
     : [];
   const participantes = aprs.length
-    ? await db.select({ aprId: aprParticipante.aprId, usuarioId: aprParticipante.usuarioId, funcao: aprParticipante.funcao }).from(aprParticipante).where(inArray(aprParticipante.aprId, aprs.map((a) => a.id)))
+    ? await db.select({ aprId: aprParticipante.aprId, usuarioId: aprParticipante.usuarioId, funcao: aprParticipante.funcao, assinadaEm: aprParticipante.assinadaEm, assinaturaPresencial: aprParticipante.assinaturaPresencial, recusouEm: aprParticipante.recusouEm }).from(aprParticipante).where(inArray(aprParticipante.aprId, aprs.map((a) => a.id)))
     : [];
   const execucoes = osIds.length ? await db.select().from(execucao).where(inArray(execucao.osId, osIds)) : [];
   const pausas = execucoes.length ? await db.select().from(execucaoPausa).where(inArray(execucaoPausa.execucaoId, execucoes.map((e) => e.id))) : [];
@@ -81,7 +84,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
 
   return {
     os: ordens.map((o) => ({ ...o, escolhaDoModelo: escolhaDe(o), checklistInspecao: checklists.get(o.id) ?? [] })),
-    aprs: aprs.map((a) => ({ ...a, participantes: participantes.filter((p) => p.aprId === a.id).map(({ usuarioId, funcao }) => ({ usuarioId, funcao })) })),
+    aprs: aprs.map((a) => ({ ...a, participantes: participantes.filter((p) => p.aprId === a.id).map(({ usuarioId, funcao, assinadaEm, assinaturaPresencial, recusouEm }) => ({ usuarioId, funcao, assinadaEm, assinaturaPresencial, recusouEm })) })),
     execucoes: execucoes.map((e) => ({ ...e, pausas: pausas.filter((p) => p.execucaoId === e.id) })),
     locais,
     atividades: atividades.map((a) => ({ ...a, materiais: materiais.get(a.codigo) ?? [] })),

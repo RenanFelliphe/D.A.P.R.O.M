@@ -35,6 +35,8 @@ export interface ConteudoDoModelo {
   titulo: string;
   pae: Record<string, unknown> | null;
   dataDocumento: string | null;
+  /** A folha tem a coluna "Assinatura" na tabela de participantes (o PDF da OS a reproduz como é). */
+  participantesComAssinatura: boolean;
   riscos: RiscoEntrada[];
   itens: ItemEntrada[];
 }

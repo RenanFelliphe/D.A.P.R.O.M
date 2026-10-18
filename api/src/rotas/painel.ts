@@ -59,20 +59,21 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
     return responder(c, { aprs: await listarAprsDaOs(deps.db, c.get("usuario"), lerId(c)) });
   });
 
+  /** A assinatura final do supervisor (a "ciência"), depois de ler o relatório da execução: a OS passa de `aguardando_supervisor` a `encerrada`. */
   r.post("/os/:id/ciencia", autenticar(), exigirPerfil("supervisor"), async (c) => {
     const eu = c.get("usuario");
     const id = lerId(c);
     const agora = deps.agora();
     const resultado = await darCiencia(deps.db, eu, id, agora);
     const rotulo = await rotuloDaOs(deps.db, id);
-    // Quem executou a OS fica sabendo que o supervisor deu a ciência (o trabalho dele foi conferido e o PDF sai de novo, com ela).
+    // Quem executou a OS fica sabendo que o supervisor assinou por último (o trabalho dele foi conferido e o PDF sai, com a assinatura).
     const executores = await executoresDaOs(deps.db, id);
     await criarAviso(
       deps.db,
       executores.filter((x) => x !== eu.id),
-      { tipo: "os_ciencia", osId: id, detalhe: `${eu.nome} deu a ciência da ${rotulo}, que você executou. O PDF da OS sai de novo, agora com a ciência.`, agora },
+      { tipo: "os_ciencia", osId: id, detalhe: `${eu.nome} assinou como supervisor a ${rotulo}, que você executou: a OS está concluída e o PDF está sendo gerado.`, agora },
     );
-    await registrarAuditoria(deps.db, eu, { entidade: "os", verbo: "ciencia", entidadeId: id, alvo: rotulo, resumo: `Deu ciência da ${rotulo}` });
+    await registrarAuditoria(deps.db, eu, { entidade: "os", verbo: "ciencia", entidadeId: id, alvo: rotulo, resumo: `Assinou como supervisor a ${rotulo}` });
     return responder(c, resultado);
   });
 

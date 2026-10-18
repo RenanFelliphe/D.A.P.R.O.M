@@ -225,6 +225,13 @@
       "when": 1792288053801,
       "tag": "0031_avisos_e_emails",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1792339291197,
+      "tag": "0032_execucao_em_dois_passos_e_assinaturas",
+      "breakpoints": true
     }
   ]
 }

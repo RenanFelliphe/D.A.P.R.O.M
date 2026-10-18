@@ -4,13 +4,16 @@ import { after, before, describe, it } from "node:test";
 import { and, eq } from "drizzle-orm";
 import { itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, tarefa } from "../src/db/schema";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
+import { POSICAO, ajudaDeExecucao } from "./ajuda-execucao";
 
 describe("Eventos de campo: APR, execução e sync", () => {
   let amb: Ambiente;
+  let h: ReturnType<typeof ajudaDeExecucao>;
   let equipeId: string;
   let supervisor: UsuarioDeTeste;
   let tecnico: UsuarioDeTeste;
   let colega: UsuarioDeTeste;
+  let terceiro: UsuarioDeTeste;
   let admin: UsuarioDeTeste;
   let modelo: { id: string; itens: (typeof itemModeloApr.$inferSelect)[]; riscos: (typeof riscoModeloApr.$inferSelect)[] };
   let localId: string;
@@ -18,10 +21,12 @@ describe("Eventos de campo: APR, execução e sync", () => {
 
   before(async () => {
     amb = await criarAmbiente({ comCarga: true });
+    h = ajudaDeExecucao(amb);
     supervisor = await amb.criarUsuario({ perfil: "tecnico" });
     equipeId = (await amb.criarEquipe({ supervisorId: supervisor.id })).id;
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     colega = await amb.criarUsuario({ perfil: "tecnico", equipeId });
+    terceiro = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     admin = await amb.criarUsuario({ perfil: "admin" });
     const [m] = await amb.db.select().from(modeloApr).where(eq(modeloApr.codigo, "APR 01"));
     modelo = {
@@ -71,32 +76,33 @@ describe("Eventos de campo: APR, execução e sync", () => {
       concluida_em: opcoes.concluidaEm ?? agora(),
     };
   }
-  async function aprAprovada(osId: string) {
+  /** Registra a APR aprovada do técnico (a APR sai sem assinaturas); com `assinar` (o padrão), cada participante assina na própria conta. */
+  async function aprAprovada(osId: string, assinar = true) {
     const p = await payloadApr(osId);
     const r = await enviar(tecnico, evento("apr_concluida", p, osId));
     assert.deepEqual(r.aprs, [{ id: p.id, resultado: "aprovada" }]);
+    if (assinar) await h.assinarApr(p.id, osId, [tecnico, colega]);
     return p;
   }
   const iniciar = (osId: string, aprId: string, extra: Record<string, unknown> = {}) => {
     const id = randomUUID();
     return { id, ev: evento("execucao_iniciada", { id, apr_id: aprId, inicio: agora(), ...extra }, osId) };
   };
-  async function encerrar(execucaoId: string, opcoes: { semFoto?: boolean; semAssinatura?: boolean } = {}) {
-    return evento("execucao_encerrada", {
-      execucao_id: execucaoId,
-      fim: agora(),
-      descricao_atividade: "Caixa de válvula desobstruída",
-      evidencias: opcoes.semFoto ? [] : [{ id: await foto(), capturada_em: agora() }],
-      assinaturas: [tecnico, colega].slice(0, opcoes.semAssinatura ? 1 : 2).map((u) => ({ usuario_id: u.id })),
-    });
-  }
+  /** O clique em "Encerrar OS" (o tempo para e a OS fica `encerrando`) e o preenchimento assinado pelo responsável (`aguardando_supervisor`). */
+  const clicarEncerrar = (execucaoId: string) => evento("execucao_encerrada", { execucao_id: execucaoId, fim: agora(), ...POSICAO });
+  const assinarEncerramento = (execucaoId: string, extra: Record<string, unknown> = {}) =>
+    evento("encerramento_assinado", { execucao_id: execucaoId, descricao_atividade: "Caixa de válvula desobstruída", ...extra });
+  const tarefasDePdf = (osId: string) => amb.db.select().from(tarefa).where(and(eq(tarefa.tipo, "pdf_os"), eq(tarefa.referenciaId, osId)));
 
-  it("fluxo completo: APR aprovada → execução → pausa → encerramento, com tarefa de PDF e status derivado", async () => {
+  it("fluxo completo: APR aprovada → assinaturas → execução → pausa → encerramento em dois passos → assinatura do supervisor, com tarefa de PDF e status derivado", async () => {
     const o = await novaOs();
-    const apr = await aprAprovada(o.id);
+    const apr = await aprAprovada(o.id, false);
     assert.equal(await statusDa(o.id), "liberada");
 
+    // A execução só começa quando todos assinaram a APR, cada um na própria conta.
     const { id: execId, ev: iniciada } = iniciar(o.id, apr.id);
+    assert.equal((await enviar(tecnico, iniciada)).rejeitados[0].codigo, "apr_sem_assinaturas");
+    await h.assinarApr(apr.id, o.id, [tecnico, colega]);
     const r1 = await enviar(tecnico, iniciada);
     assert.deepEqual(r1.os, [{ id: o.id, status: "em_execucao" }]);
 
@@ -106,16 +112,30 @@ describe("Eventos de campo: APR, execução e sync", () => {
     assert.equal(pausa[0]!.fim, null);
     await enviar(tecnico, evento("pausa_encerrada", { pausa_id: pausaId, fim: agora() }));
 
-    const r2 = await enviar(tecnico, await encerrar(execId));
-    assert.deepEqual(r2.os, [{ id: o.id, status: "encerrada" }]);
+    // Primeiro passo: o tempo para, a OS fica `encerrando` e nada é gerado ainda.
+    const r2 = await enviar(tecnico, clicarEncerrar(execId));
+    assert.deepEqual(r2.os, [{ id: o.id, status: "encerrando" }]);
     assert.equal(r2.rejeitados.length, 0);
-    const tarefas = await amb.db.select().from(tarefa).where(and(eq(tarefa.tipo, "pdf_os"), eq(tarefa.referenciaId, o.id)));
-    assert.equal(tarefas.length, 1);
-    const assinaturas = await amb.sql("select * from execucao_assinatura where execucao_id = $1", [execId]);
-    assert.equal(assinaturas.length, 2);
-    // os eventos sem os_id no envelope ganham a OS depois
-    const eventosDaOs = await amb.sql("select tipo from evento_campo where os_id = $1", [o.id]);
-    assert.equal(eventosDaOs.length, 5);
+    assert.equal((await tarefasDePdf(o.id)).length, 0);
+    assert.equal((await amb.sql("select * from execucao_assinatura where execucao_id = $1", [execId])).length, 0);
+
+    // Segundo passo: o responsável assina o encerramento e a OS passa a esperar o supervisor; o PDF continua sem sair.
+    const r3 = await enviar(tecnico, assinarEncerramento(execId));
+    assert.deepEqual(r3.os, [{ id: o.id, status: "aguardando_supervisor" }]);
+    assert.equal(r3.rejeitados.length, 0);
+    assert.equal((await tarefasDePdf(o.id)).length, 0);
+    const assinaturas = await amb.sql<{ usuario_id: string }>("select usuario_id from execucao_assinatura where execucao_id = $1", [execId]);
+    assert.deepEqual(assinaturas.map((a) => a.usuario_id), [tecnico.id], "só o responsável assina o encerramento");
+
+    // O supervisor assina por último: a OS fica encerrada (concluída) e só então o PDF é enfileirado.
+    const r4 = await h.concluir(supervisor, o.id);
+    assert.equal(r4.status, 200, JSON.stringify(r4.corpo));
+    assert.equal(await statusDa(o.id), "encerrada");
+    assert.equal((await tarefasDePdf(o.id)).length, 1);
+    // os eventos sem os_id no envelope ganham a OS depois (a APR, as duas assinaturas, o início, a pausa e os dois passos do encerramento)
+    const eventosDaOs = await amb.sql<{ tipo: string }>("select tipo from evento_campo where os_id = $1", [o.id]);
+    assert.equal(eventosDaOs.length, 8, "o início recusado (sem assinaturas) não fica registrado");
+    assert.equal(eventosDaOs.filter((e) => e.tipo === "apr_assinada").length, 2);
   });
 
   it("reenviar o mesmo evento não tem efeito e é confirmado de novo", async () => {
@@ -149,13 +169,18 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const r2 = await enviar(tecnico, evento("apr_concluida", { ...mentira, resultado: "aprovada" }, o2.id));
     assert.equal(r2.aprs[0].resultado, "bloqueada");
 
-    // Uma APR bloqueada não impede nova tentativa; com a nova aprovada e a execução encerrada, a OS encerra.
+    // Uma APR bloqueada não impede nova tentativa; com a nova aprovada e assinada e a execução encerrada, a OS passa pelas assinaturas
+    // do responsável e do supervisor até encerrar.
     const nova = await aprAprovada(o.id);
     assert.equal(await statusDa(o.id), "pendente");
     const { id, ev } = iniciar(o.id, nova.id);
     await enviar(tecnico, ev);
     assert.equal(await statusDa(o.id), "em_execucao");
-    await enviar(tecnico, await encerrar(id));
+    await enviar(tecnico, clicarEncerrar(id));
+    assert.equal(await statusDa(o.id), "encerrando");
+    await enviar(tecnico, assinarEncerramento(id));
+    assert.equal(await statusDa(o.id), "aguardando_supervisor");
+    assert.equal((await h.concluir(supervisor, o.id)).status, 200);
     assert.equal(await statusDa(o.id), "encerrada");
   });
 
@@ -172,8 +197,10 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const semFoto = await rejeitado(await payloadApr(o.id, { bloquear: true, comFoto: false }), "evidencia_faltando");
     assert.equal(semFoto.mensagem, "Falta evidência em 1 item(ns)");
     await rejeitado(await payloadApr(o.id, { bloquear: true, semObservacao: true }), "evidencia_faltando");
-    await rejeitado({ ...(await payloadApr(o.id)), participantes: [{ usuario_id: colega.id, funcao: "responsavel" }] }, "participante_obrigatorio");
-    await rejeitado({ ...(await payloadApr(o.id)), participantes: [{ usuario_id: tecnico.id, funcao: "executor" }] }, "responsavel_obrigatorio");
+    // A APR exige ao menos 2 participantes (ninguém executa sozinho), e o técnico logado é um deles.
+    await rejeitado({ ...(await payloadApr(o.id)), participantes: [{ usuario_id: tecnico.id, funcao: "responsavel" }] }, "participantes_insuficientes");
+    await rejeitado({ ...(await payloadApr(o.id)), participantes: [{ usuario_id: colega.id, funcao: "responsavel" }, { usuario_id: terceiro.id, funcao: "executor" }] }, "participante_obrigatorio");
+    await rejeitado({ ...(await payloadApr(o.id)), participantes: [{ usuario_id: tecnico.id, funcao: "executor" }, { usuario_id: colega.id, funcao: "executor" }] }, "responsavel_obrigatorio");
     await rejeitado({ ...(await payloadApr(o.id)), modelo_apr_id: randomUUID() }, "modelo_invalido");
     await rejeitado({ ...(await payloadApr(o.id)), riscos: [randomUUID()] }, "risco_invalido");
     await rejeitado({ ...(await payloadApr(o.id)), id: "nao-e-uuid" }, "payload_invalido");
@@ -236,7 +263,8 @@ describe("Eventos de campo: APR, execução e sync", () => {
 
     const ontem = new Date(amb.relogio.agora.getTime() - 36 * 3600_000).toISOString();
     const o3 = await novaOs();
-    const velha = await payloadApr(o3.id, { concluidaEm: ontem });
+    // A APR de ontem não pode mais ser assinada (`apr_vencida`); o modo offline já traz as assinaturas, então vale como "assinada".
+    const velha = { ...(await payloadApr(o3.id, { concluidaEm: ontem })), assinatura_presencial: true };
     await enviar(tecnico, evento("apr_concluida", velha, o3.id));
     assert.equal((await enviar(tecnico, iniciar(o3.id, velha.id).ev)).rejeitados[0].codigo, "apr_vencida");
 
@@ -267,7 +295,7 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const apr2 = await aprAprovada(o2.id);
     const e2 = iniciar(o2.id, apr2.id);
     await enviar(tecnico, e2.ev);
-    await enviar(tecnico, evento("pausa_iniciada", { id: randomUUID(), execucao_id: e2.id, inicio: agora() }));
+    await enviar(tecnico, evento("pausa_iniciada", { id: randomUUID(), execucao_id: e2.id, inicio: agora(), motivo: "almoco" }));
     assert.equal((await enviar(tecnico, evento("execucao_cancelada", { execucao_id: e2.id }))).rejeitados[0].codigo, "cancelamento_invalido");
   });
 
@@ -276,8 +304,12 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const apr = await aprAprovada(o.id);
     const e = iniciar(o.id, apr.id);
     await enviar(tecnico, e.ev);
-    await enviar(tecnico, evento("pausa_iniciada", { id: randomUUID(), execucao_id: e.id, inicio: agora() }));
-    const r = await enviar(tecnico, evento("execucao_suspensa", { execucao_id: e.id, fim: agora() }));
+    await enviar(tecnico, evento("pausa_iniciada", { id: randomUUID(), execucao_id: e.id, inicio: agora(), motivo: "almoco" }));
+    // Suspender pede o motivo (e o complemento, no "outro"); sem ele nada acontece.
+    assert.equal((await enviar(tecnico, evento("execucao_suspensa", { execucao_id: e.id, fim: agora() }))).rejeitados[0].codigo, "motivo_obrigatorio");
+    assert.equal((await enviar(tecnico, evento("execucao_suspensa", { execucao_id: e.id, fim: agora(), motivo: "outro" }))).rejeitados[0].codigo, "complemento_obrigatorio");
+    assert.equal(await statusDa(o.id), "em_execucao");
+    const r = await enviar(tecnico, evento("execucao_suspensa", { execucao_id: e.id, fim: agora(), motivo: "fim_expediente", ...POSICAO }));
     assert.deepEqual(r.os, [{ id: o.id, status: "pendente" }]);
     assert.equal(r.alertas.length, 0);
     assert.equal((await amb.sql("select 1 from execucao_pausa where execucao_id = $1 and fim is null", [e.id])).length, 0, "a pausa aberta é fechada");
@@ -297,23 +329,58 @@ describe("Eventos de campo: APR, execução e sync", () => {
     assert.equal((await amb.sql<{ tipo: string }>("select tipo from alerta where id = $1", [ok.alertas[0]]))[0]!.tipo, "bloqueio");
   });
 
-  it("encerramento exige descrição, foto e a assinatura de todos; encerrar de novo não duplica", async () => {
+  it("encerramento em dois passos: só quem executou, descrição e fotos opcionais; encerrar de novo não duplica e o PDF só sai com o supervisor", async () => {
     const o = await novaOs();
     const apr = await aprAprovada(o.id);
     const e = iniciar(o.id, apr.id);
     await enviar(tecnico, e.ev);
-    for (const opc of [{ semFoto: true }, { semAssinatura: true }]) {
-      const r = await enviar(tecnico, await encerrar(e.id, opc));
-      assert.equal(r.rejeitados[0].codigo, "encerramento_incompleto");
-      assert.equal(r.rejeitados[0].mensagem, "Descrição, foto e assinaturas de todos são obrigatórias");
-    }
-    // Ninguém encerra a execução de outro.
-    const doColega = await enviar(colega, await encerrar(e.id));
-    assert.equal(doColega.rejeitados[0].codigo, "execucao_de_outro");
-    await enviar(tecnico, await encerrar(e.id));
-    const repetido = await enviar(tecnico, await encerrar(e.id));
+    // Antes do clique em "Encerrar OS" não há o que assinar.
+    assert.equal((await enviar(tecnico, assinarEncerramento(e.id))).rejeitados[0].codigo, "execucao_nao_encerrada");
+    // Ninguém encerra a execução de outro, nem assina o encerramento dele.
+    assert.equal((await enviar(colega, clicarEncerrar(e.id))).rejeitados[0].codigo, "execucao_de_outro");
+    await enviar(tecnico, clicarEncerrar(e.id));
+    assert.equal(await statusDa(o.id), "encerrando");
+    assert.equal((await enviar(colega, assinarEncerramento(e.id))).rejeitados[0].codigo, "execucao_de_outro");
+    const repetido = await enviar(tecnico, clicarEncerrar(e.id));
     assert.equal(repetido.confirmados.length, 1);
-    assert.equal((await amb.db.select().from(tarefa).where(and(eq(tarefa.tipo, "pdf_os"), eq(tarefa.referenciaId, o.id)))).length, 1);
+    assert.equal(await statusDa(o.id), "encerrando");
+
+    // A descrição e as fotos são opcionais: só o `execucao_id` já basta.
+    const assinado = await enviar(tecnico, evento("encerramento_assinado", { execucao_id: e.id }));
+    assert.deepEqual(assinado.rejeitados, []);
+    assert.deepEqual(assinado.os, [{ id: o.id, status: "aguardando_supervisor" }]);
+    const [exec] = await amb.sql<{ descricao_atividade: string | null; encerramento_assinado_em: string | null }>("select descricao_atividade, encerramento_assinado_em from execucao where id = $1", [e.id]);
+    assert.equal(exec!.descricao_atividade, null);
+    assert.ok(exec!.encerramento_assinado_em);
+    assert.equal((await amb.sql("select 1 from evidencia where execucao_id = $1", [e.id])).length, 0);
+    // Assinar de novo não duplica nada.
+    assert.equal((await enviar(tecnico, assinarEncerramento(e.id))).rejeitados.length, 0);
+    assert.equal((await amb.sql("select 1 from execucao_assinatura where execucao_id = $1", [e.id])).length, 1);
+    assert.equal((await tarefasDePdf(o.id)).length, 0, "o PDF só é enfileirado quando o supervisor assina");
+    assert.equal((await h.concluir(supervisor, o.id)).status, 200);
+    assert.equal((await tarefasDePdf(o.id)).length, 1);
+    assert.equal((await h.concluir(supervisor, o.id)).corpo.erro.codigo, "ciencia_ja_dada");
+    assert.equal((await tarefasDePdf(o.id)).length, 1);
+  });
+
+  it("o encerramento grava a descrição e as fotos quando vêm; a foto só é obrigatória na interrupção por risco", async () => {
+    const o = await novaOs();
+    const apr = await aprAprovada(o.id);
+    const e = iniciar(o.id, apr.id);
+    await enviar(tecnico, e.ev);
+    await enviar(tecnico, clicarEncerrar(e.id));
+    const r = await enviar(tecnico, assinarEncerramento(e.id, { evidencias: [{ id: await foto(), capturada_em: agora(), ...POSICAO }] }));
+    assert.deepEqual(r.rejeitados, []);
+    assert.equal((await amb.sql<{ descricao_atividade: string }>("select descricao_atividade from execucao where id = $1", [e.id]))[0]!.descricao_atividade, "Caixa de válvula desobstruída");
+    assert.equal((await amb.sql("select 1 from evidencia where execucao_id = $1", [e.id])).length, 1);
+
+    // A interrupção por risco continua pedindo ao menos uma foto.
+    const o2 = await novaOs();
+    const apr2 = await aprAprovada(o2.id);
+    const e2 = iniciar(o2.id, apr2.id);
+    await enviar(tecnico, e2.ev);
+    const semFoto = await enviar(tecnico, evento("execucao_interrompida", { execucao_id: e2.id, fim: agora(), motivo: "Vazamento", evidencias: [] }));
+    assert.equal(semFoto.rejeitados[0].codigo, "interrupcao_incompleta");
   });
 
   it("conflitos: online recusa OS já em execução; da fila offline aplica e gera alerta execucao_duplicada", async () => {
@@ -360,10 +427,14 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const apr = await aprAprovada(apoio.id);
     const e = iniciar(apoio.id, apr.id);
     await enviar(tecnico, e.ev);
-    const r = await enviar(tecnico, await encerrar(e.id));
-    assert.equal(r.alertas.length, 1);
-    const [a] = await amb.sql<{ tipo: string; os_id: string }>("select tipo, os_id from alerta where id = $1", [r.alertas[0]]);
-    assert.deepEqual([a!.tipo, a!.os_id], ["apoio_encerrado", original.id]);
+    // O aviso ao supervisor da original sai na assinatura do encerramento, não no clique em "Encerrar OS".
+    const clique = await enviar(tecnico, clicarEncerrar(e.id));
+    assert.equal(clique.alertas.length, 0);
+    const r = await enviar(tecnico, assinarEncerramento(e.id));
+    // Dois avisos: o `os_para_assinar` ao supervisor da OS de apoio e o `apoio_encerrado` ao supervisor da original.
+    assert.equal(r.alertas.length, 2);
+    const avisos = await amb.sql<{ tipo: string; os_id: string }>("select tipo, os_id from alerta where id = any($1::uuid[]) order by tipo", [r.alertas]);
+    assert.deepEqual(avisos.map((a) => [a.tipo, a.os_id]), [["apoio_encerrado", original.id], ["os_para_assinar", apoio.id]]);
     assert.equal(await statusDa(original.id), "pendente");
   });
 
@@ -377,26 +448,46 @@ describe("Eventos de campo: APR, execução e sync", () => {
     const equipeSup = await amb.criarEquipe();
     const sup = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeSup.id, supervisor: true });
     assert.equal(sup.perfil, "tecnico");
+    const parDoSup = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeSup.id });
     const o = await novaOs({ equipeId: equipeSup.id });
-    const p = await payloadApr(o.id, { participantes: [sup] });
+    const p = await payloadApr(o.id, { participantes: [sup, parDoSup] });
     const r = await enviar(sup, evento("apr_concluida", p, o.id));
     assert.deepEqual(r.aprs, [{ id: p.id, resultado: "aprovada" }]);
-    const { ev } = iniciar(o.id, p.id);
+    await h.assinarApr(p.id, o.id, [sup, parDoSup]);
+    const { id: execId, ev } = iniciar(o.id, p.id);
     const r2 = await enviar(sup, ev);
     assert.deepEqual(r2.os, [{ id: o.id, status: "em_execucao" }]);
+    // O supervisor que executou também assina por último, depois do encerramento em dois passos.
+    await enviar(sup, clicarEncerrar(execId));
+    await enviar(sup, assinarEncerramento(execId));
+    assert.equal(await statusDa(o.id), "aguardando_supervisor");
+    assert.equal((await h.concluir(sup, o.id)).status, 200);
+    assert.equal(await statusDa(o.id), "encerrada");
     await amb.esperar(200, "POST", "/sync/pull", { como: sup });
   });
 
-  it("usuário desativado ainda envia a fila pendente e depois tem a sessão revogada", async () => {
+  it("usuário desativado ainda envia a fila pendente e depois tem a sessão revogada; desativado não entra em APR nova", async () => {
     const saindo = await amb.criarUsuario({ perfil: "tecnico", equipeId, ativo: true });
     const o = await novaOs();
+    // Enquanto estava ativo, o técnico fez a APR (com a colega) e iniciou a execução; o fim do serviço ficou na fila do aparelho.
+    const p = await payloadApr(o.id, { participantes: [saindo, colega] });
+    assert.deepEqual((await enviar(saindo, evento("apr_concluida", p, o.id))).rejeitados, []);
+    await h.assinarApr(p.id, o.id, [saindo, colega]);
+    const { id: execId, ev } = iniciar(o.id, p.id);
+    assert.deepEqual((await enviar(saindo, ev)).rejeitados, []);
+
     await amb.sql("update usuario set ativo = false where id = $1", [saindo.id]);
     assert.equal((await amb.req("GET", "/equipes", { como: saindo })).status, 401);
-    const p = await payloadApr(o.id, { participantes: [saindo, colega] });
-    const r = await amb.esperar(200, "POST", "/eventos", { como: saindo, json: { eventos: [evento("apr_concluida", p, o.id)] } });
-    assert.equal(r.aprs[0].resultado, "aprovada");
-    assert.equal(r.acesso_revogado, true);
+    const fila = await amb.esperar(200, "POST", "/eventos", { como: saindo, json: { eventos: [clicarEncerrar(execId), assinarEncerramento(execId)] } });
+    assert.deepEqual(fila.rejeitados, []);
+    assert.deepEqual(fila.os.at(-1), { id: o.id, status: "aguardando_supervisor" });
+    assert.equal(fila.acesso_revogado, true);
     assert.equal(await amb.auth.entrar(saindo.email, saindo.senha), null, "conta revogada");
+
+    // Quem foi desligado não pode mais entrar numa APR nova.
+    const o2 = await novaOs();
+    const recusada = await enviar(colega, evento("apr_concluida", await payloadApr(o2.id, { participantes: [colega, saindo] }), o2.id));
+    assert.equal(recusada.rejeitados[0].codigo, "participante_inativo");
   });
 
   it("POST /sync/pull entrega o snapshot da equipe: OS abertas, APRs, execuções, modelos, atividades, locais e usuários", async () => {

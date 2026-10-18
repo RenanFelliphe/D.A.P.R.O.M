@@ -1,4 +1,4 @@
-import { and, eq, inArray, lt, lte, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, lte, ne } from "drizzle-orm";
 import { apr, aprParticipante, execucao, localInstalacao, os, planoPreventiva, reprogramacao, usuario } from "../db/schema";
 import { concederConquistas } from "./conquistas";
 import { lancar, type ContextoDePontos, type Entrada, type Ganho } from "./lancamentos";
@@ -25,13 +25,13 @@ async function concluir(c: ContextoDePontos, ganhos: Ganho[]): Promise<Ganho[]> 
   return [...ganhos, ...conquistas.ganhos];
 }
 
-/** Quem participou da APR e joga: os técnicos (o admin não pontua). */
+/** Quem participou da APR e joga: os técnicos (o admin não pontua). Quem recusou (direito de recusa) saiu da APR e não conta. */
 async function participantesDaApr(c: ContextoDePontos, aprId: string) {
   return c.tx
     .select({ usuarioId: aprParticipante.usuarioId, funcao: aprParticipante.funcao, criadoEm: usuario.criadoEm })
     .from(aprParticipante)
     .innerJoin(usuario, eq(usuario.id, aprParticipante.usuarioId))
-    .where(and(eq(aprParticipante.aprId, aprId), eq(usuario.perfil, "tecnico")));
+    .where(and(eq(aprParticipante.aprId, aprId), eq(usuario.perfil, "tecnico"), isNull(aprParticipante.recusouEm)));
 }
 
 /**

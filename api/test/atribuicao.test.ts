@@ -196,6 +196,8 @@ describe("Atribuição individual e devolução de OS", () => {
       await reservar(o.id, ana.id);
       const p = payloadApr([ana, beto]);
       await enviar(ana, evento("apr_concluida", p, o.id));
+      // Cada um assina a APR na própria conta; com tudo assinado, o único impedimento é a reserva.
+      for (const quem of [ana, beto]) assert.deepEqual((await enviar(quem, evento("apr_assinada", { apr_id: p.id }, o.id))).rejeitados, []);
       const execId = randomUUID();
       const r = await enviar(beto, evento("execucao_iniciada", { id: execId, apr_id: p.id, inicio: agora() }, o.id));
       assert.equal(r.rejeitados[0].codigo, "os_reservada");
@@ -207,7 +209,7 @@ describe("Atribuição individual e devolução de OS", () => {
       const o = await novaOs();
       await reservar(o.id, ana.id);
       await amb.esperar(200, "DELETE", `/os/${o.id}/responsavel`, { como: supervisor });
-      const p = payloadApr([beto]);
+      const p = payloadApr([beto, comum]);
       const r = await enviar(beto, evento("apr_concluida", p, o.id));
       assert.deepEqual(r.aprs, [{ id: p.id, resultado: "aprovada" }]);
     });
@@ -216,7 +218,7 @@ describe("Atribuição individual e devolução de OS", () => {
       const o = await novaOs();
       await reservar(o.id, ana.id);
       const antes = new Date(amb.relogio.agora.getTime() - 10 * 60_000).toISOString();
-      const p = payloadApr([beto], antes);
+      const p = payloadApr([beto, comum], antes);
       const r = await enviar(beto, evento("apr_concluida", p, o.id, antes));
       assert.deepEqual(r.aprs, [{ id: p.id, resultado: "aprovada" }]);
       const alertas = await amb.db.select().from(alerta).where(eq(alerta.osId, o.id));
@@ -319,11 +321,11 @@ describe("Atribuição individual e devolução de OS", () => {
     it("a OS devolvida não recebe mais APR nem execução: online é recusada, da fila offline vira alerta", async () => {
       const o = await novaOs();
       await devolver(o.id, "Ordem duplicada");
-      const online = await enviar(ana, evento("apr_concluida", payloadApr([ana]), o.id));
+      const online = await enviar(ana, evento("apr_concluida", payloadApr([ana, beto]), o.id));
       assert.equal(online.rejeitados[0].codigo, "os_devolvida");
 
       const antes = new Date(amb.relogio.agora.getTime() - 10 * 60_000).toISOString();
-      const p = payloadApr([ana], antes);
+      const p = payloadApr([ana, beto], antes);
       const offline = await enviar(ana, evento("apr_concluida", p, o.id, antes));
       assert.deepEqual(offline.aprs, [{ id: p.id, resultado: "aprovada" }]);
       assert.equal((await lerOs(o.id)).status, "devolvida");

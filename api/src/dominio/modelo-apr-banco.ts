@@ -85,6 +85,7 @@ export async function modeloCompleto(db: Db, linha: typeof modeloApr.$inferSelec
     versao: linha.versao,
     titulo: linha.titulo,
     dataDocumento: linha.dataDocumento,
+    participantesComAssinatura: linha.participantesComAssinatura,
     pae: linha.pae,
     publicadoEm: linha.publicadoEm,
     arquivadoEm: linha.arquivadoEm,
@@ -101,6 +102,7 @@ export async function conteudoDe(db: Db, linha: typeof modeloApr.$inferSelect): 
     titulo: linha.titulo,
     pae: (linha.pae as Record<string, unknown> | null) ?? null,
     dataDocumento: linha.dataDocumento,
+    participantesComAssinatura: linha.participantesComAssinatura,
     riscos: riscos.map(({ classificacao, nome, ordem }) => ({ classificacao, nome, ordem })),
     itens: itens.map((i) => ({
       secao: i.secao,

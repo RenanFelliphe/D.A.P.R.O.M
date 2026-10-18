@@ -9,6 +9,7 @@ import { dataBr, somarDias } from "../../dominio/tempo";
 import type { UsuarioAutenticado } from "../../http/autenticacao";
 import { enfileirarTarefa } from "../../servicos/fila";
 import { verificarCiclos, type Intervalo } from "../../dominio/preventivas";
+import { recalcularStatusOs } from "../../dominio/status-os";
 import { alerta, atividade, ausencia, ausenciaAto, equipe, itemModeloApr, localInstalacao, modeloApr, os, planoPreventiva, planoPreventivaPergunta, reprogramacao, riscoModeloApr, usuario, type CicloBase, type Perfil } from "../schema";
 import { popularCatalogoDemo } from "./catalogo-demo";
 import { espelharOsDoSapNoSimulador } from "./ordens-sap";
@@ -358,7 +359,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     return {
       id: randomUUID(),
       modelo_apr_id: m.id,
-      participantes: participantes.map((u, i) => ({ usuario_id: u.id, funcao: i === 0 ? "responsavel" : "executor", assinada_em: quando.toISOString() })),
+      participantes: participantes.map((u, i) => ({ usuario_id: u.id, funcao: i === 0 ? "responsavel" : "executor" })),
       riscos: marcados.map((r) => r.id),
       respostas: respostasLimpas(m, marcados, { avisoNoAlerta: opcoes.avisoNoAlerta, falhar }),
       evidencias,
@@ -369,9 +370,27 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const primeiroEliminatorio = (m: ModeloCarregado, n = 1, aPartirDe = 0) => m.itens.filter((i) => i.secao === "verificacao" && i.tipo === "eliminatorio" && i.evidencia === "foto").slice(aPartirDe, aPartirDe + n);
   const itemDeTexto = (m: ModeloCarregado) => m.itens.find((i) => i.tipo === "eliminatorio" && i.evidencia === "texto");
 
-  const aprovar = async (u: UsuarioAutenticado, osId: string, m: ModeloCarregado, equipeTec: UsuarioAutenticado[], quando: Date, opcoes: Parameters<typeof aprPayload>[3] = {}) => {
+  /**
+   * Registra a APR e, se ela passou, cada participante a assina na própria conta (`apr_assinada`), a um ou dois minutos de
+   * distância um do outro. `semAssinar` deixa a APR esperando a assinatura de quem ainda não assinou (a demonstração do aviso).
+   */
+  const aprovar = async (
+    u: UsuarioAutenticado,
+    osId: string,
+    m: ModeloCarregado,
+    equipeTec: UsuarioAutenticado[],
+    quando: Date,
+    opcoes: Parameters<typeof aprPayload>[3] & { semAssinar?: UsuarioAutenticado[] } = {},
+  ) => {
     const p = await aprPayload(m, equipeTec, quando, opcoes);
     await enviar(u, "apr_concluida", osId, p, quando);
+    if ((opcoes.falhar ?? []).length === 0) {
+      for (const [i, pessoa] of equipeTec.entries()) {
+        if (opcoes.semAssinar?.some((x) => x.id === pessoa.id)) continue;
+        const assinou = new Date(quando.getTime() + (i + 1) * 60_000);
+        await enviar(pessoa, "apr_assinada", osId, { apr_id: p.id, assinada_em: assinou.toISOString() }, assinou);
+      }
+    }
     return p.id as string;
   };
 
@@ -389,6 +408,8 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     checklist?: { naoMarcados?: Record<number, string>; observacoes?: Record<number, string> };
     /** A inspeção sem estrutura, de antes do checklist (só para OS cujo plano não tem checklist). */
     inspecao?: Record<string, unknown>;
+    /** O responsável encerrou a OS (o tempo parou), mas ainda não preencheu nem assinou o encerramento: a OS fica `encerrando`. */
+    semAssinarEncerramento?: boolean;
   }
   /** O `dados_inspecao` do encerramento: as respostas ao checklist do plano da OS, quando ele tem; senão, a inspeção sem estrutura. */
   const dadosDaInspecao = async (osId: string, o: OpcoesExecucao) => {
@@ -405,11 +426,11 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const executar = async (u: UsuarioAutenticado, osId: string, aprId: string, participantes: UsuarioAutenticado[], o: OpcoesExecucao) => {
     const exId = randomUUID();
     const t = (min: number) => new Date(o.inicio.getTime() + min * 60_000);
-    await enviar(u, "execucao_iniciada", osId, { id: exId, apr_id: aprId, numero_pessoas: participantes.length, inicio: o.inicio.toISOString() }, o.inicio);
+    await enviar(u, "execucao_iniciada", osId, { id: exId, apr_id: aprId, numero_pessoas: participantes.length, inicio: o.inicio.toISOString(), latitude: -20.3101, longitude: -40.2902 }, o.inicio);
     const dur = o.duracaoMin ?? 150;
     if (o.pausa) {
       const pausaId = randomUUID();
-      await enviar(u, "pausa_iniciada", null, { id: pausaId, execucao_id: exId, inicio: t(o.pausa[0]).toISOString(), motivo: "almoco" }, t(o.pausa[0]));
+      await enviar(u, "pausa_iniciada", null, { id: pausaId, execucao_id: exId, inicio: t(o.pausa[0]).toISOString(), motivo: "almoco", latitude: -20.3104, longitude: -40.2899 }, t(o.pausa[0]));
       if (o.resultado !== "pausada") await enviar(u, "pausa_encerrada", null, { pausa_id: pausaId, fim: t(o.pausa[1]).toISOString() }, t(o.pausa[1]));
     }
     const fim = t(dur);
@@ -418,24 +439,30 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
       const evidencias: Record<string, unknown>[] = [];
       for (let k = 0; k < (o.fotos ?? 2); k++) evidencias.push({ id: await foto(), capturada_em: t(dur - 20 + k).toISOString(), latitude: -20.31 + k * 0.0004, longitude: -40.29 - k * 0.0002 });
       for (const d of o.documentos ?? []) evidencias.push(await documento(d, t(dur - 5)));
-      await enviar(u, "execucao_encerrada", osId, {
-        execucao_id: exId,
-        fim: fim.toISOString(),
-        descricao_atividade: o.descricao ?? "Atividade executada conforme o procedimento; equipamento testado e liberado para operação.",
-        dados_inspecao: await dadosDaInspecao(osId, o),
-        evidencias,
-        assinaturas: participantes.map((p) => ({ usuario_id: p.id, assinada_em: fim.toISOString() })),
-      }, fim);
+      // O encerramento tem dois passos: o clique em "Encerrar OS" (o tempo para) e, minutos depois, a descrição, as fotos e a assinatura.
+      await enviar(u, "execucao_encerrada", osId, { execucao_id: exId, fim: fim.toISOString(), latitude: -20.3102, longitude: -40.2901 }, fim);
+      if (!o.semAssinarEncerramento) {
+        const assinou = new Date(fim.getTime() + 4 * 60_000);
+        await enviar(u, "encerramento_assinado", osId, {
+          execucao_id: exId,
+          assinada_em: assinou.toISOString(),
+          descricao_atividade: o.descricao ?? "Atividade executada conforme o procedimento; equipamento testado e liberado para operação.",
+          dados_inspecao: await dadosDaInspecao(osId, o),
+          evidencias,
+        }, assinou);
+      }
     } else if (resultado === "suspensa") {
-      await enviar(u, "execucao_suspensa", osId, { execucao_id: exId, fim: fim.toISOString() }, fim);
+      await enviar(u, "execucao_suspensa", osId, { execucao_id: exId, fim: fim.toISOString(), motivo: "fim_expediente", latitude: -20.3102, longitude: -40.2901 }, fim);
     } else if (resultado === "interrompida") {
-      await enviar(u, "execucao_interrompida", osId, { execucao_id: exId, fim: fim.toISOString(), motivo: o.motivo ?? "Risco identificado durante a atividade.", evidencias: [{ id: await foto(), capturada_em: fim.toISOString(), latitude: -20.31, longitude: -40.29 }] }, fim);
+      await enviar(u, "execucao_interrompida", osId, { execucao_id: exId, fim: fim.toISOString(), motivo: o.motivo ?? "Risco identificado durante a atividade.", evidencias: [{ id: await foto(), capturada_em: fim.toISOString(), latitude: -20.31, longitude: -40.29 }], latitude: -20.31, longitude: -40.29 }, fim);
     }
     return exId;
   };
 
+  /** A assinatura final do supervisor (a ciência): a OS passa de `aguardando_supervisor` a `encerrada` e o PDF é enfileirado. */
   const darCiencia = async (osId: string, supervisor: UsuarioAutenticado, quando: Date) => {
-    await db.update(os).set({ cienciaPor: supervisor.id, cienciaEm: quando }).where(eq(os.id, osId));
+    await db.update(os).set({ cienciaPor: supervisor.id, cienciaEm: quando, cienciaAssinaturaPath: supervisor.assinaturaPath }).where(eq(os.id, osId));
+    await recalcularStatusOs(db, osId);
     await enfileirarTarefa(db, "pdf_os", osId);
   };
 
@@ -480,12 +507,13 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   // 4. corretiva, manômetro, 6 dias atrás, sem ciência
   id = await criarOs({ titulo: "Troca de manômetro com leitura inconsistente", equipamento: "Manômetro MN-0452", local: L.cari, prioridade: "Alto", inicio: 7, fim: 6 });
   apr = await aprovar(tec5, id, apr01, dupla2, em(6, 13, 10));
-  await executar(tec5, id, apr, dupla2, { inicio: em(6, 13, 25), duracaoMin: 95, fotos: 2, descricao: "Manômetro substituído e calibrado; leitura conferida com padrão." });
+  // O tempo parou, mas o responsável ainda não preencheu nem assinou o encerramento: a OS fica "encerrando".
+  await executar(tec5, id, apr, dupla2, { inicio: em(6, 13, 25), duracaoMin: 95, fotos: 2, descricao: "Manômetro substituído e calibrado; leitura conferida com padrão.", semAssinarEncerramento: true });
 
   // 5. preventiva, ERS Suzano (cliente crítico), 3 dias atrás, sem ciência
   id = await criarOs({ tipo: "preventiva", titulo: "Lavagem de Estação", equipamento: "Estação redutora ERS-02", local: L.ers, prioridade: "Alto", inicio: 4, fim: 3, atividade: ativ[1], ciclo: { intervalo: { quantidade: 10, unidade: "dia" } } });
   apr = await aprovar(tec1, id, apr01, dupla, em(3, 8, 30), { riscos: 1 });
-  await executar(tec1, id, apr, dupla, { inicio: em(3, 8, 45), duracaoMin: 170, pausa: [100, 115], fotos: 3 });
+  await executar(tec1, id, apr, dupla, { inicio: em(3, 8, 45), duracaoMin: 170, pausa: [100, 115], fotos: 0, descricao: "" });
 
   // ================= PENDENTES =====================================================================================
   // 6. APR bloqueada (vazamento): duas fotos, alerta ao supervisor não lido; retomada ainda não feita
@@ -497,7 +525,8 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
 
   // 6b. APR aprovada num serviço com lista de materiais recomendados: a lista é só consulta, não trava a liberação
   id = await criarOs({ titulo: "Aferição de manômetro padrão", equipamento: "Manômetro MN-12", local: L.gua, equipe: equipes.INSTRUM, prioridade: "Alto", inicio: 2, fim: 1, atividade: "Medição" });
-  await aprovar(tec3, id, apr01, duplaI, em(2, 10, 30));
+  // ...e o Tiago ainda não assinou: a APR espera a assinatura dele, e o aviso aparece no sino (a execução só começa com todos).
+  await aprovar(tec3, id, apr01, duplaI, em(2, 10, 30), { semAssinar: [tec4] });
 
   // 7. APR bloqueada por condição pessoal (justificativa em texto, sem foto) — alerta lido
   id = await criarOs({ tipo: "preventiva", titulo: "Calibração de PSV", equipamento: "PSV-0312", local: L.pr, prioridade: "Alto", inicio: 2, fim: 1, atividade: ativ[3], ciclo: { intervalo: { quantidade: 1, unidade: "semestre" } } });

@@ -1,12 +1,15 @@
 /**
  * Ajuda dos testes da gamificação: monta o campo (equipe, técnicos, OS), faz a APR e a execução pelas rotas de evento (as
- * mesmas que a web usa) e lê o extrato direto do banco.
+ * mesmas que a web usa) e lê o extrato direto do banco. Segue o fluxo da Reunião 3: a APR tem ao menos 2 participantes e cada
+ * um assina na própria conta (é aí que ela pontua); o encerramento tem dois passos (o clique e a assinatura do responsável, que
+ * é onde a execução pontua); e a OS só conclui quando o supervisor assina.
  */
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { and, eq, ne, sql } from "drizzle-orm";
-import { itemModeloApr, lancamentoPontos, localInstalacao, modeloApr, os, type RegraCodigo } from "../src/db/schema";
+import { execucao, itemModeloApr, lancamentoPontos, localInstalacao, modeloApr, os, type RegraCodigo } from "../src/db/schema";
 import { criarAmbiente, type Ambiente, type OpcoesReq, type UsuarioDeTeste } from "./ajuda";
+import { POSICAO } from "./ajuda-execucao";
 
 /** O relógio dos testes de gamificação: um dia útil de outubro de 2026, temporada Primavera 2026 (`2026-T4`). */
 export const AGORA = new Date("2026-10-13T15:00:00Z");
@@ -64,9 +67,19 @@ export async function prepararCampo(opcoes: { relogio?: Date } = {}) {
     };
   }
 
-  /** Corpo de uma APR; o primeiro participante é o responsável. */
+  /** O colega de cada equipe que completa a dupla quando o teste informa uma pessoa só (a APR exige ao menos 2 participantes). */
+  const colegas = new Map<string | null, UsuarioDeTeste>();
+  async function comColega(participantes: UsuarioDeTeste[]) {
+    if (participantes.length >= 2) return participantes;
+    const equipeId = participantes[0]!.equipeId;
+    if (!colegas.has(equipeId)) colegas.set(equipeId, await amb.criarUsuario({ perfil: "tecnico", equipeId, nome: "Colega de dupla" }));
+    return [...participantes, colegas.get(equipeId)!];
+  }
+
+  /** Corpo de uma APR; o primeiro participante é o responsável (e uma pessoa só ganha o colega da equipe dela). */
   async function corpoDaApr(participantes: UsuarioDeTeste[], o: { bloquear?: boolean; comEvidencia?: boolean } = {}) {
     const { reprovado, lista } = respostas(o.bloquear);
+    participantes = await comColega(participantes);
     return {
       id: randomUUID(),
       modelo_apr_id: m!.id,
@@ -79,11 +92,29 @@ export async function prepararCampo(opcoes: { relogio?: Date } = {}) {
     };
   }
 
-  /** APR aprovada pelo evento `apr_concluida`; devolve o id e a resposta (com `pontos_ganhos`). */
+  /**
+   * Cada participante assina a APR na própria conta (`apr_assinada`); `como` assina por último, e a última assinatura é a que
+   * pontua a APR, então a resposta dela (com os `ganhos` de `como`) é a que se devolve.
+   */
+  async function assinarApr(como: UsuarioDeTeste, osId: string, aprId: string, participantes: UsuarioDeTeste[]) {
+    let resposta: Awaited<ReturnType<typeof enviar>> | null = null;
+    for (const pessoa of [...participantes.filter((p) => p.id !== como.id), como]) {
+      resposta = await enviar(pessoa, evento("apr_assinada", { apr_id: aprId }, osId));
+      assert.equal(resposta.rejeitados.length, 0, JSON.stringify(resposta.rejeitados));
+    }
+    return resposta!;
+  }
+
+  /**
+   * APR aprovada: `apr_concluida` (sem assinaturas, ainda não pontua) e a assinatura de todos os participantes (com o colega de
+   * equipe quando só há uma pessoa). Devolve o id e a resposta da última assinatura (com `pontos_ganhos` de quem enviou).
+   */
   async function apr(como: UsuarioDeTeste, osId: string, participantes: UsuarioDeTeste[] = [como]) {
-    const corpo = await corpoDaApr(participantes);
-    const resposta = await enviar(como, evento("apr_concluida", corpo, osId));
-    assert.equal(resposta.rejeitados.length, 0, JSON.stringify(resposta.rejeitados));
+    const todos = await comColega(participantes);
+    const corpo = await corpoDaApr(todos);
+    const concluida = await enviar(como, evento("apr_concluida", corpo, osId));
+    assert.equal(concluida.rejeitados.length, 0, JSON.stringify(concluida.rejeitados));
+    const resposta = await assinarApr(como, osId, corpo.id as string, todos);
     return { aprId: corpo.id as string, resposta };
   }
 
@@ -113,20 +144,30 @@ export async function prepararCampo(opcoes: { relogio?: Date } = {}) {
     return id;
   }
 
-  /** Encerra com a foto e a assinatura de todos os `participantes` (os da APR). */
-  async function encerrar(como: UsuarioDeTeste, execId: string, participantes: UsuarioDeTeste[] = [como]) {
+  /** A OS de uma execução (os eventos de execução não precisam dela, mas os de encerramento a levam como a tela faz). */
+  const osDaExecucao = async (execId: string) => (await amb.db.select({ osId: execucao.osId }).from(execucao).where(eq(execucao.id, execId)))[0]!.osId;
+
+  /** O clique em "Encerrar OS": o tempo para (a OS fica `encerrando`) e ainda não pontua. */
+  async function clicarEncerrar(como: UsuarioDeTeste, execId: string) {
+    const r = await enviar(como, evento("execucao_encerrada", { execucao_id: execId, fim: agora(), ...POSICAO }, await osDaExecucao(execId)));
+    assert.equal(r.rejeitados.length, 0, JSON.stringify(r.rejeitados));
+    return r;
+  }
+
+  /** O preenchimento e a assinatura do responsável (a OS fica `aguardando_supervisor`); é aqui que a execução pontua. */
+  async function assinarEncerramento(como: UsuarioDeTeste, execId: string) {
     const r = await enviar(
       como,
-      evento("execucao_encerrada", {
-        execucao_id: execId,
-        fim: agora(),
-        descricao_atividade: "Serviço feito",
-        evidencias: [{ id: await foto(), capturada_em: agora() }],
-        assinaturas: participantes.map((u) => ({ usuario_id: u.id })),
-      }),
+      evento("encerramento_assinado", { execucao_id: execId, descricao_atividade: "Serviço feito", evidencias: [{ id: await foto(), capturada_em: agora() }] }, await osDaExecucao(execId)),
     );
     assert.equal(r.rejeitados.length, 0, JSON.stringify(r.rejeitados));
     return r;
+  }
+
+  /** Os dois passos do encerramento, um depois do outro; devolve a resposta da assinatura (a que traz os pontos da execução). */
+  async function encerrar(como: UsuarioDeTeste, execId: string) {
+    await clicarEncerrar(como, execId);
+    return assinarEncerramento(como, execId);
   }
 
   async function interromper(como: UsuarioDeTeste, execId: string) {
@@ -136,7 +177,7 @@ export async function prepararCampo(opcoes: { relogio?: Date } = {}) {
   }
 
   async function suspender(como: UsuarioDeTeste, execId: string) {
-    const r = await enviar(como, evento("execucao_suspensa", { execucao_id: execId, fim: agora() }));
+    const r = await enviar(como, evento("execucao_suspensa", { execucao_id: execId, fim: agora(), motivo: "fim_expediente", ...POSICAO }));
     assert.equal(r.rejeitados.length, 0, JSON.stringify(r.rejeitados));
     return r;
   }
@@ -145,9 +186,12 @@ export async function prepararCampo(opcoes: { relogio?: Date } = {}) {
   async function servico(como: UsuarioDeTeste, osId: string, participantes: UsuarioDeTeste[] = [como]) {
     const { aprId, resposta: daApr } = await apr(como, osId, participantes);
     const execId = await iniciar(como, osId, aprId);
-    const daExecucao = await encerrar(como, execId, participantes);
+    const daExecucao = await encerrar(como, execId);
     return { aprId, execId, daApr, daExecucao };
   }
+
+  /** A assinatura final do supervisor (a "ciência"): a OS fica `encerrada`; devolve a resposta da rota. */
+  const concluir = (supervisor: UsuarioDeTeste, osId: string) => amb.req("POST", `/os/${osId}/ciencia`, { como: supervisor });
 
   /** O extrato da pessoa no banco; sem as conquistas (que cada teste confere à parte). */
   const extrato = (usuarioId: string, incluirConquistas = false) =>
@@ -178,10 +222,15 @@ export async function prepararCampo(opcoes: { relogio?: Date } = {}) {
     tecnico,
     novaOs,
     corpoDaApr,
+    comColega,
     apr,
+    assinarApr,
     aprBloqueada,
     iniciar,
+    clicarEncerrar,
+    assinarEncerramento,
     encerrar,
+    concluir,
     interromper,
     suspender,
     servico,

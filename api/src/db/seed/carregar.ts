@@ -36,7 +36,7 @@ export async function carregarDadosIniciais(db: PgDatabase<PgQueryResultHKT>): P
 
       const [criado] = await tx
         .insert(modeloApr)
-        .values({ codigo: m.codigo, versao: m.versao, dataDocumento: m.dataDocumento, titulo: m.titulo, pae: m.pae })
+        .values({ codigo: m.codigo, versao: m.versao, dataDocumento: m.dataDocumento, titulo: m.titulo, pae: m.pae, participantesComAssinatura: m.participantesComAssinatura })
         .returning({ id: modeloApr.id });
       const modeloAprId = criado!.id;
 

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, pgTable, primaryKey, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, pgTable, primaryKey, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 import { itemModeloApr, modeloApr, riscoModeloApr } from "./modelos-apr";
 import { os } from "./sap";
@@ -51,13 +51,26 @@ export const aprParticipante = pgTable(
       .notNull()
       .references(() => usuario.id),
     funcao: text({ enum: APR_FUNCOES }).notNull(),
-    /** Cópia da assinatura do perfil no momento da confirmação. */
-    assinaturaPath: text().notNull(),
-    assinadaEm: instante().notNull(),
+    /**
+     * Cópia da assinatura do perfil no momento em que o participante assinou a APR na própria conta (Reunião 3). Nula enquanto
+     * ele não assinou (a APR registrada espera a assinatura de todos) e em quem recusou.
+     */
+    assinaturaPath: text(),
+    assinadaEm: instante(),
+    /**
+     * A assinatura foi dada no aparelho do responsável (o modo offline, que é contingência) e não na conta de quem assina. As
+     * APRs anteriores à Reunião 3 foram todas assim.
+     */
+    assinaturaPresencial: boolean().notNull().default(false),
+    /** Direito de recusa: o participante não concordou, saiu da APR e deixou o motivo. Ele não conta como participante nem assina. */
+    recusouEm: instante(),
+    recusaMotivo: text(),
   },
   (t) => [
     primaryKey({ name: "apr_participante_pkey", columns: [t.aprId, t.usuarioId] }),
     check("apr_participante_funcao_check", emLista(t.funcao, APR_FUNCOES)),
+    check("apr_participante_assinatura_completa", sql`(${t.assinaturaPath} is null) = (${t.assinadaEm} is null)`),
+    check("apr_participante_recusa_completa", sql`(${t.recusouEm} is null) = (${t.recusaMotivo} is null) and (${t.recusouEm} is null or ${t.assinadaEm} is null)`),
     // Exatamente um responsável por APR (o que o papel chama de "Supervisor da Atividade").
     uniqueIndex("apr_um_responsavel_idx").on(t.aprId).where(sql`${t.funcao} = 'responsavel'`),
     index("apr_participante_usuario_idx").on(t.usuarioId),

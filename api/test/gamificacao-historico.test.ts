@@ -44,7 +44,8 @@ describe("Gamificação: implantação (o extrato nasce do histórico, com as me
     // Terceiro trimestre (já passou da tolerância em 13/10): serviço comum e uma preventiva em local crítico.
     noDia("2026-08-10T15:00:00Z");
     await c.servico(ana, (await c.novaOs()).id, [ana, beto]);
-    await c.servico(caio, (await c.novaOs({ tipo: "preventiva", critico: true, dataInicioProg: "2026-08-10", dataFimProg: "2026-08-20" })).id);
+    // A APR exige ao menos 2 participantes: o Caio vai com o Beto, para o terceiro trimestre ter só os três técnicos do cenário.
+    await c.servico(caio, (await c.novaOs({ tipo: "preventiva", critico: true, dataInicioProg: "2026-08-10", dataFimProg: "2026-08-20" })).id, [caio, beto]);
 
     // Quarto trimestre (aberto).
     noDia("2026-10-13T15:00:00Z");

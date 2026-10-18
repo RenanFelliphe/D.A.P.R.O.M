@@ -1,14 +1,12 @@
-import { and, asc, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, ne } from "drizzle-orm";
 import {
   apr,
   aprParticipante,
   aprResposta,
   aprRisco,
   equipe,
-  evidencia,
   execucao,
   execucaoAssinatura,
-  execucaoPausa,
   itemModeloApr,
   localInstalacao,
   modeloApr,
@@ -17,34 +15,52 @@ import {
   usuario,
 } from "../db/schema";
 import type { Deps } from "../deps";
+import { DESCRICAO_SEM_OCORRENCIAS } from "../dominio/encerramento";
 import type { Bucket } from "./armazenamento";
 
 type Instante = Date;
 
-export interface TrechoPdf {
-  id: string;
-  inicio: Instante;
-  fim: Instante;
-  pausas: { inicio: Instante; fim: Instante; motivo: string | null }[];
-  /** Duração entre início e fim, em ms. */
-  brutoMs: number;
-  pausaMs: number;
-  liquidoMs: number;
+export interface ParticipantePdf {
+  usuarioId: string;
+  funcao: string;
+  nome: string;
+  matricula: string;
+  cargo: string | null;
+  registro: string | null;
+  /** Nulos enquanto a pessoa não assinou a APR (célula vazia no papel). */
+  assinaturaPath: string | null;
+  assinadaEm: Instante | null;
 }
 
+/** Quem assinou e quando: o responsável no encerramento ou o supervisor no fim. */
+export interface AssinanteFinal {
+  nome: string;
+  cargo: string | null;
+  registro: string | null;
+  assinaturaPath: string | null;
+  em: Instante;
+}
+
+/**
+ * O que o PDF da OS mostra: a APR (como o modelo) e a folha da OS do SAP preenchida. Nada além disso: tempos, pausas, fotos e
+ * checklist vão para o relatório da execução (`relatorio-execucao.ts`).
+ */
 export interface DadosPdf {
   os: typeof os.$inferSelect;
   local: typeof localInstalacao.$inferSelect;
   equipe: typeof equipe.$inferSelect;
-  /** A Execução que encerrou a OS: a APR dela é a página 1. */
+  /** A Execução que encerrou a OS (a primeira encerrada): a APR dela é a primeira página. */
   principal: typeof execucao.$inferSelect;
-  trechoPrincipal: TrechoPdf;
-  /** Trechos anteriores (suspensos ou interrompidos), do mais antigo ao mais novo. */
-  anteriores: TrechoPdf[];
+  /** Início do primeiro trecho (quando a atividade teve vários) e fim da Execução que encerrou, o clique em "Encerrar OS". */
+  inicio: Instante;
+  fim: Instante;
+  /** A descrição do encerramento, ou o texto padrão quando não houve ocorrência. */
+  descricao: string;
   apr: typeof apr.$inferSelect;
   modelo: typeof modeloApr.$inferSelect;
   preenchidaPor: { nome: string; matricula: string };
-  participantes: { usuarioId: string; funcao: string; nome: string; matricula: string; cargo: string | null; registro: string | null; assinaturaPath: string; assinadaEm: Instante }[];
+  /** Quem recusou a APR saiu dela e não entra aqui (o relatório da execução traz a recusa). */
+  participantes: ParticipantePdf[];
   riscos: { classificacao: string; nome: string }[];
   itens: {
     secao: string;
@@ -58,29 +74,32 @@ export interface DadosPdf {
     reprovado: boolean;
     alerta: boolean;
   }[];
-  assinaturasExecucao: { usuarioId: string; nome: string; matricula: string; cargo: string | null; registro: string | null; assinaturaPath: string; assinadaEm: Instante }[];
-  fotos: { fotoPath: string; capturadaEm: Instante; latitude: number | null; longitude: number | null }[];
-  /** PDFs anexados à execução (laudos, relatórios): só o nome e a hora entram no documento; o arquivo fica no sistema. */
-  documentos: { nome: string | null; capturadaEm: Instante }[];
-  ciencia: { nome: string; cargo: string | null; registro: string | null; assinaturaPath: string | null; em: Instante } | null;
-  /** Bytes das imagens (fotos e assinaturas) por `bucket/caminho`; `null` = ausente no armazenamento. */
+  /** "Responsável - Manutenção": a assinatura do encerramento. */
+  responsavel: AssinanteFinal | null;
+  /** "Supervisor": a assinatura final. */
+  ciencia: AssinanteFinal | null;
+  /** Bytes das assinaturas por `bucket/caminho`; `null` = ausente no armazenamento. */
   imagens: Map<string, Uint8Array | null>;
 }
 
 export const chaveImagem = (bucket: Bucket, caminho: string) => `${bucket}/${caminho}`;
 
-function montarTrecho(e: typeof execucao.$inferSelect, pausas: (typeof execucaoPausa.$inferSelect)[]): TrechoPdf {
-  const fim = e.fim ?? e.inicio;
-  const lista = pausas
-    .filter((p) => p.execucaoId === e.id)
-    .map((p) => ({ inicio: p.inicio, fim: p.fim ?? fim, motivo: p.motivo }))
-    .sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
-  const brutoMs = Math.max(0, fim.getTime() - e.inicio.getTime());
-  const pausaMs = Math.min(brutoMs, lista.reduce((s, p) => s + Math.max(0, p.fim.getTime() - p.inicio.getTime()), 0));
-  return { id: e.id, inicio: e.inicio, fim, pausas: lista, brutoMs, pausaMs, liquidoMs: brutoMs - pausaMs };
+/** Lê do armazenamento as imagens pedidas, todas de uma vez; falha de leitura ou arquivo ausente vira `null` ("[imagem indisponível]"). */
+export async function lerImagens(deps: Deps, pedidos: { bucket: Bucket; caminho: string | null }[]): Promise<Map<string, Uint8Array | null>> {
+  const imagens = new Map<string, Uint8Array | null>();
+  await Promise.all(
+    pedidos.map(async ({ bucket, caminho }) => {
+      if (!caminho) return;
+      const chave = chaveImagem(bucket, caminho);
+      if (imagens.has(chave)) return;
+      imagens.set(chave, null);
+      imagens.set(chave, await deps.armazenamento.ler(bucket, caminho).catch(() => null));
+    }),
+  );
+  return imagens;
 }
 
-/** Lê do banco e do armazenamento tudo o que o PDF mostra. Lança erro se a OS não existe ou não tem Execução encerrada. */
+/** Lê do banco e do armazenamento tudo o que o PDF mostra. Lança erro se a OS não existe ou não tem Execução encerrada e assinada. */
 export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosPdf> {
   const { db } = deps;
   const [base] = await db
@@ -98,12 +117,11 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
     .where(and(eq(execucao.osId, osId), isNotNull(execucao.resultado), ne(execucao.resultado, "cancelada")))
     .orderBy(asc(execucao.fim), asc(execucao.inicio));
   const principal = execucoes.find((e) => e.resultado === "encerrada");
-  if (!principal) throw new Error("A OS não tem Execução encerrada");
+  if (!principal || !principal.fim) throw new Error("A OS não tem Execução encerrada");
+  // O PDF só existe depois do encerramento assinado pelo responsável (e da assinatura final do supervisor, que dispara a tarefa).
+  if (!principal.encerramentoAssinadoEm) throw new Error("A Execução encerrada ainda não foi assinada pelo responsável");
   const anteriores = execucoes.filter((e) => e.id !== principal.id && (e.resultado === "suspensa" || e.resultado === "interrompida") && e.fim !== null);
-  anteriores.sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
-
-  const idsTrechos = [principal.id, ...anteriores.map((e) => e.id)];
-  const pausas = await db.select().from(execucaoPausa).where(inArray(execucaoPausa.execucaoId, idsTrechos));
+  const inicio = [principal, ...anteriores].reduce((menor, e) => (e.inicio < menor ? e.inicio : menor), principal.inicio);
 
   const [aprPrincipal] = await db.select().from(apr).where(eq(apr.id, principal.aprId));
   if (!aprPrincipal) throw new Error("APR da Execução não encontrada");
@@ -123,7 +141,7 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
     })
     .from(aprParticipante)
     .innerJoin(usuario, eq(usuario.id, aprParticipante.usuarioId))
-    .where(eq(aprParticipante.aprId, aprPrincipal.id))
+    .where(and(eq(aprParticipante.aprId, aprPrincipal.id), isNull(aprParticipante.recusouEm)))
     .orderBy(asc(aprParticipante.funcao), asc(usuario.nome));
   // "responsavel" vem antes de "executor" na ordem alfabética inversa; garante o responsável primeiro.
   participantes.sort((a, b) => Number(b.funcao === "responsavel") - Number(a.funcao === "responsavel"));
@@ -172,11 +190,11 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
     };
   });
 
-  const assinaturasExecucao = await db
+  // A assinatura do encerramento é uma só: a do responsável (`executor_id`); na falta dela, a primeira que existir.
+  const assinaturasDoEncerramento = await db
     .select({
       usuarioId: execucaoAssinatura.usuarioId,
       nome: usuario.nome,
-      matricula: usuario.matricula,
       cargo: usuario.cargo,
       registro: usuario.registroProfissional,
       assinaturaPath: execucaoAssinatura.assinaturaPath,
@@ -185,59 +203,43 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
     .from(execucaoAssinatura)
     .innerJoin(usuario, eq(usuario.id, execucaoAssinatura.usuarioId))
     .where(eq(execucaoAssinatura.execucaoId, principal.id))
-    .orderBy(asc(execucaoAssinatura.assinadaEm), asc(usuario.nome));
+    .orderBy(asc(execucaoAssinatura.assinadaEm));
+  const doResponsavel = assinaturasDoEncerramento.find((a) => a.usuarioId === principal.executorId) ?? assinaturasDoEncerramento[0];
+  const responsavel: AssinanteFinal | null = doResponsavel
+    ? { nome: doResponsavel.nome, cargo: doResponsavel.cargo, registro: doResponsavel.registro, assinaturaPath: doResponsavel.assinaturaPath, em: doResponsavel.assinadaEm }
+    : null;
 
-  const evidencias = await db
-    .select({ tipo: evidencia.tipo, fotoPath: evidencia.fotoPath, nomeArquivo: evidencia.nomeArquivo, capturadaEm: evidencia.capturadaEm, latitude: evidencia.latitude, longitude: evidencia.longitude })
-    .from(evidencia)
-    .where(eq(evidencia.execucaoId, principal.id))
-    .orderBy(asc(evidencia.capturadaEm), asc(evidencia.id));
-  const fotos = evidencias.filter((e) => e.tipo === "foto").map(({ fotoPath, capturadaEm, latitude, longitude }) => ({ fotoPath, capturadaEm, latitude, longitude }));
-  const documentos = evidencias.filter((e) => e.tipo === "pdf").map((e) => ({ nome: e.nomeArquivo, capturadaEm: e.capturadaEm }));
-
-  let ciencia: DadosPdf["ciencia"] = null;
+  let ciencia: AssinanteFinal | null = null;
   if (base.os.cienciaPor && base.os.cienciaEm) {
     const [u] = await db
       .select({ nome: usuario.nome, cargo: usuario.cargo, registro: usuario.registroProfissional, assinaturaPath: usuario.assinaturaPath })
       .from(usuario)
       .where(eq(usuario.id, base.os.cienciaPor));
-    // A imagem que o supervisor usou na ciência; as ciências anteriores à assinatura mostram a atual do perfil.
+    // A imagem que o supervisor usou na assinatura final; as anteriores à assinatura mostram a atual do perfil.
     if (u) ciencia = { ...u, assinaturaPath: base.os.cienciaAssinaturaPath ?? u.assinaturaPath, em: base.os.cienciaEm };
   }
 
-  // Imagens: lidas todas de uma vez; falha de leitura ou arquivo ausente vira `null` ("[imagem indisponível]").
-  const imagens = new Map<string, Uint8Array | null>();
-  const pedidos: { bucket: Bucket; caminho: string }[] = [
+  const imagens = await lerImagens(deps, [
     ...participantes.map((p) => ({ bucket: "assinaturas" as const, caminho: p.assinaturaPath })),
-    ...assinaturasExecucao.map((a) => ({ bucket: "assinaturas" as const, caminho: a.assinaturaPath })),
-    ...(ciencia?.assinaturaPath ? [{ bucket: "assinaturas" as const, caminho: ciencia.assinaturaPath }] : []),
-    ...fotos.map((f) => ({ bucket: "fotos" as const, caminho: f.fotoPath })),
-  ];
-  await Promise.all(
-    pedidos.map(async ({ bucket, caminho }) => {
-      const chave = chaveImagem(bucket, caminho);
-      if (imagens.has(chave)) return;
-      imagens.set(chave, null);
-      imagens.set(chave, await deps.armazenamento.ler(bucket, caminho).catch(() => null));
-    }),
-  );
+    { bucket: "assinaturas", caminho: responsavel?.assinaturaPath ?? null },
+    { bucket: "assinaturas", caminho: ciencia?.assinaturaPath ?? null },
+  ]);
 
   return {
     os: base.os,
     local: base.local,
     equipe: base.equipe,
     principal,
-    trechoPrincipal: montarTrecho(principal, pausas),
-    anteriores: anteriores.map((e) => montarTrecho(e, pausas)),
+    inicio,
+    fim: principal.fim,
+    descricao: principal.descricaoAtividade?.trim() || DESCRICAO_SEM_OCORRENCIAS,
     apr: aprPrincipal,
     modelo: modelo!,
     preenchidaPor: autor ?? { nome: "—", matricula: "—" },
     participantes,
     riscos,
     itens,
-    assinaturasExecucao,
-    fotos,
-    documentos,
+    responsavel,
     ciencia,
     imagens,
   };

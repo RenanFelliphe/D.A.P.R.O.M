@@ -1,13 +1,16 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
-import { eq } from "drizzle-orm";
-import { itemModeloApr, localInstalacao, modeloApr, os } from "../src/db/schema";
+import { and, eq } from "drizzle-orm";
+import { itemModeloApr, localInstalacao, modeloApr, os, tarefa } from "../src/db/schema";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
+import { ajudaDeExecucao } from "./ajuda-execucao";
 
 describe("Perfil do técnico: histórico e execuções abertas", () => {
   let amb: Ambiente;
+  let h: ReturnType<typeof ajudaDeExecucao>;
   let equipeId: string;
+  let supervisor: UsuarioDeTeste;
   let tecnico: UsuarioDeTeste;
   let colega: UsuarioDeTeste;
   let modeloId: string;
@@ -17,8 +20,10 @@ describe("Perfil do técnico: histórico e execuções abertas", () => {
 
   before(async () => {
     amb = await criarAmbiente({ comCarga: true });
-    const supervisor = await amb.criarUsuario({ perfil: "tecnico" });
+    h = ajudaDeExecucao(amb);
+    supervisor = await amb.criarUsuario({ perfil: "tecnico" });
     equipeId = (await amb.criarEquipe({ supervisorId: supervisor.id })).id;
+    await amb.sql("update usuario set equipe_id = $1 where id = $2", [equipeId, supervisor.id]);
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     colega = await amb.criarUsuario({ perfil: "tecnico", equipeId });
     const [m] = await amb.db.select().from(modeloApr).where(eq(modeloApr.codigo, "APR 01"));
@@ -29,44 +34,48 @@ describe("Perfil do técnico: histórico e execuções abertas", () => {
   });
   after(() => amb.fechar());
 
-  const agora = () => amb.relogio.agora.toISOString();
-  const evento = (tipo: string, payload: object, osId: string) => ({ id: randomUUID(), tipo, os_id: osId, payload, ocorrido_em: agora() });
-  const enviar = (como: UsuarioDeTeste, ...eventos: unknown[]) => amb.esperar(200, "POST", "/eventos", { como, json: { eventos } });
+  const agora = () => h.agora();
+  const evento = (tipo: string, payload: object, osId: string) => h.evento(tipo, payload, osId);
+  const enviar = (como: UsuarioDeTeste, ...eventos: unknown[]) => h.enviar(como, ...eventos);
 
-  /** OS nova, APR aprovada do técnico e execução iniciada; devolve os ids. */
+  /** OS nova, APR aprovada (o técnico é o responsável e a colega é a outra participante), assinada pelos dois, e a execução iniciada; devolve os ids. */
   async function iniciarExecucao() {
     const [o] = await amb.db
       .insert(os)
       .values({ numeroOrdem: String(++contadorOs), tipo: "corretiva", titulo: "Troca de válvula", localInstalacaoId: localId, equipeId, dataInicioProg: "2026-10-11", origem: "sap" })
       .returning();
     const aprId = randomUUID();
-    const r = await enviar(
-      tecnico,
-      evento("apr_concluida", { id: aprId, modelo_apr_id: modeloId, participantes: [{ usuario_id: tecnico.id, funcao: "responsavel" }], riscos: [], respostas, evidencias: [], observacao_geral: null, concluida_em: agora() }, o!.id),
-    );
+    const participantes = [
+      { usuario_id: tecnico.id, funcao: "responsavel" },
+      { usuario_id: colega.id, funcao: "executor" },
+    ];
+    const r = await enviar(tecnico, evento("apr_concluida", { id: aprId, modelo_apr_id: modeloId, participantes, riscos: [], respostas, evidencias: [], observacao_geral: null, concluida_em: agora() }, o!.id));
     assert.equal(r.aprs[0].resultado, "aprovada");
-    const execId = randomUUID();
-    await enviar(tecnico, evento("execucao_iniciada", { id: execId, apr_id: aprId, inicio: agora() }, o!.id));
+    await h.assinarApr(aprId, o!.id, [tecnico, colega]);
+    const execId = await h.iniciar(tecnico, o!.id, aprId);
     return { osId: o!.id, execId };
   }
 
+  /** Os dois passos do encerramento pelo responsável (o clique em "Encerrar OS" e o preenchimento assinado): a OS fica `aguardando_supervisor`. */
   async function encerrar(execId: string, osId: string) {
-    const fotoId = randomUUID();
-    await amb.armazenamento.gravar("fotos", fotoId, new Uint8Array([1]), "image/png");
-    await enviar(
-      tecnico,
-      evento("execucao_encerrada", { execucao_id: execId, fim: agora(), descricao_atividade: "Feito", evidencias: [{ id: fotoId, capturada_em: agora() }], assinaturas: [{ usuario_id: tecnico.id }] }, osId),
-    );
+    await h.encerrar(tecnico, osId, execId);
   }
 
-  it("execuções abertas: só as do próprio usuário, até a execução terminar", async () => {
+  const statusDa = async (id: string) => (await amb.db.select({ s: os.status }).from(os).where(eq(os.id, id)))[0]!.s;
+
+  it("execuções abertas: só as do próprio usuário, até a execução terminar (o clique em Encerrar OS já a fecha)", async () => {
     const { osId, execId } = await iniciarExecucao();
     const minhas = await amb.esperar(200, "GET", "/me/execucoes-abertas", { como: tecnico });
     assert.deepEqual(minhas.execucoes.map((e: any) => [e.id, e.os_id]), [[execId, osId]]);
     assert.ok(minhas.execucoes[0].numero_ordem);
-    assert.deepEqual((await amb.esperar(200, "GET", "/me/execucoes-abertas", { como: colega })).execucoes, []);
+    assert.deepEqual((await amb.esperar(200, "GET", "/me/execucoes-abertas", { como: colega })).execucoes, [], "a colega assinou a APR, mas não é quem executa");
 
-    await encerrar(execId, osId);
+    // O primeiro passo (o tempo para): a execução deixa de estar aberta, ainda que a OS siga em `encerrando` à espera do preenchimento.
+    await h.clicarEncerrar(tecnico, osId, execId);
+    assert.equal(await statusDa(osId), "encerrando");
+    assert.deepEqual((await amb.esperar(200, "GET", "/me/execucoes-abertas", { como: tecnico })).execucoes, []);
+    await h.assinarEncerramento(tecnico, osId, execId);
+    assert.equal(await statusDa(osId), "aguardando_supervisor");
     assert.deepEqual((await amb.esperar(200, "GET", "/me/execucoes-abertas", { como: tecnico })).execucoes, []);
     await amb.esperar(401, "GET", "/me/execucoes-abertas");
   });
@@ -104,6 +113,16 @@ describe("Perfil do técnico: histórico e execuções abertas", () => {
     assert.equal(linhaA.tempo_liquido_min, 30);
     assert.equal(typeof linhaA.pdf_pronto, "boolean");
     assert.ok(linhaA.numero_ordem && linhaA.inicio && linhaA.fim);
+
+    // O PDF só é pedido quando o supervisor assina por último: até lá nenhuma das duas tem tarefa de PDF.
+    const tarefasDePdf = (osId: string) => amb.db.select().from(tarefa).where(and(eq(tarefa.tipo, "pdf_os"), eq(tarefa.referenciaId, osId)));
+    assert.equal((await tarefasDePdf(a.osId)).length, 0);
+    assert.equal(await statusDa(a.osId), "aguardando_supervisor");
+    const assinada = await h.concluir(supervisor, a.osId);
+    assert.equal(assinada.status, 200, JSON.stringify(assinada.corpo));
+    assert.equal(await statusDa(a.osId), "encerrada");
+    assert.equal((await tarefasDePdf(a.osId)).length, 1);
+    assert.equal((await tarefasDePdf(b.osId)).length, 0);
   });
 
   it("histórico: cada técnico vê só as próprias execuções", async () => {

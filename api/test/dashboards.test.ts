@@ -11,9 +11,11 @@ const h = (iso: string) => new Date(iso);
 
 /**
  * Cenário: Equipe Norte (supervisor, dois técnicos) e Equipe Sul (sem supervisor, dois técnicos ativos e um inativo).
- * o1 preventiva encerrada (local crítico), o2 corretiva encerrada (com ciência e exportada), o3 preventiva liberada e
- * atrasada, o4 preventiva pendente com APR bloqueada e reprogramação (local crítico), o5 corretiva em execução há mais de
- * 12 h, o6 corretiva com execução interrompida por risco, o7 preventiva cancelada, o8 encerrada no período anterior.
+ * o1 preventiva encerrada (local crítico; concluída com a assinatura do supervisor, ainda não exportada), o2 corretiva encerrada
+ * (assinada pelo supervisor e exportada), o3 preventiva liberada e atrasada, o4 preventiva pendente com APR bloqueada e
+ * reprogramação (local crítico), o5 corretiva em execução há mais de 12 h, o6 corretiva com execução interrompida por risco,
+ * o7 preventiva cancelada, o8 encerrada no período anterior (também assinada e não exportada), o9 aguardando a assinatura final
+ * do supervisor e o10 encerrando (o responsável ainda não assinou), as duas com a execução fora dos períodos consultados.
  */
 describe("Dashboards de Indicadores e exportação", () => {
   let amb: Ambiente;
@@ -42,7 +44,7 @@ describe("Dashboards de Indicadores e exportação", () => {
     await amb.db.update(modeloApr).set({ publicadoEm: h("2026-01-01T12:00:00Z") }).where(eq(modeloApr.id, m!.id));
 
     let numero = 7_000_000;
-    const novaOs = async (nome: string, d: { equipeId: string; tipo: "corretiva" | "preventiva"; status: "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada"; inicio: string; local: string; cienciaEm?: Date; exportadaEm?: Date }) => {
+    const novaOs = async (nome: string, d: { equipeId: string; tipo: "corretiva" | "preventiva"; status: "liberada" | "pendente" | "em_execucao" | "encerrando" | "aguardando_supervisor" | "encerrada" | "cancelada"; inicio: string; local: string; cienciaEm?: Date; exportadaEm?: Date }) => {
       const [o] = await amb.db
         .insert(os)
         .values({
@@ -67,7 +69,8 @@ describe("Dashboards de Indicadores e exportação", () => {
       await amb.db.insert(apr).values({ id, osId, modeloAprId: m!.id, preenchidaPor: por.id, resultado, concluidaEm: h(quando) });
       return id;
     };
-    const novaExecucao = async (osId: string, por: UsuarioDeTeste, inicio: string, fim: string | null, resultado: "encerrada" | "interrompida" | null) => {
+    /** `assinada: false` é a execução encerrada cujo responsável ainda não assinou o encerramento (a OS está `encerrando`). */
+    const novaExecucao = async (osId: string, por: UsuarioDeTeste, inicio: string, fim: string | null, resultado: "encerrada" | "interrompida" | null, assinada = true) => {
       const aprId = await novaApr(osId, por, "aprovada", new Date(h(inicio).getTime() - 10 * 60_000).toISOString());
       const id = randomUUID();
       await amb.db.insert(execucao).values({
@@ -79,13 +82,14 @@ describe("Dashboards de Indicadores e exportação", () => {
         inicio: h(inicio),
         fim: fim ? h(fim) : null,
         resultado,
-        descricaoAtividade: resultado === "encerrada" ? "Feito" : null,
+        descricaoAtividade: resultado === "encerrada" && assinada ? "Feito" : null,
+        encerramentoAssinadoEm: resultado === "encerrada" && assinada && fim ? h(fim) : null,
         motivo: resultado === "interrompida" ? "Vazamento no local" : null,
       });
       return id;
     };
 
-    const o1 = await novaOs("o1", { equipeId: norte, tipo: "preventiva", status: "encerrada", inicio: "2026-10-05", local: critico!.id });
+    const o1 = await novaOs("o1", { equipeId: norte, tipo: "preventiva", status: "encerrada", inicio: "2026-10-05", local: critico!.id, cienciaEm: AGORA });
     await novaExecucao(o1, u.ana, "2026-10-10T12:00:00Z", "2026-10-10T14:00:00Z", "encerrada");
     const o2 = await novaOs("o2", { equipeId: norte, tipo: "corretiva", status: "encerrada", inicio: "2026-10-08", local: comum!.id, cienciaEm: AGORA, exportadaEm: AGORA });
     const e2 = await novaExecucao(o2, u.bruno, "2026-10-12T12:00:00Z", "2026-10-12T13:00:00Z", "encerrada");
@@ -99,8 +103,13 @@ describe("Dashboards de Indicadores e exportação", () => {
     const o6 = await novaOs("o6", { equipeId: sul, tipo: "corretiva", status: "liberada", inicio: "2026-10-20", local: comum!.id });
     await novaExecucao(o6, u.carla, "2026-10-11T12:00:00Z", "2026-10-11T12:30:00Z", "interrompida");
     await novaOs("o7", { equipeId: norte, tipo: "preventiva", status: "cancelada", inicio: "2026-10-06", local: comum!.id });
-    const o8 = await novaOs("o8", { equipeId: norte, tipo: "corretiva", status: "encerrada", inicio: "2026-08-25", local: comum!.id });
+    const o8 = await novaOs("o8", { equipeId: norte, tipo: "corretiva", status: "encerrada", inicio: "2026-08-25", local: comum!.id, cienciaEm: AGORA });
     await novaExecucao(o8, u.ana, "2026-09-01T12:00:00Z", "2026-09-01T13:00:00Z", "encerrada");
+    // A o9 e a o10 não entram nas contas do período: a execução é de julho, antes do período anterior.
+    const o9 = await novaOs("o9", { equipeId: norte, tipo: "corretiva", status: "aguardando_supervisor", inicio: "2026-07-01", local: comum!.id });
+    await novaExecucao(o9, u.ana, "2026-07-01T12:00:00Z", "2026-07-01T13:00:00Z", "encerrada");
+    const o10 = await novaOs("o10", { equipeId: norte, tipo: "corretiva", status: "encerrando", inicio: "2026-07-02", local: comum!.id });
+    await novaExecucao(o10, u.ana, "2026-07-02T12:00:00Z", "2026-07-02T13:00:00Z", "encerrada", false);
   });
   after(() => amb.fechar());
 
@@ -117,7 +126,9 @@ describe("Dashboards de Indicadores e exportação", () => {
       assert.deepEqual(r.aprs, { total: 5, bloqueadas: 1, anterior: 1, bloqueadas_anterior: 0 });
       assert.deepEqual(r.tempo, { execucoes: 2, tempo_liquido_medio_min: 85, pausa_media_min: 5, proporcao_pausa: 0.0556 });
       assert.equal(r.interrupcoes, 1);
-      assert.deepEqual(r.pendencias, { a_exportar: 2, sem_ciencia: 2, execucoes_esquecidas: 1 });
+      // A baixa no SAP espera a OS concluída (o1 e o8, com a assinatura do supervisor); a assinatura final pendente é só a da o9
+      // (aguardando o supervisor), não a da o10, que ainda espera o responsável.
+      assert.deepEqual(r.pendencias, { a_exportar: 2, sem_ciencia: 1, execucoes_esquecidas: 1 });
     });
 
     it("equipe_id e o supervisor limitam tudo à equipe", async () => {

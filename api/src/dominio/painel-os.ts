@@ -34,7 +34,9 @@ import { servicoDaAtividade } from "./catalogo";
 import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
 import { ganhosDe } from "./lancamentos";
 import { assinaturaDoAto } from "./assinatura";
+import { ROTULO_DA_PAUSA, ROTULO_DA_SUSPENSAO, descreverMotivo } from "./motivos-de-parada";
 import { pontuarCiencia } from "./pontuacao";
+import { recalcularStatusOs } from "./status-os";
 import {
   condicaoEscopo,
   diaBr,
@@ -269,8 +271,14 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
         nome: usuario.nome,
         matricula: usuario.matricula,
         funcao: aprParticipante.funcao,
+        /** Nulos enquanto o participante não assinou a APR na própria conta (e em quem recusou). */
         assinaturaPath: aprParticipante.assinaturaPath,
         assinadaEm: aprParticipante.assinadaEm,
+        /** A assinatura foi dada no aparelho do responsável (contingência offline). */
+        assinaturaPresencial: aprParticipante.assinaturaPresencial,
+        /** Direito de recusa: o participante saiu da APR e deixou o motivo. */
+        recusouEm: aprParticipante.recusouEm,
+        recusaMotivo: aprParticipante.recusaMotivo,
       })
       .from(aprParticipante)
       .innerJoin(usuario, eq(usuario.id, aprParticipante.usuarioId))
@@ -377,6 +385,13 @@ async function carregarExecucoes(db: Db, osId: string) {
       descricaoAtividade: execucao.descricaoAtividade,
       motivo: execucao.motivo,
       dadosInspecao: execucao.dadosInspecao,
+      suspensaoMotivo: execucao.suspensaoMotivo,
+      suspensaoComplemento: execucao.suspensaoComplemento,
+      encerramentoAssinadoEm: execucao.encerramentoAssinadoEm,
+      inicioLatitude: execucao.inicioLatitude,
+      inicioLongitude: execucao.inicioLongitude,
+      fimLatitude: execucao.fimLatitude,
+      fimLongitude: execucao.fimLongitude,
     })
     .from(execucao)
     .innerJoin(usuario, eq(usuario.id, execucao.executorId))
@@ -420,10 +435,25 @@ async function carregarExecucoes(db: Db, osId: string) {
       resultado: l.resultado,
       descricaoAtividade: l.descricaoAtividade,
       motivo: l.motivo,
+      /** Só na suspensa: por que o serviço não continua hoje (com o complemento de "outro"). */
+      suspensaoMotivo: l.suspensaoMotivo,
+      suspensaoComplemento: l.suspensaoComplemento,
+      /** Quando o responsável assinou o encerramento; nulo na encerrada = a OS está `encerrando`. */
+      encerramentoAssinadoEm: l.encerramentoAssinadoEm,
+      /** Onde a pessoa estava ao iniciar e ao terminar (encerrar, suspender ou interromper); `null` = sem localização. */
+      localizacaoInicio: l.inicioLatitude !== null && l.inicioLongitude !== null ? { latitude: l.inicioLatitude, longitude: l.inicioLongitude } : null,
+      localizacaoFim: l.fimLatitude !== null && l.fimLongitude !== null ? { latitude: l.fimLatitude, longitude: l.fimLongitude } : null,
       dadosInspecao: l.dadosInspecao,
       tempoLiquidoMin: tempo ? emMinutos(tempo.liquidoMs) : null,
       pausaMin: tempo ? emMinutos(tempo.pausaMs) : null,
-      pausas: dela.map((p) => ({ id: p.id, inicio: p.inicio, fim: p.fim, motivo: p.motivo })),
+      pausas: dela.map((p) => ({
+        id: p.id,
+        inicio: p.inicio,
+        fim: p.fim,
+        motivo: p.motivo,
+        complemento: p.complemento,
+        localizacao: p.latitude !== null && p.longitude !== null ? { latitude: p.latitude, longitude: p.longitude } : null,
+      })),
       assinaturas: assinaturas.filter((a) => a.execucaoId === l.id).map(({ execucaoId: _e, ...a }) => a),
       ...separarEvidencias(arquivos.filter((f) => f.execucaoId === l.id)),
     };
@@ -566,20 +596,25 @@ function montarLinhaDoTempo(d: {
       tipo: "apr_concluida",
       descricao: `APR ${a.resultado} (${a.modelo.codigo} v${a.modelo.versao}) por ${a.preenchidaPor.nome}`,
     });
+    for (const x of a.participantes) {
+      if (x.assinadaEm && !x.assinaturaPresencial) itens.push({ em: x.assinadaEm, tipo: "apr_assinada", descricao: `${x.nome} assinou a APR` });
+      if (x.recusouEm) itens.push({ em: x.recusouEm, tipo: "apr_recusada", descricao: `${x.nome} recusou a APR (direito de recusa)${x.recusaMotivo ? `: ${x.recusaMotivo}` : ""}` });
+    }
   }
   for (const e of d.execucoes) {
     itens.push({ em: e.inicio, tipo: "execucao_iniciada", descricao: `Execução iniciada por ${e.executor.nome}` });
     for (const p of e.pausas) {
-      itens.push({ em: p.inicio, tipo: "pausa_iniciada", descricao: `Pausa iniciada${p.motivo ? ` (${p.motivo})` : ""}` });
+      itens.push({ em: p.inicio, tipo: "pausa_iniciada", descricao: `Pausa iniciada (${descreverMotivo(ROTULO_DA_PAUSA, p.motivo, p.complemento)})` });
       if (p.fim) itens.push({ em: p.fim, tipo: "pausa_encerrada", descricao: "Pausa encerrada" });
     }
     if (e.fim && e.resultado) {
       itens.push({
         em: e.fim,
         tipo: `execucao_${ROTULO_RESULTADO[e.resultado]}`,
-        descricao: `Execução ${e.resultado} por ${e.executor.nome}${e.resultado === "interrompida" && e.motivo ? `: ${e.motivo}` : ""}`,
+        descricao: `Execução ${e.resultado} por ${e.executor.nome}${e.resultado === "interrompida" && e.motivo ? `: ${e.motivo}` : ""}${e.resultado === "suspensa" && e.suspensaoMotivo ? `: ${descreverMotivo(ROTULO_DA_SUSPENSAO, e.suspensaoMotivo, e.suspensaoComplemento)}` : ""}`,
       });
     }
+    if (e.encerramentoAssinadoEm) itens.push({ em: e.encerramentoAssinadoEm, tipo: "encerramento_assinado", descricao: `Encerramento assinado por ${e.executor.nome}` });
   }
   for (const a of d.alertas) itens.push({ em: a.criadoEm, tipo: "alerta", descricao: `Alerta ${a.tipo}: ${a.detalhe}` });
   for (const r of d.reprogramacoes) {
@@ -601,7 +636,7 @@ function montarLinhaDoTempo(d: {
       descricao: `Devolvida ao SAP${d.devolucao.porNome ? ` por ${d.devolucao.porNome}` : ""}${d.devolucao.justificativa ? `: ${d.devolucao.justificativa}` : ""}`,
     });
   }
-  if (d.cienciaEm) itens.push({ em: d.cienciaEm, tipo: "ciencia", descricao: `Ciência do supervisor${d.cienciaPorNome ? ` ${d.cienciaPorNome}` : ""}` });
+  if (d.cienciaEm) itens.push({ em: d.cienciaEm, tipo: "ciencia", descricao: `Assinatura final do supervisor${d.cienciaPorNome ? ` ${d.cienciaPorNome}` : ""}: OS concluída` });
 
   return ordenarPorInstante(itens);
 }
@@ -612,46 +647,37 @@ export async function listarAprsDaOs(db: Db, eu: UsuarioAutenticado, osId: strin
   return carregarAprs(db, osId, eu.perfil === "admin");
 }
 
-/** A pessoa executou, preencheu ou assinou a APR de alguma execução da OS: não pode dar ciência nela. */
 /** Quem executou a OS (a execução encerrada; mais de uma só na execução duplicada vinda do modo offline). */
 export async function executoresDaOs(db: Db, osId: string): Promise<string[]> {
   const linhas = await db.selectDistinct({ id: execucao.executorId }).from(execucao).where(and(eq(execucao.osId, osId), eq(execucao.resultado, "encerrada")));
   return linhas.map((l) => l.id);
 }
 
-async function participouDaExecucao(db: Db, osId: string, usuarioId: string): Promise<boolean> {
-  const [executou] = await db.select({ id: execucao.id }).from(execucao).where(and(eq(execucao.osId, osId), eq(execucao.executorId, usuarioId))).limit(1);
-  if (executou) return true;
-  const [preencheu] = await db.select({ id: apr.id }).from(apr).where(and(eq(apr.osId, osId), eq(apr.preenchidaPor, usuarioId))).limit(1);
-  if (preencheu) return true;
-  const [assinou] = await db
-    .select({ aprId: aprParticipante.aprId })
-    .from(aprParticipante)
-    .innerJoin(apr, eq(apr.id, aprParticipante.aprId))
-    .where(and(eq(apr.osId, osId), eq(aprParticipante.usuarioId, usuarioId)))
-    .limit(1);
-  return Boolean(assinou);
-}
-
 /**
- * Ciência do supervisor da equipe da OS encerrada. Grava `ciencia_por` e `ciencia_em` e enfileira a nova geração do
- * PDF (agora com a ciência), na mesma transação. A condição no `update` fecha a corrida entre dois cliques.
+ * A assinatura final do supervisor da equipe da OS, depois de ler o relatório da execução (a "ciência" de antes): quem assina por
+ * último, mesmo que tenha participado do serviço. Só a OS `aguardando_supervisor` (o responsável já assinou o encerramento) é
+ * assinada. Grava `ciencia_por` e `ciencia_em`, a OS passa a `encerrada` (concluída) e a geração do PDF é enfileirada, tudo na
+ * mesma transação. A condição no `select ... for update` fecha a corrida entre dois cliques.
  */
 export async function darCiencia(db: Db, eu: UsuarioAutenticado, osId: string, agora: Date) {
   return db.transaction(async (tx) => {
     const [atual] = await tx.select({ equipeId: os.equipeId, status: os.status, cienciaEm: os.cienciaEm }).from(os).where(eq(os.id, osId)).for("update");
     if (!atual || !podeVerEquipe(eu, atual.equipeId)) throw naoEncontrado("OS não encontrada");
-    if (!podeSupervisionarEquipe(eu, atual.equipeId)) throw proibido("Só o supervisor da equipe da OS dá a ciência");
-    if (atual.status !== "encerrada") throw conflito("os_nao_encerrada", "Só é possível dar ciência em OS encerrada");
-    if (atual.cienciaEm !== null) throw conflito("ciencia_ja_dada", "A ciência desta OS já foi dada");
-    if (await participouDaExecucao(tx as unknown as Db, osId, eu.id)) {
-      throw conflito("ciencia_propria", "Quem participou da execução não dá a ciência da própria OS");
+    if (!podeSupervisionarEquipe(eu, atual.equipeId)) throw proibido("Só o supervisor da equipe da OS assina por último");
+    if (atual.cienciaEm !== null) throw conflito("ciencia_ja_dada", "A assinatura do supervisor nesta OS já foi dada");
+    if (atual.status !== "aguardando_supervisor") {
+      throw conflito(
+        "os_nao_aguardando_supervisor",
+        atual.status === "encerrando" ? "O responsável ainda não assinou o encerramento da OS" : "A OS ainda não chegou à assinatura do supervisor",
+      );
     }
 
     await tx.update(os).set({ cienciaPor: eu.id, cienciaEm: agora, cienciaAssinaturaPath: assinaturaDoAto(eu) }).where(eq(os.id, osId));
+    const status = await recalcularStatusOs(tx as unknown as Db, osId);
+    // O PDF só sai agora: ele leva a assinatura final do supervisor.
     await enfileirarTarefa(tx as unknown as Db, "pdf_os", osId, agora);
-    // Ciência no prazo (até 72 h depois do encerramento) pontua o supervisor, na mesma transação.
+    // A assinatura no prazo (até 72 h depois do encerramento) pontua o supervisor, na mesma transação.
     const ganhos = eu.perfil === "tecnico" ? await pontuarCiencia({ tx: tx as unknown as Db, agora }, osId, eu.id, agora) : [];
-    return { cienciaEm: agora, ...ganhosDe(ganhos, eu.id) };
+    return { cienciaEm: agora, status, ...ganhosDe(ganhos, eu.id) };
   });
 }

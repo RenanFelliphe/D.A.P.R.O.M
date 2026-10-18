@@ -1,14 +1,17 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { APR_FUNCOES, APR_RESPOSTAS, APR_RESULTADOS, apr, aprParticipante, aprResposta, aprRisco, evidencia, execucao, itemModeloApr, modeloApr, riscoModeloApr, usuario } from "../db/schema";
+import { APR_FUNCOES, APR_RESPOSTAS, APR_RESULTADOS, apr, aprParticipante, aprResposta, aprRisco, evidencia, execucao, itemModeloApr, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
 import { instanteIso, uuid } from "../http/validacao";
-import { criarAlertas } from "./alertas";
+import { criarAlertas, criarAviso } from "./alertas";
+import { MIN_PARTICIPANTES, participantesDaApr, resolverAvisoDeAssinatura, situacaoDasAssinaturas } from "./apr-assinaturas";
 import { ausentesEm } from "./ausencia";
 import { arquivoExigido } from "./evidencias";
+import { executouAteOFim } from "./status-os";
 import { diaDe } from "./tempo";
 import { pontuarApr } from "./pontuacao";
 import {
+  adiar,
   avisarConflitoDePlanejamento,
   carregarOsDoUsuario,
   conferirReserva,
@@ -29,6 +32,12 @@ const esquemaApr = z.object({
   /** Versão exata do modelo que foi respondida (Decisão-chave 6). */
   modelo_apr_id: uuid,
   participantes: z.array(z.object({ usuario_id: uuid, funcao: z.enum(APR_FUNCOES), assinada_em: instanteIso.optional() })).min(1),
+  /**
+   * Padrão (`false`): a APR é registrada e cada participante a assina depois, na própria conta (`apr_assinada`); a execução só
+   * começa com a assinatura de todos. Modo offline (contingência): `true` = os participantes assinaram no aparelho do responsável,
+   * e as assinaturas do perfil são copiadas já, marcadas como presenciais (`assinada_em` de cada um, se vier).
+   */
+  assinatura_presencial: z.boolean().default(false),
   /** Riscos que a equipe marcou "( )": só as medidas deles são respondidas (questão 59). */
   riscos: z.array(uuid).default([]),
   respostas: z.array(z.object({ item_id: uuid, resposta: z.enum(APR_RESPOSTAS), observacao: z.string().nullable().optional(), respondida_em: instanteIso.optional() })),
@@ -65,14 +74,16 @@ export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadAp
   // Conflitos de estado: online recusam; vindo da fila offline, aplicam e viram alerta (Decisão-chave 2).
   const abertas = (await ctx.tx.select({ resultado: execucao.resultado, executorId: execucao.executorId }).from(execucao).where(eq(execucao.osId, ordem.id))).filter((e) => e.resultado === null);
   if (abertas.length > 0 && !ctx.offline) throw rejeitar("os_em_execucao", "Esta OS já está em execução");
-  if (ordem.status === "encerrada" && !ctx.offline) throw rejeitar("os_encerrada", "Esta OS já foi encerrada");
+  if (executouAteOFim(ordem.status) && !ctx.offline) throw rejeitar("os_encerrada", "Esta OS já foi encerrada");
 
   const [modelo] = await ctx.tx.select().from(modeloApr).where(eq(modeloApr.id, p.modelo_apr_id));
   if (!modelo || !modelo.publicadoEm) throw rejeitar("modelo_invalido", "Modelo de APR inexistente ou não publicado");
 
-  // Participantes: o técnico logado sempre participa, exatamente um responsável, só gente da equipe da OS.
+  // Participantes: o técnico logado sempre participa, exatamente um responsável, só gente da equipe da OS. Ninguém trabalha
+  // sozinho: a APR exige ao menos 2 participantes, sem máximo.
   const ids = p.participantes.map((x) => x.usuario_id);
   if (new Set(ids).size !== ids.length) throw rejeitar("participante_repetido", "Participante repetido");
+  if (ids.length < MIN_PARTICIPANTES) throw rejeitar("participantes_insuficientes", `A APR precisa de ao menos ${MIN_PARTICIPANTES} participantes: ninguém executa o serviço sozinho`);
   if (!ids.includes(ctx.usuario.id)) throw rejeitar("participante_obrigatorio", "O técnico logado precisa ser participante da APR");
   if (p.participantes.filter((x) => x.funcao === "responsavel").length !== 1) throw rejeitar("responsavel_obrigatorio", "A APR precisa de exatamente um responsável");
   const pessoas = await ctx.tx.select().from(usuario).where(inArray(usuario.id, ids));
@@ -82,6 +93,7 @@ export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadAp
   const ausentes = await ausentesEm(ctx.tx, ids, diaDe(ctx.evento.ocorridoEm));
   for (const pessoa of pessoas) {
     if (ausentes.has(pessoa.id)) throw rejeitar("participante_ausente", `${pessoa.nome} está ausente e não pode entrar na APR`);
+    if (!pessoa.ativo || pessoa.liberacao !== "liberado") throw rejeitar("participante_inativo", `${pessoa.nome} está desligado ou sem acesso e não pode entrar na APR`);
     if (!pessoa.equipeId || !equipesAceitas.has(pessoa.equipeId)) throw rejeitar("participante_fora_da_equipe", `${pessoa.nome} não é da equipe da OS`);
     if (!pessoa.assinaturaPath) throw rejeitar("assinatura_ausente", `${pessoa.nome} ainda não cadastrou a assinatura no perfil`);
   }
@@ -243,13 +255,16 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
     observacaoGeral: vazio(p.observacao_geral) ? null : p.observacao_geral!.trim(),
     concluidaEm: p.concluida_em,
   });
+  // As assinaturas: na conta de cada um, depois (padrão), ou já copiadas, no aparelho do responsável (offline). A APR bloqueada não é assinada.
+  const presencial = p.assinatura_presencial && resultado === "aprovada";
   await ctx.tx.insert(aprParticipante).values(
     p.participantes.map((x) => ({
       aprId: p.id,
       usuarioId: x.usuario_id,
       funcao: x.funcao,
-      assinaturaPath: pessoas.find((u) => u.id === x.usuario_id)!.assinaturaPath!,
-      assinadaEm: x.assinada_em ?? p.concluida_em,
+      assinaturaPath: presencial ? pessoas.find((u) => u.id === x.usuario_id)!.assinaturaPath! : null,
+      assinadaEm: presencial ? (x.assinada_em ?? p.concluida_em) : null,
+      assinaturaPresencial: presencial,
     })),
   );
   if (p.riscos.length > 0) await ctx.tx.insert(aprRisco).values(p.riscos.map((riscoId) => ({ aprId: p.id, riscoId })));
@@ -262,10 +277,22 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
     await ctx.tx.insert(evidencia).values(p.evidencias.map((e) => linhaDeEvidencia(e, { aprId: p.id, itemId: e.item_id! })));
   }
   ctx.saida.aprs.push({ id: p.id, resultado });
-  // A aprovada pontua ao chegar com as assinaturas; a bloqueada, quando chega a evidência dos itens reprovados.
-  ctx.saida.ganhos.push(
-    ...(await pontuarApr(contextoDePontos(ctx), p.id, ctx.evento.ocorridoEm, { evidenciaCompleta: resultado === "aprovada" || (await aprEstaCompleta(ctx.tx, p.id)) })),
-  );
+  // A aprovada pontua quando todos assinaram (já aqui, se as assinaturas vieram presenciais; senão, na última `apr_assinada`); a
+  // bloqueada, quando chega a evidência dos itens reprovados.
+  if (resultado === "bloqueada" || presencial) {
+    ctx.saida.ganhos.push(
+      ...(await pontuarApr(contextoDePontos(ctx), p.id, ctx.evento.ocorridoEm, { evidenciaCompleta: resultado === "aprovada" || (await aprEstaCompleta(ctx.tx, p.id)) })),
+    );
+  }
+  if (resultado === "aprovada" && !presencial) {
+    // Cada um assina na própria conta: os demais participantes recebem o aviso (só no sino).
+    await criarAviso(ctx.tx, p.participantes.map((x) => x.usuario_id).filter((id) => id !== ctx.usuario.id), {
+      tipo: "apr_para_assinar",
+      osId: ordem.id,
+      detalhe: `${ctx.usuario.nome} registrou a APR da OS ${ordem.numeroOrdem ?? ordem.titulo} e aguarda a sua assinatura para começar a execução.`,
+      agora: ctx.recebidoEm,
+    });
+  }
 
   if (resultado === "bloqueada") {
     const itens = reprovados.map((i) => {
@@ -279,7 +306,88 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   if (mudou) await avisarConflitoDePlanejamento(ctx, ordem, "a APR foi aplicada depois que o planejamento mudou (equipe ou data)");
   if (ordem.status === "cancelada") await avisarConflitoDePlanejamento(ctx, ordem, "a APR foi aplicada numa OS cancelada");
   if (desvio) await avisarConflitoDePlanejamento(ctx, ordem, `a APR foi aplicada, mas ${desvio}`);
-  if (abertas.length > 0 || ordem.status === "encerrada") {
+  if (abertas.length > 0 || executouAteOFim(ordem.status)) {
     ctx.saida.alertas.push(...(await criarAlertas(ctx.tx, { tipo: "execucao_duplicada", osId: ordem.id, equipeId: ordem.equipeId, detalhe: `OS ${ordem.numeroOrdem ?? ordem.titulo}: APR registrada enquanto a OS já estava ${abertas.length > 0 ? "em execução" : "encerrada"}` })));
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+
+const esquemaAssinada = z.object({ apr_id: uuid, assinada_em: instanteIso.optional() });
+
+/** A APR e o participante que age, para assinar ou recusar; a APR que ainda não chegou deixa o evento pendente. */
+async function carregarParticipante(ctx: Contexto, aprId: string) {
+  const [a] = await ctx.tx.select({ id: apr.id, osId: apr.osId, resultado: apr.resultado, concluidaEm: apr.concluidaEm }).from(apr).where(eq(apr.id, aprId));
+  if (!a) throw adiar("apr_ausente", "A APR ainda não foi recebida");
+  ctx.saida.osAfetadas.add(a.osId);
+  const [participante] = await ctx.tx.select().from(aprParticipante).where(and(eq(aprParticipante.aprId, a.id), eq(aprParticipante.usuarioId, ctx.usuario.id)));
+  if (!participante) throw rejeitar("fora_da_apr", "Você não é participante desta APR");
+  if (a.resultado !== "aprovada") throw rejeitar("apr_bloqueada", "Esta APR foi bloqueada: não há o que assinar");
+  const [usada] = await ctx.tx.select({ id: execucao.id }).from(execucao).where(and(eq(execucao.aprId, a.id), sql`${execucao.resultado} is distinct from 'cancelada'`));
+  return { apr: a, participante, usada: Boolean(usada) };
+}
+
+/**
+ * `apr_assinada`: o participante assina a APR na própria conta, com a assinatura do perfil, depois da validação (Reunião 3). A
+ * execução só começa quando todos os participantes assinaram. A assinatura só vale no dia da APR; reenviar não muda nada.
+ */
+export async function aplicarAprAssinada(ctx: Contexto, bruto: unknown) {
+  const p = lerPayload(esquemaAssinada, bruto);
+  const { apr: a, participante } = await carregarParticipante(ctx, p.apr_id);
+  ctx.saida.aprs.push({ id: a.id, resultado: a.resultado });
+  if (participante.recusouEm) throw rejeitar("apr_recusada_por_voce", "Você recusou esta APR e saiu dela");
+  if (participante.assinadaEm) return;
+  if (diaDe(a.concluidaEm) !== diaDe(ctx.evento.ocorridoEm)) throw rejeitar("apr_vencida", "A APR é de outro dia: faça uma APR nova");
+  if (!ctx.usuario.assinaturaPath) throw rejeitar("assinatura_ausente", "Cadastre a sua assinatura no perfil antes de assinar");
+
+  const quando = p.assinada_em ?? ctx.evento.ocorridoEm;
+  await ctx.tx
+    .update(aprParticipante)
+    .set({ assinaturaPath: ctx.usuario.assinaturaPath, assinadaEm: quando })
+    .where(and(eq(aprParticipante.aprId, a.id), eq(aprParticipante.usuarioId, ctx.usuario.id)));
+  await resolverAvisoDeAssinatura(ctx.tx, ctx.usuario.id, a.osId, ctx.recebidoEm);
+
+  // A última assinatura completa a APR: é aí que ela pontua (a APR completa e a responsabilidade por ela).
+  const situacao = situacaoDasAssinaturas(await participantesDaApr(ctx.tx, a.id));
+  if (situacao.pronta) ctx.saida.ganhos.push(...(await pontuarApr(contextoDePontos(ctx), a.id, ctx.evento.ocorridoEm, { evidenciaCompleta: true })));
+}
+
+const esquemaRecusada = z.object({ apr_id: uuid, motivo: z.string().nullable().optional(), recusada_em: instanteIso.optional() });
+
+/**
+ * `apr_recusada`: o direito de recusa. O participante que não concorda com a APR sai dela, deixando o motivo, e o supervisor é
+ * avisado na hora (sino e e-mail). Se sobrarem menos de 2 participantes, ou se quem recusou foi o responsável, a APR não
+ * serve mais: é preciso uma nova. Só vale antes de a execução começar e para quem ainda não assinou.
+ */
+export async function aplicarAprRecusada(ctx: Contexto, bruto: unknown) {
+  const p = lerPayload(esquemaRecusada, bruto);
+  const { apr: a, participante, usada } = await carregarParticipante(ctx, p.apr_id);
+  ctx.saida.aprs.push({ id: a.id, resultado: a.resultado });
+  if (participante.recusouEm) return;
+  if (vazio(p.motivo)) throw rejeitar("motivo_obrigatorio", "Diga por que você recusa a APR");
+  if (participante.assinadaEm) throw rejeitar("ja_assinou", "Você já assinou esta APR");
+  if (usada) throw rejeitar("apr_ja_usada", "A execução desta APR já começou");
+
+  await ctx.tx
+    .update(aprParticipante)
+    .set({ recusouEm: p.recusada_em ?? ctx.evento.ocorridoEm, recusaMotivo: p.motivo!.trim() })
+    .where(and(eq(aprParticipante.aprId, a.id), eq(aprParticipante.usuarioId, ctx.usuario.id)));
+  await resolverAvisoDeAssinatura(ctx.tx, ctx.usuario.id, a.osId, ctx.recebidoEm);
+
+  const situacao = situacaoDasAssinaturas(await participantesDaApr(ctx.tx, a.id));
+  const [ordem] = await ctx.tx.select().from(os).where(eq(os.id, a.osId));
+  const consequencia = situacao.responsavelRecusou
+    ? "o responsável recusou: é preciso uma APR nova"
+    : situacao.semParticipantes
+      ? `restam menos de ${MIN_PARTICIPANTES} participantes: é preciso uma APR nova`
+      : "a APR segue com os demais participantes";
+  ctx.saida.alertas.push(
+    ...(await criarAlertas(ctx.tx, {
+      tipo: "direito_de_recusa",
+      osId: a.osId,
+      equipeId: ordem!.equipeId,
+      detalhe: `OS ${ordem!.numeroOrdem ?? ordem!.titulo}: ${ctx.usuario.nome} exerceu o direito de recusa na APR — "${p.motivo!.trim()}". Ele saiu da APR; ${consequencia}.`,
+      agora: ctx.recebidoEm,
+    })),
+  );
 }

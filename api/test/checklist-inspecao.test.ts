@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 import { and, eq } from "drizzle-orm";
-import { alerta, auditoria, execucao, planoPreventiva, planoPreventivaPergunta } from "../src/db/schema";
-import { gerarPdfOs } from "../src/servicos/pdf-os";
+import { alerta, auditoria, execucao, os, planoPreventiva, planoPreventivaPergunta } from "../src/db/schema";
+import { gerarRelatorioDaExecucao } from "../src/servicos/relatorio-execucao";
 import { criarOs, textoDoPdf } from "./fixture-os";
 import { prepararCampo, type Campo, type UsuarioDeTeste } from "./gamificacao-ajuda";
 
@@ -34,23 +34,28 @@ describe("Checklist de inspeção das preventivas", () => {
     return { o, execId };
   }
 
-  /** `execucao_encerrada` com o checklist; `ocorridoEm` antigo faz o evento chegar como se viesse da fila offline. */
+  /**
+   * Os dois passos do encerramento: o clique em "Encerrar OS" (que não pede o checklist e se repete sem efeito) e o
+   * `encerramento_assinado` com o checklist, que é onde ele é conferido; devolve a resposta da assinatura. `ocorridoEm` antigo faz
+   * a assinatura chegar como se viesse da fila offline.
+   */
   async function encerrar(tecnico: UsuarioDeTeste, execId: string, dados?: unknown, ocorridoEm = c.agora()) {
+    await c.clicarEncerrar(tecnico, execId);
     return c.enviar(tecnico, {
       id: randomUUID(),
-      tipo: "execucao_encerrada",
+      tipo: "encerramento_assinado",
       os_id: null,
       payload: {
         execucao_id: execId,
-        fim: c.agora(),
         descricao_atividade: "Inspeção feita",
         evidencias: [{ id: await c.foto(), capturada_em: c.agora() }],
-        assinaturas: [{ usuario_id: tecnico.id }],
         ...(dados !== undefined && { dados_inspecao: dados }),
       },
       ocorrido_em: ocorridoEm,
     });
   }
+  const statusDaOs = async (osId: string) => (await c.amb.db.select({ s: os.status }).from(os).where(eq(os.id, osId)))[0]!.s;
+  const assinadoEm = async (execId: string) => (await c.amb.db.select({ a: execucao.encerramentoAssinadoEm }).from(execucao).where(eq(execucao.id, execId)))[0]!.a;
   const respostas = (...marcas: [boolean, string?][]) => ({ itens: marcas.map(([marcado, observacao], i) => ({ pergunta_id: perguntas[i]!.id, marcado, ...(observacao ? { observacao } : {}) })) });
 
   describe("o checklist do plano", () => {
@@ -137,24 +142,28 @@ describe("Checklist de inspeção das preventivas", () => {
   describe("o encerramento", () => {
     it("recusa o encerramento sem o checklist e sem alguma pergunta", async () => {
       const tecnico = await c.tecnico();
-      const { execId } = await emExecucao(tecnico);
+      const { o, execId } = await emExecucao(tecnico);
 
       const sem = await encerrar(tecnico, execId);
       assert.equal(sem.rejeitados[0].codigo, "checklist_incompleto");
       const faltando = await encerrar(tecnico, execId, respostas([true], [true]));
       assert.equal(faltando.rejeitados[0].codigo, "checklist_incompleto");
       assert.match(faltando.rejeitados[0].mensagem, /Gabinete limpo/);
+      // O clique em "Encerrar OS" já parou o tempo, mas a assinatura do encerramento não saiu: a OS segue `encerrando`.
       const [e] = await c.amb.db.select().from(execucao).where(eq(execucao.id, execId));
-      assert.equal(e!.resultado, null, "a execução continua aberta");
+      assert.equal(e!.resultado, "encerrada");
+      assert.equal(await assinadoEm(execId), null, "o encerramento não foi assinado");
+      assert.equal(await statusDaOs(o.id), "encerrando");
     });
 
     it("o item não marcado pede observação", async () => {
       const tecnico = await c.tecnico();
-      const { execId } = await emExecucao(tecnico);
+      const { o, execId } = await emExecucao(tecnico);
       const r = await encerrar(tecnico, execId, respostas([true], [false], [true]));
       assert.equal(r.rejeitados[0].codigo, "observacao_obrigatoria");
       const branca = await encerrar(tecnico, execId, respostas([true], [false, "   "], [true]));
       assert.equal(branca.rejeitados[0].codigo, "observacao_obrigatoria");
+      assert.equal(await statusDaOs(o.id), "encerrando");
     });
 
     it("tudo marcado encerra e guarda as perguntas como estavam, sem alerta; mudar o checklist depois não altera a execução", async () => {
@@ -162,7 +171,10 @@ describe("Checklist de inspeção das preventivas", () => {
       const { o, execId } = await emExecucao(tecnico);
       const r = await encerrar(tecnico, execId, respostas([true, "  Leitura: 24,8 Vcc  "], [true], [true]));
       assert.equal(r.rejeitados.length, 0, JSON.stringify(r.rejeitados));
-      assert.deepEqual(r.alertas ?? [], []);
+      // Fora os avisos de assinatura, não há alerta: nenhuma pendência de inspeção.
+      const tipos = (await c.amb.db.select({ tipo: alerta.tipo }).from(alerta).where(eq(alerta.osId, o.id))).map((a) => a.tipo).filter((t) => t !== "apr_para_assinar");
+      assert.deepEqual(tipos, ["os_para_assinar"]);
+      assert.equal(await statusDaOs(o.id), "aguardando_supervisor");
 
       const guardado = (await c.amb.db.select().from(execucao).where(eq(execucao.id, execId)))[0]!.dadosInspecao;
       assert.deepEqual(guardado, {
@@ -192,6 +204,7 @@ describe("Checklist de inspeção das preventivas", () => {
 
       const [e] = await c.amb.db.select().from(execucao).where(eq(execucao.id, execId));
       assert.equal(e!.resultado, "encerrada");
+      assert.equal(await statusDaOs(o.id), "aguardando_supervisor");
       const avisos = await c.amb.db.select().from(alerta).where(and(eq(alerta.osId, o.id), eq(alerta.tipo, "inspecao_com_pendencia")));
       assert.equal(avisos.length, 1);
       assert.equal(avisos[0]!.destinatarioId, c.supervisor.id);
@@ -259,7 +272,7 @@ describe("Checklist de inspeção das preventivas", () => {
     });
   });
 
-  describe("o PDF da OS", () => {
+  describe("o relatório da execução", () => {
     it("lista o checklist com a caixa marcada ou vazia, a pergunta e a observação", async () => {
       const o = await criarOs(c.amb, { equipeId: c.equipe.id, encerrada: true });
       await c.amb.db
@@ -274,16 +287,16 @@ describe("Checklist de inspeção das preventivas", () => {
           },
         })
         .where(eq(execucao.id, o.execId));
-      const texto = textoDoPdf(await gerarPdfOs(c.amb.deps, o.osId, { comprimir: false }));
+      const texto = textoDoPdf(await gerarRelatorioDaExecucao(c.amb.deps, o.osId, { comprimir: false }));
       for (const esperado of ["CHECKLIST DE INSPEÇÃO", "Tensão de saída dentro da faixa?", "[X]", "Telemetria funcionando?", "[  ]", "Obs.: Sem sinal", "Gabinete limpo?", "[?]", "Não respondida."]) {
-        assert.ok(texto.includes(esperado), `faltou "${esperado}" no PDF`);
+        assert.ok(texto.includes(esperado), `faltou "${esperado}" no relatório`);
       }
     });
 
     it("a inspeção sem estrutura (de antes do checklist) continua saindo como campo e valor", async () => {
       const o = await criarOs(c.amb, { equipeId: c.equipe.id, encerrada: true });
       await c.amb.db.update(execucao).set({ dadosInspecao: { tensao_saida_vcc: 5.25 } }).where(eq(execucao.id, o.execId));
-      const texto = textoDoPdf(await gerarPdfOs(c.amb.deps, o.osId, { comprimir: false }));
+      const texto = textoDoPdf(await gerarRelatorioDaExecucao(c.amb.deps, o.osId, { comprimir: false }));
       assert.ok(texto.includes("tensao_saida_vcc: 5.25"));
       assert.ok(!texto.includes("CHECKLIST DE INSPEÇÃO"));
     });

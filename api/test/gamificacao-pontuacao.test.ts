@@ -53,22 +53,57 @@ describe("Gamificação: pontuação (seção 2)", () => {
   it("reenviar o evento não pontua de novo", async () => {
     voltarAoRelogio();
     const a = await c.tecnico();
+    const b = await c.tecnico();
     const o = await c.novaOs();
-    const corpo = await c.corpoDaApr([a]);
+    const corpo = await c.corpoDaApr([a, b]);
     const e = c.evento("apr_concluida", corpo, o.id);
+    // O registro da APR ainda não pontua: os pontos vêm da última assinatura.
     const primeira = await c.enviar(a, e);
     const segunda = await c.enviar(a, e);
-    assert.ok(primeira.pontos_ganhos > 0);
+    assert.equal(primeira.pontos_ganhos, 0);
     assert.equal(segunda.pontos_ganhos, 0);
-    assert.deepEqual(segunda.ganhos, []);
+    assert.equal(await c.pontosDe(a.id), 0);
+    await c.enviar(b, c.evento("apr_assinada", { apr_id: corpo.id }, o.id));
+    const assinatura = c.evento("apr_assinada", { apr_id: corpo.id }, o.id);
+    const ultima = await c.enviar(a, assinatura);
+    const repetidaDaAssinatura = await c.enviar(a, assinatura);
+    assert.ok(ultima.pontos_ganhos > 0);
+    assert.equal(repetidaDaAssinatura.pontos_ganhos, 0);
+    assert.deepEqual(repetidaDaAssinatura.ganhos, []);
     assert.equal(await c.pontosDe(a.id), 15);
-    // Encerrar uma execução já encerrada também não pontua de novo.
+    // Assinar de novo, com outro evento, também não pontua; encerrar uma execução já encerrada e assinada idem.
+    assert.equal((await c.enviar(a, c.evento("apr_assinada", { apr_id: corpo.id }, o.id))).pontos_ganhos, 0);
     const execId = await c.iniciar(a, o.id, corpo.id);
     await c.encerrar(a, execId);
     const antes = await c.pontosDe(a.id);
-    const repetida = await c.encerrar(a, execId);
+    assert.equal(antes, 25);
+    const repetida = await c.assinarEncerramento(a, execId);
     assert.equal(repetida.pontos_ganhos, 0);
     assert.equal(await c.pontosDe(a.id), antes);
+  });
+
+  it("a APR só pontua quando o último participante assina, e a execução só quando o responsável assina o encerramento", async () => {
+    voltarAoRelogio();
+    const a = await c.tecnico();
+    const b = await c.tecnico();
+    const o = await c.novaOs();
+    const corpo = await c.corpoDaApr([a, b]);
+    await c.enviar(a, c.evento("apr_concluida", corpo, o.id));
+    assert.equal(await c.pontosDe(a.id), 0, "registrada, ainda sem assinaturas");
+    await c.enviar(a, c.evento("apr_assinada", { apr_id: corpo.id }, o.id));
+    assert.equal(await c.pontosDe(a.id), 0, "falta o b assinar");
+    const ultima = await c.enviar(b, c.evento("apr_assinada", { apr_id: corpo.id }, o.id));
+    assert.equal(await c.pontosDe(a.id), 15, "a última assinatura completou a APR para todos");
+    assert.equal(await c.pontosDe(b.id), 10);
+    // Quem assinou por último vê só os próprios pontos na resposta.
+    assert.deepEqual(ultima.ganhos.filter((g: { regra: string }) => g.regra !== "conquista_obtida").map((g: { regra: string }) => g.regra), ["apr_completa"]);
+
+    const execId = await c.iniciar(a, o.id, corpo.id);
+    await c.clicarEncerrar(a, execId);
+    assert.equal(await c.pontosDe(a.id), 15, "o clique em Encerrar OS ainda não pontua");
+    await c.assinarEncerramento(a, execId);
+    assert.equal(await c.pontosDe(a.id), 25);
+    assert.equal(await c.pontosDe(b.id), 20, "o colega pontua com a assinatura do responsável");
   });
 
   it("preventiva em dia em local crítico: o dobro da corretiva e os bônus de local crítico e de preventiva em dia (45 e 40)", async () => {
@@ -230,10 +265,12 @@ describe("Gamificação: pontuação (seção 2)", () => {
     const a = await c.tecnico();
     const o = await c.novaOs();
     await c.servico(a, o.id);
+    assert.equal((await c.amb.sql<{ status: string }>("select status from os where id = $1", [o.id]))[0]!.status, "aguardando_supervisor", "só falta a assinatura do supervisor");
 
     c.amb.relogio.agora = new Date(AGORA.getTime() + 2 * DIA);
-    const r = await c.como(c.supervisor, "POST", `/os/${o.id}/ciencia`);
+    const r = await c.concluir(c.supervisor, o.id);
     assert.equal(r.status, 200, JSON.stringify(r.corpo));
+    assert.equal((await c.amb.sql<{ status: string }>("select status from os where id = $1", [o.id]))[0]!.status, "encerrada");
     const doSupervisor = (await c.extrato(c.supervisor.id)).filter((l) => l.regra === "ciencia_no_prazo");
     assert.equal(doSupervisor.length, 1);
     assert.equal(doSupervisor[0]!.pontos, 3);
@@ -244,7 +281,7 @@ describe("Gamificação: pontuação (seção 2)", () => {
     const atrasada = await c.novaOs();
     await c.servico(a, atrasada.id);
     c.amb.relogio.agora = new Date(AGORA.getTime() + 4 * DIA);
-    const tarde = await c.como(c.supervisor, "POST", `/os/${atrasada.id}/ciencia`);
+    const tarde = await c.concluir(c.supervisor, atrasada.id);
     assert.equal(tarde.status, 200, JSON.stringify(tarde.corpo));
     assert.equal(tarde.corpo.pontos_ganhos, 0);
     assert.equal((await c.extrato(c.supervisor.id)).filter((l) => l.regra === "ciencia_no_prazo").length, 1);
@@ -400,9 +437,16 @@ describe("Gamificação: pontuação (seção 2)", () => {
     // Relógio errado no aparelho (data futura): o lançamento é trazido para o agora.
     const a = await c.tecnico();
     const o = await c.novaOs();
-    const corpo = await c.corpoDaApr([a]);
-    const futuro = { ...c.evento("apr_concluida", corpo, o.id), ocorrido_em: "2027-05-01T12:00:00Z" };
-    await c.enviar(a, futuro);
+    const [a1, a2] = await c.comColega([a]);
+    const corpo = await c.corpoDaApr([a1!, a2!]);
+    // O relógio do aparelho está no futuro: o registro e as assinaturas da APR levam essa data, e a pontuação (da última assinatura) é trazida para o agora.
+    const futuro = (tipo: string, payload: object) => ({ ...c.evento(tipo, payload, o.id), ocorrido_em: "2027-05-01T12:00:00Z" });
+    const registrada = await c.enviar(a, futuro("apr_concluida", { ...corpo, concluida_em: "2027-05-01T12:00:00Z" }));
+    assert.deepEqual(registrada.rejeitados, []);
+    for (const pessoa of [a2!, a1!]) {
+      const r = await c.enviar(pessoa, futuro("apr_assinada", { apr_id: corpo.id }));
+      assert.deepEqual(r.rejeitados, []);
+    }
     const linhas = await c.extrato(a.id);
     assert.ok(linhas.length > 0);
     assert.ok(linhas.every((l) => l.ocorridoEm.getTime() <= AGORA.getTime() && l.temporada === "2026-T4"));

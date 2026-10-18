@@ -24,6 +24,12 @@ export const modeloApr = pgTable(
     titulo: text().notNull(),
     /** Plano de atendimento a emergências: grupos de contatos. */
     pae: jsonb(),
+    /**
+     * A folha do modelo tem a coluna "Assinatura" na tabela de participantes (APR 04, 05 e 06) ou só nome e matrícula (APR 01,
+     * 02, 03, 07 e 09). O PDF da OS reproduz a folha como ela é: sem a coluna, as assinaturas da APR aparecem só no relatório da
+     * execução.
+     */
+    participantesComAssinatura: boolean().notNull().default(true),
     /** Nulo = rascunho. */
     publicadoEm: instante(),
     /**

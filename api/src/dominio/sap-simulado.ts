@@ -338,7 +338,7 @@ export const esquemaListaDeOrdens = z.object({
   tipo: z.enum(["YBA1", "YBA2"]).optional(),
   centro_trabalho: z.string().trim().min(1).optional(),
   no_synq_os: z
-    .enum(["nao_lida", "ignorada", "liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"])
+    .enum(["nao_lida", "ignorada", "liberada", "pendente", "em_execucao", "encerrando", "aguardando_supervisor", "encerrada", "cancelada", "devolvida"])
     .optional(),
   pagina: z.coerce.number().int().min(1).default(1),
   tamanho: z.coerce.number().int().min(1).max(200).default(50),
