@@ -15,9 +15,11 @@ import { apiOuNulo, usuarioAtual } from "@/lib/api";
 import type { Ausencia, AusenciaDaPessoa } from "@/lib/ausencia";
 import { dataDoDia } from "@/lib/formatar";
 import type { RepresentacaoDaEquipe } from "@/lib/representacao";
-import { ordemDosStatus } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
 import { ehAdmin, ehSupervisor, iniciaisDe, rotuloDoPerfil, rotuloDoStatus, type Equipe, type Perfil } from "@/lib/tipos";
+
+/** Os contadores da equipe, na ordem; `assinaturas` reúne `encerrando` e `aguardando_supervisor`. */
+const ordemDosContadores = ["liberada", "pendente", "em_execucao", "assinaturas", "encerrada", "cancelada", "devolvida"] as const;
 
 /** Resposta de `GET /equipes/{id}`. */
 interface EquipeDaApi {
@@ -51,6 +53,12 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
   const hrefDoPerfil = (id: string) => rotas.app.perfilDe(id);
   const hrefDaOs = (id: string) => rotas.app.os(id);
   const ativos = membros.filter((m) => m.ativo).length;
+  // As duas esperas por assinatura (responsável e supervisor) contam juntas: para a equipe é uma situação só.
+  const contadores = ordemDosContadores.map((s) =>
+    s === "assinaturas"
+      ? { chave: s, rotulo: "Aguardando assinaturas", cor: aparenciaDoStatus.aguardando_supervisor.cor, total: contagem.encerrando + contagem.aguardando_supervisor }
+      : { chave: s, rotulo: rotuloDoStatus[s], cor: aparenciaDoStatus[s].cor, total: contagem[s] },
+  );
   const minhaEquipe = eu.equipe_id === equipe.id;
   // O atalho para o quadro da equipe é de quem acompanha as OS (admin e supervisor); o técnico já vê o quadro da própria equipe.
   const gestao = ehAdmin(eu) || ehSupervisor(eu);
@@ -105,19 +113,16 @@ export async function PerfilEquipe({ equipeId, propria = false }: PerfilEquipePr
       </header>
 
       <div className="kpis perfil-kpis cinco">
-        {ordemDosStatus.map((s) => {
-          const a = aparenciaDoStatus[s];
-          return (
-            <div key={s} className="kpi">
-              <span className="l">
-                <i style={{ background: a.cor }} />
-                {rotuloDoStatus[s]}
-              </span>
-              <span className="v">{contagem[s]}</span>
-              <span className="s">{contagem[s] === 1 ? "OS" : "OS"}</span>
-            </div>
-          );
-        })}
+        {contadores.map((c) => (
+          <div key={c.chave} className="kpi">
+            <span className="l">
+              <i style={{ background: c.cor }} />
+              {c.rotulo}
+            </span>
+            <span className="v">{c.total}</span>
+            <span className="s">OS</span>
+          </div>
+        ))}
       </div>
 
       {ausencias && <AusenciasDaEquipe ausencias={ausencias} eu={quemAge} supervisaEquipe={supervisaEquipe} pessoas={pessoas} equipeNome={equipe.nome} />}

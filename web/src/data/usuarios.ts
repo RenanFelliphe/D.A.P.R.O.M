@@ -9,7 +9,7 @@ export interface DescricaoPerfil {
 
 /** O que cada perfil pode fazer (tabela de perfis e permissões da especificação). */
 export const descricaoDosPerfis: DescricaoPerfil[] = [
-  { perfil: "tecnico", descricao: "aplica APR e executa as OS da equipe, no app ou na web; quem supervisiona equipes (definido na equipe) também acompanha o painel de gestão delas, dá ciência da execução e recebe os alertas" },
+  { perfil: "tecnico", descricao: "aplica APR e executa as OS da equipe, no app ou na web; quem supervisiona equipes (definido na equipe) também acompanha o painel de gestão delas, faz a assinatura final das OS (depois de ler o relatório da execução) e recebe os alertas" },
   { perfil: "admin", descricao: "só gestão: importa e exporta OS, edita modelos de APR, gerencia usuários e equipes e vê todas as equipes" },
 ];
 

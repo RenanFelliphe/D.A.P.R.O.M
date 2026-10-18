@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Colunas } from "@/components/app/AppChrome";
+import { FaixaDeAssinaturas } from "@/components/app/FaixaDeAssinaturas";
 import { AcoesDaOs } from "@/components/app/detalhe/AcoesDaOs";
 import { AprExigidaCard } from "@/components/app/detalhe/AprExigidaCard";
 import { ChecklistDaOsCard } from "@/components/app/detalhe/ChecklistDaOsCard";
@@ -29,11 +30,12 @@ import { DocumentoOs } from "@/components/web/detalhe/DocumentoOs";
 import { ExecucoesDaOs } from "@/components/web/detalhe/ExecucoesDaOs";
 import { HistoricoDoLocal } from "@/components/web/detalhe/HistoricoDoLocal";
 import { LinhaDoTempo } from "@/components/web/detalhe/LinhaDoTempo";
+import { RelatorioDaExecucao } from "@/components/web/detalhe/RelatorioDaExecucao";
 import { CicloDaOs } from "@/components/web/preventivas/CicloDaOs";
 import { carregarDetalhe, carregarHistorico } from "@/data/detalhe";
 import { api, usuarioAtual } from "@/lib/api";
 import { dataHora } from "@/lib/formatar";
-import { aprAprovadaDisponivel, execucaoAberta, type DetalheDaOs as DetalheDoCampo } from "@/lib/os-app";
+import { aprAprovadaDisponivel, aprDeHoje, execucaoAberta, execucaoEncerrando, situacaoDaApr, type DetalheDaOs as DetalheDoCampo } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
 import { ehAdmin, ehSupervisor, equipesDoSupervisor, rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
 
@@ -43,7 +45,7 @@ export const metadata: Metadata = { title: "Detalhe da OS" };
  * Detalhe da OS: um endereço só para admin, supervisor e técnico; a estrutura muda por perfil.
  * - Técnico: dados do SAP, o ciclo da preventiva, local, instruções, materiais do catálogo, APR exigida e as ações que o estado
  *   da OS permite (APR, execução).
- * - Admin: a visão de supervisão (abas Resumo, APRs e execuções, Histórico; alertas, PDF, ciência, baixa no SAP, local crítico, cancelar).
+ * - Admin: a visão de supervisão (abas Resumo, APRs e execuções, Histórico; alertas, PDF, assinatura final do supervisor, baixa no SAP, local crítico, cancelar).
  * - Supervisor: a mesma visão de supervisão e, na lateral, as ações de campo (ele também é técnico e executa OS).
  * Quem supervisiona a equipe da OS (e o admin) reprograma ou abre OS de apoio no Resumo, sem depender de um alerta. Só o
  * supervisor da equipe reserva a OS a uma pessoa (atribuição individual) e a devolve ao SAP. A tela atualiza sozinha.
@@ -68,15 +70,20 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   // As ações de campo e o card da APR exigida usam os tipos do técnico, que são um recorte do detalhe completo.
   const campo = detalhe as unknown as DetalheDoCampo;
   const aberta = execucaoAberta(campo.execucoes);
+  // A APR de hoje de que o técnico participa e que deixou de servir (recusa): a tela explica e leva a uma APR nova.
+  const aprDoDia = aprDeHoje(campo.aprs, campo.execucoes, usuario.id);
   const painelDeCampo = executa && (
     <>
+      <FaixaDeAssinaturas osId={os.id} />
       <AprExigidaCard aprs={campo.aprs} status={os.status} />
       <AcoesDaOs
         os={campo.os}
         usuarioId={usuario.id}
         execucaoAberta={aberta}
+        execucaoEncerrando={execucaoEncerrando(campo.execucoes)}
         aprDisponivel={aprAprovadaDisponivel(campo.aprs, campo.execucoes, usuario.id)}
         aprDeOutros={aprAprovadaDisponivel(campo.aprs, campo.execucoes)}
+        aprInviavel={aprDoDia && situacaoDaApr(aprDoDia).inviavel ? aprDoDia : null}
         ausencia={ausencia?.rotulo ?? null}
       />
     </>
@@ -136,7 +143,11 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
     );
   }
 
-  const aba = abaDaConsulta(sp.aba);
+  // Dá a assinatura final quem supervisiona a equipe da OS, mesmo que tenha participado do serviço (a `api` confere).
+  const supervisaEquipeDaOs = equipesDoSupervisor(usuario)?.includes(os.equipe.id) ?? false;
+  // O relatório da execução é do supervisor da equipe e do admin, a partir de uma execução finalizada.
+  const podeVerRelatorio = (admin || supervisaEquipeDaOs) && execucoes.some((e) => e.fim !== null);
+  const aba = abaDaConsulta(sp.aba, podeVerRelatorio);
 
   // Histórico (só na aba dele): do equipamento, quando a OS tem um, ou de todo o local (`?escopo=local`).
   const escopo = os.equipamento && sp.escopo !== "local" ? "equipamento" : "local";
@@ -149,8 +160,6 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
     return `${rotas.app.os(os.id)}?${q}`;
   };
 
-  // Dá a ciência quem supervisiona a equipe da OS e não participou dela (a `api` confere os dois).
-  const supervisaEquipeDaOs = equipesDoSupervisor(usuario)?.includes(os.equipe.id) ?? false;
   // Reprogramar e abrir OS de apoio: quem supervisiona a equipe da OS (ou o admin), enquanto ela não começou nem terminou.
   const podeDecidir = (admin || (supervisaEquipeDaOs && !ausente)) && (os.status === "liberada" || os.status === "pendente");
   const equipes = podeDecidir && aba === "resumo" ? (await api<{ equipes: Equipe[] }>("/equipes", { consulta: { tamanho: 200 } })).equipes : [];
@@ -184,7 +193,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           <strong>Execução aberta há {os.execucao_aberta_ha_horas} h.</strong> Pode ter ficado esquecida em andamento.
         </Notice>
       )}
-      <AbasDaOs osId={os.id} atual={aba} contagens={{ aprs: aprs.length + execucoes.length }} />
+      <AbasDaOs osId={os.id} atual={aba} contagens={{ aprs: aprs.length + execucoes.length }} comRelatorio={podeVerRelatorio} />
       <div className="two">
         <div className="stack g16">
           {aba === "resumo" && (
@@ -214,6 +223,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
               <ExecucoesDaOs execucoes={execucoes} />
             </>
           )}
+          {aba === "relatorio" && <RelatorioDaExecucao os={os} aprs={aprs} execucoes={execucoes} />}
           {aba === "historico" && historico && (
             <>
               <LinhaDoTempo eventos={linha_do_tempo} />
@@ -234,8 +244,8 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           {podeReservar && <AtribuicaoDaOs osId={os.id} responsavel={os.responsavel ? { id: os.responsavel.id, nome: os.responsavel.nome } : null} colegas={colegas} />}
           {podeDevolver && <DevolverOs osId={os.id} />}
           {admin && <BotaoCritico localId={os.local_instalacao.id} critico={os.local_instalacao.critico} />}
-          <DocumentoOs os={os} />
-          {os.status === "encerrada" && <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs && !ausente} />}
+          <DocumentoOs os={os} podeVerRelatorio={podeVerRelatorio} />
+          <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs && !ausente} />
           <BaixaSap os={os} podeExportar={admin} />
         </aside>
       </div>

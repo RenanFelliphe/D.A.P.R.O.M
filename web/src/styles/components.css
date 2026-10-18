@@ -136,6 +136,29 @@
   color: var(--blq)
 }
 
+/* Mensagem de validação junto do campo (`Field` com `erro`): o formulário diz por que não enviou, no lugar certo. */
+.field-erro {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--blq)
+}
+
+.field-erro svg {
+  flex: none;
+  margin-top: 2px
+}
+
+.field[data-erro] .input,
+.field[data-erro] .textarea,
+.field[data-erro] .select {
+  border-color: var(--blq);
+  background: var(--blq-bg)
+}
+
 /* ===== Retorno ao usuário: avisos, selos, etiquetas, progresso e toast ===== */
 
 .toast {

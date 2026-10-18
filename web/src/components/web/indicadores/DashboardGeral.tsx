@@ -45,7 +45,7 @@ interface DashboardGeralProps {
   alertasNaoLidos: number | null;
   /** O admin faz a baixa no SAP: só ele vê a pendência. */
   verExportacao: boolean;
-  /** Admin e supervisor: as pendências de gestão (ciência e alertas). O técnico vê só as da equipe. */
+  /** Admin e supervisor: as pendências de gestão (assinatura do supervisor e alertas). O técnico vê só as da equipe. */
   acompanha: boolean;
   /** O filtro atual (`periodo=…&equipe_id=…`), para os links aos outros dashboards. */
   consulta: string;
@@ -72,7 +72,7 @@ export function DashboardGeral({ dados, rotuloAnterior, alertasNaoLidos, verExpo
     },
     { icone: "clock", total: pend.execucoes_esquecidas, texto: ["execução aberta há mais de 12 h", "execuções abertas há mais de 12 h"], href: `${rotas.app.lista}?status=em_execucao`, acao: "Ver no quadro" },
     ...(acompanha
-      ? [{ icone: "user", total: pend.sem_ciencia ?? 0, texto: ["OS encerrada sem a ciência do supervisor", "OS encerradas sem a ciência do supervisor"], href: `${rotas.app.lista}?status=encerrada`, acao: "Ver no quadro" } satisfies ItemDeAtencao]
+      ? [{ icone: "user", total: pend.sem_ciencia ?? 0, texto: ["OS aguardando a assinatura do supervisor", "OS aguardando a assinatura do supervisor"], href: `${rotas.app.lista}?status=aguardando_supervisor`, acao: "Ver no quadro" } satisfies ItemDeAtencao]
       : []),
     ...(verExportacao
       ? [{ icone: "download", total: pend.a_exportar ?? 0, texto: ["OS encerrada à espera da baixa no SAP", "OS encerradas à espera da baixa no SAP"], href: `${comFiltro(rotas.app.dashboardOs)}#exportacao`, acao: "Exportar" } satisfies ItemDeAtencao]

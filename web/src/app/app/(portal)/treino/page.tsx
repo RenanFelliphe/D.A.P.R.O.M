@@ -26,7 +26,7 @@ export default async function TreinoPage() {
       <CabecalhoPagina trilha={[{ rotulo: "OS da equipe", href: rotas.app.lista }, { rotulo: "Campo de treino" }]}>
         <h1>Campo de treino</h1>
         <span className="muted">
-          Aqui tudo é de mentira: ordens, equipes e APRs são fictícias, e nada do que você fizer afeta o trabalho real. Pode clicar, errar e refazer à vontade.
+          Aqui tudo é de mentira: ordens, equipes e APRs são fictícias, e nada do que você fizer afeta o trabalho real. Pode clicar, errar e refazer à vontade. Os colegas e o supervisor também são fictícios: eles assinam a APR e a OS sozinhos, alguns instantes depois de você.
         </span>
       </CabecalhoPagina>
       {treino && (

@@ -132,7 +132,7 @@ export function JanelaEmMassaOrdens({ acao, catalogo, numeros, todosDaBusca, fil
   const p = contagem?.porSituacao ?? {};
   const noSynqOs = contagem ? contagem.total - (p.nao_lida ?? 0) - (p.ignorada ?? 0) : 0;
   const ativas = (p.liberada ?? 0) + (p.pendente ?? 0);
-  const emExecucao = p.em_execucao ?? 0;
+  const emExecucao = (p.em_execucao ?? 0) + (p.encerrando ?? 0) + (p.aguardando_supervisor ?? 0);
   const acompanhadas = (p.encerrada ?? 0) + (p.cancelada ?? 0);
   const quantas = contagem?.total ?? numeros.length;
   const resumo = (...partes: [number, string][]) => partes.filter(([n]) => n > 0).map(([n, texto]) => `${n} ${texto}`).join("; ");

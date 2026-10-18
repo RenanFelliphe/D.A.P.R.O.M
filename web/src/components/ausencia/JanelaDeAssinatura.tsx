@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { mensagemDoErro } from "@/components/app/execucao/useAcao";
 import { Button } from "@/components/ui/Button";
+import { MensagemDeErro } from "@/components/ui/Field";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
 import { Notice } from "@/components/ui/Notice";
 import { JanelaModal } from "@/components/web/JanelaModal";
@@ -23,8 +24,13 @@ interface JanelaDeAssinaturaProps {
   semAssinatura?: boolean;
   /** Os campos da ação, mostrados antes da assinatura. */
   children?: ReactNode;
-  /** Falta preencher algo: o botão de confirmar fica desabilitado. */
+  /**
+   * Falta preencher algo nos campos acima. O botão não fica desativado: ao clicar, a janela diz o que falta
+   * (`motivoIncompleto`) e não envia.
+   */
   incompleto?: boolean;
+  /** O que falta, em uma frase, quando `incompleto`. */
+  motivoIncompleto?: string;
   /**
    * Faz a chamada à `api`; uma falha vira a mensagem da janela. Devolver um texto mantém a janela aberta com ele, como
    * aviso de que deu certo, em vez de fechá-la.
@@ -34,8 +40,10 @@ interface JanelaDeAssinaturaProps {
 }
 
 /**
- * Janela das ações assinadas da ausência: os campos da ação e a confirmação da assinatura do perfil (a mesma imagem que a APR
- * usa). Sem assinatura cadastrada, o cadastro vem antes, no perfil. Depois de confirmar, a tela se atualiza.
+ * Janela das ações assinadas (ausência, APR, encerramento, interrupção…): os campos da ação e a confirmação da assinatura do
+ * perfil (a mesma imagem que a APR usa). Sem assinatura cadastrada, o cadastro vem antes, no perfil. Depois de confirmar, a tela
+ * se atualiza. O botão de confirmar só fica desativado enquanto envia: o que falta (a confirmação, a assinatura, um campo) vem
+ * como mensagem junto do que falta, e a falha devolvida pela `api` aparece acima do botão.
  */
 export function JanelaDeAssinatura({
   titulo,
@@ -46,6 +54,7 @@ export function JanelaDeAssinatura({
   semAssinatura = false,
   children,
   incompleto = false,
+  motivoIncompleto,
   aoConfirmar,
   aoFechar,
 }: JanelaDeAssinaturaProps) {
@@ -54,12 +63,28 @@ export function JanelaDeAssinatura({
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  /** O que impediu de enviar (antes de chamar a `api`), mostrado junto do que falta. */
+  const [pendencia, setPendencia] = useState<{ onde: "campos" | "confirmacao"; texto: string } | null>(null);
+  const caixa = useRef<HTMLInputElement>(null);
 
   const faltaAssinatura = !semAssinatura && !assinaturaPath;
-  const podeConfirmar = !ocupado && !incompleto && (semAssinatura || (Boolean(assinaturaPath) && assino));
 
   async function confirmar() {
     setErro(null);
+    setPendencia(null);
+    if (incompleto) {
+      setPendencia({ onde: "campos", texto: motivoIncompleto ?? "Preencha os campos acima antes de continuar." });
+      return;
+    }
+    if (faltaAssinatura) {
+      setPendencia({ onde: "confirmacao", texto: "Cadastre a sua assinatura no perfil para poder assinar." });
+      return;
+    }
+    if (!semAssinatura && !assino) {
+      setPendencia({ onde: "confirmacao", texto: "Marque a confirmação para assinar com a sua assinatura do perfil." });
+      caixa.current?.focus();
+      return;
+    }
     setOcupado(true);
     try {
       const texto = await aoConfirmar();
@@ -102,18 +127,30 @@ export function JanelaDeAssinatura({
                   <ImagemArquivo id={assinaturaPath} alt="Sua assinatura" style={{ height: 56, maxWidth: "100%", objectFit: "contain" }} />
                 </div>
                 <label className="row g8 small" style={{ alignItems: "flex-start" }}>
-                  <input type="checkbox" checked={assino} onChange={(e) => setAssino(e.target.checked)} style={{ marginTop: 3 }} />
+                  <input
+                    ref={caixa}
+                    type="checkbox"
+                    checked={assino}
+                    aria-invalid={pendencia?.onde === "confirmacao" ? true : undefined}
+                    onChange={(e) => {
+                      setAssino(e.target.checked);
+                      if (e.target.checked) setPendencia(null);
+                    }}
+                    style={{ marginTop: 3 }}
+                  />
                   <span>Confirmo esta ação e a assino com a minha assinatura do perfil.</span>
                 </label>
+                {pendencia?.onde === "confirmacao" && !faltaAssinatura && <MensagemDeErro>{pendencia.texto}</MensagemDeErro>}
               </div>
             ))}
+          {pendencia && (pendencia.onde === "campos" || faltaAssinatura) && <MensagemDeErro>{pendencia.texto}</MensagemDeErro>}
           {erro && (
-            <Notice tone="blq" icon="alert">
+            <Notice tone="blq" icon="alert" role="alert">
               {erro}
             </Notice>
           )}
           <div className="row g8 wrap">
-            <Button variant={tom} onClick={confirmar} disabled={!podeConfirmar} aria-busy={ocupado}>
+            <Button variant={tom} onClick={confirmar} disabled={ocupado} aria-busy={ocupado}>
               {ocupado ? "Enviando…" : rotuloConfirmar}
             </Button>
             <Button variant="ghost" onClick={aoFechar} disabled={ocupado}>

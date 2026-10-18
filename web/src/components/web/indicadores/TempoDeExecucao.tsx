@@ -3,6 +3,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Kpi, Panel, TableWrap } from "@/components/web/Panel";
 import type { MedidaDeTempo, MotivoDaPausa, OsComMaisPausa, PausaPorMotivo } from "@/data/dashboards";
 import { dataHora, duracao } from "@/lib/formatar";
+import { rotuloDoMotivoDaPausa } from "@/lib/motivos-de-parada";
 import { rotas } from "@/lib/rotas";
 import { CabecalhoDoBloco, plural, porcentagem } from "./blocos";
 import { COR_PAUSA, COR_TEMPO_LIQUIDO, COR_UNICA } from "./cores";
@@ -18,7 +19,7 @@ export const fracao = (v: number | null) => (v === null ? "—" : `${Math.round(
 /** `0.5` → `0,5`. */
 const decimal = (v: number | null) => (v === null ? "—" : v.toLocaleString("pt-BR", { maximumFractionDigits: 1 }));
 
-const NOME_DO_MOTIVO: Record<MotivoDaPausa, string> = { almoco: "Almoço", descanso: "Descanso", outro: "Outro motivo", sem_motivo: "Sem motivo informado" };
+const NOME_DO_MOTIVO: Record<MotivoDaPausa, string> = { ...rotuloDoMotivoDaPausa, outro: "Outro motivo", sem_motivo: "Sem motivo informado" };
 
 /** Tempo médio das execuções encerradas no período: total, líquido, pausa, a parte do tempo em pausa e quantas pausaram. */
 export function TempoDoPeriodo({ tempo, rodape }: { tempo: MedidaDeTempo; rodape?: string }) {
@@ -197,7 +198,7 @@ export function TempoPorGrupo({ titulo, descricao, coluna, linhas }: { titulo: s
   );
 }
 
-/** Tempo em pausa por motivo (almoço, descanso, outro), com a fatia de cada um no tempo total em pausa. */
+/** Tempo em pausa por motivo (almoço, aguardando, descanso, clima, enfermidade, lesão, outro), com a fatia de cada um no tempo total em pausa. */
 export function PausasPorMotivo({ motivos }: { motivos: PausaPorMotivo[] }) {
   const total = motivos.reduce((t, m) => t + m.minutos, 0);
   const pausas = motivos.reduce((t, m) => t + m.pausas, 0);

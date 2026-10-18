@@ -1,22 +1,45 @@
 /**
  * API fictícia do Campo de treino: responde, com a MESMA forma das respostas reais (snake_case, `{erro: {codigo,
  * mensagem}}` nos erros), os endpoints que a área de campo (`/app/*`) usa, sobre o estado em memória (`armazem.ts`).
- * As regras de eventos (APR, bloqueio por item eliminatório, iniciar, pausar, suspender, interromper, cancelar e
- * encerrar) repetem as de `api/src/dominio/eventos-*.ts`; o status da OS é derivado como em `dominio/status-os.ts`.
+ * As regras de eventos (APR, assinaturas e recusa da APR, bloqueio por item eliminatório, iniciar, pausar, suspender,
+ * interromper, cancelar, encerrar e assinar o encerramento) repetem as de `api/src/dominio/eventos-*.ts` e de
+ * `apr-assinaturas.ts`; o status da OS é derivado como em `dominio/status-os.ts` (inclusive `encerrando` e
+ * `aguardando_supervisor`).
  *
- * Simplificações (a `api` real faz mais): sem fila offline (`/sync/pull` não existe aqui), sem alertas por e-mail, sem
- * reprogramação nem cancelamento (são do supervisor e do admin e respondem `403`), a ciência e `/alertas` idem, a troca
- * de senha só confere os dois campos, o PDF da OS é um documento genérico de treino e as fotos e os PDFs enviados ficam na
- * memória (até 2 MB cada). O catálogo de serviço é fixo e só de leitura (`treino/catalogo.ts`). Os dashboards são
- * calculados sobre a massa em memória (`treino/indicadores.ts`). Qualquer endereço que o campo não usa responde
- * `404 indisponivel_no_treino`.
+ * O fluxo de assinaturas (Reunião 3): a APR aprovada é registrada sem assinaturas, cada participante assina na própria conta
+ * (`apr_assinada`) e a execução só começa com todos; o treino só tem uma conta, então os colegas fictícios assinam sozinhos
+ * alguns segundos depois do registro e o supervisor fictício dá a assinatura final da OS que o técnico encerrou (`avancarFicticios`
+ * em `dados.ts`). O técnico em treino não é supervisor: `POST /os/{id}/ciencia` e o relatório da execução respondem `403`.
+ *
+ * Simplificações (a `api` real faz mais): sem fila offline (`/sync/pull` não existe aqui; as assinaturas presenciais do offline
+ * também não), sem sino nem e-mails (os alertas ao supervisor ficam só no detalhe da OS), sem pontuação, sem reprogramação nem
+ * cancelamento (são do supervisor e do admin e respondem `403`), `/alertas` idem, a troca de senha só confere os dois campos,
+ * o PDF da OS é um documento genérico de treino e as fotos e os PDFs enviados ficam na memória (até 2 MB cada). O catálogo de
+ * serviço é fixo e só de leitura (`treino/catalogo.ts`). Os dashboards são calculados sobre a massa em memória
+ * (`treino/indicadores.ts`). Qualquer endereço que o campo não usa responde `404 indisponivel_no_treino`.
  */
 import type { ServicoDoCatalogo } from "../lib/catalogo";
-import type { Usuario } from "../lib/tipos";
+import { execucaoJaTerminou, type Usuario } from "../lib/tipos";
 import { obterEstado } from "./armazem";
 import { materiaisDoTreino, servicosDoTreino } from "./catalogo";
-import { diaDe, statusDerivado, type AlertaReg, type AprReg, type EstadoTreino, type ExecucaoReg, type ItemRegDoModelo, type ModeloReg, type OsReg, type UsuarioTreino } from "./dados";
+import {
+  avancarFicticios,
+  checklistDaOs,
+  diaDe,
+  statusDerivado,
+  type AlertaReg,
+  type AprReg,
+  type EstadoTreino,
+  type ExecucaoReg,
+  type ItemRegDoModelo,
+  type ModeloReg,
+  type OsReg,
+  type ParticipanteAprReg,
+  type PosicaoReg,
+  type UsuarioTreino,
+} from "./dados";
 import { idTreino } from "./ids";
+import { ROTULO_DA_PAUSA, ROTULO_DA_SUSPENSAO, PAUSA_MOTIVOS, SUSPENSAO_MOTIVOS, descreverMotivo, ehMotivoDeSaude, pedeComplemento, type MotivoDaPausa, type MotivoDaSuspensao } from "./motivos";
 import { orientacaoDoTreino, recomendarModelo } from "./recomendacao";
 import { dashboardDeEquipes, dashboardDeOs, dashboardGeral, meusResultados, periodoDoFiltro, resumoDasAprs } from "./indicadores";
 
@@ -170,12 +193,14 @@ function osResumo(e: EstadoTreino, o: OsReg, agora: Date) {
     data_fim_prog: o.data_fim_prog,
     pdf_pronto: pdfPronto(o, agora),
     ciencia_em: o.ciencia_em,
+    // Atribuição individual é do supervisor: no treino a OS é sempre da equipe toda.
+    responsavel: null,
     execucao_aberta_ha_horas: horasAberta(e, o.id, agora),
     atrasada: atrasada(o, diaDe(agora)),
   };
 }
 
-const STATUS_OS = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"] as const;
+const STATUS_OS = ["liberada", "pendente", "em_execucao", "encerrando", "aguardando_supervisor", "encerrada", "cancelada", "devolvida"] as const;
 const PESO_PRIORIDADE: Record<string, number> = { "muito alto": 4, alto: 3, médio: 2, medio: 2, baixo: 1 };
 
 interface FiltrosOs {
@@ -258,7 +283,17 @@ function aprsApi(e: EstadoTreino, osId: string) {
         participantes: a.participantes
           .map((p) => {
             const u = usuarioDe(e, p.usuario_id);
-            return { usuario_id: p.usuario_id, nome: u?.nome ?? "Participante", matricula: u?.matricula ?? "", funcao: p.funcao, assinatura_path: p.assinatura_path, assinada_em: p.assinada_em };
+            return {
+              usuario_id: p.usuario_id,
+              nome: u?.nome ?? "Participante",
+              matricula: u?.matricula ?? "",
+              funcao: p.funcao,
+              assinatura_path: p.assinatura_path,
+              assinada_em: p.assinada_em,
+              assinatura_presencial: p.assinatura_presencial,
+              recusou_em: p.recusou_em,
+              recusa_motivo: p.recusa_motivo,
+            };
           })
           .sort((x, y) => x.funcao.localeCompare(y.funcao) || x.nome.localeCompare(y.nome)),
         riscos: modelo.riscos.filter((r) => a.riscos.includes(r.id)).map((r) => ({ id: r.id, classificacao: r.classificacao, nome: r.nome })),
@@ -298,6 +333,11 @@ function execucoesApi(e: EstadoTreino, osId: string) {
         resultado: x.resultado,
         descricao_atividade: x.descricao_atividade,
         motivo: x.motivo,
+        suspensao_motivo: x.suspensao_motivo,
+        suspensao_complemento: x.suspensao_complemento,
+        encerramento_assinado_em: x.encerramento_assinado_em,
+        localizacao_inicio: x.localizacao_inicio,
+        localizacao_fim: x.localizacao_fim,
         dados_inspecao: x.dados_inspecao,
         tempo_liquido_min: tempo ? emMinutos(tempo.liquidoMs) : null,
         pausa_min: tempo ? emMinutos(tempo.pausaMs) : null,
@@ -321,20 +361,33 @@ function alertasApi(e: EstadoTreino, osId: string) {
     .map((a) => ({ id: a.id, tipo: a.tipo, detalhe: a.detalhe, destinatario_id: a.destinatario_id, destinatario_nome: nomeDe(e, a.destinatario_id), email_enviado_em: a.email_enviado_em, lido_em: a.lido_em, criado_em: a.criado_em }));
 }
 
-function linhaDoTempo(aprs: ReturnType<typeof aprsApi>, execs: ReturnType<typeof execucoesApi>, alertas: ReturnType<typeof alertasApi>) {
+/** O texto de cada resultado na linha do tempo (`ROTULO_RESULTADO` da `api`). */
+const ROTULO_RESULTADO: Record<string, string> = { encerrada: "encerrada", interrompida: "interrompida", suspensa: "suspensa", cancelada: "cancelada" };
+
+function linhaDoTempo(aprs: ReturnType<typeof aprsApi>, execs: ReturnType<typeof execucoesApi>, alertas: ReturnType<typeof alertasApi>, ciencia: { em: string | null; porNome: string | null }) {
   const itens: { em: string; tipo: string; descricao: string }[] = [];
-  for (const a of aprs) itens.push({ em: a.concluida_em, tipo: "apr_concluida", descricao: `APR ${a.resultado} (${a.modelo.codigo} v${a.modelo.versao}) por ${a.preenchida_por.nome}` });
+  for (const a of aprs) {
+    itens.push({ em: a.concluida_em, tipo: "apr_concluida", descricao: `APR ${a.resultado} (${a.modelo.codigo} v${a.modelo.versao}) por ${a.preenchida_por.nome}` });
+    for (const x of a.participantes) {
+      if (x.assinada_em && !x.assinatura_presencial) itens.push({ em: x.assinada_em, tipo: "apr_assinada", descricao: `${x.nome} assinou a APR` });
+      if (x.recusou_em) itens.push({ em: x.recusou_em, tipo: "apr_recusada", descricao: `${x.nome} recusou a APR (direito de recusa)${x.recusa_motivo ? `: ${x.recusa_motivo}` : ""}` });
+    }
+  }
   for (const x of execs) {
     itens.push({ em: x.inicio, tipo: "execucao_iniciada", descricao: `Execução iniciada por ${x.executor.nome}` });
     for (const p of x.pausas) {
-      itens.push({ em: p.inicio, tipo: "pausa_iniciada", descricao: `Pausa iniciada${p.motivo ? ` (${p.motivo})` : ""}` });
+      itens.push({ em: p.inicio, tipo: "pausa_iniciada", descricao: `Pausa iniciada (${descreverMotivo(ROTULO_DA_PAUSA, p.motivo, p.complemento)})` });
       if (p.fim) itens.push({ em: p.fim, tipo: "pausa_encerrada", descricao: "Pausa encerrada" });
     }
     if (x.fim && x.resultado) {
-      itens.push({ em: x.fim, tipo: `execucao_${x.resultado}`, descricao: `Execução ${x.resultado} por ${x.executor.nome}${x.resultado === "interrompida" && x.motivo ? `: ${x.motivo}` : ""}` });
+      const motivo = x.resultado === "interrompida" && x.motivo ? `: ${x.motivo}` : "";
+      const suspensao = x.resultado === "suspensa" && x.suspensao_motivo ? `: ${descreverMotivo(ROTULO_DA_SUSPENSAO, x.suspensao_motivo, x.suspensao_complemento)}` : "";
+      itens.push({ em: x.fim, tipo: `execucao_${ROTULO_RESULTADO[x.resultado]}`, descricao: `Execução ${x.resultado} por ${x.executor.nome}${motivo}${suspensao}` });
     }
+    if (x.encerramento_assinado_em) itens.push({ em: x.encerramento_assinado_em, tipo: "encerramento_assinado", descricao: `Encerramento assinado por ${x.executor.nome}` });
   }
   for (const a of alertas) itens.push({ em: a.criado_em, tipo: "alerta", descricao: `Alerta ${a.tipo}: ${a.detalhe}` });
+  if (ciencia.em) itens.push({ em: ciencia.em, tipo: "ciencia", descricao: `Assinatura final do supervisor${ciencia.porNome ? ` ${ciencia.porNome}` : ""}: OS concluída` });
   return itens.map((item, i) => ({ item, i })).sort((a, b) => new Date(a.item.em).getTime() - new Date(b.item.em).getTime() || a.i - b.i).map((x) => x.item);
 }
 
@@ -342,23 +395,35 @@ function detalheDaOs(e: EstadoTreino, o: OsReg, agora: Date) {
   const aprs = aprsApi(e, o.id);
   const execucoes = execucoesApi(e, o.id);
   const alertas = alertasApi(e, o.id);
+  const cienciaPorNome = o.ciencia_por ? nomeDe(e, o.ciencia_por) : null;
   return {
     os: {
       ...o,
+      responsavel_id: null,
+      reservada_por: null,
+      reservada_em: null,
+      devolvida_em: null,
+      devolvida_por: null,
+      justificativa_devolucao: null,
+      devolucao_exportada_em: null,
       local_instalacao: { ...localDe(e, o) },
       equipe: { id: e.equipe.id, nome: e.equipe.nome, centro_trabalho: e.equipe.centro_trabalho, supervisor_id: e.equipe.supervisor_id },
-      ciencia_por_nome: o.ciencia_por ? nomeDe(e, o.ciencia_por) : null,
+      ciencia_por_nome: cienciaPorNome,
+      responsavel: null,
+      devolucao: null,
       pdf_pronto: pdfPronto(o, agora),
       execucao_aberta_ha_horas: horasAberta(e, o.id, agora),
       atrasada: atrasada(o, diaDe(agora)),
       eventos_com_relogio_suspeito: 0,
     },
     servico: servicoDaOs(e, o),
+    /** O checklist de inspeção do plano da OS preventiva (vazio quando não há). */
+    checklist_inspecao: checklistDaOs(o).map((p) => ({ ...p })),
     aprs,
     execucoes,
     alertas,
     reprogramacoes: [],
-    linha_do_tempo: linhaDoTempo(aprs, execucoes, alertas),
+    linha_do_tempo: linhaDoTempo(aprs, execucoes, alertas, { em: o.ciencia_em, porNome: cienciaPorNome }),
   };
 }
 
@@ -467,7 +532,11 @@ function pdfDaOs(e: EstadoTreino, o: OsReg): Uint8Array {
     `Equipe: ${e.equipe.nome}`,
     `Tipo: ${o.tipo}   Prioridade: ${o.prioridade ?? "-"}`,
     "",
-    ...execs.flatMap((x) => [`Execucao por ${x.executor.nome}: ${x.inicio.slice(0, 16).replace("T", " ")} a ${(x.fim ?? "").slice(0, 16).replace("T", " ")} (UTC)`, `Atividade: ${x.descricao_atividade ?? "-"}`]),
+    ...execs.flatMap((x) => [
+      `Execucao por ${x.executor.nome}: ${x.inicio.slice(0, 16).replace("T", " ")} a ${(x.fim ?? "").slice(0, 16).replace("T", " ")} (UTC)`,
+      `Atividade: ${x.descricao_atividade ?? "Executado conforme a OS, sem ocorrencias"}`,
+    ]),
+    ...(o.ciencia_em ? ["", `Assinatura final do supervisor: ${o.ciencia_por ? nomeDe(e, o.ciencia_por) : "-"}`] : []),
     "",
     "Este PDF foi gerado pelo Campo de treino: nenhuma informacao real foi usada.",
   ]);
@@ -516,11 +585,26 @@ async function receberArquivo(e: EstadoTreino, id: string, corpo: unknown): Prom
 // Eventos de campo (`POST /eventos`)
 // ---------------------------------------------------------------------------------------------------------------
 
-const EVENTO_TIPOS = ["apr_concluida", "execucao_iniciada", "pausa_iniciada", "pausa_encerrada", "execucao_encerrada", "execucao_interrompida", "execucao_suspensa", "execucao_cancelada"] as const;
+const EVENTO_TIPOS = [
+  "apr_concluida",
+  "apr_assinada",
+  "apr_recusada",
+  "execucao_iniciada",
+  "pausa_iniciada",
+  "pausa_encerrada",
+  "execucao_encerrada",
+  "encerramento_assinado",
+  "execucao_interrompida",
+  "execucao_suspensa",
+  "execucao_cancelada",
+] as const;
 type EventoTipo = (typeof EVENTO_TIPOS)[number];
 const RESPOSTAS = ["sim", "nao", "na"];
 const FUNCOES = ["responsavel", "executor"];
-const MOTIVOS_PAUSA = ["almoco", "descanso", "outro"];
+/** A APR exige ao menos 2 participantes: ninguém trabalha sozinho (`MIN_PARTICIPANTES` da `api`). Não há máximo. */
+const MIN_PARTICIPANTES = 2;
+const MAX_COMPLEMENTO = 500;
+const MAX_OBSERVACAO_DO_ITEM = 500;
 const MAX_FOTOS = 10;
 const MAX_PDFS = 5;
 const MAX_EVENTOS = 500;
@@ -574,6 +658,34 @@ const campoLista = (o: Record<string, unknown>, c: string, obrigatorio = false):
   if (!Array.isArray(v)) return invalidoNoPayload(c, "Informe uma lista");
   return v;
 };
+const campoBooleano = (o: Record<string, unknown>, c: string, padrao: boolean): boolean => {
+  const v = o[c];
+  if (v === undefined) return padrao;
+  if (typeof v !== "boolean") return invalidoNoPayload(c, "Informe verdadeiro ou falso");
+  return v;
+};
+/** O texto opcional com tamanho máximo (`z.string().max(n).nullable().optional()` da `api`). */
+const campoTextoCurto = (o: Record<string, unknown>, c: string, maximo: number): string | null => {
+  const v = campoTexto(o, c);
+  if (v !== null && v.length > maximo) invalidoNoPayload(c, `No máximo ${maximo} caracteres`);
+  return v;
+};
+/**
+ * A posição do payload (`latitude` e `longitude` vêm juntas; as duas ausentes = "sem localização", e o serviço não é
+ * bloqueado). Como `lerPosicao` e `posicaoPayload` da `api`.
+ */
+function campoPosicao(o: Record<string, unknown>): PosicaoReg | null {
+  const faixa = (c: "latitude" | "longitude", limite: number) => {
+    const v = o[c];
+    if (v === undefined || v === null) return null;
+    if (typeof v !== "number" || !Number.isFinite(v) || v < -limite || v > limite) return invalidoNoPayload(c, `Informe um número entre -${limite} e ${limite}`);
+    return v;
+  };
+  const latitude = faixa("latitude", 90);
+  const longitude = faixa("longitude", 180);
+  if ((latitude === null) !== (longitude === null)) throw rejeitar("posicao_incompleta", "Informe latitude e longitude juntas");
+  return latitude === null || longitude === null ? null : { latitude, longitude };
+}
 
 interface Evidencia {
   id: string;
@@ -668,6 +780,8 @@ function lerApr(bruto: unknown) {
     osPayload: campoUuid(p, "os_id", false),
     modeloId: campoUuid(p, "modelo_apr_id")!,
     participantes,
+    /** Padrão `false`: a APR é registrada e cada um assina na própria conta. `true` é a contingência offline, que o treino não tem, mas aceita. */
+    assinaturaPresencial: campoBooleano(p, "assinatura_presencial", false),
     riscos: campoLista(p, "riscos").map((r, i) => (typeof r === "string" && REGEX_UUID.test(r) ? r : invalidoNoPayload(`riscos.${i}`, "Identificador inválido"))),
     respostas: campoLista(p, "respostas", true).map((br, i) => {
       const x = obj(br);
@@ -692,18 +806,20 @@ function conferirApr(ctx: Contexto, osId: string, p: AprLida) {
   const { e, eu } = ctx;
   const ordem = carregarOsDoUsuario(ctx, osId);
   if (e.execucoes.some((x) => x.os_id === ordem.id && x.resultado === null)) throw rejeitar("os_em_execucao", "Esta OS já está em execução");
-  if (ordem.status === "encerrada") throw rejeitar("os_encerrada", "Esta OS já foi encerrada");
+  if (execucaoJaTerminou(ordem.status)) throw rejeitar("os_encerrada", "Esta OS já foi encerrada");
 
   const modelo = e.modelos.find((m) => m.id === p.modeloId);
   if (!modelo || !modelo.publicado_em) throw rejeitar("modelo_invalido", "Modelo de APR inexistente ou não publicado");
 
   const ids = p.participantes.map((x) => x.usuario_id);
   if (!unico(ids)) throw rejeitar("participante_repetido", "Participante repetido");
+  if (ids.length < MIN_PARTICIPANTES) throw rejeitar("participantes_insuficientes", `A APR precisa de ao menos ${MIN_PARTICIPANTES} participantes: ninguém executa o serviço sozinho`);
   if (!ids.includes(eu.id)) throw rejeitar("participante_obrigatorio", "O técnico logado precisa ser participante da APR");
   if (p.participantes.filter((x) => x.funcao === "responsavel").length !== 1) throw rejeitar("responsavel_obrigatorio", "A APR precisa de exatamente um responsável");
   const pessoas = ids.map((i) => usuarioDe(e, i));
   if (pessoas.some((x) => !x)) throw rejeitar("participante_invalido", "Participante não encontrado");
   for (const pessoa of pessoas as UsuarioTreino[]) {
+    if (!pessoa.ativo) throw rejeitar("participante_inativo", `${pessoa.nome} está desligado ou sem acesso e não pode entrar na APR`);
     if (pessoa.equipe_id !== ordem.equipe_id) throw rejeitar("participante_fora_da_equipe", `${pessoa.nome} não é da equipe da OS`);
     if (!pessoa.assinatura_path) throw rejeitar("assinatura_ausente", `${pessoa.nome} ainda não cadastrou a assinatura no perfil`);
   }
@@ -793,6 +909,8 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
 
   const resultado = reprovados.length > 0 ? "bloqueada" : "aprovada";
   const concluidaEm = p.concluidaEm;
+  // As assinaturas: na conta de cada um, depois (padrão: `apr_assinada`), ou já copiadas, no aparelho do responsável (offline). A APR bloqueada não é assinada.
+  const presencial = p.assinaturaPresencial && resultado === "aprovada";
   const registro: AprReg = {
     id: p.id,
     os_id: ordem.id,
@@ -801,7 +919,15 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
     resultado,
     observacao_geral: vazio(p.observacaoGeral) ? null : p.observacaoGeral!.trim(),
     concluida_em: concluidaEm.toISOString(),
-    participantes: p.participantes.map((x) => ({ usuario_id: x.usuario_id, funcao: x.funcao, assinatura_path: usuarioDe(e, x.usuario_id)!.assinatura_path!, assinada_em: (x.assinada_em ?? concluidaEm).toISOString() })),
+    participantes: p.participantes.map((x) => ({
+      usuario_id: x.usuario_id,
+      funcao: x.funcao,
+      assinatura_path: presencial ? usuarioDe(e, x.usuario_id)!.assinatura_path! : null,
+      assinada_em: presencial ? (x.assinada_em ?? concluidaEm).toISOString() : null,
+      assinatura_presencial: presencial,
+      recusou_em: null,
+      recusa_motivo: null,
+    })),
     riscos: p.riscos,
     respostas: p.respostas.map((r) => ({ item_id: r.item_id, resposta: r.resposta, observacao: vazio(r.observacao) ? null : r.observacao!.trim(), respondida_em: (r.respondida_em ?? concluidaEm).toISOString() })),
     evidencias: p.evidencias.map(evidenciaDaApr),
@@ -816,6 +942,83 @@ function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | null, bruto: 
     });
     criarAlerta(ctx, ordem.id, "bloqueio", `APR bloqueada (${reprovados.length} item(ns) reprovado(s)): ${itens.join("; ")}`);
   }
+}
+
+// ---- Assinaturas e recusa da APR ----------------------------------------------------------------------------------
+
+/**
+ * Quem continua na APR, quem recusou, quem ainda não assinou e se dá para iniciar a execução: o mínimo de participantes, o
+ * responsável na APR e todos os que ficaram com a assinatura dada (`situacaoDasAssinaturas` da `api`). `faltam` vem com o
+ * responsável primeiro e depois por nome.
+ */
+function situacaoDasAssinaturas(e: EstadoTreino, a: AprReg) {
+  const ativos = a.participantes.filter((p) => !p.recusou_em);
+  const recusaram = a.participantes.filter((p) => p.recusou_em);
+  const faltam = ativos
+    .filter((p) => !p.assinada_em)
+    .sort((x, y) => Number(y.funcao === "responsavel") - Number(x.funcao === "responsavel") || nomeDe(e, x.usuario_id).localeCompare(nomeDe(e, y.usuario_id)));
+  const responsavelRecusou = recusaram.some((p) => p.funcao === "responsavel");
+  const semParticipantes = ativos.length < MIN_PARTICIPANTES;
+  return { ativos, recusaram, faltam, responsavelRecusou, semParticipantes, pronta: !responsavelRecusou && !semParticipantes && faltam.length === 0 };
+}
+
+/** A APR e o participante que age, para assinar ou recusar; a APR que ainda não chegou deixa o evento pendente. */
+function carregarParticipante(ctx: Contexto, aprId: string): { apr: AprReg; participante: ParticipanteAprReg; usada: boolean } {
+  const a = ctx.e.aprs.find((x) => x.id === aprId);
+  if (!a) throw adiar("apr_ausente", "A APR ainda não foi recebida");
+  ctx.saida.osAfetadas.add(a.os_id);
+  const participante = a.participantes.find((x) => x.usuario_id === ctx.eu.id);
+  if (!participante) throw rejeitar("fora_da_apr", "Você não é participante desta APR");
+  if (a.resultado !== "aprovada") throw rejeitar("apr_bloqueada", "Esta APR foi bloqueada: não há o que assinar");
+  return { apr: a, participante, usada: ctx.e.execucoes.some((x) => x.apr_id === a.id && x.resultado !== "cancelada") };
+}
+
+/**
+ * `apr_assinada`: o participante assina a APR na própria conta, com a assinatura do perfil, depois da validação (Reunião 3). A
+ * execução só começa quando todos assinaram. A assinatura só vale no dia da APR; reenviar não muda nada.
+ */
+function aplicarAprAssinada(ctx: Contexto, bruto: unknown) {
+  const p = obj(bruto);
+  const aprId = campoUuid(p, "apr_id")!;
+  const assinadaEm = campoInstante(p, "assinada_em", false);
+  const { apr: a, participante } = carregarParticipante(ctx, aprId);
+  ctx.saida.aprs.push({ id: a.id, resultado: a.resultado });
+  if (participante.recusou_em) throw rejeitar("apr_recusada_por_voce", "Você recusou esta APR e saiu dela");
+  if (participante.assinada_em) return;
+  if (diaDe(a.concluida_em) !== diaDe(ctx.evento.ocorrido_em)) throw rejeitar("apr_vencida", "A APR é de outro dia: faça uma APR nova");
+  if (!ctx.eu.assinatura_path) throw rejeitar("assinatura_ausente", "Cadastre a sua assinatura no perfil antes de assinar");
+  participante.assinatura_path = ctx.eu.assinatura_path;
+  participante.assinada_em = (assinadaEm ?? ctx.evento.ocorrido_em).toISOString();
+}
+
+/**
+ * `apr_recusada`: o direito de recusa. O participante que não concorda com a APR sai dela, deixando o motivo, e o supervisor é
+ * avisado (alerta no detalhe da OS). Se sobrarem menos de 2 participantes, ou se quem recusou foi o responsável, a APR não
+ * serve mais: é preciso uma nova. Só vale antes de a execução começar e para quem ainda não assinou.
+ */
+function aplicarAprRecusada(ctx: Contexto, bruto: unknown) {
+  const p = obj(bruto);
+  const aprId = campoUuid(p, "apr_id")!;
+  const motivo = campoTexto(p, "motivo");
+  const recusadaEm = campoInstante(p, "recusada_em", false);
+  const { apr: a, participante, usada } = carregarParticipante(ctx, aprId);
+  ctx.saida.aprs.push({ id: a.id, resultado: a.resultado });
+  if (participante.recusou_em) return;
+  if (vazio(motivo)) throw rejeitar("motivo_obrigatorio", "Diga por que você recusa a APR");
+  if (participante.assinada_em) throw rejeitar("ja_assinou", "Você já assinou esta APR");
+  if (usada) throw rejeitar("apr_ja_usada", "A execução desta APR já começou");
+
+  participante.recusou_em = (recusadaEm ?? ctx.evento.ocorrido_em).toISOString();
+  participante.recusa_motivo = motivo!.trim();
+
+  const situacao = situacaoDasAssinaturas(ctx.e, a);
+  const ordem = ctx.e.os.find((o) => o.id === a.os_id)!;
+  const consequencia = situacao.responsavelRecusou
+    ? "o responsável recusou: é preciso uma APR nova"
+    : situacao.semParticipantes
+      ? `restam menos de ${MIN_PARTICIPANTES} participantes: é preciso uma APR nova`
+      : "a APR segue com os demais participantes";
+  criarAlerta(ctx, a.os_id, "direito_de_recusa", `OS ${ordem.numero_ordem ?? ordem.titulo}: ${ctx.eu.nome} exerceu o direito de recusa na APR — "${motivo!.trim()}". Ele saiu da APR; ${consequencia}.`);
 }
 
 // ---- Execução -------------------------------------------------------------------------------------------------
@@ -851,6 +1054,8 @@ function aplicarExecucaoIniciada(ctx: Contexto, osIdEnvelope: string | null, bru
     ctx.saida.osAfetadas.add(jaExiste.os_id);
     return;
   }
+  // A localização do início, se o aparelho deu (sem ela o serviço não é bloqueado: fica "sem localização").
+  const posicao = campoPosicao(p);
   const ordem = carregarOsDoUsuario(ctx, osId);
   ctx.saida.osAfetadas.add(ordem.id);
 
@@ -858,30 +1063,68 @@ function aplicarExecucaoIniciada(ctx: Contexto, osIdEnvelope: string | null, bru
   if (!a) throw adiar("apr_ausente", "A APR ainda não foi recebida");
   if (a.os_id !== ordem.id || a.resultado !== "aprovada") throw rejeitar("apr_invalida", "Preencha a APR antes de iniciar");
   if (diaDe(a.concluida_em) !== diaDe(inicio)) throw rejeitar("apr_vencida", "A APR é de outro dia: faça uma APR nova");
-  if (!a.participantes.some((x) => x.usuario_id === eu.id)) throw rejeitar("fora_da_apr", "Você não é participante desta APR");
+  const participante = a.participantes.find((x) => x.usuario_id === eu.id);
+  if (!participante || participante.recusou_em) throw rejeitar("fora_da_apr", participante ? "Você saiu desta APR (direito de recusa)" : "Você não é participante desta APR");
+  const situacao = situacaoDasAssinaturas(e, a);
+  if (situacao.responsavelRecusou || situacao.semParticipantes) {
+    throw rejeitar("apr_sem_participantes", situacao.responsavelRecusou ? "O responsável recusou a APR: faça uma APR nova" : "A APR ficou com menos de 2 participantes: faça uma APR nova");
+  }
+  // Online é a equipe que precisa assinar (no offline a assinatura de outro aparelho ainda poderia chegar).
+  if (situacao.faltam.length > 0) throw rejeitar("apr_sem_assinaturas", `Faltam as assinaturas da APR: ${situacao.faltam.map((x) => nomeDe(e, x.usuario_id)).join(", ")}`);
   if (e.execucoes.some((x) => x.apr_id === a.id && x.resultado !== "cancelada")) throw rejeitar("apr_ja_usada", "Esta APR já amparou uma execução: faça uma APR nova");
   if (e.execucoes.some((x) => x.executor_id === eu.id && x.resultado === null && diaDe(x.inicio) !== diaDe(inicio))) {
     throw rejeitar("execucao_esquecida", "Suspenda a execução de outro dia antes de iniciar uma nova");
   }
   if (e.execucoes.some((x) => x.os_id === ordem.id && x.resultado === null)) throw rejeitar("os_em_execucao", "Esta OS já está em execução");
-  if (ordem.status === "encerrada") throw rejeitar("os_encerrada", "Esta OS já foi encerrada");
+  if (execucaoJaTerminou(ordem.status)) throw rejeitar("os_encerrada", "Esta OS já foi encerrada");
 
   e.execucoes.push({
     id,
     os_id: ordem.id,
     apr_id: a.id,
     executor_id: eu.id,
-    numero_pessoas: (numeroPessoas as number | undefined | null) ?? a.participantes.length,
+    numero_pessoas: (numeroPessoas as number | undefined | null) ?? situacao.ativos.length,
     inicio: inicio.toISOString(),
     fim: null,
     resultado: null,
     descricao_atividade: null,
     motivo: null,
+    suspensao_motivo: null,
+    suspensao_complemento: null,
     dados_inspecao: null,
+    encerramento_assinado_em: null,
+    localizacao_inicio: posicao,
+    localizacao_fim: null,
     pausas: [],
     assinaturas: [],
     fotos: [],
   });
+}
+
+/** O motivo de uma parada (pausa ou suspensão), validado contra a lista; ausente ou nulo é `null` (a recusa vem de `conferirMotivo`). */
+function campoMotivo<T extends string>(o: Record<string, unknown>, lista: readonly T[]): T | null {
+  const motivo = o.motivo ?? null;
+  if (motivo !== null && (typeof motivo !== "string" || !(lista as readonly string[]).includes(motivo))) invalidoNoPayload("motivo", "Valor inválido");
+  return motivo as T | null;
+}
+
+/** O motivo e o complemento de uma parada: o motivo é obrigatório, e "outro" e "aguardando" pedem o texto (`conferirMotivo` da `api`). */
+function conferirMotivo(motivo: string | null, complemento: string | null, parada: "pausa" | "suspensão") {
+  if (!motivo) throw rejeitar("motivo_obrigatorio", `Escolha o motivo da ${parada}`);
+  const texto = complemento?.trim() || null;
+  if (pedeComplemento(motivo) && !texto) throw rejeitar("complemento_obrigatorio", motivo === "aguardando" ? "Diga o que ou quem você está aguardando" : "Descreva o motivo");
+  return pedeComplemento(motivo) ? texto : null;
+}
+
+/**
+ * Lesão e enfermidade na pausa ou na suspensão avisam o supervisor na hora: a lesão no trabalho, mesmo leve, é acidente de
+ * trabalho e a empresa precisa registrá-la. No treino o aviso fica como alerta no detalhe da OS (não há sino nem e-mail).
+ */
+function avisarSaude(ctx: Contexto, osId: string, quando: "pausou" | "suspendeu", motivo: "lesao" | "enfermidade", complemento: string | null) {
+  const o = ctx.e.os.find((x) => x.id === osId)!;
+  const nome = motivo === "lesao" ? "lesão" : "enfermidade";
+  const detalhe = `OS ${o.numero_ordem ?? o.titulo}: ${ctx.eu.nome} ${quando} a execução por ${nome}${complemento ? ` (${complemento})` : ""}.${motivo === "lesao" ? " A lesão no trabalho, mesmo leve, é acidente de trabalho e precisa ser registrada." : ""}`;
+  criarAlerta(ctx, osId, "lesao_ou_enfermidade", detalhe);
 }
 
 function aplicarPausaIniciada(ctx: Contexto, bruto: unknown) {
@@ -889,13 +1132,16 @@ function aplicarPausaIniciada(ctx: Contexto, bruto: unknown) {
   const id = campoUuid(p, "id")!;
   const execucaoId = campoUuid(p, "execucao_id")!;
   const inicio = campoInstante(p, "inicio")!;
-  const motivo = p.motivo ?? null;
-  if (motivo !== null && (typeof motivo !== "string" || !MOTIVOS_PAUSA.includes(motivo))) invalidoNoPayload("motivo", "Valor inválido");
+  const motivo = campoMotivo<MotivoDaPausa>(p, PAUSA_MOTIVOS);
+  const complementoEnviado = campoTextoCurto(p, "complemento", MAX_COMPLEMENTO);
+  const posicao = campoPosicao(p);
   if (ctx.e.execucoes.some((x) => x.pausas.some((y) => y.id === id))) return;
+  const complemento = conferirMotivo(motivo, complementoEnviado, "pausa");
   const x = execucaoDoUsuario(ctx, execucaoId);
   if (inicio.toISOString() < x.inicio) throw rejeitar("pausa_antes_do_inicio", "A pausa não pode começar antes da execução");
   if (x.pausas.some((y) => y.fim === null)) throw rejeitar("pausa_aberta", "Já existe uma pausa aberta nesta execução");
-  x.pausas.push({ id, inicio: inicio.toISOString(), fim: null, motivo: motivo as "almoco" | "descanso" | "outro" | null });
+  x.pausas.push({ id, inicio: inicio.toISOString(), fim: null, motivo, complemento, localizacao: posicao });
+  if (ehMotivoDeSaude(motivo)) avisarSaude(ctx, x.os_id, "pausou", motivo, complemento);
 }
 
 function aplicarPausaEncerrada(ctx: Contexto, bruto: unknown) {
@@ -912,46 +1158,96 @@ function aplicarPausaEncerrada(ctx: Contexto, bruto: unknown) {
   pausa.fim = fim.toISOString();
 }
 
+/**
+ * `execucao_encerrada`: o clique em "Encerrar OS", depois da confirmação. Grava o fim e a localização, e o tempo para ali: o
+ * que vem depois (a descrição, as fotos, o checklist e a assinatura) não entra no tempo, e a execução não retoma. A OS fica
+ * `encerrando` até o responsável assinar (`encerramento_assinado`).
+ */
 function aplicarExecucaoEncerrada(ctx: Contexto, bruto: unknown) {
-  const { e } = ctx;
   const p = obj(bruto);
   const execucaoId = campoUuid(p, "execucao_id")!;
   const fim = campoInstante(p, "fim")!;
-  const descricao = campoTexto(p, "descricao_atividade");
-  const evidencias = lerEvidencias(p);
-  const assinaturas = campoLista(p, "assinaturas").map((b) => {
-    const x = obj(b);
-    return { usuario_id: campoUuid(x, "usuario_id")!, assinada_em: campoInstante(x, "assinada_em", false) };
-  });
   const x = execucaoDoUsuario(ctx, execucaoId, true);
   if (x.resultado === "encerrada") return;
   if (x.resultado !== null) throw rejeitar("execucao_finalizada", "A execução já foi finalizada");
   if (fim.toISOString() < x.inicio) throw rejeitar("fim_antes_do_inicio", "O fim é anterior ao início da execução");
-
-  const apr = e.aprs.find((a) => a.id === x.apr_id)!;
-  const participantes = apr.participantes.map((pp) => ({ usuarioId: pp.usuario_id, pessoa: usuarioDe(e, pp.usuario_id)! }));
-  const assinaram = new Set(assinaturas.map((a) => a.usuario_id));
-  const todosAssinaram = participantes.every((pp) => assinaram.has(pp.usuarioId)) && assinaturas.every((a) => participantes.some((pp) => pp.usuarioId === a.usuario_id));
-  if (vazio(descricao) || !evidencias.some((ev) => ev.tipo === "foto") || !todosAssinaram) throw rejeitar("encerramento_incompleto", "Descrição, foto e assinaturas de todos são obrigatórias");
-  conferirArquivosDaExecucao(evidencias);
-  const semAssinatura = participantes.find((pp) => !pp.pessoa.assinatura_path);
-  if (semAssinatura) throw rejeitar("assinatura_ausente", `${semAssinatura.pessoa.nome} ainda não cadastrou a assinatura no perfil`);
-  for (const ev of evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
+  const posicao = campoPosicao(p);
 
   fecharPausaAberta(x, fim);
   x.fim = fim.toISOString();
   x.resultado = "encerrada";
-  x.descricao_atividade = descricao!.trim();
-  x.dados_inspecao = obj(p).dados_inspecao ?? null;
-  x.assinaturas = participantes.map((pp) => ({ usuario_id: pp.usuarioId, assinatura_path: pp.pessoa.assinatura_path!, assinada_em: (assinaturas.find((a) => a.usuario_id === pp.usuarioId)?.assinada_em ?? fim).toISOString() }));
+  x.localizacao_fim = posicao;
+}
+
+/**
+ * As respostas do checklist de inspeção do encerramento de uma OS preventiva cujo plano tem perguntas: toda pergunta precisa de
+ * resposta (`checklist_incompleto`) e a não marcada pede observação (`observacao_obrigatoria`); a marcada aceita observação
+ * opcional. Devolve o que a execução guarda (a pergunta é copiada como estava) e os itens não marcados, que avisam o supervisor.
+ * Sem checklist no plano, o `dados_inspecao` segue como veio (`conferirInspecao` da `api`).
+ */
+function conferirInspecao(ordem: OsReg, bruto: unknown): { dados: unknown; naoMarcados: { pergunta: string; observacao: string | null }[] } {
+  const perguntas = checklistDaOs(ordem);
+  if (perguntas.length === 0) return { dados: bruto ?? null, naoMarcados: [] };
+  const respostas = new Map<string, { marcado: boolean; observacao: string | null }>();
+  if (bruto !== undefined && bruto !== null) {
+    campoLista(obj(bruto), "itens", true).forEach((bruta, i) => {
+      const x = obj(bruta);
+      const perguntaId = campoUuid(x, "pergunta_id")!;
+      if (typeof x.marcado !== "boolean") invalidoNoPayload(`itens.${i}.marcado`, "Informe verdadeiro ou falso");
+      const observacao = campoTexto(x, "observacao")?.trim() ?? null;
+      if (observacao !== null && observacao.length > MAX_OBSERVACAO_DO_ITEM) invalidoNoPayload(`itens.${i}.observacao`, `No máximo ${MAX_OBSERVACAO_DO_ITEM} caracteres`);
+      if (!respostas.has(perguntaId)) respostas.set(perguntaId, { marcado: x.marcado as boolean, observacao });
+    });
+  }
+  const itens = perguntas.map((q) => {
+    const r = respostas.get(q.id);
+    if (!r) throw rejeitar("checklist_incompleto", `Responda todas as perguntas do checklist de inspeção (falta: "${q.texto}")`);
+    const observacao = r.observacao || null;
+    if (!r.marcado && !observacao) throw rejeitar("observacao_obrigatoria", `Explique na observação o item não marcado: "${q.texto}"`);
+    return { pergunta: q.texto, marcado: r.marcado, observacao };
+  });
+  return { dados: { itens }, naoMarcados: itens.filter((i) => !i.marcado) };
+}
+
+/**
+ * `encerramento_assinado`: depois do fim, o responsável pela execução preenche o encerramento (descrição e fotos, ambas
+ * opcionais) e o assina com a assinatura do perfil dele; os demais participantes já assinaram a APR, no começo. A OS preventiva
+ * cujo plano tem checklist só encerra com ele respondido; item não marcado não bloqueia, avisa o supervisor. A OS passa a
+ * `aguardando_supervisor` e o supervisor é avisado: ele lê o relatório da execução e assina por último.
+ */
+function aplicarEncerramentoAssinado(ctx: Contexto, bruto: unknown) {
+  const p = obj(bruto);
+  const execucaoId = campoUuid(p, "execucao_id")!;
+  const assinadaEm = campoInstante(p, "assinada_em", false);
+  const descricao = campoTexto(p, "descricao_atividade");
+  const evidencias = lerEvidencias(p);
+  const x = execucaoDoUsuario(ctx, execucaoId, true);
+  if (x.resultado !== "encerrada") throw rejeitar("execucao_nao_encerrada", "Clique em Encerrar OS antes de assinar o encerramento");
+  if (x.encerramento_assinado_em) return;
+  conferirArquivosDaExecucao(evidencias);
+
+  const ordem = ctx.e.os.find((o) => o.id === x.os_id)!;
+  const inspecao = conferirInspecao(ordem, p.dados_inspecao);
+  for (const ev of evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
+  if (!ctx.eu.assinatura_path) throw rejeitar("assinatura_ausente", "Cadastre a sua assinatura no perfil antes de assinar");
+
+  // A assinatura nunca antecede o fim da execução (o relógio do aparelho pode estar adiantado ou atrasado).
+  const pedida = (assinadaEm ?? ctx.evento.ocorrido_em).toISOString();
+  const quando = pedida < x.fim! ? x.fim! : pedida;
+  x.descricao_atividade = vazio(descricao) ? null : descricao!.trim();
+  x.dados_inspecao = inspecao.dados;
+  x.encerramento_assinado_em = quando;
+  x.assinaturas = [{ usuario_id: ctx.eu.id, assinatura_path: ctx.eu.assinatura_path, assinada_em: quando }];
   x.fotos = fotosDaExecucao(evidencias);
   x.documentos = documentosDaExecucao(evidencias);
 
-  const ordem = e.os.find((o) => o.id === x.os_id)!;
-  if (ordem.pdf_path === null) {
-    // O PDF "fica pronto" uns segundos depois, como a tarefa em segundo plano da `api`.
-    ordem.pdf_path = idTreino("7", Number(ordem.numero_ordem?.slice(-3) ?? "0") || 1);
-    ordem.pdf_em = new Date(ctx.agora.getTime() + 3000).toISOString();
+  criarAlerta(ctx, x.os_id, "os_para_assinar", `OS ${ordem.numero_ordem ?? ordem.titulo} encerrada por ${ctx.eu.nome}: leia o relatório da execução e assine para concluir a OS.`);
+  if (inspecao.naoMarcados.length > 0) {
+    const plano = [ordem.plano_manutencao, ordem.item_manutencao].filter(Boolean);
+    const onde = plano.length > 0 ? ` (plano ${ordem.plano_manutencao}${ordem.item_manutencao ? `, item ${ordem.item_manutencao}` : ""})` : "";
+    const itens = inspecao.naoMarcados.map((i) => `"${i.pergunta}": ${i.observacao}`).join("; ");
+    const quantos = inspecao.naoMarcados.length === 1 ? "1 item não marcado" : `${inspecao.naoMarcados.length} itens não marcados`;
+    criarAlerta(ctx, x.os_id, "inspecao_com_pendencia", `OS ${ordem.numero_ordem ?? ordem.titulo}${onde}: inspeção encerrada com ${quantos}. ${itens}`);
   }
 }
 
@@ -966,6 +1262,7 @@ function aplicarExecucaoInterrompida(ctx: Contexto, bruto: unknown) {
   if (x.resultado !== null) throw rejeitar("execucao_finalizada", "A execução já foi finalizada");
   if (vazio(motivo) || !evidencias.some((ev) => ev.tipo === "foto")) throw rejeitar("interrupcao_incompleta", "Motivo e ao menos uma foto são obrigatórios");
   if (fim.toISOString() < x.inicio) throw rejeitar("fim_antes_do_inicio", "O fim é anterior ao início da execução");
+  const posicao = campoPosicao(p);
   conferirArquivosDaExecucao(evidencias);
   for (const ev of evidencias) exigirArquivo(ctx, ev.arquivo_id ?? ev.id);
 
@@ -973,22 +1270,36 @@ function aplicarExecucaoInterrompida(ctx: Contexto, bruto: unknown) {
   x.fim = fim.toISOString();
   x.resultado = "interrompida";
   x.motivo = motivo!.trim();
+  x.localizacao_fim = posicao;
   x.fotos = fotosDaExecucao(evidencias);
   x.documentos = documentosDaExecucao(evidencias);
   criarAlerta(ctx, x.os_id, "bloqueio", `Execução interrompida por risco: ${motivo!.trim()}`);
 }
 
+/**
+ * `execucao_suspensa`: o serviço não continua hoje. Encerra esta execução, a OS fica pendente e a retomada pede uma APR nova. O
+ * motivo é obrigatório (enfermidade, lesão, fim de expediente, condição climática, falta de material ou equipamento, outro, com a
+ * descrição) e a localização é gravada. Lesão e enfermidade avisam o supervisor na hora.
+ */
 function aplicarExecucaoSuspensa(ctx: Contexto, bruto: unknown) {
   const p = obj(bruto);
   const execucaoId = campoUuid(p, "execucao_id")!;
   const fim = campoInstante(p, "fim")!;
+  const motivo = campoMotivo<MotivoDaSuspensao>(p, SUSPENSAO_MOTIVOS);
+  const complementoEnviado = campoTextoCurto(p, "complemento", MAX_COMPLEMENTO);
   const x = execucaoDoUsuario(ctx, execucaoId, true);
   if (x.resultado === "suspensa") return;
   if (x.resultado !== null) throw rejeitar("execucao_finalizada", "A execução já foi finalizada");
   if (fim.toISOString() < x.inicio) throw rejeitar("fim_antes_do_inicio", "O fim é anterior ao início da execução");
+  const complemento = conferirMotivo(motivo, complementoEnviado, "suspensão");
+  const posicao = campoPosicao(p);
   fecharPausaAberta(x, fim);
   x.fim = fim.toISOString();
   x.resultado = "suspensa";
+  x.suspensao_motivo = motivo;
+  x.suspensao_complemento = complemento;
+  x.localizacao_fim = posicao;
+  if (ehMotivoDeSaude(motivo)) avisarSaude(ctx, x.os_id, "suspendeu", motivo, complemento);
 }
 
 function aplicarExecucaoCancelada(ctx: Contexto, bruto: unknown) {
@@ -1009,6 +1320,10 @@ function despachar(ctx: Contexto) {
   switch (evento.tipo) {
     case "apr_concluida":
       return aplicarAprConcluida(ctx, evento.os_id, evento.payload);
+    case "apr_assinada":
+      return aplicarAprAssinada(ctx, evento.payload);
+    case "apr_recusada":
+      return aplicarAprRecusada(ctx, evento.payload);
     case "execucao_iniciada":
       return aplicarExecucaoIniciada(ctx, evento.os_id, evento.payload);
     case "pausa_iniciada":
@@ -1017,6 +1332,8 @@ function despachar(ctx: Contexto) {
       return aplicarPausaEncerrada(ctx, evento.payload);
     case "execucao_encerrada":
       return aplicarExecucaoEncerrada(ctx, evento.payload);
+    case "encerramento_assinado":
+      return aplicarEncerramentoAssinado(ctx, evento.payload);
     case "execucao_interrompida":
       return aplicarExecucaoInterrompida(ctx, evento.payload);
     case "execucao_suspensa":
@@ -1157,6 +1474,34 @@ rota("GET", "/me/execucoes-abertas", ({ e, eu }) =>
   }),
 );
 
+/**
+ * As APRs aprovadas de hoje que esperam a assinatura de quem pergunta: cada participante assina na própria conta, e a execução
+ * só começa quando todos assinaram. A faixa "APR aguardando a sua assinatura" da lista usa o que vem daqui.
+ */
+rota("GET", "/me/aprs-para-assinar", ({ e, eu, agora }) => {
+  const hoje = diaDe(agora);
+  const aprs = e.aprs
+    .filter((a) => a.resultado === "aprovada" && diaDe(a.concluida_em) === hoje && !e.execucoes.some((x) => x.apr_id === a.id && x.resultado !== "cancelada"))
+    .map((a) => ({ a, p: a.participantes.find((x) => x.usuario_id === eu.id) }))
+    .filter(({ p }) => p && !p.assinada_em && !p.recusou_em)
+    .sort((x, y) => y.a.concluida_em.localeCompare(x.a.concluida_em))
+    .map(({ a, p }) => {
+      const o = e.os.find((x) => x.id === a.os_id)!;
+      return {
+        apr_id: a.id,
+        os_id: o.id,
+        numero_ordem: o.numero_ordem,
+        titulo: o.titulo,
+        local_codigo: localDe(e, o).codigo,
+        concluida_em: a.concluida_em,
+        preenchida_por: a.preenchida_por,
+        preenchida_por_nome: nomeDe(e, a.preenchida_por),
+        funcao: p!.funcao,
+      };
+    });
+  return ok({ aprs });
+});
+
 rota("GET", "/me/historico", ({ e, eu, agora }) => {
   const desde = agora.getTime() - 60 * 86_400_000;
   return ok({
@@ -1201,13 +1546,25 @@ rota("GET", "/os/:id/modelos-apr", ({ e, params }) => {
     }),
   });
 });
+/** O PDF só existe depois da assinatura final do supervisor: ele a leva (a OS está `encerrada`, concluída). */
 rota("GET", "/os/:id/pdf", ({ e, params }) => {
   const o = osPorId(e, params.id!);
-  if (o.status !== "encerrada") throw conflito("os_nao_encerrada", "A OS ainda não foi encerrada");
+  if (o.status !== "encerrada") throw conflito("os_nao_encerrada", "A OS ainda não foi concluída: o PDF sai depois da assinatura final do supervisor");
   return { status: 200, binario: { tipo: "application/pdf", bytes: pdfDaOs(e, o), nome: `os-${o.id}.pdf` } };
 });
-rota("POST", "/os/:id/ciencia", () => {
-  throw proibido();
+/**
+ * A assinatura final do supervisor (a "ciência" de antes): só ele assina, depois de ler o relatório da execução. O técnico em
+ * treino não supervisiona ninguém, então recebe `403`; quem a dá é o supervisor fictício, sozinho, depois que o técnico assina o
+ * encerramento (`avancarFicticios`).
+ */
+rota("POST", "/os/:id/ciencia", ({ e, params }) => {
+  osPorId(e, params.id!);
+  throw proibido("Só o supervisor da equipe da OS assina por último");
+});
+/** O relatório da execução (PDF à parte, para o supervisor ler antes de assinar): só o supervisor da equipe e o admin. */
+rota("GET", "/os/:id/relatorio-execucao", ({ e, params }) => {
+  osPorId(e, params.id!);
+  throw proibido("Só o supervisor da equipe e o admin leem o relatório da execução");
 });
 rota("POST", "/os/:id/reprogramar", () => {
   throw proibido();
@@ -1481,7 +1838,10 @@ export async function responderTreino(usuario: Usuario, metodo: string, caminho:
       if (!m) continue;
       const params: Record<string, string> = {};
       r.nomes.forEach((n, i) => (params[n] = decodeURIComponent(m[i + 1]!)));
-      return await r.tratar({ e, eu, usuario, q: lerConsulta(consulta), corpo, params, agora: new Date() });
+      const agora = new Date();
+      // Os colegas e o supervisor fictícios agem no tempo que passou (assinam a APR, dão a assinatura final) antes de a chamada ler o estado.
+      avancarFicticios(e, eu.id, agora);
+      return await r.tratar({ e, eu, usuario, q: lerConsulta(consulta), corpo, params, agora });
     }
     throw new ErroTreino(404, "indisponivel_no_treino", "Este recurso não existe no campo de treino");
   } catch (erro) {

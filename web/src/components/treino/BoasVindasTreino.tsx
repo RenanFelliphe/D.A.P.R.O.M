@@ -52,7 +52,7 @@ export function BoasVindasTreino({ contexto, aoFechar }: BoasVindasTreinoProps) 
         </div>
         <h2 id={idTitulo}>Bem-vindo ao Campo de Treino!</h2>
         <p id={idTexto} className="tr-dialogo-texto">
-          Aqui tudo é de mentira: ordens, equipes e APRs são fictícias, e nada do que você fizer afeta o trabalho real. Pode clicar, errar e refazer à vontade.
+          Aqui tudo é de mentira: ordens, equipes e APRs são fictícias, e nada do que você fizer afeta o trabalho real. Pode clicar, errar e refazer à vontade. Os colegas e o supervisor também são fictícios: eles assinam a APR e a OS sozinhos, alguns instantes depois de você.
         </p>
         <h3>Como você prefere aprender?</h3>
         <EscolhaDeModalidade />

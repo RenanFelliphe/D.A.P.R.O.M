@@ -1,6 +1,6 @@
 import { AdicionarFoto } from "@/components/ui/AdicionarFoto";
 import { AnexarPdf } from "@/components/ui/AnexarPdf";
-import { Field, Req } from "@/components/ui/Field";
+import { Field, Req, ligarAoErro } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import type { DocumentoDoRascunho, EvidenciaDoItem, FotoDoRascunho, ItemReprovado } from "@/lib/apr";
 
@@ -17,6 +17,8 @@ interface EvidenciaCardProps {
   aoRemoverPdf: (documentoId: string) => void;
   /** Falha ao enviar uma foto ou um PDF. */
   aoErroDeFoto: (mensagem: string) => void;
+  /** O que falta, dito junto de cada campo depois de tentar registrar. */
+  erros?: { observacao?: string; fotos?: string; documentos?: string };
 }
 
 /** O que cada tipo de item pede, dito ao técnico depois da validação. */
@@ -30,7 +32,7 @@ const INSTRUCAO: Record<EvidenciaDoItem, string> = {
  * Evidência de um item reprovado, pedida depois que a `api` validou a APR: observação e, conforme o item, ao menos uma
  * foto ou um PDF. Os dois tipos de arquivo são sempre aceitos.
  */
-export function EvidenciaCard({ item, observacao, fotos, documentos, aoObservar, aoFotoEnviada, aoRemoverFoto, aoPdfEnviado, aoRemoverPdf, aoErroDeFoto }: EvidenciaCardProps) {
+export function EvidenciaCard({ item, observacao, fotos, documentos, aoObservar, aoFotoEnviada, aoRemoverFoto, aoPdfEnviado, aoRemoverPdf, aoErroDeFoto, erros = {} }: EvidenciaCardProps) {
 
   return (
     <section className="evid" aria-label="Evidência do item reprovado" data-treino="ck-evidencia" data-treino-item={item.itemId}>
@@ -47,8 +49,16 @@ export function EvidenciaCard({ item, observacao, fotos, documentos, aoObservar,
           </>
         }
         htmlFor={`ev-obs-${item.itemId}`}
+        erro={erros.observacao}
       >
-        <textarea className="textarea" id={`ev-obs-${item.itemId}`} rows={3} placeholder="Descreva o motivo" value={observacao} onChange={(evento) => aoObservar(evento.target.value)} />
+        <textarea
+          className="textarea"
+          rows={3}
+          placeholder="Descreva o motivo"
+          value={observacao}
+          onChange={(evento) => aoObservar(evento.target.value)}
+          {...ligarAoErro(`ev-obs-${item.itemId}`, erros.observacao)}
+        />
       </Field>
       <Field
         label={
@@ -56,6 +66,7 @@ export function EvidenciaCard({ item, observacao, fotos, documentos, aoObservar,
             Fotos {item.evidencia === "foto" ? <Req>· ao menos 1</Req> : <span className="muted">· opcional</span>}
           </>
         }
+        erro={erros.fotos}
       >
         <div className="photo-grid">
           {fotos.map((foto, i) => (
@@ -86,6 +97,7 @@ export function EvidenciaCard({ item, observacao, fotos, documentos, aoObservar,
             Documentos em PDF {item.evidencia === "pdf" ? <Req>· ao menos 1</Req> : <span className="muted">· opcional</span>}
           </>
         }
+        erro={erros.documentos}
       >
         {documentos.length > 0 && (
           <ul className="doc-lista" style={{ marginBottom: 10 }}>

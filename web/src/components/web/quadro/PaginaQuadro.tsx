@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CartaoOs } from "@/components/web/quadro/CartaoOs";
+import { ColunaAssinaturas } from "@/components/web/quadro/ColunaAssinaturas";
 import { ColunaQuadro, aparenciaDoStatus } from "@/components/web/quadro/ColunaQuadro";
 import { FaixaAlertas } from "@/components/web/quadro/FaixaAlertas";
 import { FiltrosRecolhiveis } from "@/components/web/quadro/FiltrosRecolhiveis";
@@ -24,7 +25,7 @@ import { usuarioAtual } from "@/lib/api";
 import { hoje, hora } from "@/lib/formatar";
 import { ehAdmin, ehSupervisor as supervisa, nomesDasEquipesDoSupervisor, rotuloDoStatus, type OsStatus } from "@/lib/tipos";
 
-const STATUS_VALIDOS: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"];
+const STATUS_VALIDOS: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrando", "aguardando_supervisor", "encerrada", "cancelada", "devolvida"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Lê os filtros da URL, descartando o que não tem a forma esperada (a `api` recusaria com 422). */
@@ -62,7 +63,7 @@ function hrefDoQuadro(base: string, f: FiltrosDoQuadro, mudar: Partial<Record<ke
 
 /**
  * Quadro de OS (kanban por status, com visão de um status só): a mesma tela e o mesmo endereço para admin, supervisor e técnico.
- * Admin e supervisor ganham a faixa de alertas e a situação de ciência e PDF nos cartões; só o admin escolhe a equipe.
+ * Admin e supervisor ganham a faixa de alertas e a situação da assinatura final e do PDF nos cartões; as OS que esperam assinaturas (`encerrando` e `aguardando_supervisor`) dividem a coluna "Aguardando assinaturas"; só o admin escolhe a equipe.
  */
 export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const parametros = await searchParams;
@@ -80,7 +81,7 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
 
   const admin = ehAdmin(usuario);
   const supervisor = supervisa(usuario);
-  // Admin e supervisor acompanham as OS (alertas, ciência e PDF); o técnico comum só executa.
+  // Admin e supervisor acompanham as OS (alertas, assinatura final e PDF); o técnico comum só executa.
   const gestao = admin || supervisor;
   const [quadro, equipes, alertas, preventivas] = await Promise.all([
     carregarQuadro(filtros),
@@ -140,17 +141,27 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
       ) : (
         <>
           <div className="board">
-            {quadro.colunas.map((coluna) => (
-              <ColunaQuadro
-                key={coluna.status}
-                gestao={gestao}
-                usuarioId={usuario.id}
-                status={coluna.status}
-                total={coluna.total}
-                os={coluna.os}
-                hrefTodas={hrefDoQuadro(rota.quadro, filtros, { status: coluna.status, pagina: undefined })}
-              />
-            ))}
+            {quadro.colunas.map((coluna) =>
+              coluna.status === "encerrando" ? null : coluna.status === "aguardando_supervisor" ? (
+                <ColunaAssinaturas
+                  key="assinaturas"
+                  gestao={gestao}
+                  usuarioId={usuario.id}
+                  colunas={quadro.colunas.filter((c) => c.status === "aguardando_supervisor" || c.status === "encerrando")}
+                  hrefTodas={(status) => hrefDoQuadro(rota.quadro, filtros, { status, pagina: undefined })}
+                />
+              ) : (
+                <ColunaQuadro
+                  key={coluna.status}
+                  gestao={gestao}
+                  usuarioId={usuario.id}
+                  status={coluna.status}
+                  total={coluna.total}
+                  os={coluna.os}
+                  hrefTodas={hrefDoQuadro(rota.quadro, filtros, { status: coluna.status, pagina: undefined })}
+                />
+              ),
+            )}
           </div>
           {quadro.contagem.cancelada > 0 && (
             <span className="muted">

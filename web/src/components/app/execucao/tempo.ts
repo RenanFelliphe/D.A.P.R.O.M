@@ -1,20 +1,42 @@
 /** Tipos e contas da tela de execução: o que a `api` devolve em `GET /os/{id}` e o tempo calculado a partir disso. */
 
+/** Onde o aparelho estava num dos cinco momentos da execução; `null` = sem localização (permissão negada ou local coberto). */
+export interface LocalizacaoDaApi {
+  latitude: number;
+  longitude: number;
+}
+
+/** Motivo da pausa (`pausa_iniciada`); `null` é a pausa de antes de o motivo ser obrigatório. */
+export type MotivoDaPausa = "almoco" | "aguardando" | "descanso" | "clima" | "enfermidade" | "lesao" | "outro";
+
 export interface PausaDaApi {
   id: string;
   inicio: string;
   fim: string | null;
-  motivo: "almoco" | "descanso" | "outro" | null;
+  motivo: MotivoDaPausa | null;
+  /** O que ou quem se aguarda (`aguardando`) ou a descrição (`outro`). */
+  complemento?: string | null;
+  localizacao?: LocalizacaoDaApi | null;
 }
 
+/**
+ * Participante da APR. Assina na própria conta, depois da validação: `assinatura_path` e `assinada_em` são nulos enquanto
+ * não assinou. Quem recusou (`recusou_em`) saiu da APR e não conta como participante.
+ */
 export interface ParticipanteDaApr {
   usuario_id: string;
   nome: string;
   matricula: string;
   funcao: string;
-  /** Cópia da assinatura que a pessoa tinha no perfil ao concluir a APR. */
   assinatura_path: string | null;
+  assinada_em?: string | null;
+  assinatura_presencial?: boolean;
+  recusou_em?: string | null;
+  recusa_motivo?: string | null;
 }
+
+/** Quem continua na APR: o participante que recusou saiu dela. */
+export const participantesAtivos = (participantes: ParticipanteDaApr[]) => participantes.filter((p) => !p.recusou_em);
 
 export interface ExecucaoDaApi {
   id: string;
@@ -25,6 +47,16 @@ export interface ExecucaoDaApi {
   fim: string | null;
   resultado: "encerrada" | "interrompida" | "suspensa" | "cancelada" | null;
   pausas: PausaDaApi[];
+  /** Por que a execução foi suspensa (`suspensa`), com o complemento do motivo "outro". */
+  suspensao_motivo?: string | null;
+  suspensao_complemento?: string | null;
+  /**
+   * Quando o responsável assinou o encerramento. Nulo numa execução `encerrada` = o tempo parou, mas falta o preenchimento
+   * e a assinatura (a OS está `encerrando`).
+   */
+  encerramento_assinado_em?: string | null;
+  localizacao_inicio?: LocalizacaoDaApi | null;
+  localizacao_fim?: LocalizacaoDaApi | null;
 }
 
 export interface AprDaApi {

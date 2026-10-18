@@ -45,7 +45,6 @@ export default async function ExecucaoPage({ params }: { params: Promise<{ id: s
   return (
     <ExecucaoScreen
       os={{ id: detalhe.os.id, numero_ordem: detalhe.os.numero_ordem, titulo: detalhe.os.titulo, local: detalhe.os.local_instalacao.codigo }}
-      usuario={{ id: usuario.id, nome: usuario.nome, matricula: usuario.matricula, assinatura_path: usuario.assinatura_path }}
       situacao={situacao}
       checklist={detalhe.checklist_inspecao ?? []}
     />

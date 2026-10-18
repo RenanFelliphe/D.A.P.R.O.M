@@ -26,8 +26,13 @@ export const COLEGAS_TREINO = {
   marcos: { id: idTreino("f", 4), nome: "Marcos Vieira", matricula: "TR0100", cargo: "Supervisor de Manutenção" },
   debora: { id: idTreino("f", 5), nome: "Débora Campos", matricula: "TR0104", cargo: "Auxiliar Técnica" },
 } as const;
-/** Supervisor da Equipe Treino (recebe os alertas de bloqueio fictícios). */
+/** Supervisor da Equipe Treino (recebe os alertas de bloqueio fictícios e dá a assinatura final das OS). */
 export const SUPERVISOR_TREINO = COLEGAS_TREINO.marcos;
+/**
+ * O segundo participante que o tutorial sugere na APR (o mínimo é 2). Os colegas fictícios com assinatura cadastrada assinam a
+ * APR sozinhos poucos segundos depois do registro; quem treina assina a própria parte (`apr_assinada`).
+ */
+export const COLEGA_DO_TUTORIAL = COLEGAS_TREINO.carlos;
 /** Colega que ainda não cadastrou a assinatura: incluí-la como participante da APR é recusado (`assinatura_ausente`). */
 export const COLEGA_SEM_ASSINATURA = COLEGAS_TREINO.debora;
 /** Id (arquivo) da assinatura fictícia que o técnico em treino já "tem" no perfil. */
@@ -70,6 +75,10 @@ export const OS_ENCERRADA_DE_COLEGA = idTreino("", 7);
 export const OS_CANCELADA = idTreino("", 8);
 /** Liberada sem atividade do catálogo (sem lista de materiais); o modelo da APR o técnico escolhe, como em toda OS. */
 export const OS_SEM_MODELO = idTreino("", 9);
+/** Execução do técnico já encerrada (o tempo parou) e ainda sem a assinatura dele: a OS está `encerrando`, e a tela o leva de volta ao preenchimento. */
+export const OS_ENCERRANDO = idTreino("", 10);
+/** Encerrada e assinada por um colega: espera a assinatura final do supervisor (`aguardando_supervisor`); o PDF só sai depois dela. */
+export const OS_AGUARDANDO_SUPERVISOR = idTreino("", 11);
 
 /** Endereços da API fictícia no navegador (o handler `app/api/[...caminho]` atende). */
 export const ENDERECO_REINICIAR_TREINO = "/api/treino/reiniciar";

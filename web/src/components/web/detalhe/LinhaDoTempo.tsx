@@ -10,16 +10,19 @@ const CINZA = "#9AA29A";
 
 const titulos: Record<string, string> = {
   apr_concluida: "APR concluída",
+  apr_assinada: "APR assinada",
+  apr_recusada: "Direito de recusa na APR",
   execucao_iniciada: "Execução iniciada",
   pausa_iniciada: "Pausa iniciada",
   pausa_encerrada: "Pausa encerrada",
   execucao_encerrada: "Execução encerrada",
+  encerramento_assinado: "Encerramento assinado",
   execucao_interrompida: "Execução interrompida",
   execucao_suspensa: "Execução suspensa",
   execucao_cancelada: "Execução cancelada",
   alerta: "Alerta ao supervisor",
   reprogramacao: "Reprogramada",
-  ciencia: "Ciência do supervisor",
+  ciencia: "Assinatura final do supervisor",
   reserva: "OS reservada",
   reserva_desfeita: "Reserva desfeita",
   devolucao: "Devolvida ao SAP",
@@ -29,6 +32,11 @@ function corDoEvento(e: EventoDaLinhaDoTempo) {
   switch (e.tipo) {
     case "apr_concluida":
       return e.descricao.startsWith("APR bloqueada") ? VERMELHO : VERDE;
+    case "apr_assinada":
+    case "encerramento_assinado":
+      return VERDE;
+    case "apr_recusada":
+      return VERMELHO;
     case "execucao_iniciada":
     case "pausa_iniciada":
     case "pausa_encerrada":
@@ -51,7 +59,7 @@ function corDoEvento(e: EventoDaLinhaDoTempo) {
   }
 }
 
-/** Histórico de eventos da OS em ordem cronológica (APRs, execução, pausas, alertas, reprogramações e ciência). */
+/** Histórico de eventos da OS em ordem cronológica (APRs e assinaturas, execução, pausas, alertas, reprogramações e a assinatura final do supervisor). */
 export function LinhaDoTempo({ eventos }: { eventos: EventoDaLinhaDoTempo[] }) {
   return (
     <Panel>

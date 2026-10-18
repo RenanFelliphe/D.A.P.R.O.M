@@ -1,6 +1,6 @@
 import { ALVO_DO_AVISO, caminhoDoAviso, ROTULO_DO_AVISO, TIPOS_DE_AVISO, type AlvoDeAviso, type TipoDeAviso } from "../../../../../shared/notificacoes/avisos";
 import type { IconName } from "@/components/ui/Icon";
-import { ehAdmin, ehSupervisor, type DocumentoDeEvidencia, type Usuario } from "@/lib/tipos";
+import { ehAdmin, ehSupervisor, type DocumentoDeEvidencia, type OsStatus, type Usuario } from "@/lib/tipos";
 
 /** Os tipos de aviso, os rótulos e para onde cada um leva são os da `api` (`shared/notificacoes/avisos.ts`). */
 export type TipoDeAlerta = TipoDeAviso;
@@ -73,14 +73,25 @@ export function rotuloDoAlerta(a: Pick<Alerta, "tipo" | "detalhe">): string {
   return a.detalhe.startsWith("Execução interrompida") ? "Execução interrompida" : "APR bloqueada";
 }
 
+/** Os avisos de segurança do trabalho da Reunião 3: o direito de recusa na APR e a lesão ou enfermidade na execução. Têm o mesmo destaque do impedimento. */
+export const ehDeSeguranca = (a: Pick<Alerta, "tipo">) => a.tipo === "direito_de_recusa" || a.tipo === "lesao_ou_enfermidade";
+
 /**
- * Impedimento, as falhas (importação, registro de funcionários, PDF), o ciclo e a ausência vencidos e a equipe sem supervisor pedem
- * atenção (vermelho); os demais só informam (azul).
+ * Impedimento, o direito de recusa e a lesão ou enfermidade, as falhas (importação, registro de funcionários, PDF), o ciclo e a
+ * ausência vencidos e a equipe sem supervisor pedem atenção (vermelho); os demais só informam (azul).
  */
 export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; urgente: boolean } {
   switch (a.tipo) {
     case "bloqueio":
       return { icone: "octagon", urgente: true };
+    case "direito_de_recusa":
+      return { icone: "shield", urgente: true };
+    case "lesao_ou_enfermidade":
+      return { icone: "alert", urgente: true };
+    case "apr_para_assinar":
+      return { icone: "clip", urgente: false };
+    case "os_para_assinar":
+      return { icone: "file", urgente: false };
     case "falha_importacao":
     case "rh_leitura_falhou":
     case "pdf_os_falhou":
@@ -183,7 +194,7 @@ export interface DetalheDaOs {
     id: string;
     numero_ordem: string | null;
     titulo: string;
-    status: "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada" | "devolvida";
+    status: OsStatus;
     equipe_id: string;
     data_inicio_prog: string;
     data_fim_prog: string | null;

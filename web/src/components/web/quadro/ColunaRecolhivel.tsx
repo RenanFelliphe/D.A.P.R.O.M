@@ -3,7 +3,6 @@
 import { useId, useSyncExternalStore, type ReactNode } from "react";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import type { OsStatus } from "@/lib/tipos";
 
 /** Onde o navegador guarda quais colunas a pessoa fechou (status separados por vírgula). */
 const CHAVE = "synqos:quadro:colunas-fechadas";
@@ -41,7 +40,7 @@ function assinar(aviso: () => void) {
   };
 }
 
-function alternar(status: OsStatus) {
+function alternar(status: string) {
   const atuais = new Set(lerFechadas().split(",").filter(Boolean));
   if (!atuais.delete(status)) atuais.add(status);
   fechadas = [...atuais].join(",");
@@ -54,7 +53,8 @@ function alternar(status: OsStatus) {
 }
 
 interface ColunaRecolhivelProps {
-  status: OsStatus;
+  /** Chave da coluna (guarda se ela está fechada): o status da OS ou `assinaturas`, a coluna que reúne dois status. */
+  status: string;
   titulo: string;
   icone: IconName;
   /** Ícone preenchido (play). */

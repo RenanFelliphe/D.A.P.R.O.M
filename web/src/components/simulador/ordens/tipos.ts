@@ -1,6 +1,6 @@
 /** Formas das respostas de `/sap-simulado/gestao/...` (chaves em snake_case, como a `api` devolve). */
 
-export type SituacaoNoSynqOs = "nao_lida" | "ignorada" | "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada" | "devolvida";
+export type SituacaoNoSynqOs = "nao_lida" | "ignorada" | "liberada" | "pendente" | "em_execucao" | "encerrando" | "aguardando_supervisor" | "encerrada" | "cancelada" | "devolvida";
 
 export const rotuloDaSituacaoNoSynqOs: Record<SituacaoNoSynqOs, string> = {
   nao_lida: "Ainda não lida",
@@ -8,6 +8,8 @@ export const rotuloDaSituacaoNoSynqOs: Record<SituacaoNoSynqOs, string> = {
   liberada: "Liberada",
   pendente: "Pendente",
   em_execucao: "Em execução",
+  encerrando: "Encerrando",
+  aguardando_supervisor: "Aguardando o supervisor",
   encerrada: "Encerrada",
   cancelada: "Cancelada",
   devolvida: "Devolvida ao SAP",
@@ -90,7 +92,9 @@ export type AcaoEmMassaDeOrdens = "mudar_status" | "mudar_centro" | "reprogramar
 export function efeitoDaEdicao(n: NoSynqOs["situacao"]): string | null {
   switch (n) {
     case "em_execucao":
-      return "A OS está em execução: só o planejamento muda. Tirar o LIB gera um alerta de conflito, e a execução segue.";
+    case "encerrando":
+    case "aguardando_supervisor":
+      return "A OS está em execução ou esperando as assinaturas do encerramento: só o planejamento muda. Tirar o LIB gera um alerta de conflito, e o serviço segue.";
     case "encerrada":
     case "cancelada":
       return "A OS já está encerrada ou cancelada no SYNQ OS: o SAP só acompanha, e nada muda lá.";

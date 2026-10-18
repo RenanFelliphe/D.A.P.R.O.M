@@ -49,8 +49,14 @@ export interface FiltrosDoQuadro {
   pagina?: number;
 }
 
-/** As quatro colunas do quadro, na ordem do protótipo. `cancelada` e `devolvida` ficam fora e aparecem como links de contagem. */
-export const STATUS_DO_QUADRO = ["liberada", "pendente", "em_execucao", "encerrada"] as const;
+/**
+ * Os status que o quadro carrega, um a um. `encerrando` e `aguardando_supervisor` (as assinaturas do fim) aparecem juntos numa
+ * coluna só, "Aguardando assinaturas" (ver `STATUS_DAS_ASSINATURAS`). `cancelada` e `devolvida` ficam fora e aparecem como links de contagem.
+ */
+export const STATUS_DO_QUADRO = ["liberada", "pendente", "em_execucao", "aguardando_supervisor", "encerrando", "encerrada"] as const;
+
+/** Os dois passos entre o fim da execução e a conclusão, que dividem a coluna "Aguardando assinaturas" (a do supervisor vem primeiro: é a que pede ação dele). */
+export const STATUS_DAS_ASSINATURAS = ["aguardando_supervisor", "encerrando"] as const satisfies readonly OsStatus[];
 
 /** Quantos cartões cada coluna mostra antes do "Ver todas". */
 export const CARTOES_POR_COLUNA = 8;
@@ -74,7 +80,7 @@ export interface DadosDoQuadro {
   tamanho: number;
 }
 
-/** Carrega o quadro: quatro consultas em paralelo (uma por coluna) ou, com `status`, a lista paginada dele. */
+/** Carrega o quadro: uma consulta por status em paralelo (as duas das assinaturas viram uma coluna só) ou, com `status`, a lista paginada dele. */
 export async function carregarQuadro(filtros: FiltrosDoQuadro): Promise<DadosDoQuadro> {
   const base = consultaDe(filtros);
   if (filtros.status) {

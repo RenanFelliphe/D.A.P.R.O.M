@@ -10,6 +10,7 @@ import type { DashboardEquipes, DashboardGeral, DashboardMeus, DashboardOs } fro
 import type { ResumoDasAprs } from "../data/modelos";
 import type { AprReg, EstadoTreino, ExecucaoReg, OsReg } from "./dados";
 import { diaDe } from "./dados";
+import { PAUSA_MOTIVOS } from "./motivos";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Período (como `api/src/dominio/periodo.ts`)
@@ -92,7 +93,8 @@ const HORAS_DE_EXECUCAO_ESQUECIDA = 12;
 const INTERRUPCOES_RECENTES = 5;
 const LOCAIS_NO_RANKING = 6;
 const OS_COM_MAIS_PAUSA = 5;
-const MOTIVOS_DE_PAUSA = ["almoco", "descanso", "outro", "sem_motivo"] as const;
+/** Os motivos de pausa do app, na ordem em que aparecem; `sem_motivo` é a pausa antiga, registrada sem escolher um (hoje o motivo é obrigatório). */
+const MOTIVOS_DE_PAUSA = [...PAUSA_MOTIVOS, "sem_motivo"] as const;
 type MotivoDaPausa = (typeof MOTIVOS_DE_PAUSA)[number];
 
 const arredondar = (valor: number, casas = 1) => Math.round(valor * 10 ** casas) / 10 ** casas;

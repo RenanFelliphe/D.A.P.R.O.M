@@ -15,10 +15,22 @@ import { DetalheAvisoGeral } from "./DetalheAvisoGeral";
 import { DetalheRepresentacao } from "./DetalheRepresentacao";
 import { DetalheFalhaImportacao } from "./DetalheFalhaImportacao";
 import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
-import { aparenciaDoAlerta, ehAvisoGeral, ehDeAusencia, ehDeCiclo, ehDeRepresentacao, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
+import { aparenciaDoAlerta, ehAvisoGeral, ehDeAusencia, ehDeCiclo, ehDeRepresentacao, ehDeSeguranca, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
 
-/** Avisos de OS que só informam (a reserva, a ciência, o PDF): não pedem decisão sobre a OS, mesmo encerrada. */
-const SO_INFORMAM: Alerta["tipo"][] = ["os_reservada", "os_reserva_desfeita", "os_ciencia", "pdf_os_falhou"];
+/**
+ * Avisos de OS que só informam (a reserva, a assinatura final, o PDF, a APR para assinar, o direito de recusa, a lesão ou enfermidade e
+ * a OS para assinar): não pedem decisão sobre a OS, mesmo encerrada.
+ */
+const SO_INFORMAM: Alerta["tipo"][] = [
+  "os_reservada",
+  "os_reserva_desfeita",
+  "os_ciencia",
+  "pdf_os_falhou",
+  "apr_para_assinar",
+  "direito_de_recusa",
+  "lesao_ou_enfermidade",
+  "os_para_assinar",
+];
 
 interface DetalheAlertaProps {
   alerta: Alerta;
@@ -124,6 +136,42 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
       )}
 
       {bloqueio && detalhe && <CausaDoBloqueio aprs={detalhe.aprs} execucoes={detalhe.execucoes} />}
+
+      {os && ehDeSeguranca(alerta) && (
+        <div className="stack g8">
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>O que fazer a seguir</h3>
+          <p className="muted">
+            {alerta.tipo === "lesao_ou_enfermidade"
+              ? "A lesão no trabalho, mesmo leve, é acidente de trabalho e a empresa precisa registrá-la. Abra a OS e veja, na aba APRs e execuções, o motivo, o horário e a localização (o relatório da execução traz o mesmo quando o serviço terminar); acione a Segurança do Trabalho conforme o procedimento da empresa."
+              : "A pessoa que recusou saiu da APR e deixou o motivo. Abra a OS para ler o motivo e decidir como a equipe segue: se restarem menos de 2 participantes, ou se quem recusou foi o responsável, é preciso uma APR nova."}
+          </p>
+          <div className="row g8 wrap">
+            <Link className="btn btn-p btn-sm" href={alerta.tipo === "lesao_ou_enfermidade" ? `${rotas.app.os(osId)}?aba=aprs` : rotas.app.os(osId)}>
+              Abrir a OS
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {os && alerta.tipo === "os_para_assinar" && (
+        <div className="stack g8">
+          <h3 style={{ fontSize: 16, fontWeight: 600 }}>O que fazer a seguir</h3>
+          <p className="muted">
+            {os.status === "aguardando_supervisor"
+              ? "O responsável já assinou o encerramento. Abra a OS, leia o relatório da execução e assine para concluí-la."
+              : os.status === "encerrada"
+                ? "A OS já foi assinada e está concluída."
+                : "A OS ainda não está à espera da sua assinatura."}
+          </p>
+          {os.status === "aguardando_supervisor" && (
+            <div className="row g8 wrap">
+              <Link className="btn btn-p btn-sm" href={rotas.app.os(osId)}>
+                Abrir a OS para assinar
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
 
       {os && !aberta && !inspecao && !SO_INFORMAM.includes(alerta.tipo) && (
         <Notice tone="off" icon="info" style={{ fontSize: 14 }}>

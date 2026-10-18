@@ -21,7 +21,7 @@ const LARGURA = 360;
 /** Abaixo desta largura o balão vira folha fixa (alto ou baixo da tela). */
 const TELA_PEQUENA = 640;
 /** Quantos passos adiante o tutorial aceita "pular" sozinho quando a pessoa já está na tela de um passo seguinte. */
-const JANELA_DE_SALTO = 6;
+const JANELA_DE_SALTO = 8;
 
 const total = passosDoTreino.length;
 const limitar = (valor: number, minimo: number, maximo: number) => Math.min(Math.max(valor, minimo), Math.max(minimo, maximo));
@@ -135,6 +135,30 @@ export function TutorialDirecionado({ pendente = false }: { pendente?: boolean }
       observador.disconnect();
     };
   }, [aparece, indice]);
+
+  // O passo avança sozinho quando um elemento que estava na tela some (a janela de motivo que a pessoa confirmou, por exemplo).
+  // Só vale depois de o elemento ter sido visto: uma janela que ainda não abriu não conta como "sumiu".
+  const desaparece = passo.avanca?.desaparece;
+  useEffect(() => {
+    if (!desaparece) return;
+    let quadro = 0;
+    let visto = false;
+    const verificar = () => {
+      quadro = 0;
+      if (acharAlvo(desaparece)) visto = true;
+      else if (visto && indiceAtual.current === indice) estadoDoTreino.definirPasso(indice + 1);
+    };
+    const agendar = () => {
+      if (!quadro) quadro = requestAnimationFrame(verificar);
+    };
+    const observador = new MutationObserver(agendar);
+    observador.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-treino", "hidden", "class"] });
+    agendar();
+    return () => {
+      cancelAnimationFrame(quadro);
+      observador.disconnect();
+    };
+  }, [desaparece, indice]);
 
   // O passo avança sozinho quando a pessoa clica no alvo (a ação do clique segue normalmente: o tutorial só observa).
   const cliqueEm = passo.avanca?.clique;

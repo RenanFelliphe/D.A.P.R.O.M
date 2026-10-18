@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
+import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/web/Panel";
-import type { ModeloCompleto } from "@/data/modelos";
+import { ajudaParticipantesComAssinatura, rotuloParticipantesComAssinatura, type ModeloCompleto } from "@/data/modelos";
 import { data, dataDoDia } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 import { NovaVersao } from "./NovaVersao";
@@ -50,6 +51,13 @@ export function VisaoModelo({ modelo, podeEditar, rascunho, emUso }: VisaoModelo
             : "Só o administrador cria novas versões."}{" "}
         As APRs já preenchidas continuam ligadas à versão que usaram.
       </Notice>
+      <div className="stack g4">
+        <span style={{ fontSize: 14.5 }}>
+          <Icon name={modelo.participantes_com_assinatura ? "check" : "x"} size={16} /> {rotuloParticipantesComAssinatura}:{" "}
+          <strong>{modelo.participantes_com_assinatura ? "sim" : "não"}</strong>
+        </span>
+        <span className="small">{ajudaParticipantesComAssinatura}</span>
+      </div>
       <TabelaPerguntas itens={modelo.itens} riscos={modelo.riscos} />
       <div className="stack g8">
         <h3 style={{ fontSize: 15 }}>Plano de atendimento a emergências (PAE)</h3>

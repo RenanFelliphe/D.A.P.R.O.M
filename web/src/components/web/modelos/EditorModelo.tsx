@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/web/Panel";
-import type { EvidenciaItem, ModeloCompleto, Pae, RespostaBloqueante, TipoItem } from "@/data/modelos";
+import { ajudaParticipantesComAssinatura, rotuloParticipantesComAssinatura, type EvidenciaItem, type ModeloCompleto, type Pae, type RespostaBloqueante, type TipoItem } from "@/data/modelos";
 import { chamar } from "@/lib/cliente-api";
 import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
@@ -34,6 +34,8 @@ interface RiscoEd {
 interface Estado {
   titulo: string;
   dataDocumento: string;
+  /** A folha tem a coluna Assinatura na tabela de participantes (muda o PDF da OS e o relatório da execução). */
+  participantesComAssinatura: boolean;
   /** PAE como JSON em texto; é mantido como veio, a menos que a pessoa o edite. */
   paeTexto: string;
   verificacoes: ItemEd[];
@@ -56,6 +58,7 @@ function paraEstado(modelo: ModeloCompleto): Estado {
   return {
     titulo: modelo.titulo,
     dataDocumento: modelo.data_documento ?? "",
+    participantesComAssinatura: modelo.participantes_com_assinatura ?? true,
     paeTexto: modelo.pae ? JSON.stringify(modelo.pae, null, 2) : "",
     verificacoes: itens.filter((i) => i.secao === "verificacao").map(deItem),
     riscos: [...modelo.riscos]
@@ -111,7 +114,7 @@ function paraCorpo(estado: Estado) {
     if (!r.nome.trim() || !r.classificacao.trim()) throw new ErroDeEdicao("Todo risco precisa de classificação e nome");
     return { classificacao: r.classificacao.trim(), nome: r.nome.trim(), ordem: indice + 1 };
   });
-  return { titulo, pae, data_documento: estado.dataDocumento || null, riscos, itens };
+  return { titulo, pae, data_documento: estado.dataDocumento || null, participantes_com_assinatura: estado.participantesComAssinatura, riscos, itens };
 }
 
 /** Assinatura do que seria gravado agora; igual à salva = nada a salvar. Erro de preenchimento conta como alteração. */
@@ -321,6 +324,14 @@ export function EditorModelo({ modelo, temPublicada }: { modelo: ModeloCompleto;
           {erro}
         </Notice>
       )}
+
+      <section className="stack g4" aria-label="Folha do modelo">
+        <label className="row g8" style={{ alignItems: "center" }}>
+          <input type="checkbox" checked={estado.participantesComAssinatura} onChange={(ev) => mudar({ participantesComAssinatura: ev.target.checked })} />
+          {rotuloParticipantesComAssinatura}
+        </label>
+        <span className="small">{ajudaParticipantesComAssinatura}</span>
+      </section>
 
       <section className="stack g8" aria-label="Itens de verificação">
         <h3 style={{ fontSize: 15 }}>{`Verificação (${estado.verificacoes.length})`}</h3>

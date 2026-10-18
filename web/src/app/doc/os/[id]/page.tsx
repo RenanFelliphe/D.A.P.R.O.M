@@ -65,7 +65,7 @@ export default async function PdfDaOsPage({ params }: PageProps<"/doc/os/[id]">)
         />
       ) : (
         <Notice tone="info" icon="info">
-          <strong>A OS ainda não foi encerrada.</strong> O PDF com a APR e a execução é gerado quando o técnico encerrar a OS.{" "}
+          <strong>A OS ainda não foi concluída.</strong> O PDF com a APR e a folha do SAP é gerado depois da assinatura final do supervisor.{" "}
           <Link href={rotas.app.os(os.id)} style={{ fontWeight: 600 }}>
             Voltar ao detalhe
           </Link>

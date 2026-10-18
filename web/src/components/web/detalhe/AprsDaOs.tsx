@@ -3,9 +3,10 @@ import { DocumentosAnexados } from "@/components/ui/DocumentosAnexados";
 import { Icon } from "@/components/ui/Icon";
 import { Panel, TableWrap } from "@/components/web/Panel";
 import type { AprDaOs, RespostaApr } from "@/data/detalhe";
-import { dataHora, hora } from "@/lib/formatar";
+import { dataHora } from "@/lib/formatar";
 import { iniciaisDe } from "@/lib/tipos";
 import { FotosDaEvidencia } from "./FotosDaEvidencia";
+import { SituacaoDaAssinatura } from "./AssinaturasDaApr";
 
 const cartaoPessoa = {
   flex: 1,
@@ -72,8 +73,8 @@ function AprCartao({ apr, numero, total }: { apr: AprDaOs; numero: number; total
               <strong style={{ fontSize: 14 }}>{p.nome}</strong>
               <span className="small">
                 {p.funcao === "responsavel" ? "Responsável" : "Executor"} · mat. {p.matricula}
-                {p.assinada_em ? ` · assinou ${hora(p.assinada_em)}` : ""}
               </span>
+              <SituacaoDaAssinatura participante={p} aprovada={!bloqueada} />
             </span>
           </div>
         ))}

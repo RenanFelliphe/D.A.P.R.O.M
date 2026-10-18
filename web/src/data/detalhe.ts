@@ -3,6 +3,7 @@ import "server-only";
 import { api, apiOuNulo } from "@/lib/api";
 import type { ServicoDaOs } from "@/lib/catalogo";
 import type { PerguntaDoChecklist } from "@/lib/checklist-inspecao";
+import type { Posicao } from "@/lib/geolocalizacao";
 import type { DevolucaoDaOs } from "@/lib/os-app";
 import type { DocumentoDeEvidencia, OsStatus, Paginacao, ResponsavelDaOs } from "@/lib/tipos";
 
@@ -74,8 +75,28 @@ export interface ParticipanteApr {
   nome: string;
   matricula: string;
   funcao: "responsavel" | "executor";
+  /** Nulos enquanto o participante não assinou a APR na própria conta (e em quem recusou). */
   assinatura_path: string | null;
   assinada_em: string | null;
+  /** A assinatura foi dada no aparelho do responsável (contingência offline). */
+  assinatura_presencial: boolean;
+  /** Direito de recusa: o participante saiu da APR e deixou o motivo; `null` = não recusou. */
+  recusou_em: string | null;
+  recusa_motivo: string | null;
+}
+
+/** Onde a pessoa estava num momento da execução; `null` no campo = "sem localização". */
+export type LocalizacaoDaOs = Posicao;
+
+export interface PausaDaExecucao {
+  id: string;
+  inicio: string;
+  fim: string | null;
+  /** `almoco`, `aguardando`, `descanso`, `clima`, `enfermidade`, `lesao` ou `outro` (`null` nas pausas antigas, sem motivo). */
+  motivo: string | null;
+  /** O que ou quem (em `aguardando`) ou a descrição (em `outro`). */
+  complemento: string | null;
+  localizacao: LocalizacaoDaOs | null;
 }
 
 export interface FotoDeEvidencia {
@@ -143,7 +164,15 @@ export interface ExecucaoDaOs {
   dados_inspecao: unknown;
   tempo_liquido_min: number | null;
   pausa_min: number | null;
-  pausas: { id: string; inicio: string; fim: string | null; motivo: string | null }[];
+  pausas: PausaDaExecucao[];
+  /** Só na suspensa: por que o serviço não continua hoje (`enfermidade`, `lesao`, `fim_expediente`, `clima`, `falta_material` ou `outro`), com o complemento. */
+  suspensao_motivo: string | null;
+  suspensao_complemento: string | null;
+  /** Quando o responsável assinou o encerramento; nulo na `encerrada` = a OS está `encerrando`. */
+  encerramento_assinado_em: string | null;
+  /** Onde a pessoa estava ao iniciar e ao terminar (encerrar, suspender ou interromper). */
+  localizacao_inicio: LocalizacaoDaOs | null;
+  localizacao_fim: LocalizacaoDaOs | null;
   assinaturas: { usuario_id: string; nome: string; matricula: string; assinatura_path: string | null; assinada_em: string }[];
   fotos: FotoDeEvidencia[];
   /** PDFs anexados ao encerramento ou à interrupção. */

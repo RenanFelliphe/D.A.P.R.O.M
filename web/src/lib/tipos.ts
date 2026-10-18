@@ -85,8 +85,16 @@ export interface Equipe {
   representacao?: RepresentacaoDaEquipe | null;
 }
 
-/** `devolvida`: o supervisor a devolveu ao SAP com uma justificativa (erro na ordem); sai do quadro, como a `cancelada`. */
-export type OsStatus = "liberada" | "pendente" | "em_execucao" | "encerrada" | "cancelada" | "devolvida";
+/**
+ * `encerrando` e `aguardando_supervisor` são os dois passos entre o fim da execução e a conclusão: o tempo parou e o responsável
+ * preenche e assina o encerramento (`encerrando`); depois o supervisor lê o relatório da execução e assina por último
+ * (`aguardando_supervisor`). Só então a OS fica `encerrada` (concluída).
+ * `devolvida`: o supervisor a devolveu ao SAP com uma justificativa (erro na ordem); sai do quadro, como a `cancelada`.
+ */
+export type OsStatus = "liberada" | "pendente" | "em_execucao" | "encerrando" | "aguardando_supervisor" | "encerrada" | "cancelada" | "devolvida";
+
+/** A OS já passou da execução (encerrando, esperando o supervisor ou concluída): não recebe mais APR nem execução. */
+export const execucaoJaTerminou = (status: OsStatus | string): boolean => status === "encerrando" || status === "aguardando_supervisor" || status === "encerrada";
 
 /** Resposta de listas: `{<nome>: [...], pagina, tamanho, total}`. */
 export interface Paginacao {
@@ -128,6 +136,8 @@ export const rotuloDoStatus: Record<OsStatus, string> = {
   liberada: "Liberada",
   pendente: "Pendente",
   em_execucao: "Em execução",
+  encerrando: "Encerrando",
+  aguardando_supervisor: "Aguardando o supervisor",
   encerrada: "Encerrada",
   cancelada: "Cancelada",
   devolvida: "Devolvida ao SAP",

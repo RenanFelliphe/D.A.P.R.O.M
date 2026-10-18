@@ -1,6 +1,7 @@
 /**
- * Massa fictícia do Campo de treino: uma equipe, colegas, locais, dois modelos de APR e nove OS em todos os status, com
- * histórico de APRs e execuções. Tudo é montado em memória para um técnico (`criarEstadoInicial`) e nunca vem do banco.
+ * Massa fictícia do Campo de treino: uma equipe, colegas, locais, dois modelos de APR e onze OS em todos os status (inclusive
+ * `encerrando` e `aguardando_supervisor`, os dois passos entre o fim da execução e a conclusão), com histórico de APRs
+ * assinadas na conta de cada um e de execuções. Tudo é montado em memória para um técnico (`criarEstadoInicial`) e nunca vem do banco.
  * Os tipos seguem as respostas reais da `api` (snake_case); o estado usa os mesmos nomes de campo para a API fictícia
  * (`api-ficticia.ts`) devolvê-los quase como estão.
  */
@@ -12,17 +13,20 @@ import {
   EQUIPE_TREINO,
   MODELO_BLOQUEIO,
   MODELO_GUIADO,
+  OS_AGUARDANDO_SUPERVISOR,
   OS_BLOQUEIO,
   OS_CANCELADA,
   OS_CRITICA,
   OS_EM_EXECUCAO_DE_COLEGA,
   OS_ENCERRADA_DE_COLEGA,
   OS_ENCERRADA_PELO_TECNICO,
+  OS_ENCERRANDO,
   OS_GUIADA,
   OS_PENDENTE,
   OS_SEM_MODELO,
   idTreino,
 } from "./ids";
+import type { MotivoDaPausa, MotivoDaSuspensao } from "./motivos";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Tipos do estado
@@ -88,6 +92,27 @@ export interface OsReg {
   justificativa_cancelamento: string | null;
 }
 
+/**
+ * O participante da APR como a `api` o guarda depois da Reunião 3: a APR é registrada sem assinaturas (`assinatura_path` e
+ * `assinada_em` nulos) e cada um assina na própria conta; quem recusa sai da APR (`recusou_em` e o motivo).
+ */
+export interface ParticipanteAprReg {
+  usuario_id: string;
+  funcao: "responsavel" | "executor";
+  assinatura_path: string | null;
+  assinada_em: string | null;
+  /** A assinatura foi dada no aparelho do responsável (contingência offline); o treino não tem offline, então é sempre `false`. */
+  assinatura_presencial: boolean;
+  recusou_em: string | null;
+  recusa_motivo: string | null;
+}
+
+/** Posição (GPS) gravada no início, na pausa, na suspensão, na interrupção e no encerramento; `null` = "sem localização". */
+export interface PosicaoReg {
+  latitude: number;
+  longitude: number;
+}
+
 export interface AprReg {
   id: string;
   os_id: string;
@@ -96,7 +121,7 @@ export interface AprReg {
   resultado: "aprovada" | "bloqueada";
   observacao_geral: string | null;
   concluida_em: string;
-  participantes: { usuario_id: string; funcao: "responsavel" | "executor"; assinatura_path: string; assinada_em: string }[];
+  participantes: ParticipanteAprReg[];
   riscos: string[];
   respostas: { item_id: string; resposta: "sim" | "nao" | "na"; observacao: string | null; respondida_em: string }[];
   /** Fotos e PDFs dos itens reprovados; sem `tipo`, é foto (a massa inicial só tem fotos). */
@@ -130,8 +155,17 @@ export interface ExecucaoReg {
   resultado: "encerrada" | "interrompida" | "suspensa" | "cancelada" | null;
   descricao_atividade: string | null;
   motivo: string | null;
+  /** Só na suspensa: por que o serviço não continua hoje (com o complemento de "outro"). */
+  suspensao_motivo: MotivoDaSuspensao | null;
+  suspensao_complemento: string | null;
   dados_inspecao: unknown;
-  pausas: { id: string; inicio: string; fim: string | null; motivo: "almoco" | "descanso" | "outro" | null }[];
+  /** Quando o responsável assinou o encerramento; nulo na encerrada = a OS está `encerrando` (o tempo já parou). */
+  encerramento_assinado_em: string | null;
+  localizacao_inicio: PosicaoReg | null;
+  /** Onde a pessoa estava ao encerrar, suspender ou interromper. */
+  localizacao_fim: PosicaoReg | null;
+  pausas: { id: string; inicio: string; fim: string | null; motivo: MotivoDaPausa | null; complemento: string | null; localizacao: PosicaoReg | null }[];
+  /** A assinatura do responsável no encerramento (os demais assinaram a APR, no começo). */
   assinaturas: { usuario_id: string; assinatura_path: string; assinada_em: string }[];
   fotos: FotoReg[];
   /** PDFs anexados ao encerramento ou à interrupção; ausente na massa inicial. */
@@ -514,6 +548,39 @@ function criarOs(agora: Date): OsReg[] {
       descricao: "Lâmpadas queimadas no pátio e na entrada da subestação. Trocar pelas de LED do almoxarifado e testar o fotocontrole.",
       status_sap: "LIB",
     },
+    {
+      id: OS_ENCERRANDO,
+      numero: "4900110",
+      tipo: "corretiva",
+      titulo: "Reaperto de conexões no painel de comando do religador RL-03",
+      local: 4,
+      inicio: 0,
+      fim: 1,
+      equipamento: "RL-03 - Painel de comando",
+      tipo_atividade: "Manutenção em rede aérea",
+      codigo_atividade: "COR-REDE-ALT",
+      prioridade: "Médio",
+      descricao:
+        "O tempo desta execução já parou no “Encerrar OS”. Falta a parte final: descrever o que foi feito (opcional), anexar fotos (opcional) e assinar o encerramento. Enquanto isso a OS fica “Encerrando”.",
+      status_sap: "LIB",
+      status: "encerrando",
+    },
+    {
+      id: OS_AGUARDANDO_SUPERVISOR,
+      numero: "4900111",
+      tipo: "corretiva",
+      titulo: "Troca de lâmpadas e do relé fotoelétrico - iluminação da praça",
+      local: 5,
+      inicio: -1,
+      fim: 0,
+      equipamento: "Luminárias L-09 a L-12",
+      tipo_atividade: "Iluminação pública",
+      codigo_atividade: "COR-ILUM",
+      prioridade: "Baixo",
+      descricao: "Serviço concluído por um colega e já assinado por ele. Falta a assinatura final do supervisor, depois de ler o relatório da execução; só então o PDF da OS é gerado.",
+      status_sap: "LIB",
+      status: "aguardando_supervisor",
+    },
   ];
 
   return specs.map((s, i) => ({
@@ -555,6 +622,25 @@ function criarOs(agora: Date): OsReg[] {
 // Histórico: APRs, execuções, alertas e arquivos
 // ---------------------------------------------------------------------------------------------------------------
 
+/** Uma pergunta do checklist de inspeção do plano da OS preventiva (`GET /os/{id}` devolve `checklist_inspecao`). */
+export interface PerguntaDeInspecaoReg {
+  id: string;
+  texto: string;
+}
+
+/** Checklist por plano e item de manutenção (a chave da `api`): só a inspeção termográfica da OS guiada tem um, para o treino mostrar o encerramento com checklist. */
+const CHECKLISTS_DE_INSPECAO: Record<string, PerguntaDeInspecaoReg[]> = {
+  "PM-TRN-12M\u0000IM-0001": [
+    { id: idTreino("2", 1), texto: "Os pontos acima de 15 °C sobre a referência foram registrados e fotografados?" },
+    { id: idTreino("2", 2), texto: "O quadro foi fechado e a sinalização foi recolocada?" },
+    { id: idTreino("2", 3), texto: "O operador foi informado do fim do serviço?" },
+  ],
+};
+
+/** O checklist de inspeção da OS preventiva (pelo plano e item dela); vazio quando a OS não tem. */
+export const checklistDaOs = (o: Pick<OsReg, "tipo" | "plano_manutencao" | "item_manutencao">): PerguntaDeInspecaoReg[] =>
+  o.tipo === "preventiva" && o.plano_manutencao ? (CHECKLISTS_DE_INSPECAO[`${o.plano_manutencao.trim()}\u0000${o.item_manutencao?.trim() ?? ""}`] ?? []) : [];
+
 /** Itens que uma APR com estes riscos marcados responde: a verificação mais as medidas dos riscos marcados. */
 export const itensDaApr = (modelo: ModeloReg, riscos: string[]) => modelo.itens.filter((i) => i.secao === "verificacao" || (i.risco_id !== null && riscos.includes(i.risco_id)));
 
@@ -569,6 +655,11 @@ function aprDeHistorico(
     concluidaEm: string;
     reprovados?: { itemId: string; observacao: string; foto?: string }[];
     observacaoGeral?: string;
+    /**
+     * Quem já assinou a APR (cada um na própria conta, uns minutos depois do registro). Padrão: todos os participantes da
+     * APR aprovada; a bloqueada não é assinada, como na `api`.
+     */
+    assinadas?: string[];
   },
 ): AprReg {
   const riscos = d.riscosMarcados.map((n) => modelo.riscos[n - 1]!.id);
@@ -579,15 +670,28 @@ function aprDeHistorico(
     if (r?.foto) evidencias.push({ id: idTreino("6", 500 + evidencias.length), arquivo_id: r.foto, item_id: item.id, capturada_em: d.concluidaEm, latitude: -23.55, longitude: -46.63 });
     return { item_id: item.id, resposta: (r ? "nao" : "sim") as "sim" | "nao", observacao: r?.observacao ?? null, respondida_em: d.concluidaEm };
   });
+  const aprovada = reprov.size === 0;
+  const assinadas = new Set(aprovada ? (d.assinadas ?? d.participantes.map((p) => p.u.id)) : []);
   return {
     id: d.id,
     os_id: d.osId,
     modelo_apr_id: modelo.id,
     preenchida_por: d.por.id,
-    resultado: reprov.size > 0 ? "bloqueada" : "aprovada",
+    resultado: aprovada ? "aprovada" : "bloqueada",
     observacao_geral: d.observacaoGeral ?? null,
     concluida_em: d.concluidaEm,
-    participantes: d.participantes.map((p) => ({ usuario_id: p.u.id, funcao: p.funcao, assinatura_path: p.u.assinatura_path!, assinada_em: d.concluidaEm })),
+    participantes: d.participantes.map((p, i) => {
+      const assinou = assinadas.has(p.u.id);
+      return {
+        usuario_id: p.u.id,
+        funcao: p.funcao,
+        assinatura_path: assinou ? p.u.assinatura_path! : null,
+        assinada_em: assinou ? new Date(new Date(d.concluidaEm).getTime() + (i + 1) * 90_000).toISOString() : null,
+        assinatura_presencial: false,
+        recusou_em: null,
+        recusa_motivo: null,
+      };
+    }),
     riscos,
     respostas,
     evidencias,
@@ -631,12 +735,19 @@ export function criarEstadoInicial(real: Usuario, agora: Date = new Date()): Est
   registrarArquivos(estado);
 
   const osPor = (id: string) => os.find((o) => o.id === id)!;
-  const pdf = (id: string, quando: string) => {
+  /** A assinatura final do supervisor (a "ciência" de antes): conclui a OS e só então o PDF é gerado. */
+  const concluir = (id: string, quando: string) => {
     const o = osPor(id);
     o.status = "encerrada";
+    o.ciencia_por = marcos.id;
+    o.ciencia_em = quando;
     o.pdf_path = idTreino("7", Number(o.numero_ordem!.slice(-3)));
-    o.pdf_em = quando;
+    o.pdf_em = new Date(new Date(quando).getTime() + 2 * 60_000).toISOString();
   };
+  /** Hoje, no máximo `min` minutos atrás, mas nunca antes do começo do dia: a APR só vale no dia em que foi registrada. */
+  const hojeAte = (min: number) => new Date(Math.max(agora.getTime() - min * 60_000, new Date(horario(agora, 0, 0, 1)).getTime())).toISOString();
+  const depois = (instante: string, min: number) => new Date(new Date(instante).getTime() + min * 60_000).toISOString();
+  const posicao = (latitude: number, longitude: number): PosicaoReg => ({ latitude, longitude });
 
   // OS pendente: a primeira APR foi bloqueada (talabarte), com foto e o alerta ao supervisor.
   const aprPendente = aprDeHistorico(modeloB, {
@@ -688,12 +799,35 @@ export function criarEstadoInicial(real: Usuario, agora: Date = new Date()): Est
     resultado: null,
     descricao_atividade: null,
     motivo: null,
+    suspensao_motivo: null,
+    suspensao_complemento: null,
     dados_inspecao: null,
+    encerramento_assinado_em: null,
+    localizacao_inicio: posicao(-23.5489, -46.6388),
+    localizacao_fim: null,
     pausas: [],
     assinaturas: [],
     fotos: [],
   });
   osPor(OS_EM_EXECUCAO_DE_COLEGA).status = "em_execucao";
+
+  // APR de hoje que espera a assinatura de quem treina: a Joana a registrou, ela e o Carlos já assinaram e falta o técnico.
+  // É o que a faixa "APR aguardando a sua assinatura" da lista e `GET /me/aprs-para-assinar` mostram.
+  estado.aprs.push(
+    aprDeHistorico(modeloA, {
+      id: idTreino("9", 8),
+      osId: OS_CRITICA,
+      por: joana,
+      participantes: [
+        { u: joana, funcao: "responsavel" },
+        { u: carlos, funcao: "executor" },
+        { u: eu, funcao: "executor" },
+      ],
+      riscosMarcados: [1, 2],
+      concluidaEm: hojeAte(20),
+      assinadas: [joana.id, carlos.id],
+    }),
+  );
 
   // OS encerrada ontem pelo próprio técnico (aparece no histórico do perfil).
   const aprEncerrada = aprDeHistorico(modeloA, {
@@ -719,18 +853,30 @@ export function criarEstadoInicial(real: Usuario, agora: Date = new Date()): Est
     resultado: "encerrada",
     descricao_atividade: "Inspeção visual dos três para-raios do alimentador 07. Porcelana íntegra, conexões firmes e contadores de descarga sem alteração.",
     motivo: null,
+    suspensao_motivo: null,
+    suspensao_complemento: null,
     dados_inspecao: null,
-    pausas: [{ id: idTreino("7", 6), inicio: horario(agora, -1, 11, 50), fim: horario(agora, -1, 12, 50), motivo: "almoco" }],
-    assinaturas: [
-      { usuario_id: eu.id, assinatura_path: eu.assinatura_path!, assinada_em: horario(agora, -1, 15, 20) },
-      { usuario_id: carlos.id, assinatura_path: carlos.assinatura_path!, assinada_em: horario(agora, -1, 15, 20) },
+    encerramento_assinado_em: horario(agora, -1, 15, 34),
+    localizacao_inicio: posicao(-23.5505, -46.6333),
+    localizacao_fim: posicao(-23.5507, -46.6331),
+    pausas: [
+      {
+        id: idTreino("7", 6),
+        inicio: horario(agora, -1, 11, 50),
+        fim: horario(agora, -1, 12, 50),
+        motivo: "almoco",
+        complemento: null,
+        localizacao: posicao(-23.5506, -46.6332),
+      },
     ],
+    // No fim assina só o responsável; o Carlos assinou a APR, no começo.
+    assinaturas: [{ usuario_id: eu.id, assinatura_path: eu.assinatura_path!, assinada_em: horario(agora, -1, 15, 34) }],
     fotos: [
       { id: idTreino("6", 12), foto_path: idTreino("6", 2), capturada_em: horario(agora, -1, 10, 15), latitude: -23.55, longitude: -46.63 },
       { id: idTreino("6", 13), foto_path: idTreino("6", 3), capturada_em: horario(agora, -1, 14, 40), latitude: null, longitude: null },
     ],
   });
-  pdf(OS_ENCERRADA_PELO_TECNICO, horario(agora, -1, 15, 22));
+  concluir(OS_ENCERRADA_PELO_TECNICO, horario(agora, -1, 17, 40));
 
   // OS encerrada há alguns dias por um colega.
   const aprColega = aprDeHistorico(modeloA, {
@@ -756,30 +902,178 @@ export function criarEstadoInicial(real: Usuario, agora: Date = new Date()): Est
     resultado: "encerrada",
     descricao_atividade: "Substituídas as oito luminárias queimadas por modelos de LED de 60 W; teste de acendimento com o fotocélula.",
     motivo: null,
+    suspensao_motivo: null,
+    suspensao_complemento: null,
     dados_inspecao: null,
-    pausas: [],
-    assinaturas: [
-      { usuario_id: carlos.id, assinatura_path: carlos.assinatura_path!, assinada_em: horario(agora, -3, 10, 45) },
-      { usuario_id: joana.id, assinatura_path: joana.assinatura_path!, assinada_em: horario(agora, -3, 10, 45) },
+    encerramento_assinado_em: horario(agora, -3, 10, 58),
+    // Sem GPS no começo (local coberto): fica registrado "sem localização" e o serviço não é bloqueado.
+    localizacao_inicio: null,
+    localizacao_fim: posicao(-23.5431, -46.6291),
+    pausas: [
+      {
+        id: idTreino("7", 7),
+        inicio: horario(agora, -3, 9, 20),
+        fim: horario(agora, -3, 9, 45),
+        motivo: "aguardando",
+        complemento: "Peça do almoxarifado (relé fotoelétrico)",
+        localizacao: posicao(-23.5432, -46.629),
+      },
     ],
+    assinaturas: [{ usuario_id: carlos.id, assinatura_path: carlos.assinatura_path!, assinada_em: horario(agora, -3, 10, 58) }],
     fotos: [{ id: idTreino("6", 14), foto_path: idTreino("6", 4), capturada_em: horario(agora, -3, 10, 30), latitude: null, longitude: null }],
   });
-  pdf(OS_ENCERRADA_DE_COLEGA, horario(agora, -3, 10, 47));
+  concluir(OS_ENCERRADA_DE_COLEGA, horario(agora, -3, 14, 10));
+
+  // Execução do técnico que já terminou (o tempo parou no "Encerrar OS"): a OS está `encerrando` até ele preencher e assinar.
+  const aprEncerrando = aprDeHistorico(modeloB, {
+    id: idTreino("9", 9),
+    osId: OS_ENCERRANDO,
+    por: eu,
+    participantes: [
+      { u: eu, funcao: "responsavel" },
+      { u: paulo, funcao: "executor" },
+    ],
+    riscosMarcados: [1, 3],
+    concluidaEm: hojeAte(190),
+  });
+  estado.aprs.push(aprEncerrando);
+  estado.execucoes.push({
+    id: idTreino("8", 9),
+    os_id: OS_ENCERRANDO,
+    apr_id: aprEncerrando.id,
+    executor_id: eu.id,
+    numero_pessoas: 2,
+    inicio: hojeAte(170),
+    fim: hojeAte(12),
+    resultado: "encerrada",
+    descricao_atividade: null,
+    motivo: null,
+    suspensao_motivo: null,
+    suspensao_complemento: null,
+    dados_inspecao: null,
+    encerramento_assinado_em: null,
+    localizacao_inicio: posicao(-23.5629, -46.6544),
+    localizacao_fim: posicao(-23.5631, -46.6542),
+    pausas: [],
+    assinaturas: [],
+    fotos: [],
+  });
+
+  // OS de um colega já assinada por ele: espera o supervisor ler o relatório e assinar por último.
+  const aprAguardando = aprDeHistorico(modeloA, {
+    id: idTreino("9", 10),
+    osId: OS_AGUARDANDO_SUPERVISOR,
+    por: carlos,
+    participantes: [
+      { u: carlos, funcao: "responsavel" },
+      { u: joana, funcao: "executor" },
+    ],
+    riscosMarcados: [2],
+    concluidaEm: horario(agora, -1, 9, 0),
+  });
+  estado.aprs.push(aprAguardando);
+  const encerramentoDoColega = horario(agora, -1, 16, 12);
+  estado.execucoes.push({
+    id: idTreino("8", 10),
+    os_id: OS_AGUARDANDO_SUPERVISOR,
+    apr_id: aprAguardando.id,
+    executor_id: carlos.id,
+    numero_pessoas: 2,
+    inicio: horario(agora, -1, 9, 30),
+    fim: horario(agora, -1, 15, 55),
+    resultado: "encerrada",
+    descricao_atividade: "Trocadas quatro lâmpadas e o relé fotoelétrico; teste de acendimento ao anoitecer sem ocorrências.",
+    motivo: null,
+    suspensao_motivo: null,
+    suspensao_complemento: null,
+    dados_inspecao: null,
+    encerramento_assinado_em: encerramentoDoColega,
+    localizacao_inicio: posicao(-23.5433, -46.6288),
+    localizacao_fim: posicao(-23.5434, -46.6287),
+    pausas: [],
+    assinaturas: [{ usuario_id: carlos.id, assinatura_path: carlos.assinatura_path!, assinada_em: encerramentoDoColega }],
+    fotos: [],
+  });
+  estado.alertas.push({
+    id: idTreino("4", estado.proximoAlerta++),
+    os_id: OS_AGUARDANDO_SUPERVISOR,
+    tipo: "os_para_assinar",
+    detalhe: `OS 4900111 encerrada por ${carlos.nome}: leia o relatório da execução e assine para concluir a OS.`,
+    destinatario_id: marcos.id,
+    email_enviado_em: depois(encerramentoDoColega, 1),
+    lido_em: null,
+    criado_em: encerramentoDoColega,
+  });
 
   osPor(OS_PENDENTE).status = "pendente";
   return estado;
 }
 
 /**
- * Status da OS derivado das APRs e execuções, na mesma ordem das regras da `api` (`dominio/status-os.ts`): cancelada fica;
- * encerrada se há execução encerrada; em execução se há uma aberta; pendente se há APR bloqueada ou execução
- * interrompida/suspensa; senão liberada. A execução cancelada por engano não conta.
+ * Status da OS derivado das APRs e execuções, na mesma ordem das regras da `api` (`dominio/status-os.ts`): cancelada e
+ * devolvida ficam; havendo execução encerrada (o clique em "Encerrar OS", que para o tempo), `encerrando` até o responsável
+ * assinar o encerramento, `aguardando_supervisor` até o supervisor dar a assinatura final e só então `encerrada` (concluída);
+ * em execução se há uma aberta; pendente se há APR bloqueada ou execução interrompida/suspensa; senão liberada. A execução
+ * cancelada por engano não conta.
  */
 export function statusDerivado(estado: EstadoTreino, o: OsReg): OsStatus {
-  if (o.status === "cancelada") return "cancelada";
+  if (o.status === "cancelada" || o.status === "devolvida") return o.status;
   const execs = estado.execucoes.filter((e) => e.os_id === o.id && e.resultado !== "cancelada");
-  if (execs.some((e) => e.resultado === "encerrada")) return "encerrada";
+  const encerrada = execs.find((e) => e.resultado === "encerrada");
+  if (encerrada) return encerrada.encerramento_assinado_em === null ? "encerrando" : o.ciencia_em ? "encerrada" : "aguardando_supervisor";
   if (execs.some((e) => e.resultado === null)) return "em_execucao";
   if (execs.some((e) => e.resultado === "interrompida" || e.resultado === "suspensa")) return "pendente";
   return estado.aprs.some((a) => a.os_id === o.id && a.resultado === "bloqueada") ? "pendente" : "liberada";
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Os personagens fictícios agem sozinhos
+// ---------------------------------------------------------------------------------------------------------------
+
+/** Depois de quanto tempo, a contar do registro da APR, o primeiro colega fictício a assina (cada colega seguinte, `ENTRE_COLEGAS_MS` depois). */
+const COLEGA_ASSINA_APOS_MS = 4_000;
+const ENTRE_COLEGAS_MS = 3_000;
+/** Depois de quanto tempo da assinatura do encerramento o supervisor fictício dá a assinatura final. */
+const SUPERVISOR_ASSINA_APOS_MS = 45_000;
+/** O PDF fica pronto uns segundos depois da assinatura final, como a tarefa em segundo plano da `api`. */
+const PDF_PRONTO_APOS_MS = 3_000;
+
+/**
+ * Faz os colegas fictícios agirem no tempo que passou, a cada chamada da API fictícia (o treino não tem outras contas):
+ * - cada colega com assinatura no perfil que é participante de uma APR de hoje, ainda não usada, assina a própria parte alguns
+ *   segundos depois do registro, na ordem da lista; quem treina assina a dele pela tela (`apr_assinada`), e a tela de
+ *   assinaturas vê "pendente" virar "assinou" sozinha;
+ * - o supervisor fictício dá a assinatura final (a "ciência") na OS que o técnico encerrou e assinou, `SUPERVISOR_ASSINA_APOS_MS`
+ *   depois: a OS passa a `encerrada` e o PDF é gerado. As OS dos colegas ficam esperando, para o treino mostrar o estado.
+ * Os instantes gravados são os do momento em que a pessoa "agiu" (não o da leitura), então o histórico fica coerente.
+ */
+export function avancarFicticios(e: EstadoTreino, usuarioId: string, agora: Date): void {
+  const agoraMs = agora.getTime();
+  for (const a of e.aprs) {
+    if (a.resultado !== "aprovada" || diaDe(a.concluida_em) !== diaDe(agora)) continue;
+    if (e.execucoes.some((x) => x.apr_id === a.id && x.resultado !== "cancelada")) continue;
+    let ordem = 0;
+    for (const p of a.participantes) {
+      if (p.usuario_id === usuarioId || p.assinada_em || p.recusou_em) continue;
+      const assinatura = e.usuarios.find((u) => u.id === p.usuario_id)?.assinatura_path;
+      if (!assinatura) continue;
+      const quando = new Date(a.concluida_em).getTime() + COLEGA_ASSINA_APOS_MS + ordem++ * ENTRE_COLEGAS_MS;
+      if (quando > agoraMs) continue;
+      p.assinatura_path = assinatura;
+      p.assinada_em = new Date(quando).toISOString();
+    }
+  }
+
+  for (const o of e.os) {
+    if (o.status !== "aguardando_supervisor" || o.ciencia_em) continue;
+    const x = e.execucoes.find((y) => y.os_id === o.id && y.resultado === "encerrada" && y.executor_id === usuarioId && y.encerramento_assinado_em);
+    if (!x) continue;
+    const quando = new Date(x.encerramento_assinado_em!).getTime() + SUPERVISOR_ASSINA_APOS_MS;
+    if (quando > agoraMs) continue;
+    o.ciencia_por = e.equipe.supervisor_id;
+    o.ciencia_em = new Date(quando).toISOString();
+    o.status = statusDerivado(e, o);
+    o.pdf_path = idTreino("7", Number(o.numero_ordem?.slice(-3) ?? "0") || 1);
+    o.pdf_em = new Date(quando + PDF_PRONTO_APOS_MS).toISOString();
+  }
 }

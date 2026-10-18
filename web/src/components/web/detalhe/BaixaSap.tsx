@@ -22,7 +22,7 @@ export function BaixaSap({ os, podeExportar }: { os: OsDetalhe; podeExportar: bo
           <Badge tone="neu" style={{ alignSelf: "flex-start", fontWeight: 600 }}>
             Ainda não exportada
           </Badge>
-          <p className="muted">Entra na próxima planilha de OS encerradas, com o link do PDF.</p>
+          <p className="muted">Entra na próxima planilha de OS concluídas, com o link do PDF.</p>
           {podeExportar && (
             <Link href={rotas.app.exportacaoSap} style={{ fontSize: 13.5, fontWeight: 600 }}>
               Ir para exportação
@@ -34,7 +34,7 @@ export function BaixaSap({ os, podeExportar }: { os: OsDetalhe; podeExportar: bo
           <Badge tone="neu" style={{ alignSelf: "flex-start", fontWeight: 600 }}>
             Não se aplica ainda
           </Badge>
-          <p className="muted">Só as OS encerradas entram na planilha de baixa do SAP.</p>
+          <p className="muted">Só as OS concluídas (encerradas, depois da assinatura final do supervisor) entram na planilha de baixa do SAP.</p>
         </>
       )}
     </Panel>

@@ -10,6 +10,7 @@ import type { Colega, EscolhaDoModelo } from "@/lib/apr";
 import { execucaoAberta, reservadaParaOutro, rotuloDaOs, type DetalheDaOs } from "@/lib/os-app";
 import { MOTIVO_DO_AUSENTE } from "@/lib/ausencia";
 import { rotas } from "@/lib/rotas";
+import { execucaoJaTerminou } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Nova APR" };
 
@@ -22,7 +23,7 @@ export default async function NovaAprPage({ params }: PageProps<"/app/os/[id]/ap
   const detalhe = await apiOuNulo<DetalheDaOs>(`/os/${id}`);
   if (!detalhe) notFound();
   const { os, execucoes } = detalhe;
-  if (os.status === "encerrada" || os.status === "cancelada" || os.status === "devolvida") redirect(rotas.app.os(id));
+  if (execucaoJaTerminou(os.status) || os.status === "cancelada" || os.status === "devolvida") redirect(rotas.app.os(id));
   const { usuario, ausencia } = await usuarioAtual();
 
   const cabecalho = (

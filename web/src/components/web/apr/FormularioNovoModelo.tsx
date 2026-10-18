@@ -6,6 +6,7 @@ import { Button, LinkButton } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/web/Panel";
+import { ajudaParticipantesComAssinatura, rotuloParticipantesComAssinatura } from "@/data/modelos";
 import { chamar } from "@/lib/cliente-api";
 import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
@@ -31,6 +32,8 @@ export function FormularioNovoModelo({ sugestao, existentes, modelos }: Formular
   const [versao, setVersao] = useState("1");
   const [dataDocumento, setDataDocumento] = useState("");
   const [copiarDe, setCopiarDe] = useState("");
+  // O modelo novo em branco começa com a coluna Assinatura; ao copiar outro modelo, a folha segue a dele.
+  const [comAssinatura, setComAssinatura] = useState(true);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -53,7 +56,7 @@ export function FormularioNovoModelo({ sugestao, existentes, modelos }: Formular
     setErro(null);
     try {
       const base = { titulo: titulo.trim(), versao: numeroDaVersao, data_documento: dataDocumento || null };
-      await chamar("POST", `/modelos-apr/${encodeURIComponent(limpo)}/versoes`, copiarDe ? { ...base, copiar_de: copiarDe } : { ...base, riscos: [], itens: [] });
+      await chamar("POST", `/modelos-apr/${encodeURIComponent(limpo)}/versoes`, copiarDe ? { ...base, copiar_de: copiarDe } : { ...base, participantes_com_assinatura: comAssinatura, riscos: [], itens: [] });
       exibirAviso(`Rascunho do ${limpo} criado. Ajuste os itens e publique.`);
       router.push(rotas.web.modelo(limpo));
       router.refresh();
@@ -112,6 +115,17 @@ export function FormularioNovoModelo({ sugestao, existentes, modelos }: Formular
             </select>
           </Field>
         </div>
+        {copiarDe ? (
+          <span className="small">A coluna Assinatura da tabela de participantes segue o modelo copiado; ajuste no editor, se precisar.</span>
+        ) : (
+          <div className="stack g4">
+            <label className="row g8" style={{ alignItems: "center" }}>
+              <input type="checkbox" checked={comAssinatura} onChange={(e) => setComAssinatura(e.target.checked)} />
+              {rotuloParticipantesComAssinatura}
+            </label>
+            <span className="small">{ajudaParticipantesComAssinatura}</span>
+          </div>
+        )}
         <Notice tone="info" icon="info">
           {copiarDe
             ? `O rascunho começa com os itens, riscos, medidas e o PAE da versão em uso do ${copiarDe}; o ${copiarDe} não muda.`

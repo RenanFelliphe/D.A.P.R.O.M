@@ -65,6 +65,7 @@ export function ChecklistDeInspecao({ perguntas, respostas, onChange, desabilita
                     disabled={desabilitado}
                     aria-label={`Observação: ${p.texto}`}
                     aria-required={!r.marcado}
+                    data-foco-erro={pendente ? "" : undefined}
                     placeholder={r.marcado ? "Observação (opcional)" : "O que foi encontrado? (obrigatória: o supervisor será avisado)"}
                   />
                 ) : (

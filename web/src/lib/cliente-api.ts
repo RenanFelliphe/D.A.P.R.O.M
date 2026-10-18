@@ -152,10 +152,13 @@ export interface EventoDeCampo {
   id?: string;
   tipo:
     | "apr_concluida"
+    | "apr_assinada"
+    | "apr_recusada"
     | "execucao_iniciada"
     | "pausa_iniciada"
     | "pausa_encerrada"
     | "execucao_encerrada"
+    | "encerramento_assinado"
     | "execucao_interrompida"
     | "execucao_suspensa"
     | "execucao_cancelada";

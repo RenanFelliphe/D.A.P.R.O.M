@@ -1,7 +1,7 @@
 import { Icon } from "@/components/ui/Icon";
 import { dataHora } from "@/lib/formatar";
 import type { AprDaOs } from "@/lib/os-app";
-import type { OsStatus } from "@/lib/tipos";
+import { execucaoJaTerminou, type OsStatus } from "@/lib/tipos";
 
 interface AprExigidaCardProps {
   aprs: AprDaOs[];
@@ -10,6 +10,8 @@ interface AprExigidaCardProps {
 
 /** Card que explica a APR exigida antes de executar a OS: o técnico escolhe o modelo ao iniciar, com a recomendação do sistema. */
 export function AprExigidaCard({ aprs, status }: AprExigidaCardProps) {
+  // Depois da execução (encerrando, aguardando o supervisor, concluída) a APR já cumpriu o papel dela.
+  if (execucaoJaTerminou(status)) return null;
   const bloqueadas = aprs.filter((a) => a.resultado === "bloqueada");
   const ultima = bloqueadas[bloqueadas.length - 1];
   return (
@@ -20,7 +22,7 @@ export function AprExigidaCard({ aprs, status }: AprExigidaCardProps) {
       </div>
       <div className="muted">
         Você escolhe o modelo ao iniciar a APR, entre os publicados; o sistema recomenda um pelo que a OS descreve. Esta OS tem uma APR
-        própria: ela não vale para outras OS do mesmo local.
+        própria: ela não vale para outras OS do mesmo local. Todos os participantes assinam a APR, cada um na própria conta, antes de executar, e são ao menos 2.
       </div>
       {status === "pendente" && ultima && (
         <div className="muted">

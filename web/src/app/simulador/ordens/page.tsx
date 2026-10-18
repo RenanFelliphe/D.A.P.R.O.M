@@ -50,7 +50,7 @@ export default async function SimuladorOrdensPage({ searchParams }: PageProps<"/
       </div>
       <div className="kpis k4">
         <Kpi label="Ordens" value={lista.total_geral} sub="no SAP" />
-        <Kpi label="No SYNQ OS" marker={<i style={{ background: "var(--lib)" }} />} value={noSynqOsTotal} sub={`${c.liberada + c.pendente} liberadas ou pendentes · ${c.em_execucao} em execução`} />
+        <Kpi label="No SYNQ OS" marker={<i style={{ background: "var(--lib)" }} />} value={noSynqOsTotal} sub={`${c.liberada + c.pendente} liberadas ou pendentes · ${c.em_execucao + c.encerrando + c.aguardando_supervisor} em execução ou aguardando assinaturas`} />
         <Kpi label="Ignoradas" marker={<i style={{ background: "var(--al)" }} />} value={c.ignorada} sub="a leitura passou e não criou OS" />
         <Kpi label="Ainda não lidas" marker={<i style={{ background: "var(--ink4)" }} />} value={c.nao_lida} sub="esperam a próxima leitura" />
       </div>

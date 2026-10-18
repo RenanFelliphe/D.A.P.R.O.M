@@ -3,7 +3,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { dataHora, hora } from "@/lib/formatar";
-import { reservadaParaOutro, type AprDaOs, type ExecucaoDaOs, type OsDetalhada } from "@/lib/os-app";
+import { reservadaParaOutro, situacaoDaApr, type AprDaOs, type ExecucaoDaOs, type OsDetalhada } from "@/lib/os-app";
 import { rotas, urlDoPdf } from "@/lib/rotas";
 import { BotaoApr } from "./BotaoApr";
 
@@ -11,17 +11,21 @@ interface AcoesDaOsProps {
   os: OsDetalhada;
   usuarioId: string;
   execucaoAberta: ExecucaoDaOs | null;
-  /** APR aprovada de hoje, de que o técnico participou, que ainda não amparou uma execução. */
+  /** A execução cujo tempo parou ("Encerrar OS") e que espera o preenchimento e a assinatura do responsável (a OS está `encerrando`). */
+  execucaoEncerrando?: ExecucaoDaOs | null;
+  /** APR aprovada de hoje, de que o técnico participa, que ainda serve e não amparou uma execução (assinada ou não por todos). */
   aprDisponivel: AprDaOs | null;
-  /** A mesma APR disponível, de quem quer que seja: se o técnico não participou dela, ele não inicia a execução. */
+  /** A mesma APR disponível, de quem quer que seja: se o técnico não participa dela, ele não assina nem inicia a execução. */
   aprDeOutros: AprDaOs | null;
+  /** A APR de hoje de que o técnico participa que deixou de servir (o responsável recusou, ou restaram menos de 2 participantes). */
+  aprInviavel?: AprDaOs | null;
   /** O ausente só visualiza: o selo "Ausente até DD/MM/AAAA" quando quem olha está ausente, e as ações de campo somem. */
   ausencia?: string | null;
 }
 
 /** Painel lateral do detalhe: o que o técnico pode fazer agora, conforme o estado da OS. */
-export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel, aprDeOutros, ausencia = null }: AcoesDaOsProps) {
-  const aberta = os.status !== "encerrada" && os.status !== "cancelada" && os.status !== "devolvida";
+export function AcoesDaOs({ os, usuarioId, execucaoAberta, execucaoEncerrando = null, aprDisponivel, aprDeOutros, aprInviavel = null, ausencia = null }: AcoesDaOsProps) {
+  const aberta = os.status !== "encerrada" && os.status !== "cancelada" && os.status !== "devolvida" && os.status !== "encerrando" && os.status !== "aguardando_supervisor";
   // O ausente não aplica APR nem executa: só consulta (a OS dele em execução foi suspensa quando a ausência começou).
   if (ausencia && aberta) {
     return (
@@ -58,12 +62,48 @@ export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel, aprDeO
     );
   }
 
+  // O tempo parou ("Encerrar OS"), mas o responsável ainda não preencheu e assinou o encerramento.
+  if (os.status === "encerrando") {
+    const minha = execucaoEncerrando?.executor.id === usuarioId;
+    return (
+      <PainelAcoes>
+        {minha ? (
+          <>
+            <Notice tone="al" icon="clock">
+              <strong>Você encerrou a OS: falta preencher e assinar o encerramento.</strong> O tempo já parou; o preenchimento não conta nele.
+            </Notice>
+            <LinkButton variant="p" block href={rotas.app.execucao(os.id)}>
+              <Icon name="check" size={18} />
+              Preencher e assinar o encerramento
+            </LinkButton>
+          </>
+        ) : (
+          <Notice tone="info" icon="user">
+            <strong>{execucaoEncerrando ? `${execucaoEncerrando.executor.nome} encerrou a OS` : "A OS foi encerrada"} e está preenchendo e assinando o encerramento.</strong> Só o
+            responsável pela execução assina. Depois, a OS segue para o supervisor.
+          </Notice>
+        )}
+      </PainelAcoes>
+    );
+  }
+
+  if (os.status === "aguardando_supervisor") {
+    return (
+      <PainelAcoes>
+        <Notice tone="info" icon="clock">
+          <strong>O responsável já assinou o encerramento.</strong> Agora falta o supervisor ler o relatório da execução e assinar por último; só então a OS está concluída e o
+          PDF fica pronto.
+        </Notice>
+      </PainelAcoes>
+    );
+  }
+
   if (os.status === "encerrada" || os.status === "cancelada" || os.status === "devolvida") {
     return (
       <PainelAcoes>
         <div className="row g8 small">
           <Icon name="lock" size={16} />
-          {os.status === "encerrada" ? "OS encerrada: só consulta." : os.status === "cancelada" ? "OS cancelada: só consulta." : "OS devolvida ao SAP: só consulta."}
+          {os.status === "encerrada" ? "OS concluída: só consulta." : os.status === "cancelada" ? "OS cancelada: só consulta." : "OS devolvida ao SAP: só consulta."}
         </div>
         {os.status === "cancelada" && os.justificativa_cancelamento && <p className="muted">{os.justificativa_cancelamento}</p>}
         {os.status === "devolvida" && os.devolucao?.justificativa && <p className="muted">{os.devolucao.justificativa}</p>}
@@ -91,29 +131,58 @@ export function AcoesDaOs({ os, usuarioId, execucaoAberta, aprDisponivel, aprDeO
     );
   }
 
+  const situacao = aprDisponivel ? situacaoDaApr(aprDisponivel) : null;
+  const euAssinei = Boolean(aprDisponivel?.participantes.find((p) => p.usuario_id === usuarioId)?.assinada_em);
+  const euRecusei = Boolean(aprDeOutros?.participantes.find((p) => p.usuario_id === usuarioId)?.recusou_em);
+
   return (
     <PainelAcoes>
-      {aprDisponivel ? (
+      {aprDisponivel && situacao?.pronta ? (
         <>
           <Notice tone="ok" icon="check">
-            <strong>APR aprovada hoje às {hora(aprDisponivel.concluida_em)}.</strong> Ela ampara uma execução nesta OS.
+            <strong>APR aprovada hoje às {hora(aprDisponivel.concluida_em)} e assinada por todos.</strong> Ela ampara uma execução nesta OS.
           </Notice>
           <LinkButton variant="p" block href={rotas.app.execucao(os.id)} data-treino="os-iniciar-execucao">
             <Icon name="play" size={18} fill />
             Iniciar execução
           </LinkButton>
         </>
+      ) : aprDisponivel && situacao ? (
+        <>
+          <Notice tone="al" icon="clip">
+            <strong>
+              APR aprovada hoje às {hora(aprDisponivel.concluida_em)}, {euAssinei ? "mas ainda faltam assinaturas" : "aguardando a sua assinatura"}.
+            </strong>{" "}
+            {euAssinei ? `Falta assinar: ${situacao.faltam.map((p) => p.nome).join(", ")}. ` : ""}A execução só começa quando todos os participantes assinam, cada um na própria conta.
+          </Notice>
+          <LinkButton variant="p" block href={rotas.app.aprovada(os.id)}>
+            <Icon name="clip" size={18} />
+            {euAssinei ? "Acompanhar as assinaturas" : "Assinar a APR"}
+          </LinkButton>
+        </>
       ) : aprDeOutros ? (
         <Notice tone="info" icon="user">
-          <strong>
-            APR aprovada hoje às {hora(aprDeOutros.concluida_em)} por {aprDeOutros.preenchida_por.nome}.
-          </strong>{" "}
-          Só os participantes dela ({aprDeOutros.participantes.map((p) => p.nome).join(", ")}) iniciam a execução. Para executar, faça a sua APR.
+          {euRecusei ? (
+            <>
+              <strong>Você recusou a APR de {aprDeOutros.preenchida_por.nome} e saiu dela.</strong> Para executar esta OS, faça a sua APR.
+            </>
+          ) : (
+            <>
+              <strong>
+                APR aprovada hoje às {hora(aprDeOutros.concluida_em)} por {aprDeOutros.preenchida_por.nome}.
+              </strong>{" "}
+              Só os participantes dela ({situacaoDaApr(aprDeOutros).ativos.map((p) => p.nome).join(", ")}) assinam e iniciam a execução. Para executar, faça a sua APR.
+            </>
+          )}
+        </Notice>
+      ) : aprInviavel ? (
+        <Notice tone="blq" icon="octagon">
+          <strong>A APR de hoje não serve mais.</strong> {situacaoDaApr(aprInviavel).motivoInviavel} Faça uma APR nova para executar a OS.
         </Notice>
       ) : (
         <div className="row g8 small">
           <Icon name="lock" size={16} />
-          A execução só é liberada depois da APR aprovada.
+          A execução só é liberada depois da APR aprovada e assinada por todos.
         </div>
       )}
       <BotaoApr osId={os.id} usuarioId={usuarioId} pendente={os.status === "pendente"} jaAprovada={Boolean(aprDisponivel)} />

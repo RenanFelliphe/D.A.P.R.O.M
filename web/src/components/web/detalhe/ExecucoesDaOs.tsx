@@ -5,22 +5,23 @@ import { Panel } from "@/components/web/Panel";
 import type { ExecucaoDaOs } from "@/data/detalhe";
 import { itensDaInspecao } from "@/lib/checklist-inspecao";
 import { dataHora, duracao, hora } from "@/lib/formatar";
+import { descreverMotivo, ehMotivoDeSaude, rotuloDoMotivoDaSuspensao } from "@/lib/motivos-de-parada";
 import { ChecklistDaExecucao } from "./ChecklistDaExecucao";
 import { FotosDaEvidencia } from "./FotosDaEvidencia";
+import { LocalizacaoNoMapa } from "./LocalizacaoNoMapa";
+import { PausasDaExecucao } from "./PausasDaExecucao";
 
 const rotuloMedida = { color: "var(--ink4)" } as const;
 const colunaAssinatura = { maxWidth: 260, minWidth: 0, flex: "1 1 160px" } as const;
 
-const resultado: Record<NonNullable<ExecucaoDaOs["resultado"]>, { rotulo: string; tom: BadgeTone }> = {
+export const resultado: Record<NonNullable<ExecucaoDaOs["resultado"]>, { rotulo: string; tom: BadgeTone }> = {
   encerrada: { rotulo: "Encerrada", tom: "enc" },
   interrompida: { rotulo: "Interrompida por risco", tom: "blq" },
   suspensa: { rotulo: "Suspensa", tom: "al" },
   cancelada: { rotulo: "Cancelada por engano", tom: "neu" },
 };
 
-const motivoDaPausa: Record<string, string> = { almoco: "almoço", descanso: "descanso", outro: "outro motivo" };
-
-function Medida({ rotulo, valor }: { rotulo: string; valor: string }) {
+export function Medida({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <div>
       <div className="small" style={rotuloMedida}>
@@ -32,7 +33,8 @@ function Medida({ rotulo, valor }: { rotulo: string; valor: string }) {
 }
 
 function ExecucaoCartao({ execucao: e, numero, total }: { execucao: ExecucaoDaOs; numero: number; total: number }) {
-  const r = e.resultado ? resultado[e.resultado] : null;
+  // A encerrada sem a assinatura do responsável ainda está `encerrando`: o tempo parou, mas o preenchimento não foi assinado.
+  const r = e.resultado === "encerrada" && !e.encerramento_assinado_em ? { rotulo: "Encerrando: aguarda o responsável", tom: "exe" as const } : e.resultado ? resultado[e.resultado] : null;
   const inspecao = itensDaInspecao(e.dados_inspecao);
   const totalMin = e.fim ? (new Date(e.fim).getTime() - new Date(e.inicio).getTime()) / 60_000 : null;
   return (
@@ -60,18 +62,24 @@ function ExecucaoCartao({ execucao: e, numero, total }: { execucao: ExecucaoDaOs
         <Medida rotulo="Pessoas" valor={String(e.numero_pessoas)} />
       </div>
 
-      {e.pausas.length > 0 && (
-        <div className="stack g4" style={{ fontSize: 13.5 }}>
+      <PausasDaExecucao pausas={e.pausas} />
+
+      {e.resultado === "suspensa" && (
+        <div>
           <div className="small" style={rotuloMedida}>
-            Pausas (não entram no tempo líquido)
+            Motivo da suspensão
           </div>
-          {e.pausas.map((p) => (
-            <span key={p.id}>
-              <span className="mono">{hora(p.inicio)}</span> às <span className="mono">{p.fim ? hora(p.fim) : "…"}</span>
-              {p.motivo ? ` · ${motivoDaPausa[p.motivo] ?? p.motivo}` : ""}
-              {p.fim === null && " · ainda aberta"}
-            </span>
-          ))}
+          <p style={{ fontSize: 14.5, ...(ehMotivoDeSaude(e.suspensao_motivo) ? { color: "var(--blq)", fontWeight: 600 } : undefined) }}>
+            {descreverMotivo(rotuloDoMotivoDaSuspensao, e.suspensao_motivo, e.suspensao_complemento)}
+            {ehMotivoDeSaude(e.suspensao_motivo) && " · ocorrência de saúde"}
+          </p>
+        </div>
+      )}
+
+      {(e.localizacao_inicio || e.localizacao_fim) && (
+        <div className="row g12 wrap">
+          <LocalizacaoNoMapa titulo="Localização do início" ponto={e.localizacao_inicio} compacta />
+          {e.fim && <LocalizacaoNoMapa titulo="Localização do fim" ponto={e.localizacao_fim} compacta />}
         </div>
       )}
 

@@ -1,79 +1,66 @@
-import { CadastrarAssinatura } from "@/components/app/aprovada/CadastrarAssinatura";
-import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { ImagemArquivo } from "@/components/ui/ImagemArquivo";
 import { cx } from "@/lib/cx";
-import { hora } from "@/lib/formatar";
+import { dataHora, hora } from "@/lib/formatar";
 
 export interface LinhaDeAssinatura {
   usuarioId: string;
   nome: string;
   funcao: "responsavel" | "executor";
-  /** Id do arquivo da assinatura do perfil; `null` = ainda não cadastrou. */
+  /** Id do arquivo da assinatura copiada do perfil para a APR; `null` = ainda não assinou. */
   assinaturaPath: string | null;
-  /** Instante da confirmação; `null` = pendente. */
+  /** Quando assinou; `null` = pendente. */
   assinadaEm: string | null;
+  /** Assinou no aparelho do responsável (contingência offline). */
+  presencial?: boolean;
+  /** O direito de recusa: quando saiu da APR e por quê. */
+  recusouEm?: string | null;
+  recusaMotivo?: string | null;
   eu: boolean;
 }
 
-interface AssinaturaCardProps {
-  linha: LinhaDeAssinatura;
-  /** Está registrando a APR: ninguém mexe nas confirmações. */
-  ocupado: boolean;
-  /** A APR já foi registrada: só mostra. */
-  somenteLeitura: boolean;
-  aoConfirmar: () => void;
-  aoRetirar: () => void;
-  aoCadastrar: (arquivoId: string) => void;
-}
-
-/** Card de assinatura do perfil: pendente até a pessoa confirmar a rubrica que cadastrou no perfil. */
-export function AssinaturaCard({ linha, ocupado, somenteLeitura, aoConfirmar, aoRetirar, aoCadastrar }: AssinaturaCardProps) {
-  const confirmada = linha.assinadaEm !== null;
+/**
+ * O estado da assinatura de um participante da APR: assinou (com a hora e a imagem), está pendente (aguardando a pessoa assinar
+ * na própria conta) ou recusou (com o motivo). Só mostra: quem assina é cada um, na própria conta.
+ */
+export function AssinaturaCard({ linha }: { linha: LinhaDeAssinatura }) {
+  const recusou = Boolean(linha.recusouEm);
+  const assinou = !recusou && linha.assinadaEm !== null;
   return (
-    <div className="card stack g6">
-      <div className="row between">
+    <div className="card stack g6" data-estado={recusou ? "recusou" : assinou ? "assinou" : "pendente"}>
+      <div className="row between wrap g8">
         <span style={{ fontSize: 14, fontWeight: 600 }}>
-          {linha.nome} <span style={{ fontWeight: 400, color: "var(--ink3)" }}>· {linha.funcao === "responsavel" ? "Responsável" : "Executor"}</span>
+          {linha.nome}
+          {linha.eu ? " (você)" : ""} <span style={{ fontWeight: 400, color: "var(--ink3)" }}>· {linha.funcao === "responsavel" ? "Responsável" : "Executor"}</span>
         </span>
-        {confirmada && (
+        {assinou ? (
           <span className="ans-ok" style={{ fontSize: 12.5 }}>
             <Icon name="check" size={13} />
-            Confirmada {hora(linha.assinadaEm)}
+            Assinou às {hora(linha.assinadaEm!)}
+            {linha.presencial ? " · no aparelho do responsável" : ""}
+          </span>
+        ) : recusou ? (
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--blq)" }}>
+            <Icon name="x" size={13} /> Recusou a APR
+          </span>
+        ) : (
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink3)" }}>
+            <Icon name="clock" size={13} /> Aguardando a assinatura
           </span>
         )}
       </div>
-      {linha.assinaturaPath ? (
-        <>
-          <div className={cx("sig-box", !confirmada && "pend")}>
-            <ImagemArquivo id={linha.assinaturaPath} alt={`Assinatura de ${linha.nome}`} style={{ height: 56, maxWidth: "100%", objectFit: "contain" }} />
-          </div>
-          {!confirmada && !somenteLeitura && (
-            <Button variant="line" sm onClick={aoConfirmar} disabled={ocupado}>
-              Confirmar assinatura do perfil
-            </Button>
-          )}
-        </>
-      ) : linha.eu ? (
-        <CadastrarAssinatura aoSalvar={aoCadastrar} />
-      ) : (
-        <div className="stack g6">
-          <p className="muted">
-            {linha.nome} ainda não cadastrou a assinatura no perfil. Peça que cadastre em Perfil e atualize esta página, ou retire a pessoa da APR.
-          </p>
-          {!somenteLeitura && (
-            <div>
-              <Button variant="line" sm onClick={aoRetirar} disabled={ocupado}>
-                Retirar da APR
-              </Button>
-            </div>
-          )}
+      {assinou && linha.assinaturaPath && (
+        <div className={cx("sig-box")}>
+          <ImagemArquivo id={linha.assinaturaPath} alt={`Assinatura de ${linha.nome}`} style={{ height: 56, maxWidth: "100%", objectFit: "contain" }} />
         </div>
       )}
-      {!somenteLeitura && !confirmada && !linha.eu && linha.assinaturaPath && (
-        <Button variant="ghost" sm onClick={aoRetirar} disabled={ocupado}>
-          Retirar da APR
-        </Button>
+      {recusou && (
+        <p className="small">
+          Saiu da APR em {dataHora(linha.recusouEm!)}: <strong>{linha.recusaMotivo ?? "sem motivo registrado"}</strong>
+        </p>
+      )}
+      {!assinou && !recusou && (
+        <p className="small">{linha.eu ? "Falta a sua assinatura: use “Assinar a APR” ou recuse, se não concorda." : `${linha.nome.split(" ")[0]} assina na própria conta e esta tela se atualiza sozinha.`}</p>
       )}
     </div>
   );

@@ -8,7 +8,7 @@ import { OS_BLOQUEIO, OS_GUIADA } from "@/treino/ids";
 import { rotas } from "@/lib/rotas";
 
 /**
- * Cartão de OS do quadro; leva ao detalhe da OS. A ciência e o PDF das encerradas só interessam à gestão. A OS que o supervisor
+ * Cartão de OS do quadro; leva ao detalhe da OS. A assinatura final do supervisor e o PDF das concluídas só interessam à gestão. A OS que o supervisor
  * reservou a uma pessoa continua no quadro da equipe, com a marca de quem a fará (`usuarioId` é quem está vendo o quadro).
  */
 export function CartaoOs({ os, gestao, usuarioId }: { os: OsDoQuadro; gestao: boolean; usuarioId: string }) {
@@ -56,10 +56,22 @@ export function CartaoOs({ os, gestao, usuarioId }: { os: OsDoQuadro; gestao: bo
           {os.responsavel.id === usuarioId ? "Reservada para você" : `Reservada para ${os.responsavel.nome.split(" ")[0]}`}
         </Badge>
       )}
+      {os.status === "encerrando" && (
+        <Badge tone="exe" style={{ alignSelf: "flex-start", borderRadius: 6, fontSize: 12 }}>
+          <Icon name="clock" size={13} />
+          Aguardando o responsável assinar
+        </Badge>
+      )}
+      {os.status === "aguardando_supervisor" && (
+        <Badge tone="al" style={{ alignSelf: "flex-start", borderRadius: 6, fontSize: 12 }}>
+          <Icon name="file" size={13} />
+          Aguardando a assinatura do supervisor
+        </Badge>
+      )}
       {gestao && os.status === "encerrada" && (
         <div className="m" style={{ color: "var(--enc)", fontWeight: 500 }}>
           <Icon name={os.ciencia_em ? "check" : "file"} size={13} />
-          {os.ciencia_em ? `Ciente em ${diaMes(os.ciencia_em)}` : "Ciência pendente"}
+          {os.ciencia_em ? `Assinada pelo supervisor em ${diaMes(os.ciencia_em)}` : "Concluída"}
           {os.pdf_pronto ? " · PDF pronto" : " · PDF pendente"}
         </div>
       )}

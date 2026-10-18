@@ -3,7 +3,7 @@
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { AdicionarFoto } from "@/components/ui/AdicionarFoto";
 import { AnexarPdf } from "@/components/ui/AnexarPdf";
-import { Req } from "@/components/ui/Field";
+import { MensagemDeErro, Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { hora } from "@/lib/formatar";
 import { novoId } from "@/lib/cliente-api";
@@ -57,10 +57,14 @@ interface FotosExecucaoProps {
   /** Máximo de fotos (a `api` aceita 10 por execução). */
   maximo?: number;
   desabilitado?: boolean;
+  /** As fotos são opcionais (o encerramento): o rótulo diz isso em vez de "de 1 a N". */
+  opcional?: boolean;
+  /** Mensagem de validação (foto exigida e não anexada): aparece junto do campo, que recebe o foco ao tentar enviar. */
+  erro?: string;
 }
 
 /** Grade de fotos já anexadas (com prévia) e botão para adicionar mais; o GPS é pedido só ao anexar. */
-export function FotosExecucao({ fotos, onChange, maximo = 10, desabilitado }: FotosExecucaoProps) {
+export function FotosExecucao({ fotos, onChange, maximo = 10, desabilitado, opcional = false, erro: erroDeValidacao }: FotosExecucaoProps) {
   const [erro, setErro] = useState<string | null>(null);
 
   function anexar({ arquivoId, previa }: { arquivoId: string; previa: string }) {
@@ -74,10 +78,10 @@ export function FotosExecucao({ fotos, onChange, maximo = 10, desabilitado }: Fo
   }
 
   return (
-    <div className="field">
+    <div className="field" data-erro={erroDeValidacao ? "" : undefined}>
       <div className="row between">
         <label>
-          Fotos <Req style={{ color: "var(--exe)" }}>· de 1 a {maximo}</Req>
+          Fotos {opcional ? <span className="muted">· opcional, até {maximo}</span> : <Req style={{ color: "var(--exe)" }}>· de 1 a {maximo}</Req>}
         </label>
         <span className="small">
           {fotos.length} {fotos.length === 1 ? "foto" : "fotos"} · com data e hora
@@ -105,6 +109,7 @@ export function FotosExecucao({ fotos, onChange, maximo = 10, desabilitado }: Fo
         ))}
         {fotos.length < maximo && <AdicionarFoto onEnviada={anexar} onErro={setErro} desabilitado={desabilitado} />}
       </div>
+      {erroDeValidacao && <MensagemDeErro>{erroDeValidacao}</MensagemDeErro>}
       {erro && (
         <span className="small" role="alert" style={{ color: "var(--blq)" }}>
           {erro}

@@ -11,6 +11,8 @@ interface JanelaSobrepostaProps {
   aoFechar: () => void;
   /** Classe extra da janela (ex.: `dlg-modelos`). */
   className?: string;
+  /** Chave `data-treino` da janela, para o tutorial do Campo de treino apontar para ela. */
+  dataTreino?: string;
   children: ReactNode;
 }
 
@@ -19,7 +21,7 @@ interface JanelaSobrepostaProps {
  * deixa o resto da página inerte: o tutorial do treino, que aponta para dentro da janela, ficaria por baixo e sem clique.
  * Prende o foco, fecha com Esc e trava a rolagem como diálogo modal. Monte só quando for abrir.
  */
-export function JanelaSobreposta({ titulo, aoFechar, className, children }: JanelaSobrepostaProps) {
+export function JanelaSobreposta({ titulo, aoFechar, className, dataTreino, children }: JanelaSobrepostaProps) {
   const raiz = useDialogo<HTMLDivElement>(aoFechar);
   const idTitulo = useId();
 
@@ -30,7 +32,7 @@ export function JanelaSobreposta({ titulo, aoFechar, className, children }: Jane
         if (evento.target === evento.currentTarget) aoFechar();
       }}
     >
-      <div ref={raiz} className={cx("dlg janela", className)} role="dialog" aria-modal="true" aria-labelledby={idTitulo} tabIndex={-1}>
+      <div ref={raiz} className={cx("dlg janela", className)} role="dialog" aria-modal="true" aria-labelledby={idTitulo} tabIndex={-1} data-treino={dataTreino}>
         <div className="dlg-cab">
           <h2 id={idTitulo}>{titulo}</h2>
           <button type="button" className="ibtn" aria-label="Fechar" onClick={aoFechar}>

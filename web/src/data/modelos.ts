@@ -154,9 +154,20 @@ export interface ModeloCompleto {
   publicado_em: string | null;
   arquivado_em: string | null;
   rascunho: boolean;
+  /**
+   * A folha do modelo tem a coluna "Assinatura" na tabela de participantes. O PDF da OS reproduz a folha como ela é; sem a coluna, as
+   * assinaturas da APR aparecem só no relatório da execução.
+   */
+  participantes_com_assinatura: boolean;
   riscos: RiscoModelo[];
   itens: ItemModelo[];
 }
+
+/** O texto da caixa do editor e da visão do modelo (a decisão está na reunião 3, item 14). */
+export const rotuloParticipantesComAssinatura =
+  "A folha do modelo tem a coluna Assinatura na tabela de participantes";
+export const ajudaParticipantesComAssinatura =
+  "O PDF da OS reproduz a folha do modelo como ela é; sem a coluna, as assinaturas da APR aparecem só no relatório da execução.";
 
 /** Atividade do plano de manutenção (`GET /atividades`): o serviço do catálogo que a OS traz. Não escolhe o modelo da APR. */
 export interface Atividade {

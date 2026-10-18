@@ -1,6 +1,7 @@
 /** Tipos das respostas de OS usadas nas telas do técnico (lista, detalhe e APR) e pequenas regras sobre elas. Chaves em snake_case, como a `api` devolve. */
 
 import type { BadgeTone } from "@/components/ui/Badge";
+import { MIN_PARTICIPANTES } from "./apr";
 import type { ServicoDaOs } from "./catalogo";
 import type { DocumentoDeEvidencia, OsStatus, Paginacao, ResponsavelDaOs } from "./tipos";
 
@@ -38,13 +39,21 @@ export interface ListaDeOs extends Paginacao {
   contagem_por_status: Record<OsStatus, number>;
 }
 
+/**
+ * Participante de uma APR. Cada um assina na própria conta, depois da validação: `assinatura_path` e `assinada_em` são nulos
+ * enquanto não assinou. `recusou_em` (com `recusa_motivo`) é o direito de recusa: a pessoa saiu da APR e não conta mais.
+ */
 export interface ParticipanteDaApr {
   usuario_id: string;
   nome: string;
   matricula: string;
   funcao: "responsavel" | "executor";
-  assinatura_path: string;
-  assinada_em: string;
+  assinatura_path: string | null;
+  assinada_em: string | null;
+  /** A assinatura foi dada no aparelho do responsável (contingência offline), não na conta da pessoa. */
+  assinatura_presencial?: boolean;
+  recusou_em?: string | null;
+  recusa_motivo?: string | null;
 }
 
 export interface ItemReprovadoDaApr {
@@ -78,6 +87,11 @@ export interface ExecucaoDaOs {
   inicio: string;
   fim: string | null;
   resultado: "encerrada" | "interrompida" | "suspensa" | "cancelada" | null;
+  /**
+   * `encerrada` com isto nulo: o tempo parou ("Encerrar OS"), mas o responsável ainda não preencheu e assinou o encerramento
+   * (a OS está `encerrando`).
+   */
+  encerramento_assinado_em?: string | null;
 }
 
 export interface OsDetalhada {
@@ -128,13 +142,15 @@ export const statusDaOs: Record<OsStatus, { tone: BadgeTone; rotulo: string }> =
   liberada: { tone: "lib", rotulo: "Liberada" },
   pendente: { tone: "blq", rotulo: "Pendente" },
   em_execucao: { tone: "exe", rotulo: "Em execução" },
+  encerrando: { tone: "al", rotulo: "Encerrando" },
+  aguardando_supervisor: { tone: "al", rotulo: "Aguardando o supervisor" },
   encerrada: { tone: "enc", rotulo: "Encerrada" },
   cancelada: { tone: "neu", rotulo: "Cancelada" },
   devolvida: { tone: "neu", rotulo: "Devolvida ao SAP" },
 };
 
 /** Ordem dos grupos da lista. */
-export const ordemDosStatus: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrada", "cancelada", "devolvida"];
+export const ordemDosStatus: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrando", "aguardando_supervisor", "encerrada", "cancelada", "devolvida"];
 
 /** A OS está reservada a outra pessoa da equipe: o usuário a vê, mas só o responsável inicia a APR e a execução. */
 export const reservadaParaOutro = (o: { responsavel?: { id: string } | null }, usuarioId: string) => Boolean(o.responsavel) && o.responsavel!.id !== usuarioId;
@@ -161,10 +177,46 @@ export function diaPorExtenso(quando: Date = new Date()) {
 /** A execução aberta da OS (sem resultado), se houver. */
 export const execucaoAberta = (execucoes: ExecucaoDaOs[]) => execucoes.find((e) => e.resultado === null) ?? null;
 
+/** A execução do técnico cujo tempo parou ("Encerrar OS") e que espera o preenchimento e a assinatura do responsável; `null` se não houver. */
+export const execucaoEncerrando = (execucoes: ExecucaoDaOs[]) => [...execucoes].reverse().find((e) => e.resultado === "encerrada" && !e.encerramento_assinado_em) ?? null;
+
 /**
- * APR aprovada de hoje que ainda não amparou uma execução (as canceladas liberam a APR de novo): é a que permite
- * "Iniciar execução" sem refazer o checklist. Com `participante`, só a APR de que ele participou (só os participantes
- * iniciam a execução). `null` se não houver.
+ * Como estão as assinaturas de uma APR aprovada (as mesmas regras da `api`): quem continua na APR (`ativos`), quem recusou, quem
+ * ainda falta assinar, e se ela ainda serve. `inviavel` = o responsável recusou ou restaram menos de 2 participantes: é preciso
+ * uma APR nova. `pronta` = dá para iniciar a execução (todos os que ficaram assinaram).
+ */
+export function situacaoDaApr<P extends { funcao: string; assinada_em?: string | null; recusou_em?: string | null }>(apr: { participantes: P[] }) {
+  const ativos = apr.participantes.filter((p) => !p.recusou_em);
+  const recusaram = apr.participantes.filter((p) => p.recusou_em);
+  const faltam = ativos.filter((p) => !p.assinada_em);
+  const responsavelRecusou = recusaram.some((p) => p.funcao === "responsavel");
+  const semParticipantes = ativos.length < MIN_PARTICIPANTES;
+  const inviavel = responsavelRecusou || semParticipantes;
+  const motivoInviavel = responsavelRecusou
+    ? "O responsável recusou a APR, então ela não vale mais."
+    : semParticipantes
+      ? `Restaram menos de ${MIN_PARTICIPANTES} participantes na APR, e ninguém executa o serviço sozinho.`
+      : null;
+  return { ativos, recusaram, faltam, responsavelRecusou, semParticipantes, inviavel, motivoInviavel, pronta: !inviavel && faltam.length === 0 };
+}
+
+/**
+ * A APR aprovada de hoje que ainda não amparou uma execução (as canceladas liberam a APR de novo), mesmo a que deixou de
+ * servir (recusa): é a que a tela de assinaturas mostra. Com `participante`, só a APR de que ele participou. `null` se não houver.
+ */
+export function aprDeHoje(aprs: AprDaOs[], execucoes: ExecucaoDaOs[], participante?: string) {
+  const usadas = new Set(execucoes.filter((e) => e.resultado !== "cancelada").map((e) => e.apr_id));
+  return (
+    [...aprs]
+      .reverse()
+      .find((a) => a.resultado === "aprovada" && ehHoje(a.concluida_em) && !usadas.has(a.id) && (participante === undefined || a.participantes.some((p) => p.usuario_id === participante))) ?? null
+  );
+}
+
+/**
+ * A APR aprovada de hoje que ainda serve para executar (nem o responsável nem tantos participantes recusaram): é a que,
+ * depois de assinada por todos, permite "Iniciar execução" sem refazer o checklist. Com `participante`, só a APR de que ele
+ * participa e da qual não saiu (só quem ficou nela assina e inicia a execução). `null` se não houver.
  */
 export function aprAprovadaDisponivel(aprs: AprDaOs[], execucoes: ExecucaoDaOs[], participante?: string) {
   const usadas = new Set(execucoes.filter((e) => e.resultado !== "cancelada").map((e) => e.apr_id));
@@ -176,7 +228,8 @@ export function aprAprovadaDisponivel(aprs: AprDaOs[], execucoes: ExecucaoDaOs[]
           a.resultado === "aprovada" &&
           ehHoje(a.concluida_em) &&
           !usadas.has(a.id) &&
-          (participante === undefined || a.participantes.some((p) => p.usuario_id === participante)),
+          !situacaoDaApr(a).inviavel &&
+          (participante === undefined || a.participantes.some((p) => p.usuario_id === participante && !p.recusou_em)),
       ) ?? null
   );
 }

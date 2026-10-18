@@ -32,6 +32,11 @@ export const TIPOS_DE_AVISO = [
   "preventiva_proxima",
   "preventiva_vencida",
   "inspecao_com_pendencia",
+  // Execução e assinaturas (Reunião 3)
+  "apr_para_assinar",
+  "direito_de_recusa",
+  "lesao_ou_enfermidade",
+  "os_para_assinar",
   ...AVISOS_DE_AUSENCIA,
   ...AVISOS_DE_REPRESENTACAO,
   // OS de uma pessoa
@@ -113,6 +118,10 @@ export const ROTULO_DO_AVISO: Record<TipoDeAviso, string> = {
   preventiva_proxima: "Preventiva: ciclo próximo",
   preventiva_vencida: "Preventiva: ciclo vencido",
   inspecao_com_pendencia: "Inspeção com pendência",
+  apr_para_assinar: "APR aguardando a sua assinatura",
+  direito_de_recusa: "Direito de recusa na APR",
+  lesao_ou_enfermidade: "Lesão ou enfermidade na execução",
+  os_para_assinar: "OS aguardando a sua assinatura",
   ausencia_pedida: "Ausência: pedido a responder",
   ausencia_aprovada: "Ausência aprovada",
   ausencia_recusada: "Ausência recusada",
@@ -126,7 +135,7 @@ export const ROTULO_DO_AVISO: Record<TipoDeAviso, string> = {
   representacao_encerrada: "Supervisão devolvida ao supervisor",
   os_reservada: "OS reservada para você",
   os_reserva_desfeita: "OS não está mais reservada para você",
-  os_ciencia: "Ciência do supervisor",
+  os_ciencia: "Assinatura final do supervisor",
   pdf_os_falhou: "PDF da OS não gerado",
   conta_criada: "Conta criada",
   acesso_liberado: "Acesso liberado",
@@ -171,6 +180,12 @@ export const CATEGORIA_DO_AVISO: Record<TipoDeAviso, CategoriaDeEmail | null> = 
   preventiva_proxima: "preventivas",
   preventiva_vencida: "preventivas",
   inspecao_com_pendencia: "os",
+  // Só no sino: quem assina está ao lado de quem preencheu a APR.
+  apr_para_assinar: null,
+  // A lesão no trabalho, mesmo leve, é acidente de trabalho: o aviso por e-mail é obrigatório, como o do impedimento.
+  direito_de_recusa: "seguranca",
+  lesao_ou_enfermidade: "seguranca",
+  os_para_assinar: "os",
   ausencia_pedida: "ausencias",
   ausencia_aprovada: "ausencias",
   ausencia_recusada: "ausencias",
@@ -215,9 +230,9 @@ export const ROTULO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
 };
 
 export const DESCRICAO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
-  seguranca: "APR bloqueada e execução interrompida por risco nas equipes que você supervisiona.",
+  seguranca: "APR bloqueada, execução interrompida por risco, direito de recusa e lesão ou enfermidade na execução, nas equipes que você supervisiona.",
   conta: "Conta criada, acesso liberado ou recusado e senha redefinida.",
-  os: "OS reservada para você ou tirada de você, ciência do supervisor na OS que você executou, OS de apoio encerrada, inspeção com pendência, conflitos e execuções duplicadas.",
+  os: "OS reservada para você ou tirada de você, assinatura final do supervisor na OS que você executou, OS aguardando a sua assinatura de supervisor, OS de apoio encerrada, inspeção com pendência, conflitos e execuções duplicadas.",
   preventivas: "Ciclo das preventivas próximo do vencimento ou vencido.",
   ausencias: "Pedidos, aprovações, recusas, alterações e retorno das ausências.",
   equipe: "Representante que assume ou devolve a equipe, membro desativado e técnico que você cadastrou liberado ou recusado.",
@@ -277,6 +292,8 @@ export function caminhoDoAviso(a: ReferenciasDoAviso): string {
     case "cadastro_recusado":
     case "membro_desativado":
       return "/app/usuarios";
+    case "apr_para_assinar":
+      return a.osId ? `/app/os/${a.osId}/apr/aprovada` : "/app/lista";
     case "treinamento_publicado":
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinar` : "/app/catalogo/servicos";
     case "treinamento_problema":

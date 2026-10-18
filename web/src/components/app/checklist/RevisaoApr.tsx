@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
+import { Field, MensagemDeErro } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { ErroDeEnvio, useFormulario, useRevalidarQuando } from "@/components/ui/useFormulario";
 import type { ItemDoModelo, RascunhoApr, ResumoDoRascunho } from "@/lib/apr";
 
 interface RevisaoAprProps {
@@ -11,9 +13,8 @@ interface RevisaoAprProps {
   aoAbrir: (indice: number) => void;
   aoVoltar: () => void;
   aoObservarGeral: (texto: string) => void;
-  aoValidar: () => void;
-  validando: boolean;
-  erro: string | null;
+  /** Valida na `api` e registra a APR; uma falha é lançada e aparece acima do botão. */
+  aoValidar: () => Promise<void>;
   /** O que falta de assinatura dos participantes (`AssinaturasFaltando`). */
   assinaturas: ReactNode;
   /** Quantos participantes ainda estão sem assinatura no perfil: a validação espera por eles. */
@@ -25,7 +26,8 @@ interface RevisaoAprProps {
 /**
  * Revisão final antes de validar: o que falta (respostas, observações, assinaturas) e as observações gerais. A revisão
  * não diz se a APR vai passar: isso só se sabe ao validar, e quem diz é a `api`. O técnico não vê quais itens são
- * eliminatórios.
+ * eliminatórios. O botão de validar não fica desativado: faltando algo, a mensagem aparece acima dele e junto do que falta, e o
+ * foco vai para lá.
  */
 export function RevisaoApr({
   rascunho,
@@ -34,8 +36,6 @@ export function RevisaoApr({
   aoVoltar,
   aoObservarGeral,
   aoValidar,
-  validando,
-  erro,
   assinaturas,
   semAssinatura,
   materiais,
@@ -43,8 +43,37 @@ export function RevisaoApr({
   const { perguntas, naSemObservacao, semResposta } = resumo;
   const indiceDe = (item: ItemDoModelo) => perguntas.indexOf(item);
 
+  // O que impede de validar vira mensagem de erro (ao tentar), cada uma no bloco do que falta.
+  const nSemResposta = semResposta.length;
+  const nNaSemObservacao = naSemObservacao.length;
+  const esquema = useMemo(
+    () =>
+      z
+        .object({ observacaoGeral: z.string(), semResposta: z.string().optional(), naSemObservacao: z.string().optional(), assinaturas: z.string().optional() })
+        .superRefine((_, ctx) => {
+          if (nSemResposta > 0) {
+            ctx.addIssue({ code: "custom", path: ["semResposta"], message: `Responda ${nSemResposta === 1 ? "a pergunta que falta" : `as ${nSemResposta} perguntas que faltam`}: a APR é respondida por inteiro.` });
+          }
+          if (nNaSemObservacao > 0) {
+            ctx.addIssue({ code: "custom", path: ["naSemObservacao"], message: `Explique o motivo do NA em ${nNaSemObservacao === 1 ? "1 item" : `${nNaSemObservacao} itens`}.` });
+          }
+          if (semAssinatura > 0) {
+            ctx.addIssue({
+              code: "custom",
+              path: ["assinaturas"],
+              message: `Falta a assinatura no perfil de ${semAssinatura} ${semAssinatura > 1 ? "participantes" : "participante"}: cadastre-a ou retire a pessoa da APR.`,
+            });
+          }
+        }),
+    [nSemResposta, nNaSemObservacao, semAssinatura],
+  );
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquema, { observacaoGeral: rascunho.observacaoGeral });
+  useRevalidarQuando(form, esquema);
+  const erros = form.formState.errors;
+  const mensagens = [erros.semResposta?.message, erros.naSemObservacao?.message, erros.assinaturas?.message].filter(Boolean) as string[];
+
   return (
-    <>
+    <form ref={ref} noValidate onSubmit={enviar(() => aoValidar())} className="stack g12">
       <div className="card stack g6" data-treino="ck-revisao">
         <h2 style={{ fontSize: 17, fontWeight: 600 }}>Revisão da APR</h2>
         <p className="muted">
@@ -54,7 +83,7 @@ export function RevisaoApr({
       </div>
 
       {semResposta.length > 0 && (
-        <>
+        <div className="stack g8" data-erro={erros.semResposta ? "" : undefined}>
           <Notice tone="al" icon="alert">
             <strong>
               {semResposta.length} {semResposta.length > 1 ? "perguntas sem resposta." : "pergunta sem resposta."}
@@ -72,11 +101,11 @@ export function RevisaoApr({
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
 
       {naSemObservacao.length > 0 && (
-        <>
+        <div className="stack g8" data-erro={erros.naSemObservacao ? "" : undefined}>
           <Notice tone="al" icon="alert">
             <strong>NA exige observação.</strong> Explique o motivo em {naSemObservacao.length} {naSemObservacao.length > 1 ? "itens" : "item"}.
           </Notice>
@@ -91,7 +120,7 @@ export function RevisaoApr({
               </div>
             ))}
           </div>
-        </>
+        </div>
       )}
 
       {materiais}
@@ -103,35 +132,31 @@ export function RevisaoApr({
             id="obs-geral"
             rows={3}
             placeholder="Algo mais que precise ficar registrado nesta APR"
-            value={rascunho.observacaoGeral}
-            onChange={(evento) => aoObservarGeral(evento.target.value)}
+            {...form.register("observacaoGeral", { onChange: (evento) => aoObservarGeral(evento.target.value) })}
           />
         </Field>
       </div>
 
-      {assinaturas}
+      <div data-erro={erros.assinaturas ? "" : undefined}>{assinaturas}</div>
 
-      {erro && (
-        <Notice tone="blq" icon="alert">
-          {erro}
-        </Notice>
+      {mensagens.length > 0 && (
+        <div className="stack g6" role="alert">
+          <strong style={{ color: "var(--blq)" }}>Ainda não dá para validar a APR:</strong>
+          {mensagens.map((m) => (
+            <MensagemDeErro key={m}>{m}</MensagemDeErro>
+          ))}
+        </div>
       )}
+      <ErroDeEnvio mensagem={erroEnvio} />
 
       <div className="nav2" style={{ maxWidth: 560 }}>
-        <Button variant="line" onClick={aoVoltar} disabled={validando}>
+        <Button variant="line" onClick={aoVoltar} disabled={enviando}>
           Voltar
         </Button>
-        <Button variant="p" disabled={!resumo.completo || semAssinatura > 0 || validando} onClick={aoValidar} data-treino="ck-concluir">
-          {validando ? "Validando…" : "Concluir e validar"}
+        <Button type="submit" variant="p" disabled={enviando} aria-busy={enviando} data-treino="ck-concluir">
+          {enviando ? "Validando…" : "Concluir e validar"}
         </Button>
       </div>
-      {(!resumo.completo || semAssinatura > 0) && (
-        <p className="small">
-          {semResposta.length > 0 && `Faltam respostas em ${semResposta.length} ${semResposta.length > 1 ? "itens" : "item"}. `}
-          {naSemObservacao.length > 0 && `Falta observação em ${naSemObservacao.length} item(ns) com NA. `}
-          {semAssinatura > 0 && `Falta a assinatura de ${semAssinatura} ${semAssinatura > 1 ? "participantes" : "participante"}.`}
-        </p>
-      )}
-    </>
+    </form>
   );
 }

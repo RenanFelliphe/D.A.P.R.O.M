@@ -46,7 +46,7 @@ import {
 } from "@/lib/apr";
 import { useAvisoDePontos } from "@/components/web/gamificacao/PontosGanhos";
 import type { MaterialDoServico } from "@/lib/catalogo";
-import { chamar, enviarEvento, ErroCliente, ErroDeEvento, novoId } from "@/lib/cliente-api";
+import { chamar, enviarEvento, novoId } from "@/lib/cliente-api";
 import { miniaturaDe, posicaoAtual } from "@/lib/foto-local";
 import { rotas } from "@/lib/rotas";
 import { useRascunhoApr } from "@/state/rascunho-apr";
@@ -65,17 +65,11 @@ interface RespostaDaAvaliacao {
   reprovados: { item_id: string; texto: string; evidencia: EvidenciaDoItem }[];
 }
 
-/** Texto para o usuário de qualquer falha ao enviar o evento. */
-function mensagemDeErro(erro: unknown) {
-  if (erro instanceof ErroDeEvento) return erro.situacao === "pendente" ? `${erro.message}. Tente de novo em instantes.` : erro.message;
-  if (erro instanceof ErroCliente) return erro.message;
-  return "Não foi possível enviar a APR. Tente de novo.";
-}
-
 /**
  * Checklist da APR: responde-se tudo, em qualquer ordem, e só se valida no fim. Todas as perguntas têm a mesma cara: o
  * técnico não sabe quais são eliminatórias. Na revisão ele vê os materiais recomendados do serviço, só para consulta. Ao
- * validar, a `api` diz o resultado: aprovada segue para as assinaturas; reprovada (item eliminatório) já fica registrada
+ * validar, a `api` diz o resultado: aprovada é registrada na hora (sem assinaturas) e segue para a tela em que cada participante
+ * assina na própria conta; reprovada (item eliminatório) já fica registrada
  * como bloqueada, trava as respostas e pede a evidência dos itens que reprovaram. O rascunho vive no navegador até a APR ser concluída (na bloqueada, até a evidência ser enviada).
  */
 export function ChecklistScreen({ os, usuarioId, colegas, materiais }: ChecklistScreenProps) {
@@ -83,7 +77,6 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
   const avisarPontos = useAvisoDePontos();
   const { rascunho, atualizar, descartar } = useRascunhoApr(os.id, usuarioId);
   const [minhaAssinatura, setMinhaAssinatura] = useState<string | null>(null);
-  const [validando, setValidando] = useState(false);
   const [concluindo, setConcluindo] = useState(false);
   const [trocando, setTrocando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -126,8 +119,8 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
   const resposta = item ? r.respostas[item.id] : undefined;
   const risco = item?.risco_id ? r.modelo.riscos.find((x) => x.id === item.risco_id) : undefined;
 
-  /** Qualquer mudança nas respostas invalida uma validação anterior (assinaturas confirmadas incluídas). */
-  const alterar = (funcao: (atual: RascunhoApr) => RascunhoApr) => atualizar((atual) => ({ ...funcao(atual), concluidaEm: null, assinaturas: {}, avaliacao: null }));
+  /** Qualquer mudança nas respostas invalida uma validação anterior. */
+  const alterar = (funcao: (atual: RascunhoApr) => RascunhoApr) => atualizar((atual) => ({ ...funcao(atual), concluidaEm: null, avaliacao: null }));
   /** Navegar não muda a APR. */
   const navegar = atualizar;
 
@@ -157,26 +150,28 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
   }
 
   /**
-   * "Concluir e validar": a `api` diz se a APR passa. Aprovada vai para as assinaturas; reprovada já fica registrada como
-   * bloqueada (a OS fica pendente e o supervisor é avisado) e trava as respostas até a evidência ser enviada.
+   * "Concluir e validar": a `api` diz se a APR passa. Aprovada é registrada na hora (`apr_concluida`, sem assinaturas; o mesmo
+   * `evento_id` do rascunho garante que reenviar não duplica) e a tela segue para as assinaturas, que cada participante dá na
+   * própria conta. Reprovada já fica registrada como bloqueada (a OS fica pendente e o supervisor é avisado) e trava as
+   * respostas até a evidência ser enviada. Uma falha é lançada: o formulário da revisão a mostra acima do botão. Se só o registro
+   * falhar, a validação fica guardada no rascunho e a tela das assinaturas oferece enviar de novo.
    */
   async function validar() {
     setErro(null);
-    setValidando(true);
-    try {
-      const concluidaEm = new Date().toISOString();
-      const resultado = await chamar<RespostaDaAvaliacao>("POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }));
-      const avaliacao: Avaliacao = {
-        resultado: resultado.resultado,
-        reprovados: resultado.reprovados.map((x) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })),
-      };
-      atualizar((atual) => ({ ...atual, concluidaEm, assinaturas: {}, avaliacao }));
-      if (avaliacao.resultado === "aprovada") roteador.push(rotas.app.aprovada(os.id));
-    } catch (e) {
-      setErro(mensagemDeErro(e));
-    } finally {
-      setValidando(false);
-    }
+    const concluidaEm = new Date().toISOString();
+    const resultado = await chamar<RespostaDaAvaliacao>("POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }));
+    const avaliacao: Avaliacao = {
+      resultado: resultado.resultado,
+      reprovados: resultado.reprovados.map((x) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })),
+    };
+    atualizar((atual) => ({ ...atual, concluidaEm, avaliacao }));
+    if (avaliacao.resultado !== "aprovada") return;
+    const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload({ ...r, concluidaEm, avaliacao }) });
+    const registrada = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
+    setConcluindo(true);
+    descartar();
+    // A `api` é quem decide: se ela bloqueou ao registrar, vale o impedimento.
+    roteador.push(registrada === "bloqueada" ? rotas.app.bloqueio(os.id) : rotas.app.aprovada(os.id));
   }
 
   /** Reprovada e já registrada: o evento da mesma APR leva a evidência dos itens que reprovaram. */
@@ -191,8 +186,8 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
       descartar();
       roteador.push(resultado === "aprovada" ? rotas.app.os(os.id) : rotas.app.bloqueio(os.id));
     } catch (e) {
-      setErro(mensagemDeErro(e));
       setConcluindo(false);
+      throw e;
     }
   }
 
@@ -233,7 +228,6 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
               aoRemoverPdf={(itemId, documentoId) => atualizar((atual) => removerDocumento(atual, itemId, documentoId))}
               aoErroDeFoto={setErro}
               aoRegistrar={registrarImpedimento}
-              registrando={concluindo}
               erro={erro}
             />
           ) : revisando ? (
@@ -244,8 +238,6 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
               aoVoltar={() => navegar(voltarDaRevisao)}
               aoObservarGeral={(texto) => alterar((atual) => ({ ...atual, observacaoGeral: texto }))}
               aoValidar={validar}
-              validando={validando}
-              erro={erro}
               semAssinatura={semAssinatura.length}
               materiais={materiais.length > 0 ? <MateriaisRecomendados materiais={materiais} /> : null}
               assinaturas={

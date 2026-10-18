@@ -11,8 +11,8 @@ const opcoes: { modo: ModoDoTreino; icone: IconName; titulo: string; texto: stri
     modo: "direcionado",
     icone: "pin",
     titulo: "Direcionado",
-    texto: "Passo a passo guiado, com dicas na tela: da lista de OS até a APR, a execução e o bloqueio.",
-    tempo: "Cerca de 10 minutos",
+    texto: "Passo a passo guiado, com dicas na tela: da lista de OS até a APR e as assinaturas, a execução, o encerramento e o bloqueio.",
+    tempo: "Cerca de 15 minutos",
   },
   {
     modo: "livre",

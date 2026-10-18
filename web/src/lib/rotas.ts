@@ -106,3 +106,6 @@ export const rotas = {
 
 /** Endereço do PDF gerado pela `api` (abre no navegador). */
 export const urlDoPdf = (osId: string) => `/api/os/${osId}/pdf`;
+
+/** Endereço do relatório da execução (PDF à parte, para o supervisor ler antes de assinar; só supervisor e admin). */
+export const urlDoRelatorio = (osId: string) => `/api/os/${osId}/relatorio-execucao`;

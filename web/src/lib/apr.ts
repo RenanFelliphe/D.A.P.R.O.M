@@ -157,9 +157,10 @@ export interface RascunhoApr {
    * reprovados e o envio. Qualquer mudança nas respostas de uma APR aprovada apaga isto e exige validar de novo.
    */
   avaliacao: Avaliacao | null;
-  /** Participante → instante em que confirmou a assinatura do perfil (só APR aprovada). */
-  assinaturas: Record<string, string>;
 }
+
+/** A APR exige ao menos 2 participantes (ninguém executa sozinho); não há máximo. */
+export const MIN_PARTICIPANTES = 2;
 
 // ---------------------------------------------------------------------------------------------------------------
 // Perguntas e regras
@@ -219,7 +220,10 @@ export function resumoDe(r: RascunhoApr): ResumoDoRascunho {
 /** A `api` já reprovou (e registrou) esta APR: as respostas não mudam mais, só falta a evidência e o envio. */
 export const estaTravada = (r: RascunhoApr) => r.avaliacao?.resultado === "bloqueada";
 
-/** Onde o rascunho continua: a APR aprovada vai para as assinaturas; a em andamento e a bloqueada, para o checklist. */
+/**
+ * Onde o rascunho continua: a APR aprovada vai para a tela das assinaturas (onde é registrada, se ainda não foi, e cada
+ * participante assina na própria conta); a em andamento e a bloqueada, para o checklist.
+ */
 export const continuaNasAssinaturas = (r: RascunhoApr) => r.avaliacao?.resultado === "aprovada";
 
 /** Pergunta antes de descartar o rascunho. A APR bloqueada já está registrada: descartar só abre mão da evidência. */
@@ -331,7 +335,6 @@ export function trocarModelo(r: RascunhoApr, novo: ModeloDoRascunho, riscos: str
       modo: primeiraEmBranco === -1 && perguntas.length > 0 ? "revisao" : "pergunta",
       concluidaEm: null,
       avaliacao: null,
-      assinaturas: {},
     },
     mantidas,
     perdidas: anteriores.length - mantidas,
@@ -353,16 +356,11 @@ export function retirarParticipante(r: RascunhoApr, usuarioId: string): Rascunho
 
 /** A APR do rascunho, sem as fotos, nos campos do evento (`api/src/dominio/eventos-apr.ts`). */
 function dadosDaApr(r: RascunhoApr) {
-  const resultado = r.avaliacao?.resultado;
   return {
     id: r.aprId,
     modelo_apr_id: r.modelo.id,
-    participantes: r.participantes.map((p) => ({
-      usuario_id: p.usuarioId,
-      funcao: p.funcao,
-      // Só a APR aprovada passa pela confirmação das assinaturas; na bloqueada a `api` assume a hora da conclusão.
-      ...(resultado === "aprovada" ? { assinada_em: r.assinaturas[p.usuarioId] ?? new Date().toISOString() } : {}),
-    })),
+    // Sem assinaturas: cada participante assina depois, na própria conta (`apr_assinada`).
+    participantes: r.participantes.map((p) => ({ usuario_id: p.usuarioId, funcao: p.funcao })),
     riscos: r.riscos,
     respostas: perguntasDe(r.modelo, r.riscos).map((i) => {
       const resp = r.respostas[i.id]!;
@@ -428,7 +426,6 @@ export function novoRascunho(d: {
     modo: "pergunta",
     concluidaEm: null,
     avaliacao: null,
-    assinaturas: {},
   };
 }
 

@@ -13,7 +13,14 @@ const rotuloDoAlerta: Record<string, string> = {
   preventiva_proxima: "Preventiva: ciclo próximo",
   preventiva_vencida: "Preventiva: ciclo vencido",
   inspecao_com_pendencia: "Inspeção com pendência",
+  apr_para_assinar: "APR aguardando assinatura",
+  direito_de_recusa: "Direito de recusa na APR",
+  lesao_ou_enfermidade: "Lesão ou enfermidade",
+  os_para_assinar: "OS aguardando assinatura",
 };
+
+/** Impedimento e os avisos de segurança do trabalho (recusa, lesão ou enfermidade) em vermelho; os demais em âmbar. */
+const TIPOS_CRITICOS = ["bloqueio", "direito_de_recusa", "lesao_ou_enfermidade"];
 
 /** Alertas gerados para esta OS (com o destinatário) e as reprogramações feitas nela. */
 export function AlertasDaOs({ alertas, reprogramacoes }: { alertas: AlertaDaOs[]; reprogramacoes: ReprogramacaoDaOs[] }) {
@@ -28,7 +35,7 @@ export function AlertasDaOs({ alertas, reprogramacoes }: { alertas: AlertaDaOs[]
             {alertas.map((a) => (
               <div key={a.id} className="stack g4" style={{ paddingBottom: 8, borderBottom: "1px solid var(--line2)" }}>
                 <div className="row between g8">
-                  <Badge tone={a.tipo === "bloqueio" ? "blq" : "al"}>{rotuloDoAlerta[a.tipo] ?? a.tipo}</Badge>
+                  <Badge tone={TIPOS_CRITICOS.includes(a.tipo) ? "blq" : "al"}>{rotuloDoAlerta[a.tipo] ?? a.tipo}</Badge>
                   <span className="small">{dataHora(a.criado_em)}</span>
                 </div>
                 <span style={{ fontSize: 13.5 }}>{a.detalhe}</span>

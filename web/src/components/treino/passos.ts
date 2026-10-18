@@ -1,12 +1,12 @@
 import { rotas } from "@/lib/rotas";
-import { MODELO_BLOQUEIO, MODELO_GUIADO, OS_BLOQUEIO, OS_GUIADA, RESPOSTA_CORRETA, RESPOSTA_QUE_BLOQUEIA } from "@/treino/ids";
+import { COLEGA_DO_TUTORIAL, MODELO_BLOQUEIO, MODELO_GUIADO, OS_BLOQUEIO, OS_GUIADA, RESPOSTA_CORRETA, RESPOSTA_QUE_BLOQUEIA } from "@/treino/ids";
 
 const rotuloDaResposta = (resposta: string) => (resposta === "sim" ? "Sim" : "Não");
 
 /**
  * Roteiro do tutorial direcionado. Cada passo aponta para um elemento real da tela (`data-treino="chave"` nos componentes
  * de `components/app/**`) e avança de duas formas: pelo botão "Próximo" ou quando a pessoa faz a tarefa pedida
- * (`avanca`: clicar no alvo, chegar a uma rota ou ver um elemento aparecer). Sem alvo na tela o passo vira um aviso centralizado.
+ * (`avanca`: clicar no alvo, chegar a uma rota, ver um elemento aparecer ou sumir). Sem alvo na tela o passo vira um aviso centralizado.
  */
 export interface PassoDoTreino {
   id: string;
@@ -32,6 +32,8 @@ export interface PassoDoTreino {
     rota?: (caminho: string) => boolean;
     /** Um elemento com esta chave passou a existir na tela. */
     aparece?: string;
+    /** Um elemento com esta chave existia na tela e deixou de existir (por exemplo, a janela de motivo que a pessoa confirmou). */
+    desaparece?: string;
   };
   /** Atalho oferecido quando o alvo não está na tela. */
   atalho?: { rotulo: string; href: string };
@@ -62,7 +64,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "abrir-os",
     titulo: "Bem-vindo à lista de OS",
     texto:
-      "Aqui ficam as ordens de serviço da sua equipe, agrupadas por situação; os filtros e a busca ajudam a achar uma OS. No treino tudo é fictício, então pode mexer à vontade. Toque na OS destacada para abrir.",
+      "Aqui ficam as ordens de serviço da sua equipe, agrupadas por situação; entre o fim do serviço e a OS concluída há dois passos, “Encerrando” e “Aguardando o supervisor”. Se uma APR de hoje espera a sua assinatura, uma faixa avisa aqui. Os filtros e a busca ajudam a achar uma OS. No treino tudo é fictício, então pode mexer à vontade. Toque na OS destacada para abrir.",
     semAlvo: "A OS do treino não aparece com o filtro atual. Tire os filtros ou use o atalho abaixo.",
     tarefa: "Toque na OS destacada.",
     alvo: "os-guiada",
@@ -76,7 +78,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "nova-apr",
     titulo: "Leia a OS e comece a APR",
     texto:
-      "A OS traz o local, os dados do SAP e as instruções do serviço. Sem APR aprovada a execução não é liberada. Toque em “Nova APR” para preenchê-la.",
+      "A OS traz o local, os dados do SAP e as instruções do serviço. Sem uma APR aprovada e assinada por todos os participantes a execução não é liberada. Toque em “Nova APR” para preenchê-la.",
     tarefa: "Toque em Nova APR.",
     alvo: "os-nova-apr",
     rota: exata(guiada.os),
@@ -98,9 +100,19 @@ export const passosDoTreino: PassoDoTreino[] = [
     avanca: { aparece: "apr-riscos", rota: exata(guiada.checklist) },
   },
   {
+    id: "apr-participantes",
+    titulo: "Quem vai trabalhar nesta OS?",
+    texto: `Marque os participantes: você e ao menos um colega. Ninguém executa o serviço sozinho, então a APR exige no mínimo 2 pessoas (não há máximo). Cada um vai assinar a APR na própria conta, e a execução só começa quando todos assinarem. No treino, marque o ${COLEGA_DO_TUTORIAL.nome}: ele assina sozinho, alguns segundos depois do registro. Quem está ausente ou desligado não entra na APR.`,
+    alvo: "apr-participantes",
+    rota: exata(guiada.apr),
+    ir: guiada.apr,
+    navegavel: true,
+  },
+  {
     id: "apr-monte",
-    titulo: "Monte a APR",
-    texto: "Marque os colegas presentes e os riscos da atividade: só as medidas dos riscos marcados viram perguntas. Se o modelo não servir, “Trocar modelo” abre a janela de novo (também dá para trocar no checklist). Depois toque em “Começar checklist”.",
+    titulo: "Marque os riscos",
+    texto:
+      "Marque os riscos da atividade: só as medidas dos riscos marcados viram perguntas. Se o modelo não servir, “Trocar modelo” abre a janela de novo (também dá para trocar no checklist). Depois toque em “Começar checklist”.",
     tarefa: "Toque em Começar checklist.",
     alvo: "apr-riscos",
     rota: exata(guiada.apr),
@@ -122,7 +134,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "ck-validar",
     titulo: "Revise e valide",
     texto:
-      "Responda o que falta e toque em “Ir para a revisão” (na última pergunta, “Revisar e concluir”). Na revisão, os materiais recomendados do serviço aparecem só como lembrete: não pedem resposta nem foto. A revisão lista o que ficou pendente; estando tudo pronto, toque em “Concluir e validar”: é aí que o sistema confere as respostas e diz se a APR foi aprovada. Depois de validada, a APR não muda mais.",
+      "Responda o que falta e toque em “Ir para a revisão” (na última pergunta, “Revisar e concluir”). Na revisão, os materiais recomendados do serviço aparecem só como lembrete: não pedem resposta nem foto. A revisão lista o que ficou pendente; estando tudo pronto, toque em “Concluir e validar”: é aí que o sistema confere as respostas e diz se a APR foi aprovada. Depois de validada, a APR não muda mais e fica registrada, esperando as assinaturas.",
     semAlvo: "Na revisão, confira a lista e toque em “Concluir e validar”.",
     tarefa: "Valide a APR.",
     alvo: "ck-revisar",
@@ -130,13 +142,54 @@ export const passosDoTreino: PassoDoTreino[] = [
     ir: guiada.checklist,
     avanca: { rota: exata(guiada.aprovada) },
   },
+  // ---- Assinaturas da APR (cada um, na própria conta) ----
   {
-    id: "assinaturas",
-    titulo: "APR aprovada: falta assinar",
+    id: "apr-resultado",
+    titulo: "APR aprovada: agora, as assinaturas",
     texto:
-      "Cada participante confirma a assinatura que cadastrou no perfil. Quando o último confirmar, a APR é registrada e o botão “Iniciar execução” aparece: toque nele.",
-    tarefa: "Confirme as assinaturas e inicie a execução.",
-    alvo: "assinaturas",
+      "A validação aprovou a APR e ela ficou registrada, ainda sem assinaturas. Agora cada participante assina a APR na própria conta: é o aceite de que está de acordo e em condições de trabalhar. As assinaturas de todos acontecem só aqui, no começo; no fim do serviço assina apenas o responsável.",
+    alvo: "apr-resultado",
+    rota: exata(guiada.aprovada),
+    ir: guiada.aprovada,
+  },
+  {
+    id: "apr-assinaturas-estado",
+    titulo: "Quem já assinou",
+    texto:
+      "Esta lista mostra a situação de cada participante: assinou, pendente ou recusou. Ela se atualiza sozinha, sem precisar recarregar. A execução só pode começar quando todos os que continuam na APR assinaram. No treino, o colega fictício assina sozinho em alguns segundos.",
+    alvo: "apr-assinaturas-estado",
+    rota: exata(guiada.aprovada),
+    ir: guiada.aprovada,
+  },
+  {
+    id: "apr-recusar",
+    titulo: "O direito de recusa",
+    texto:
+      "Não concorda com a APR, ou não se sente seguro para começar? Toque em “Recusar” e escreva o motivo, que é obrigatório. Você sai da APR, o supervisor é avisado na hora e, se restarem menos de 2 participantes ou quem recusou for o responsável, é preciso fazer uma APR nova. Só dá para recusar antes de assinar e antes de a execução começar. Neste roteiro, não recuse: siga para assinar.",
+    semAlvo: "O botão “Recusar” só aparece enquanto você ainda não assinou nem recusou.",
+    alvo: "apr-recusar",
+    rota: exata(guiada.aprovada),
+    ir: guiada.aprovada,
+  },
+  {
+    id: "apr-assinar",
+    titulo: "Assine a APR",
+    texto:
+      "Toque em “Assinar a APR”: o sistema usa a assinatura que você cadastrou no perfil e grava a data e a hora. Você assina uma vez só, agora; quando todos tiverem assinado, o botão “Iniciar execução” aparece.",
+    semAlvo: "Se o botão não aparece, você já assinou: siga para o próximo passo.",
+    tarefa: "Toque em Assinar a APR.",
+    alvo: "apr-assinar",
+    rota: exata(guiada.aprovada),
+    ir: guiada.aprovada,
+    avanca: { clique: "apr-assinar" },
+  },
+  {
+    id: "iniciar-execucao",
+    titulo: "Todos assinaram: inicie",
+    texto: "Com a assinatura de todos, o botão “Iniciar execução” aparece. Toque nele para ir à execução.",
+    semAlvo: "O botão aparece quando todos assinarem, e a tela atualiza sozinha: aguarde o colega. Se alguém recusar, é preciso fazer uma APR nova.",
+    tarefa: "Toque em Iniciar execução.",
+    alvo: "iniciar-execucao",
     rota: exata(guiada.aprovada),
     ir: guiada.aprovada,
     avanca: { rota: exata(guiada.execucao) },
@@ -145,7 +198,8 @@ export const passosDoTreino: PassoDoTreino[] = [
   {
     id: "exec-iniciar",
     titulo: "Inicie a execução",
-    texto: "Informe quantas pessoas vão trabalhar e inicie. O tempo começa a contar a partir daqui.",
+    texto:
+      "Informe quantas pessoas vão trabalhar e inicie. O tempo começa a contar a partir daqui, e a sua localização é registrada (ao iniciar, pausar, suspender, interromper e encerrar) para constar no relatório da OS. O navegador pode pedir permissão: sem ela o serviço segue normalmente, marcado como “sem localização”.",
     tarefa: "Toque em Iniciar execução.",
     alvo: "exec-iniciar",
     rota: exata(guiada.execucao),
@@ -157,13 +211,47 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "exec-pausar",
     titulo: "Pause quando precisar",
     texto:
-      "Almoço, descanso ou imprevisto? Pause a execução; o tempo parado não entra na conta. Ao voltar ao trabalho, toque em Continuar: só dá para encerrar a OS com a execução em andamento.",
-    tarefa: "Toque em Pausar (e depois em Continuar).",
+      "Almoço, descanso ou imprevisto? Pause a execução: só o tempo líquido para, e a equipe volta ao mesmo serviço, no mesmo dia, com a mesma APR. O tempo parado não entra na conta.",
+    tarefa: "Toque em Pausar.",
     alvo: "exec-pausa",
     rota: exata(guiada.execucao),
     ir: guiada.execucao,
     navegavel: true,
     avanca: { clique: "exec-pausa" },
+  },
+  {
+    id: "exec-pausa-motivo",
+    titulo: "Diga por que parou",
+    texto:
+      "O motivo da pausa é obrigatório: almoço, aguardando (escreva o que ou quem), descanso, condição climática, enfermidade, lesão ou outro (descreva). Lesão e enfermidade avisam o supervisor na hora, porque a lesão no trabalho, mesmo leve, é acidente de trabalho e precisa ser registrada. Escolha um motivo e confirme.",
+    semAlvo: "Se a janela fechou sem pausar, volte um passo e toque em Pausar de novo.",
+    tarefa: "Escolha o motivo e confirme a pausa.",
+    alvo: "exec-pausa-janela",
+    rota: exata(guiada.execucao),
+    ir: guiada.execucao,
+    avanca: { desaparece: "exec-pausa-janela" },
+  },
+  {
+    id: "exec-continuar",
+    titulo: "Volte ao serviço",
+    texto:
+      "O tempo parado fica registrado com o motivo (o relatório da execução o mostra) e não entra na conta. Ao voltar ao trabalho, toque em Continuar: só dá para encerrar a OS com a execução em andamento.",
+    tarefa: "Toque em Continuar.",
+    alvo: "exec-pausa",
+    rota: exata(guiada.execucao),
+    ir: guiada.execucao,
+    navegavel: true,
+    avanca: { clique: "exec-pausa" },
+  },
+  {
+    id: "exec-suspender",
+    titulo: "E se o serviço não continua hoje?",
+    texto:
+      "Suspender encerra esta execução e deixa a OS pendente; a retomada pede uma APR nova. Também pede o motivo (enfermidade, lesão, fim de expediente, condição climática, falta de material ou equipamento, ou outro, com descrição) e grava a localização. Se apareceu um risco ou impedimento, o caminho é “Interromper por risco”: motivo, ao menos uma foto e assinatura. Não toque agora: este serviço segue para o encerramento.",
+    alvo: "exec-suspender",
+    rota: exata(guiada.execucao),
+    ir: guiada.execucao,
+    navegavel: true,
   },
   {
     id: "exec-encerrar",
@@ -174,25 +262,80 @@ export const passosDoTreino: PassoDoTreino[] = [
     rota: exata(guiada.execucao),
     ir: guiada.execucao,
     navegavel: true,
-    avanca: { aparece: "enc-descricao" },
+    avanca: { aparece: "exec-encerrar-confirmar" },
   },
   {
-    id: "enc-preencher",
-    titulo: "Conte o que foi feito",
+    id: "exec-encerrar-confirmar",
+    titulo: "Confirme o encerramento",
     texto:
-      "Descreva a atividade (obrigatório), anexe as fotos do serviço e confira as assinaturas de quem executou. A lista “Falta” avisa o que ficou de fora. Com tudo preenchido, encerre: a OS passa para “Encerrada” e o PDF com a APR e a execução é gerado.",
-    tarefa: "Preencha e encerre a OS.",
+      "O tempo para neste clique de confirmação, e a execução não pode mais ser retomada; a localização do encerramento é registrada. O que vem depois (descrição, fotos, checklist e a sua assinatura) não entra no tempo.",
+    semAlvo: "Se a janela fechou, toque em “Encerrar OS” de novo.",
+    tarefa: "Confirme o encerramento.",
+    alvo: "exec-encerrar-confirmar",
+    rota: exata(guiada.execucao),
+    ir: guiada.execucao,
+    avanca: { clique: "exec-encerrar-confirmar", aparece: "enc-descricao" },
+  },
+  {
+    id: "enc-descricao",
+    titulo: "Conte o que foi feito, se houver o que contar",
+    texto:
+      "O tempo já parou. A descrição da atividade é opcional: só vale registrar quando aconteceu algo. Em branco, o PDF e a planilha de baixa trazem “Executado conforme a OS, sem ocorrências”. Enquanto você não assina, a OS fica “Encerrando”.",
+    semAlvo: "Aguarde um instante: o formulário abre assim que o encerramento é confirmado.",
     alvo: "enc-descricao",
+    rota: exata(guiada.execucao),
+    ir: guiada.execucao,
+    navegavel: true,
+  },
+  {
+    id: "enc-fotos",
+    titulo: "Fotos do serviço (opcionais)",
+    texto:
+      "Anexe fotos, e PDFs se houver laudo, só quando ajudarem a registrar o que foi feito. No treino, qualquer imagem serve. A foto da interrupção por risco, essa sim, continua obrigatória: é a prova do risco.",
+    alvo: "enc-fotos",
+    rota: exata(guiada.execucao),
+    ir: guiada.execucao,
+    navegavel: true,
+  },
+  {
+    id: "enc-checklist",
+    titulo: "Checklist de inspeção",
+    texto:
+      "A preventiva cujo plano tem checklist pede uma resposta para cada pergunta: marque o que foi conferido. O que não estiver marcado exige uma observação e avisa o supervisor, sem impedir o encerramento.",
+    semAlvo: "Esta OS não tem checklist de inspeção. A preventiva cujo plano tem perguntas mostra aqui uma lista para marcar.",
+    alvo: "enc-checklist",
+    rota: exata(guiada.execucao),
+    ir: guiada.execucao,
+    navegavel: true,
+  },
+  {
+    id: "enc-assinar",
+    titulo: "Assine o encerramento",
+    texto:
+      "Só o responsável pelo serviço assina o encerramento: os demais já assinaram a APR, no começo, e ninguém assina de novo. Toque para assinar com a assinatura do seu perfil; o sistema grava a data e a hora. A OS passa para “Aguardando o supervisor”.",
+    semAlvo: "Se o botão está desativado, confira o que o formulário diz que falta (por exemplo, uma pergunta do checklist).",
+    tarefa: "Assine o encerramento.",
+    alvo: "enc-assinar",
     rota: exata(guiada.execucao),
     ir: guiada.execucao,
     navegavel: true,
     avanca: { aparece: "exec-encerrada" },
   },
+  {
+    id: "exec-encerrada",
+    titulo: "Encerramento assinado",
+    texto:
+      "Agora a OS espera o supervisor, que lê o relatório da execução e dá a assinatura final, mesmo que tenha participado do serviço. Só então a OS está concluída e o PDF é gerado. No treino, o supervisor fictício assina em cerca de 1 minuto: depois, a OS aparece como “Encerrada” na lista.",
+    alvo: "exec-encerrada",
+    rota: exata(guiada.execucao),
+    ir: guiada.execucao,
+  },
   // ---- Perfil e histórico ----
   {
     id: "perfil",
     titulo: "Veja o seu histórico",
-    texto: "Tudo o que você encerra fica no seu perfil, nos últimos 60 dias, com o PDF de cada OS. Abra o menu do seu nome, no topo, e escolha “Perfil”.",
+    texto:
+      "Tudo o que você encerra fica no seu perfil, nos últimos 60 dias. O PDF de cada OS aparece depois da assinatura final do supervisor. Abra o menu do seu nome, no topo, e escolha “Perfil”.",
     tarefa: "Abra o seu Perfil.",
     alvo: "menu-usuario",
     rota: exata(guiada.execucao),
@@ -217,7 +360,7 @@ export const passosDoTreino: PassoDoTreino[] = [
   {
     id: "bloqueio-nova-apr",
     titulo: "Uma APR de propósito errada",
-    texto: `Toque em “Nova APR”, monte do mesmo jeito e comece o checklist. Aqui o serviço é no poste: confira se a recomendação é o ${MODELO_BLOQUEIO.codigo}, de trabalho em altura. Desta vez vamos responder uma pergunta de segurança do jeito que reprova.`,
+    texto: `Toque em “Nova APR”, monte do mesmo jeito (com ao menos 2 participantes) e comece o checklist. Aqui o serviço é no poste: confira se a recomendação é o ${MODELO_BLOQUEIO.codigo}, de trabalho em altura. Desta vez vamos responder uma pergunta de segurança do jeito que reprova.`,
     semAlvo: "Monte a APR como antes (modelo, participantes e riscos) e toque em “Começar checklist”.",
     tarefa: "Chegue ao checklist.",
     alvo: "os-nova-apr",
@@ -253,7 +396,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "bloqueio-tela",
     titulo: "Atividade impedida",
     texto:
-      "É isso que acontece quando uma APR reprova: a atividade é impedida, a OS fica pendente e o supervisor é avisado com o motivo e as fotos. Aqui estão os itens reprovados; qualquer pessoa da equipe pode voltar ao local e fazer uma APR nova, sem esperar reprogramação.",
+      "É isso que acontece quando uma APR reprova: a atividade é impedida, a OS fica pendente e o supervisor é avisado com o motivo e as fotos. Uma APR bloqueada não chega a ser assinada. Aqui estão os itens reprovados; qualquer pessoa da equipe pode voltar ao local e fazer uma APR nova, sem esperar reprogramação.",
     alvo: "bloqueio-banner",
     rota: exata(bloqueio.bloqueio),
     ir: bloqueio.bloqueio,
@@ -263,7 +406,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "fim",
     titulo: "Parabéns!",
     texto:
-      "Você percorreu o caminho completo: lista, APR, assinatura, execução, encerramento e bloqueio. Agora é só repetir no sistema real, com atenção e segurança.",
+      "Você percorreu o caminho completo: lista, APR, assinaturas de todos, execução com pausa, encerramento em dois passos e bloqueio. Agora é só repetir no sistema real, com atenção e segurança.",
     final: true,
   },
 ];

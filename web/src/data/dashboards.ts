@@ -47,8 +47,8 @@ export interface MedidaDeTempo {
   pausas_por_execucao: number | null;
 }
 
-/** Motivo escolhido no app ao pausar; `sem_motivo` é a pausa registrada sem escolher. */
-export type MotivoDaPausa = "almoco" | "descanso" | "outro" | "sem_motivo";
+/** Motivo escolhido no app ao pausar (os sete da lista); `sem_motivo` é a pausa antiga, registrada sem escolher. */
+export type MotivoDaPausa = "almoco" | "aguardando" | "descanso" | "clima" | "enfermidade" | "lesao" | "outro" | "sem_motivo";
 
 /** Tempo em pausa por motivo, só os que aparecem no período. */
 export interface PausaPorMotivo {

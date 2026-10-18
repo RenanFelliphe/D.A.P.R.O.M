@@ -9,6 +9,8 @@ import { ColunaRecolhivel } from "./ColunaRecolhivel";
 export const aparenciaDoStatus: Record<OsStatus, { icone: IconName; cheio?: boolean; cor: string; tom: BadgeTone }> = {
   liberada: { icone: "lock", cor: "var(--lib)", tom: "lib" },
   em_execucao: { icone: "play", cheio: true, cor: "var(--exe)", tom: "exe" },
+  encerrando: { icone: "clock", cor: "var(--exe)", tom: "exe" },
+  aguardando_supervisor: { icone: "file", cor: "var(--al)", tom: "al" },
   pendente: { icone: "octagon", cor: "var(--blq)", tom: "blq" },
   encerrada: { icone: "check", cor: "var(--enc)", tom: "enc" },
   cancelada: { icone: "x", cor: "var(--ink3)", tom: "neu" },
@@ -21,7 +23,7 @@ interface ColunaQuadroProps {
   os: OsDoQuadro[];
   /** Endereço do quadro só com este status (o "Ver todas"). */
   hrefTodas?: string;
-  /** Admin e supervisor: os cartões mostram a ciência e o PDF das encerradas. */
+  /** Admin e supervisor: os cartões mostram a assinatura final e o PDF das concluídas. */
   gestao: boolean;
   /** Quem está vendo o quadro: o cartão da OS reservada diz "para você" ou o nome do responsável. */
   usuarioId: string;
