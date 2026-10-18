@@ -89,8 +89,8 @@
 
 ## 6. O que ficou de fora e pontos em aberto
 
-- **Equipe sem supervisor:** o representante não assume (não há quem substituir). O pedido de ausência continua desabilitado ali (`equipe_sem_supervisor`).
+- **Equipe sem supervisor:** resolvida em 17/10/2026 ([avisos-e-emails.md](avisos-e-emails.md), seção 5.4). Sem supervisor, ou com o dele desativado, o representante assume pelo motivo `sem_supervisor` até o admin escolher um, e os administradores recebem o aviso `equipe_sem_supervisor`. O pedido de ausência vai para ele; o dele mesmo fica recusado (`equipe_sem_supervisor`), porque ninguém responde ao próprio pedido.
 - **Representante também ausente:** ninguém responde pela equipe até um dos dois voltar. O admin continua só consultando. Se o piloto mostrar o problema, vale um segundo representante.
 - **Os 3 dias:** contados em dias corridos, sem descontar fim de semana ou feriado. Para o Iago confirmar se bastam, porque um feriado emendado (4 dias) faria o representante assumir sem ter havido ausência de fato. A constante é `DIAS_SEM_ATIVIDADE`.
-- **E-mail:** os avisos vão só pelo sino, como os da ausência.
+- **E-mail:** desde 17/10/2026 os avisos da representação também vão por e-mail, na categoria "Equipe" ([avisos-e-emails.md](avisos-e-emails.md)).
 - **O app,** quando existir: a faixa e o cartão do representante.

@@ -14,8 +14,8 @@
 - **O ausente só visualiza.** Não altera nada, não recebe reserva de OS e não entra em APR.
 - **A ausência não termina sozinha.** Passada a data de retorno, ela fica "vencida" para o supervisor até o funcionário confirmar o retorno, com a assinatura, ou o supervisor a encerrar.
 - **O supervisor registra a própria ausência** e pode encerrá-la a qualquer momento, em caso de emergência.
-- **Avisos só pelo sino,** inclusive para o técnico, que hoje não tem sino. O e-mail fica para a curadoria do SMTP.
-- **Quem responde pela equipe enquanto o supervisor está ausente** é o representante dela, que assume sozinho ([representante.md](representante.md), 16/10/2026). Em aberto: quem aprova o pedido de quem está numa equipe sem supervisor.
+- **Avisos pelo sino,** inclusive para o técnico, que hoje não tem sino. Desde 17/10/2026 eles também vão por e-mail, na categoria "Ausências", que cada pessoa liga ou desliga no perfil ([avisos-e-emails.md](avisos-e-emails.md)).
+- **Quem responde pela equipe enquanto o supervisor está ausente** é o representante dela, que assume sozinho ([representante.md](representante.md), 16/10/2026). Na equipe sem supervisor, desde 17/10/2026, o representante também assume e responde aos pedidos ([avisos-e-emails.md](avisos-e-emails.md), seção 5.4).
 
 ---
 
@@ -123,7 +123,7 @@
 | `ausencia_cancelada` | técnico e supervisor | o sistema cancela o pedido parado |
 
 - **O técnico ganha o sino.** Hoje `GET /alertas` e `PATCH /alertas/{id}` são só do supervisor e do admin. Eles passam a atender o técnico, que vê só os alertas endereçados a ele. A tela de alertas da gestão (`/web/alertas`) continua só da gestão.
-- **Sem e-mail.** O envio fica para a curadoria do que vai por e-mail, quando o SMTP funcionar.
+- **E-mail.** No plano, ficava para a curadoria do SMTP. Desde 17/10/2026 os nove avisos também vão por e-mail, na categoria "Ausências" ([avisos-e-emails.md](avisos-e-emails.md)).
 
 ## 8. O que muda no código
 
@@ -182,7 +182,7 @@ Uma migração nova:
 **Resolvido em 16/10/2026 pelo representante da equipe** ([representante.md](representante.md)). O Iago explicou que, quando o supervisor se ausenta, ele designa um responsável para assinar e encerrar as ordens por ele. Como não dá para designar alguém de fora do sistema, toda equipe tem um representante, um membro dela, que assume a supervisão quando o supervisor registra uma ausência ou passa 3 dias sem usar o sistema.
 
 - **Supervisor ausente:** o representante aprova pedidos e fins antecipados, reserva e devolve OS e recebe os alertas da equipe. O supervisor continua só cuidando da própria ausência.
-- **Equipe sem supervisor:** continua em aberto. O botão "Pedir ausência" fica desabilitado, com o aviso de que a equipe está sem supervisor.
+- **Equipe sem supervisor:** resolvida em 17/10/2026 ([avisos-e-emails.md](avisos-e-emails.md), seção 5.4). O representante assume a equipe e responde aos pedidos; o botão "Pedir ausência" só fica desabilitado para o próprio representante (ninguém responde ao próprio pedido) e na equipe sem ninguém que responda.
 
 ## 10. Documentação
 
@@ -200,8 +200,8 @@ Uma migração nova:
 
 ## 12. Pontos em aberto
 
-- **A equipe sem supervisor** (seção 9).
-- **O e-mail dos avisos,** na curadoria do SMTP.
+- **A equipe sem supervisor** (seção 9): feita em 17/10/2026.
+- **O e-mail dos avisos:** feito em 17/10/2026; só falta configurar o SMTP ([avisos-e-emails.md](avisos-e-emails.md), seção 6).
 - **O app,** quando existir: a faixa, a tela de retorno e o login sem sinal de quem está ausente.
 
 ## 13. O que mudou na implementação
@@ -227,5 +227,5 @@ Feita em 15/10/2026, na ordem da seção 11. O que ficou diferente do plano ou f
   - No detalhe da OS, as ações de campo e de supervisão somem para o ausente, com o aviso.
   - O Campo de treino não muda: a API fictícia não tem ausência e a seção não aparece.
 - **Carga de demonstração.** Tadeu em curso, Taís agendada (registrada por Sandra), Tânia vencida e um pedido de Tomás aguardando Saulo. Ninguém com execução aberta nas OS da demonstração entra em ausência em curso.
-- **Não feito** (como no plano): a seção 9, o e-mail dos avisos e o app.
+- **Não feito** (como no plano): a seção 9, o e-mail dos avisos e o app. A seção 9 e o e-mail entraram em 17/10/2026 ([avisos-e-emails.md](avisos-e-emails.md)); falta o app.
 - **Testes.** `api/test/ausencia.test.ts` cobre os estados, as assinaturas, a sobreposição, o bloqueio e as exceções, a fila offline, a reserva, a APR, a suspensão da execução, a vencida, o retorno, o fim antecipado, a prorrogação, o supervisor ausente, a tarefa periódica, a consulta e as regras do banco.

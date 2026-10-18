@@ -2,7 +2,7 @@
 
 > Questões que a [especificação](especificacao.md) ainda não responde. Cada uma traz uma recomendação para não travar o desenvolvimento: se ninguém discordar, ela vale.
 >
-> **Atualizado em 14/10/2026** (o técnico escolhe o modelo da APR: questão 58, que deixa a 52 sem objeto), em 13/10/2026 (evidência em PDF: questão 46; catálogo de serviço: questão 65) e em 12/10/2026 (perfis: só `tecnico` e `admin`; questões 63 e 64), a partir do que foi atualizado em 10/10/2026, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
+> **Atualizado em 17/10/2026** (o servidor de e-mail dos avisos: questão 68; a equipe sem supervisor, da 67, foi resolvida), em 14/10/2026 (o técnico escolhe o modelo da APR: questão 58, que deixa a 52 sem objeto), em 13/10/2026 (evidência em PDF: questão 46; catálogo de serviço: questão 65) e em 12/10/2026 (perfis: só `tecnico` e `admin`; questões 63 e 64), a partir do que foi atualizado em 10/10/2026, depois da Reunião 2 ([transcrição](../reunioes/Transcrição_Reuniao2.docx)) e das decisões do time ([correcoes-reuniao-2-resumo.md](correcoes-reuniao-2-resumo.md)).
 >
 > **Todas as questões abertas seguem com a recomendação adotada** na [especificação](especificacao.md) (seção "Suposições adotadas"), para a implementação não esperar. Elas continuam listadas aqui para a confirmação com o Iago, o Mario e o time; se a resposta for outra, o ajuste é restrito ao que a especificação cita. As questões 22–46 estavam só no [contexto da sessão](../contexto/contexto-sessao-2026-10-10.md) e entram aqui; as 47–54 são novas.
 
@@ -61,9 +61,10 @@
 | **64** | Cadastro pelo supervisor, liberação pelo admin e treinamento (decidida em 12/10/2026) | 🟡 | Time + Iago | decidida |
 | **65** | Catálogo de serviço: a lista real de materiais de cada serviço | 🟡 | Iago | nova (13/10/2026) |
 | **66** | Ciclo das preventivas: onde o SAP guarda o intervalo do plano e de onde contar o próximo ciclo | 🟡 | Iago | nova (13/10/2026) |
+| **68** | Servidor de e-mail (SMTP) da empresa para os avisos e o resumo diário | 🟡 | Empresa (TI), pelo Iago | nova (17/10/2026) |
 | 17 | Relógio do aparelho errado | 🟢 | Time | agora afeta também o cronômetro |
 | 18 | Esqueci a senha / senha offline | 🟢 | Time | o reset passa a ser do Supabase Auth |
-| 20 | Quais alertas vão por e-mail | 🟢 | Iago | o envio passa a ser do back-end Node |
+| 20 | Quais alertas vão por e-mail | 🟢 | Iago | desde 17/10/2026 todos podem ir, por categoria escolhida no perfil; falta o servidor de e-mail (68) |
 | 21 | Supervisor e admin podem reprogramar | 🟢 | Iago | menos urgente: reprogramar é opcional; o analista deixou de existir (12/10) |
 | 26 | Volume: ~390 ou ~900 OS por mês | 🟢 | Iago | igual |
 | 38 | Assinatura desenhada vale para auditoria | 🟢 | Iago | o Iago perguntou por "rubrica ou assinatura digital" |
@@ -297,8 +298,15 @@
 **Contexto:** o usuário ausente foi decidido em 15/10/2026 ([ausencia.md](../../ausencia.md)): só o supervisor da equipe registra, aprova e encerra a ausência dos membros, e ele também pode ficar ausente. Cada equipe tem um supervisor só.
 **Perguntas:** (1) quem responde pela equipe hoje quando o supervisor está fora: um substituto da equipe, a gerência ou outra forma? (2) quem aprova a ausência de quem está numa equipe sem supervisor?
 **Resposta do Iago (16/10/2026):** o supervisor que se ausenta designa um responsável para assinar e encerrar as ordens por ele.
-**Adotado (feito em 16/10/2026):** toda equipe tem um representante (um membro dela), que assume a supervisão quando o supervisor registra uma ausência ou passa 3 dias sem usar o sistema ([representante.md](../../representante.md)). Em aberto: a equipe sem supervisor (o pedido fica desabilitado) e se os 3 dias devem descontar fim de semana e feriado. Impacto 🟡.
+**Adotado (feito em 16/10/2026):** toda equipe tem um representante (um membro dela), que assume a supervisão quando o supervisor registra uma ausência ou passa 3 dias sem usar o sistema ([representante.md](../../representante.md)). A equipe sem supervisor foi resolvida em 17/10/2026: o representante assume até o admin escolher um supervisor ([avisos-e-emails.md](../../funcionalidades/avisos-e-emails.md), seção 5.4). Em aberto: se os 3 dias devem descontar fim de semana e feriado. Impacto 🟡.
 **Detalhes:** [Questoes.md](../../Questoes.md), questão 67.
+
+### 68. Servidor de e-mail (SMTP) da empresa para os avisos (nova, 17/10/2026)
+
+**Contexto:** desde 17/10/2026 todo aviso do sino pode sair também por e-mail, conforme as categorias que cada pessoa deixa ligadas no perfil, e de manhã sai um resumo diário ([avisos-e-emails.md](../../funcionalidades/avisos-e-emails.md)). O código está pronto e testado; sem o servidor, os avisos ficam só no sino.
+**Perguntas:** (1) a empresa libera uma conta de SMTP para o SYNQ OS (servidor, porta, usuário e senha) e um endereço de remetente? (2) o domínio do remetente tem SPF e DKIM? (3) a empresa aceita o que vai nos e-mails (nome, matrícula, OS, local e motivo da ausência), sempre para o e-mail institucional?
+**Recomendação (adotada):** os avisos ficam só no sino até a resposta. Com ela, basta preencher `SMTP_URL`, `EMAIL_REMETENTE` e `PAINEL_URL` (o endereço público da web, base dos links) e conferir com `pnpm --dir api email:testar`. Impacto 🟡.
+**Detalhes:** [Questoes.md](../../Questoes.md), questão 68; [avisos-e-emails.md](../../funcionalidades/avisos-e-emails.md), seção 6.
 
 ## 4. Adotadas de baixo impacto (🟢)
 
@@ -306,7 +314,7 @@
 |---|---|
 | 17 | Guardar `ocorrido_em` e `recebido_em`; o painel sinaliza quando `ocorrido_em` for posterior ao recebimento. Vale também para o cronômetro |
 | 18 | Aceitar no MVP: o app invalida a senha antiga no próximo sync com sinal. O reset é sempre online, pelo Supabase Auth |
-| 20 | E-mail só para bloqueio; perguntar ao Iago se `apoio_encerrado` também merece e-mail. O envio é do back-end Node |
+| 20 | Desde 17/10/2026, todo aviso pode ir por e-mail, conforme as categorias que cada pessoa deixa ligadas no perfil; segurança (bloqueio) e conta são obrigatórias, e sai um resumo diário ([avisos-e-emails.md](../../funcionalidades/avisos-e-emails.md)). O envio é do back-end Node e espera o servidor de e-mail (questão 68) |
 | 21 | O supervisor da equipe e o admin podem reprogramar e criar OS de apoio para qualquer equipe |
 | 26 | Confirmar com o Iago se o volume é ~390 ou ~900 OS por mês |
 | 38 | Confirmar com o Iago se a rubrica desenhada vale para auditoria; ele sugeriu "rubrica ou assinatura digital" (26:13) |

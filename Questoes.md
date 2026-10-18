@@ -13,6 +13,7 @@
 | 61 | O item de espaço confinado da APR 06 aceita "NA"? | Mario | 🟡 MVP |
 | 62 | O horário de início e fim vale por executante? | Iago | 🟢 Depois |
 | 67 | Quem responde pela equipe quando o supervisor está ausente? | Iago (respondida em 16/10/2026) | 🟡 MVP |
+| 68 | Qual servidor de e-mail (SMTP) o SYNQ OS usa para os avisos? | Empresa (TI), pelo Iago | 🟡 MVP |
 
 **Impacto:** 🔴 muda tabelas ou contratos; 🟡 muda uma tela ou regra da demonstração; 🟢 não afeta a demonstração.
 
@@ -86,4 +87,20 @@ A OS corretiva 4023470 não tem nada disso. O texto parece vir da descrição lo
 
 **Resposta do Iago (16/10/2026):** quando o supervisor entra de férias ou se ausenta, ele designa um responsável para assinar e encerrar as ordens por ele.
 
-**Adotado (feito em 16/10/2026, [representante.md](representante.md)):** como não dá para designar alguém de fora do sistema, toda equipe tem um representante, um membro dela, escolhido pelo sistema (o técnico mais antigo) até o supervisor ou o admin designar outro. Ele assume a supervisão quando o supervisor registra uma ausência ou passa 3 dias sem usar o sistema, e a devolve quando ele volta. Segue em aberto a equipe sem supervisor: o pedido de ausência fica desabilitado (`409` `equipe_sem_supervisor`). Para o Iago confirmar: se 3 dias corridos bastam, ou se fim de semana e feriado devem ser descontados.
+**Adotado (feito em 16/10/2026, [representante.md](representante.md)):** como não dá para designar alguém de fora do sistema, toda equipe tem um representante, um membro dela, escolhido pelo sistema (o técnico mais antigo) até o supervisor ou o admin designar outro. Ele assume a supervisão quando o supervisor registra uma ausência ou passa 3 dias sem usar o sistema, e a devolve quando ele volta. A equipe sem supervisor foi resolvida em 17/10/2026 ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.4): o representante assume até o admin escolher um supervisor, e os administradores são avisados. Para o Iago confirmar: se 3 dias corridos bastam, ou se fim de semana e feriado devem ser descontados.
+
+## 68. Qual servidor de e-mail (SMTP) o SYNQ OS usa para os avisos?
+
+**Contexto:** desde 17/10/2026 todo aviso do sino pode sair também por e-mail, conforme as categorias que cada pessoa deixa ligadas no perfil, e de manhã sai um resumo diário ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md)). O código está pronto e testado; sem um servidor de e-mail configurado, os avisos ficam só no sino e nenhum e-mail sai.
+
+**Pergunta:** a empresa libera uma conta num servidor de e-mail (SMTP) para o SYNQ OS enviar? Para configurar, é preciso:
+
+1. o endereço do servidor, a porta e o tipo de conexão (587 com STARTTLS ou 465 com TLS direto);
+2. o usuário e a senha da conta que envia;
+3. o endereço do remetente (por exemplo, `synqos@empresa.com.br`), aceito pelo servidor;
+4. o SPF e o DKIM do domínio do remetente, para os e-mails não caírem no spam;
+5. o endereço público da web, que vira a base dos links dos e-mails.
+
+Também vale confirmar se a empresa aceita o que vai nos e-mails: nome, matrícula, número e título da OS, local e motivo da ausência, sempre para o e-mail institucional.
+
+**Adotado por enquanto:** os avisos ficam só no sino. Com a resposta, basta preencher `SMTP_URL`, `EMAIL_REMETENTE` e `PAINEL_URL` e conferir com `pnpm --dir api email:testar -- seu.email@empresa.com.br` (seção 6 do [avisos-e-emails.md](funcionalidades/avisos-e-emails.md)).

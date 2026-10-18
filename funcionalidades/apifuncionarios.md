@@ -63,7 +63,7 @@ Na tabela da tela aparecem nome, e-mail, matrícula e setor. O resto fica no "ve
 | desligado | recusado (`409 funcionario_desligado`) | A conta é desativada na hora (seção 5). |
 | fora do registro (a matrícula sumiu) | recusado (`404 funcionario_nao_encontrado`) | Tratada como desligada. |
 
-**Regra geral: o automático só tira acesso; quem dá acesso é sempre uma pessoa.** Se o funcionário voltar a ficar ativo no registro (readmissão), a conta não é reativada sozinha. O admin reativa no SYNQ OS, e só consegue se o registro disser que a pessoa está ativa.
+**Regra geral: o automático só tira acesso; quem dá acesso é sempre uma pessoa.** Se o funcionário voltar a ficar ativo no registro (readmissão), a conta não é reativada sozinha. O admin reativa no SYNQ OS, e só consegue se o registro disser que a pessoa está ativa. Desde 17/10/2026 a readmissão avisa os administradores (`funcionario_readmitido`), com o botão "Reativar a conta" no próprio aviso ([avisos-e-emails.md](avisos-e-emails.md), seção 5.2).
 
 ### 2.3 Setores e cargos
 
@@ -135,7 +135,7 @@ Formato do funcionário: `{matricula, nome, email, cargo, centro_trabalho, setor
 - **O que lê:** o registro inteiro, página por página, e confere todos os usuários do SYNQ OS pela matrícula. Lê tudo, e não só os alterados, para pegar também quem sumiu do registro.
 - **"Ler agora":** o admin pode pedir uma leitura fora de hora com `POST /rh/leituras`. É útil na demonstração.
 - **Histórico:** cada leitura é gravada na tabela `leitura_rh`. A tabela também garante uma leitura por dia, mesmo que a `api` reinicie. `GET /rh/sincronizacao` devolve a última leitura, quando aconteceu e o resultado (conferidos, atualizados, desativados e erro).
-- **Falha:** tenta de novo como as outras tarefas. Se as tentativas acabarem, a falha fica no histórico com o erro e aparece no cartão de sincronização. Nesta etapa não há alerta no sino.
+- **Falha:** tenta de novo como as outras tarefas. Se as tentativas acabarem, a falha fica no histórico com o erro e aparece no cartão de sincronização. Desde 17/10/2026 ela também vira o aviso `rh_leitura_falhou` no sino, e por e-mail, para os administradores ([avisos-e-emails.md](avisos-e-emails.md), seção 5.1).
 - **Trava de segurança:** se uma leitura for desativar mais da metade dos usuários ativos, ela não aplica nada e termina com erro. Isso protege contra um registro vazio ou mal configurado.
 
 ### 5.3 O que a conferência faz com cada usuário
@@ -294,8 +294,7 @@ Com `RH_SIMULADO=true`, endereços e tokens ganham valores padrão, como acontec
 ## 12. Riscos e pontos em aberto
 
 - **LGPD:** o registro usa apenas dados fictícios. O SYNQ OS só copia nome, e-mail, cargo e CREA.
-- **Fora do escopo:**
-  - alerta no sino quando a leitura diária falha;
+- **Fora do escopo** (o alerta da leitura que falha e o aviso da readmissão entraram em 17/10/2026, em [avisos-e-emails.md](avisos-e-emails.md)):
   - mudar a equipe no SYNQ OS quando o setor muda no registro (a equipe é decisão do SYNQ OS; o setor só a sugere no cadastro);
   - reativar a conta automaticamente na readmissão.
 
