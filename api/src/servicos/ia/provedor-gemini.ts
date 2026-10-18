@@ -52,7 +52,7 @@ export class ProvedorIAGemini implements ProvedorIA {
         method: "POST",
         headers: { "x-goog-api-key": this.apiKey, "content-type": "application/json" },
         body: JSON.stringify(this.corpo(pedido)),
-        signal: AbortSignal.timeout(TEMPO_LIMITE_MS),
+        signal: AbortSignal.timeout(pedido.tempoLimiteMs ?? TEMPO_LIMITE_MS),
       });
     } catch (erro) {
       throw new IAIndisponivel(`Gemini inacessível: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro });

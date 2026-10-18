@@ -98,9 +98,15 @@ export const SUGESTOES_POR_TELA: Record<string, SugestaoFixa[]> = {
     { pergunta: "Como acho as ações de uma pessoa?", resposta: "Digite o nome dela no campo de busca da auditoria." },
   ],
   treinamento_servico_editor: [
+    {
+      pergunta: "Como a Vitória monta o rascunho?",
+      resposta: "Cole o texto do procedimento e toque em \"Gerar rascunho com a Vitória\". Ela usa só esse texto e os materiais do serviço; você revisa, corrige e assina.",
+    },
+    {
+      pergunta: "O que é uma pendência?",
+      resposta: "Um ponto que a conferência achou num item feito pela Vitória, como um número que não está no texto. Edite o item ou confirme-o como está: com pendência, não publica.",
+    },
     { pergunta: "Como publico um treinamento?", resposta: "Com as pendências resolvidas, toque em \"Publicar\": você aceita o termo e assina." },
-    { pergunta: "Posso testar antes de publicar?", resposta: "Sim, o botão \"Pré-visualizar\" roda o jogo com o rascunho, sem pontuar." },
-    { pergunta: "O que acontece se eu editar uma versão publicada?", resposta: "Editar cria um rascunho novo; a versão publicada continua valendo até a próxima publicação." },
   ],
   vitoria_sem_resposta: [
     { pergunta: "O que é esta lista?", resposta: "As perguntas que a Vitória não soube responder, sem identificar quem perguntou: só o texto, a tela, o perfil e a data." },

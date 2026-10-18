@@ -17,6 +17,7 @@
     "usuarios:migrar-emails": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/migrar-emails.ts",
     "rh:carga-inicial": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/carregar-registro-rh.ts",
     "vitoria:conferir-ia": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/conferir-vitoria-ia.ts",
+    "treinamento:conferir-ia": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/conferir-rascunho-ia.ts",
     "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts",
     "pdf:exemplo": "tsx scripts/gerar-pdf-os.ts"
   },

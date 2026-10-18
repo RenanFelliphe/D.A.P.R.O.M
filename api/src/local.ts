@@ -68,6 +68,7 @@ const config: Config = {
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
   ia: lerConfigIA(),
   vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
+  treinamentoIa: { limiteTreinamentos: 3, limiteRodadas: 4, maxTokens: 16000 },
 };
 
 async function main() {

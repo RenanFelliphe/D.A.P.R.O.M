@@ -16,6 +16,7 @@ import { contar } from "../http/paginacao";
 import { validar } from "../http/validacao";
 import type { ContextoDePontos, Ganho } from "./lancamentos";
 import { pontuarTreinamentoServico } from "./pontuacao";
+import { pendenciasAbertas, type PendenciaAberta } from "../../../shared/treinamento-servico/ia";
 import {
   esquemaFases,
   esquemaRespostaEscolha,
@@ -25,6 +26,7 @@ import {
   validarConteudo,
   validarFasesContraCatalogo,
   validarPublicavel,
+  validarSemPendencias,
   type ConteudoDoTreinamento,
   type FaseEntrada,
   type PassoExplicacao,
@@ -161,7 +163,8 @@ export async function treinamentoParaJogador(db: Db, atividadeCodigo: string): P
     treinamentoId: linha.treinamentoId,
     versaoId: linha.versaoId,
     versao: linha.versao,
-    explicacao: (linha.explicacao as PassoExplicacao[]) ?? [],
+    // Sem a meta da IA (o trecho de origem e as pendências): é coisa do editor, não de quem treina.
+    explicacao: ((linha.explicacao as PassoExplicacao[]) ?? []).map(({ ia: _ia, ...passo }) => passo),
     cenarioPath: linha.cenarioPath,
     totalFases: ((linha.fases as unknown[]) ?? []).length,
     publicadaEm: linha.publicadaEm!,
@@ -414,9 +417,19 @@ export interface RascunhoDoEditor {
   fases: FaseEntrada[];
   cenarioPath: string | null;
   temPublicada: boolean;
+  /** O texto do procedimento que o admin colou para a IA (nulo se o rascunho foi feito só à mão). */
+  textoOrigem: string | null;
+  geradoComIa: boolean;
+  rodadasIa: number;
+  /** As pendências da IA ainda abertas, que impedem publicar (`shared/treinamento-servico/ia.ts`). */
+  pendencias: PendenciaAberta[];
 }
 
-/** Acha o rascunho do serviço, ou cria um (e o treinamento, se for o primeiro). O código precisa existir no catálogo. */
+/**
+ * Acha o rascunho do serviço, ou cria um (e o treinamento, se for o primeiro). O código precisa existir no catálogo. Um
+ * rascunho novo de um treinamento já publicado parte da versão publicada (editar não começa do zero), com o texto de
+ * origem da IA, para os ajustes pelo chat continuarem valendo.
+ */
 export async function obterOuCriarRascunho(db: Db, atividadeCodigo: string, usuarioId: string): Promise<RascunhoDoEditor> {
   const [servico] = await db.select({ codigo: atividade.codigo }).from(atividade).where(eq(atividade.codigo, atividadeCodigo)).limit(1);
   if (!servico) throw naoEncontrado("Serviço não encontrado no catálogo");
@@ -434,9 +447,12 @@ export async function obterOuCriarRascunho(db: Db, atividadeCodigo: string, usua
         .select({ max: sql<number>`coalesce(max(${treinamentoServicoVersao.versao}), 0)::int` })
         .from(treinamentoServicoVersao)
         .where(eq(treinamentoServicoVersao.treinamentoId, treinamento!.id));
+      const base = publicada
+        ? { explicacao: publicada.explicacao, fases: publicada.fases, cenarioPath: publicada.cenarioPath, textoOrigem: publicada.textoOrigem, geradoComIa: publicada.geradoComIa }
+        : { explicacao: [], fases: [] };
       const [criada] = await tx
         .insert(treinamentoServicoVersao)
-        .values({ treinamentoId: treinamento!.id, versao: (maior?.max ?? 0) + 1, explicacao: [], fases: [] })
+        .values({ treinamentoId: treinamento!.id, versao: (maior?.max ?? 0) + 1, ...base })
         .returning();
       rascunho = criada!;
     }
@@ -444,15 +460,21 @@ export async function obterOuCriarRascunho(db: Db, atividadeCodigo: string, usua
   });
 }
 
-function rascunhoParaEditor(treinamentoId: string, rascunho: VersaoLinha, temPublicada: boolean): RascunhoDoEditor {
+export function rascunhoParaEditor(treinamentoId: string, rascunho: VersaoLinha, temPublicada: boolean): RascunhoDoEditor {
+  const explicacao = explicacaoDe(rascunho);
+  const fases = fasesDe(rascunho);
   return {
     treinamentoId,
     versaoId: rascunho.id,
     versao: rascunho.versao,
-    explicacao: explicacaoDe(rascunho),
-    fases: fasesDe(rascunho),
+    explicacao,
+    fases,
     cenarioPath: rascunho.cenarioPath,
     temPublicada,
+    textoOrigem: rascunho.textoOrigem,
+    geradoComIa: rascunho.geradoComIa,
+    rodadasIa: rascunho.rodadasIa,
+    pendencias: pendenciasAbertas({ explicacao, fases }),
   };
 }
 
@@ -516,6 +538,9 @@ export interface PublicarResultado {
   versaoId: string;
   versao: number;
   publicadaEm: Date;
+  /** Para a auditoria (seção 3.7 do `vitoria.md`): se o rascunho veio da IA e o texto de origem. */
+  geradoComIa: boolean;
+  textoOrigem: string | null;
 }
 
 /** Publica o rascunho: termo + assinatura (já enviada por `PUT /arquivos/{id}`, tipo `assinatura`), no padrão de `PUT /me/assinatura`. */
@@ -531,6 +556,7 @@ export async function publicarVersao(db: Db, atividadeCodigo: string, usuarioId:
   const fases = fasesDe(rascunho);
   validarConteudo(explicacao, fases);
   validarPublicavel(explicacao, fases);
+  validarSemPendencias(explicacao, fases);
   await validarFasesContraCatalogo(db, fases);
 
   return db.transaction(async (tx) => {
@@ -543,7 +569,7 @@ export async function publicarVersao(db: Db, atividadeCodigo: string, usuarioId:
       .set({ estado: "publicada", publicadaEm: agora, publicadaPor: usuarioId, assinaturaPath, termo: TERMO_TREINAMENTO(servico.codigo, servico.descricao) })
       .where(eq(treinamentoServicoVersao.id, rascunho.id))
       .returning({ id: treinamentoServicoVersao.id, versao: treinamentoServicoVersao.versao, publicadaEm: treinamentoServicoVersao.publicadaEm });
-    return { versaoId: publicada!.id, versao: publicada!.versao, publicadaEm: publicada!.publicadaEm! };
+    return { versaoId: publicada!.id, versao: publicada!.versao, publicadaEm: publicada!.publicadaEm!, geradoComIa: rascunho.geradoComIa, textoOrigem: rascunho.textoOrigem };
   });
 }
 

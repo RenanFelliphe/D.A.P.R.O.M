@@ -29,6 +29,9 @@ const esquema = z.object({
   VITORIA_LIMITE_POR_CONTA_DIA: z.coerce.number().int().positive().default(40),
   VITORIA_LIMITE_GLOBAL_DIA: z.coerce.number().int().positive().default(1000),
   VITORIA_MAX_TOKENS_RESPOSTA: z.coerce.number().int().positive().default(1024),
+  TREINAMENTO_IA_LIMITE_TREINAMENTOS: z.coerce.number().int().min(0).default(3),
+  TREINAMENTO_IA_LIMITE_RODADAS: z.coerce.number().int().min(0).default(4),
+  TREINAMENTO_IA_MAX_TOKENS: z.coerce.number().int().positive().default(16000),
 });
 
 /**
@@ -87,6 +90,15 @@ export interface Config {
     limiteGlobalDia: number;
     maxTokensResposta: number;
   };
+  /**
+   * Limites do rascunho de treinamento pela IA (vitoria.md, seção 3.6), separados dos da Vitória: quantos treinamentos
+   * podem usar a IA, quantas rodadas cada um tem (pedido no chat, fase regerada ou nova geração) e o tamanho da resposta.
+   */
+  treinamentoIa: {
+    limiteTreinamentos: number;
+    limiteRodadas: number;
+    maxTokens: number;
+  };
 }
 
 /** Escolhe a chave e os modelos do provedor de IA indicado em `IA_PROVEDOR` (padrão: a Anthropic). */
@@ -140,6 +152,11 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
       limitePorContaDia: e.VITORIA_LIMITE_POR_CONTA_DIA,
       limiteGlobalDia: e.VITORIA_LIMITE_GLOBAL_DIA,
       maxTokensResposta: e.VITORIA_MAX_TOKENS_RESPOSTA,
+    },
+    treinamentoIa: {
+      limiteTreinamentos: e.TREINAMENTO_IA_LIMITE_TREINAMENTOS,
+      limiteRodadas: e.TREINAMENTO_IA_LIMITE_RODADAS,
+      maxTokens: e.TREINAMENTO_IA_MAX_TOKENS,
     },
   };
 }

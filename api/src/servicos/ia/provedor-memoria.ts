@@ -21,8 +21,10 @@ export class ProvedorIAEmMemoria implements ProvedorIA {
     return resposta;
   }
 
+  /** Entrega a resposta em pedaços de 40 caracteres, que cortam linhas e objetos JSON ao meio, como o streaming de verdade. */
   async *conversarEmStreaming(pedido: PedidoDeTexto): AsyncIterable<PedacoDeTexto> {
     const resposta = await this.conversar(pedido);
-    yield { texto: resposta };
+    for (let i = 0; i < resposta.length; i += 40) yield { texto: resposta.slice(i, i + 40) };
+    if (resposta.length === 0) yield { texto: "" };
   }
 }

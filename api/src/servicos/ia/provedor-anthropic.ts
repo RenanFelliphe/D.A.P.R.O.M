@@ -48,7 +48,7 @@ export class ProvedorIAAnthropic implements ProvedorIA {
         method: "POST",
         headers: { "x-api-key": this.apiKey, "anthropic-version": VERSAO_ANTHROPIC, "content-type": "application/json" },
         body: JSON.stringify(this.corpo(pedido, streaming)),
-        signal: AbortSignal.timeout(TEMPO_LIMITE_MS),
+        signal: AbortSignal.timeout(pedido.tempoLimiteMs ?? TEMPO_LIMITE_MS),
       });
     } catch (erro) {
       throw new IAIndisponivel(`Anthropic inacessível: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro });

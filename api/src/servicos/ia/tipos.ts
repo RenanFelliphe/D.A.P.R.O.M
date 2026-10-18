@@ -19,10 +19,15 @@ export type ModeloLogico = "vitoria" | "rascunho" | "digitalizacao";
 export interface PedidoDeTexto {
   modelo: ModeloLogico;
   mensagens: BlocoDeMensagem[];
-  /** JSON Schema da saída esperada; uso futuro (saída estruturada de treinamentos/digitalização), não usado nesta fase. */
+  /**
+   * JSON Schema da saída esperada; uso futuro (digitalização). O rascunho de treinamento não usa: pede linhas JSON pela
+   * instrução, para mostrar o progresso a cada item que chega pelo streaming (`treinamento-servico-ia.ts`).
+   */
   schemaDeSaida?: Record<string, unknown>;
   /** Sobrepõe o limite padrão de tokens de resposta da configuração, quando o chamador precisar de outro valor. */
   maxTokens?: number;
+  /** Sobrepõe o tempo limite padrão da chamada (60 s), streaming incluído; o rascunho de treinamento leva de 1 a 2 minutos. */
+  tempoLimiteMs?: number;
 }
 
 export interface PedacoDeTexto {

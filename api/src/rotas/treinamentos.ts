@@ -1,4 +1,5 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
+import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
 import { registrarAuditoria } from "../dominio/auditoria";
@@ -19,11 +20,19 @@ import {
   versoesAnteriores,
 } from "../dominio/treinamento-servico";
 import { esquemaConteudo } from "../dominio/treinamento-servico-esquema";
+import {
+  executarRascunhoIA,
+  LIMITE_TEXTO_PROCEDIMENTO,
+  prepararRascunhoIA,
+  situacaoDaIA,
+  type ChamadaDeRascunhoIA,
+  type ProgressoDoRascunho,
+} from "../dominio/treinamento-servico-ia";
 import type { Deps } from "../deps";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
-import { invalido, naoEncontrado } from "../http/erros";
+import { ErroApi, invalido, naoEncontrado } from "../http/erros";
 import { esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
-import { responder } from "../http/resposta";
+import { emSnakeCase, responder } from "../http/resposta";
 import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, lerJson, textoObrigatorio, uuid } from "../http/validacao";
 
 /** O código do serviço na URL (pode ter pontos e barras, como em `/atividades/{codigo}`). */
@@ -41,6 +50,53 @@ function indiceDaFase(bruto: string): number {
 const esquemaRascunho = esquemaConteudo.extend({ cenario_path: z.string().trim().min(1).max(200).nullable().optional() });
 const esquemaPublicar = z.object({ arquivo_id: uuid });
 const esquemaReporte = z.object({ fase: z.number().int().min(0).nullable().optional(), texto: textoObrigatorio.max(500) });
+const esquemaGerar = z.object({
+  texto: z.string().trim().min(40, "Cole o texto do procedimento (ao menos algumas frases)").max(LIMITE_TEXTO_PROCEDIMENTO),
+});
+/** Sem `fase`, um pedido no chat ("encurte a explicação"); com `fase`, regera só aquela (o pedido é opcional). */
+const esquemaAjustar = z.object({ pedido: z.string().trim().max(1000).optional(), fase: z.number().int().min(0).max(9).optional() });
+
+/**
+ * A resposta do rascunho pela IA (seção 3.6 do `vitoria.md`), em SSE: `progresso` a cada item que a IA termina ("montando a
+ * fase 5 de 10…") e, a cada 5 s, o mesmo progresso com o tempo corrido (a IA pode pensar alguns minutos antes do
+ * primeiro item, e a tela não pode parecer travada); no fim, `final` com o rascunho gravado, ou `erro`. Se o admin fechar a
+ * tela no meio, a geração continua e é gravada: a chamada já foi paga.
+ */
+function responderRascunhoIA(c: Context, deps: Deps, chamada: ChamadaDeRascunhoIA) {
+  return streamSSE(c, async (stream) => {
+    let aberta = true;
+    stream.onAbort(() => {
+      aberta = false;
+    });
+    const escrever = async (event: string, dados: unknown) => {
+      if (!aberta) return;
+      try {
+        await stream.writeSSE({ event, data: JSON.stringify(emSnakeCase(dados)) });
+      } catch {
+        aberta = false;
+      }
+    };
+    const inicio = Date.now();
+    let ultimo: ProgressoDoRascunho = { mensagem: chamada.mensagemInicial, passosProntos: 0, fasesProntas: 0, totalPassos: null, totalFases: null };
+    const progresso = () => escrever("progresso", { ...ultimo, segundos: Math.round((Date.now() - inicio) / 1000) });
+    await progresso();
+    const batimento = setInterval(() => void progresso(), 5000);
+    try {
+      const resultado = await executarRascunhoIA(deps, chamada, (p) => {
+        ultimo = p;
+        void progresso();
+      });
+      // `ia`, como no `GET` do rascunho: a situação dos limites depois desta chamada.
+      await escrever("final", { rascunho: resultado.rascunho, ia: resultado.situacao, resumo: resultado.resumo, descartados: resultado.descartados });
+    } catch (erro) {
+      if (!(erro instanceof ErroApi)) console.error("Rascunho de treinamento: erro inesperado", erro);
+      const e = erro instanceof ErroApi ? erro : null;
+      await escrever("erro", { codigo: e?.codigo ?? "erro_interno", mensagem: e?.message ?? "Erro interno; nada foi gravado." });
+    } finally {
+      clearInterval(batimento);
+    }
+  });
+}
 
 /**
  * Treinamentos de serviço (seção 3 do `vitoria.md`): o jogo por serviço do catálogo. Quem treina (inclusive pendente, que
@@ -99,8 +155,22 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
   // ---- Admin: editor, publicação e reportes -------------------------------------------------------------------------
 
   r.get("/treinamentos/:atividade{.+}/rascunho", autenticar(), soAdmin, async (c) => {
-    const rascunho = await obterOuCriarRascunho(deps.db, codigoDoServico(c.req.param("atividade")), c.get("usuario").id);
-    return responder(c, rascunho);
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    const rascunho = await obterOuCriarRascunho(deps.db, codigo, c.get("usuario").id);
+    return responder(c, { ...rascunho, ia: await situacaoDaIA(deps, codigo) });
+  });
+
+  // O rascunho pela IA: `503` sem IA configurada, `409` com o limite esgotado (antes do streaming); depois, os eventos SSE.
+  r.post("/treinamentos/:atividade{.+}/rascunho/gerar", autenticar(), soAdmin, async (c) => {
+    const { texto } = await lerCorpo(c, esquemaGerar);
+    const chamada = await prepararRascunhoIA(deps, codigoDoServico(c.req.param("atividade")), c.get("usuario").id, { tipo: "gerar", texto });
+    return responderRascunhoIA(c, deps, chamada);
+  });
+
+  r.post("/treinamentos/:atividade{.+}/rascunho/ajustar", autenticar(), soAdmin, async (c) => {
+    const { pedido, fase } = await lerCorpo(c, esquemaAjustar);
+    const chamada = await prepararRascunhoIA(deps, codigoDoServico(c.req.param("atividade")), c.get("usuario").id, { tipo: "ajustar", pedido, fase });
+    return responderRascunhoIA(c, deps, chamada);
   });
 
   r.put("/treinamentos/:atividade{.+}/rascunho", autenticar(), soAdmin, async (c) => {
@@ -122,10 +192,10 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
       verbo: "publicar",
       entidadeId: codigo,
       alvo: codigo,
-      resumo: `Publicou a versão ${publicado.versao} do treinamento de serviço ${codigo}`,
-      detalhes: { versao: publicado.versao, gerado_com_ia: false },
+      resumo: `Publicou a versão ${publicado.versao} do treinamento de serviço ${codigo}${publicado.geradoComIa ? " (rascunho feito com a IA)" : ""}`,
+      detalhes: { versao: publicado.versao, gerado_com_ia: publicado.geradoComIa, ...(publicado.textoOrigem ? { texto_origem: publicado.textoOrigem } : {}) },
     });
-    return responder(c, publicado);
+    return responder(c, { versaoId: publicado.versaoId, versao: publicado.versao, publicadaEm: publicado.publicadaEm });
   });
 
   r.get("/treinamentos/:atividade{.+}/versoes", autenticar(), soAdmin, async (c) => {

@@ -49,6 +49,7 @@ export const configDeTeste: Config = {
   // Sem chave real: os testes programam o `ProvedorIAEmMemoria` (amb.ia) quando precisam simular a IA ligada.
   ia: { provedor: "anthropic", apiKey: "", ligada: false, modelos: { vitoria: "modelo-vitoria-teste", rascunho: "modelo-rascunho-teste", digitalizacao: "modelo-digitalizacao-teste" } },
   vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
+  treinamentoIa: { limiteTreinamentos: 3, limiteRodadas: 4, maxTokens: 16000 },
 };
 
 /** SAP em memória: o que o teste coloca em `ordens` é o que a leitura enxerga. */

@@ -4,6 +4,7 @@ import type { Db } from "../db/conexao";
 import { material } from "../db/schema";
 import { invalido } from "../http/erros";
 import { textoObrigatorio, uuid } from "../http/validacao";
+import { pendenciasAbertas } from "../../../shared/treinamento-servico/ia";
 
 /**
  * Validação do conteúdo dos treinamentos de serviço (seção 3 do `vitoria.md`), no espírito de `modelo-apr-esquema.ts`: o
@@ -18,11 +19,24 @@ export type ExpressaoVitoria = (typeof EXPRESSOES_VITORIA)[number];
 
 const textoCurto = (max: number) => textoObrigatorio.max(max);
 
+/**
+ * O que acompanha um passo ou uma fase montada pela IA (`shared/treinamento-servico/ia.ts`): o trecho de origem, as
+ * pendências da geração, a impressão do conteúdo como a IA o entregou e se o admin já o confirmou. Itens feitos à mão não têm.
+ */
+export const esquemaMetaIA = z.object({
+  origem: z.string().max(2000),
+  impressao: z.string().max(40),
+  pendencias: z.array(z.object({ codigo: z.string().max(60), mensagem: z.string().max(300) })).max(20),
+  conferido: z.boolean(),
+});
+const metaIA = esquemaMetaIA.nullable().optional();
+
 export const esquemaPassoExplicacao = z.object({
   ordem: z.number().int().min(0),
   texto: textoCurto(600),
   expressao: z.enum(EXPRESSOES_VITORIA),
   imagem_path: z.string().trim().min(1).max(200).nullable().optional(),
+  ia: metaIA,
 });
 export type PassoExplicacao = z.infer<typeof esquemaPassoExplicacao>;
 export const esquemaExplicacao = z.array(esquemaPassoExplicacao).max(12);
@@ -35,6 +49,7 @@ export const esquemaFaseQuiz = z.object({
   opcoes: z.array(textoCurto(160)).min(3).max(4),
   correta: z.number().int().min(0),
   explicacao: textoCurto(400),
+  ia: metaIA,
 });
 
 export const esquemaFaseDecisao = z.object({
@@ -43,6 +58,7 @@ export const esquemaFaseDecisao = z.object({
   opcoes: z.array(z.object({ texto: textoCurto(160), consequencia: textoCurto(300) })).min(3).max(4),
   correta: z.number().int().min(0),
   explicacao: textoCurto(400),
+  ia: metaIA,
 });
 
 export const esquemaFaseSepararItens = z.object({
@@ -52,12 +68,14 @@ export const esquemaFaseSepararItens = z.object({
   material_ids: z.array(uuid).min(2).max(10),
   quantidade_errados: z.number().int().min(1).max(10),
   explicacao: textoCurto(400),
+  ia: metaIA,
 });
 
 export const esquemaFaseLigar = z.object({
   tipo: z.literal("ligar"),
   pares: z.array(z.object({ esquerda: textoCurto(160), direita: textoCurto(160) })).min(2).max(5),
   explicacao: textoCurto(400),
+  ia: metaIA,
 });
 
 export const esquemaFaseOrdem = z.object({
@@ -66,6 +84,7 @@ export const esquemaFaseOrdem = z.object({
   /** A ordem do array É o gabarito: a sequência certa das etapas. */
   etapas: z.array(textoCurto(160)).min(2).max(6),
   explicacao: textoCurto(400),
+  ia: metaIA,
 });
 
 export const esquemaFase = z.discriminatedUnion("tipo", [esquemaFaseQuiz, esquemaFaseDecisao, esquemaFaseSepararItens, esquemaFaseLigar, esquemaFaseOrdem]);
@@ -99,6 +118,16 @@ export function validarConteudo(explicacao: PassoExplicacao[], fases: FaseEntrad
 export function validarPublicavel(explicacao: PassoExplicacao[], fases: FaseEntrada[]): void {
   if (explicacao.length === 0) throw invalido("sem_explicacao", "A explicação precisa de ao menos 1 passo para publicar");
   if (fases.length < 3) throw invalido("fases_insuficientes", "O jogo precisa de ao menos 3 fases para publicar");
+}
+
+/**
+ * Pendência das conferências da IA ainda aberta (o item não foi editado nem confirmado) impede publicar (seção 3.6 do
+ * `vitoria.md`). Vai nos `detalhes` do erro, para a tela apontar cada uma.
+ */
+export function validarSemPendencias(explicacao: PassoExplicacao[], fases: FaseEntrada[]): void {
+  const abertas = pendenciasAbertas({ explicacao, fases });
+  if (abertas.length === 0) return;
+  throw invalido("pendencias_abertas", `Há ${abertas.length} pendência(s) do rascunho da IA: edite o item ou confirme-o antes de publicar`, { pendencias: abertas });
 }
 
 /** Os `material_ids` de "separar os itens" precisam existir e estar ativos no catálogo. */

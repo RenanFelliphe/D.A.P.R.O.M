@@ -51,8 +51,19 @@
 
 - A aba Treinamento do serviço reúne o editor (explicação em passos e fases do jogo), a pré-visualização, a
   publicação (com termo e assinatura) e os problemas reportados pelos técnicos. [treinamento_servico_editor]
-- Publicar uma versão exige revisar e assinar; editar depois cria um rascunho novo, sem apagar a versão publicada
-  anterior.
+- "Gerar rascunho com a Vitória", no topo do editor, monta a explicação e as fases a partir do texto do procedimento que
+  você colar (ferramentas, passos e normas), usando só esse texto e os materiais do serviço no catálogo. Leva de 1 a 2
+  minutos, e o rascunho é gravado mesmo se você sair da tela. Sem a IA configurada, o botão não aparece e o editor manual
+  continua igual. [treinamento_servico_editor]
+- Cada passo e cada fase feitos pela Vitória mostram o trecho do texto de onde saíram. Quando a conferência acha um
+  problema (trecho que não está no texto, número que não aparece no texto, fase sem opção certa ou com mais de uma,
+  material fora da lista do serviço), o item fica com uma pendência: edite o item ou toque em "Confirmar como está".
+  Com pendência, o treinamento não é publicado.
+- Depois de gerar, dá para pedir ajustes no chat do editor ("encurte a explicação", "faça uma fase sobre aterramento") ou
+  tocar em "Regerar esta fase com a Vitória". Na demonstração, poucos treinamentos podem usar a IA e cada um tem poucas
+  rodadas; esgotado o limite, os botões ficam desativados com "Limite da demonstração atingido".
+- Publicar uma versão exige revisar e assinar; quem publica responde pelo conteúdo, mesmo o que veio da Vitória. Editar
+  depois cria um rascunho novo a partir da versão publicada, sem apagar a versão publicada anterior.
 
 ## Dashboards
 
