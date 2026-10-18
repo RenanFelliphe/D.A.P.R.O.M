@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { alerta, apr, aprResposta, evidencia, execucao, tarefa } from "../src/db/schema";
+import { alerta, apr, aprResposta, evidencia, execucao, tarefa, usuario } from "../src/db/schema";
 import { agendarLeituraSap, executarTarefasPendentes, iniciarTarefas, recuperarTarefasPresas } from "../src/servicos/tarefas";
 import { manipularEmailAlerta } from "../src/servicos/pdf-os";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
@@ -281,13 +281,56 @@ describe("E-mail de alerta de bloqueio", () => {
     assert.deepEqual(depois!.emailEnviadoEm, amb.relogio.agora);
   });
 
-  it("só o bloqueio vai por e-mail; alerta inexistente ou tarefa sem referência falham", async () => {
+  it("os demais avisos também vão por e-mail, no modelo comum, com o link e o rodapé das preferências", async () => {
     const o = await criarOs(amb, { equipeId });
-    const a = await criarAlerta(amb, { osId: o.osId, destinatarioId: supervisor.id, tipo: "apoio_encerrado" });
+    const a = await criarAlerta(amb, { osId: o.osId, destinatarioId: supervisor.id, tipo: "apoio_encerrado", detalhe: "A OS de apoio 4099 foi encerrada" });
     const antes = amb.email.enviados.length;
     await manipularEmailAlerta(amb.deps, tarefaDe(a.id));
-    assert.equal(amb.email.enviados.length, antes);
-    await assert.rejects(() => manipularEmailAlerta(amb.deps, tarefaDe(randomUUID())), /Alerta não encontrado/);
+    assert.equal(amb.email.enviados.length, antes + 1);
+    const m = amb.email.enviados.at(-1)!;
+    assert.match(m.assunto, /^\[SYNQ OS\] Apoio encerrado — OS /);
+    for (const esperado of ["A OS de apoio 4099 foi encerrada", `http://painel.local/app/os/${o.osId}`, "http://painel.local/app/perfil#emails"]) {
+      assert.ok(m.texto.includes(esperado), `faltou "${esperado}" no texto`);
+      assert.ok((m.html ?? "").includes(esperado), `faltou "${esperado}" no html`);
+    }
+    assert.deepEqual((await amb.db.select().from(alerta).where(eq(alerta.id, a.id)))[0]!.emailEnviadoEm, amb.relogio.agora);
+  });
+
+  it("não envia: categoria desligada no perfil (o bloqueio é obrigatório), servidor sem configuração, destinatário inativo; alerta apagado encerra; sem referência falha", async () => {
+    const o = await criarOs(amb, { equipeId });
+    const antes = amb.email.enviados.length;
+    await amb.db.update(usuario).set({ emailsDesligados: ["os"] }).where(eq(usuario.id, supervisor.id));
+    try {
+      const apoio = await criarAlerta(amb, { osId: o.osId, destinatarioId: supervisor.id, tipo: "apoio_encerrado" });
+      await manipularEmailAlerta(amb.deps, tarefaDe(apoio.id));
+      assert.equal(amb.email.enviados.length, antes, "a categoria Ordens de serviço está desligada");
+      assert.equal((await amb.db.select().from(alerta).where(eq(alerta.id, apoio.id)))[0]!.emailEnviadoEm, null);
+      const { a: bloqueio } = await cenarioDeBloqueio();
+      await manipularEmailAlerta(amb.deps, tarefaDe(bloqueio.id));
+      assert.equal(amb.email.enviados.length, antes + 1, "a segurança não desliga");
+    } finally {
+      await amb.db.update(usuario).set({ emailsDesligados: [] }).where(eq(usuario.id, supervisor.id));
+    }
+    // A segurança e a conta não entram na lista de desligadas nem pelo banco.
+    await assert.rejects(() => amb.db.update(usuario).set({ emailsDesligados: ["seguranca"] }).where(eq(usuario.id, supervisor.id)));
+
+    amb.email.configurado = false;
+    try {
+      const semServidor = await criarAlerta(amb, { osId: o.osId, destinatarioId: supervisor.id, tipo: "apoio_encerrado" });
+      await manipularEmailAlerta(amb.deps, tarefaDe(semServidor.id));
+      assert.equal(amb.email.enviados.length, antes + 1);
+      assert.equal((await amb.db.select().from(alerta).where(eq(alerta.id, semServidor.id)))[0]!.emailEnviadoEm, null, "sem servidor, o aviso não fica como enviado");
+    } finally {
+      amb.email.configurado = true;
+    }
+
+    const inativo = await amb.criarUsuario({ perfil: "tecnico", equipeId, ativo: false });
+    const paraInativo = await criarAlerta(amb, { osId: o.osId, destinatarioId: inativo.id, tipo: "apoio_encerrado" });
+    await manipularEmailAlerta(amb.deps, tarefaDe(paraInativo.id));
+    assert.equal(amb.email.enviados.length, antes + 1);
+
+    // O aviso apagado (o cadastro pendente cancelado) encerra a tarefa sem enviar; sem referência é erro.
+    await manipularEmailAlerta(amb.deps, tarefaDe(randomUUID()));
     await assert.rejects(() => manipularEmailAlerta(amb.deps, tarefaDe(null)), /referência/);
   });
 

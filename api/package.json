@@ -20,7 +20,8 @@
     "vitoria:bateria": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/conferir-vitoria-ia.ts",
     "treinamento:conferir-ia": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/conferir-rascunho-ia.ts",
     "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts",
-    "pdf:exemplo": "tsx scripts/gerar-pdf-os.ts"
+    "pdf:exemplo": "tsx scripts/gerar-pdf-os.ts",
+    "email:testar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/testar-email.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",

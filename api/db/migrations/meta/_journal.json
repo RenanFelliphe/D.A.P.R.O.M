@@ -218,6 +218,13 @@
       "when": 1792285644554,
       "tag": "0030_vitoria_estatistica",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1792288053801,
+      "tag": "0031_avisos_e_emails",
+      "breakpoints": true
     }
   ]
 }

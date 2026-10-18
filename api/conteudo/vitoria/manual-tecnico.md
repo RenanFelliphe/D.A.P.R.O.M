@@ -54,6 +54,11 @@
 - A troca de senha e de assinatura valem a partir do momento em que são salvas; execuções anteriores não mudam.
 - A assinatura é a primeira coisa a fazer depois do primeiro acesso e da liberação do admin: sem ela nenhuma outra
   tela abre. Ela valida o que você faz de importante no sistema (APR, encerramento, interrupção, ausência).
+- Os avisos chegam no sino, no topo da tela: a OS reservada para você (ou tirada de você), a ciência do supervisor na OS
+  que você executou, a sua ausência, o treinamento novo. Tocar no aviso leva à tela dele.
+- Em "E-mails", no perfil, você escolhe quais avisos também vão para o seu e-mail institucional, por assunto (OS,
+  ausências, equipe, treinamentos e o resumo diário). Os de segurança e os da sua conta sempre vão. Desligar um assunto
+  só tira o e-mail: o aviso continua no sino. [perfil]
 
 ## Minha equipe
 
@@ -64,6 +69,8 @@
   devolvê-la ao SAP; a assinatura da ciência vai para o PDF da OS.
 - O representante da equipe é quem assume as tarefas do supervisor quando ele está ausente ou fica alguns dias sem
   usar o sistema — a equipe continua funcionando normalmente nesse meio-tempo.
+- Na equipe sem supervisor (nenhum, ou um que foi desligado), o representante responde por ela até o administrador
+  escolher um: é para ele que vão os pedidos de ausência e os alertas da equipe.
 
 ## Busca
 

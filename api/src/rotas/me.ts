@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { CATEGORIAS_DE_EMAIL, ehCategoriaObrigatoria, ROTULO_DA_CATEGORIA } from "../../../shared/notificacoes/avisos";
 import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
 import { ESTADOS_TREINAMENTO, ausencia, equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
@@ -34,7 +35,8 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
       ? await deps.db
           .select({ id: equipe.id, nome: equipe.nome, supervisorNome: usuario.nome, desde: equipe.representacaoDesde, motivo: equipe.representacaoMotivo })
           .from(equipe)
-          .innerJoin(usuario, eq(usuario.id, equipe.supervisorId))
+          // A equipe sem supervisor também é representada: o nome do supervisor vem nulo.
+          .leftJoin(usuario, eq(usuario.id, equipe.supervisorId))
           .where(inArray(equipe.id, eu.equipesRepresentadas))
           .orderBy(equipe.nome)
       : [];
@@ -50,15 +52,20 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
         : null,
       equipe: e ? equipeParaApi(e) : null,
       equipesSupervisionadas: supervisionadas,
-      /** As equipes que a pessoa representa agora (o supervisor está ausente ou parado); cada uma já entra em `equipesSupervisionadas`. */
-      equipesRepresentadas: representadas.map((e) => ({
-        id: e.id,
-        nome: e.nome,
-        supervisorNome: e.supervisorNome,
-        desde: e.desde,
-        motivo: e.motivo ?? emVigor.find((v) => v.equipeId === e.id)?.motivo ?? null,
-        rotulo: rotuloDoMotivo(e.motivo ?? emVigor.find((v) => v.equipeId === e.id)?.motivo ?? "ausencia"),
-      })),
+      /** As equipes que a pessoa representa agora (o supervisor está ausente ou parado, ou a equipe está sem supervisor); cada uma já entra em `equipesSupervisionadas`. */
+      equipesRepresentadas: representadas.map((e) => {
+        const motivo = emVigor.find((v) => v.equipeId === e.id)?.motivo ?? e.motivo ?? null;
+        return {
+          id: e.id,
+          nome: e.nome,
+          supervisorNome: motivo === "sem_supervisor" ? null : e.supervisorNome,
+          desde: e.desde,
+          motivo,
+          rotulo: rotuloDoMotivo(motivo ?? "ausencia"),
+        };
+      }),
+      /** As categorias de e-mail desligadas no perfil e se o servidor de e-mail está configurado (sem ele, os avisos ficam só no sino). */
+      emails: { desligados: u!.emailsDesligados, servidorConfigurado: deps.email.configurado },
       /** A patente e os pontos da temporada para a barra superior; nulo para quem não joga (o admin). */
       gamificacao: await resumoParaMe(deps, eu),
     });
@@ -112,6 +119,21 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
     const { anonimo } = await lerCorpo(c, z.object({ anonimo: z.boolean() }));
     await deps.db.update(usuario).set({ rankingAnonimo: anonimo }).where(eq(usuario.id, eu.id));
     return responder(c, { rankingAnonimo: anonimo });
+  });
+
+  /**
+   * As categorias de e-mail que a pessoa não quer receber (`shared/notificacoes/avisos.ts`). As obrigatórias (segurança e conta)
+   * não desligam (`422 categoria_obrigatoria`). O aviso continua no sino. Também para quem aguarda a liberação e para o ausente:
+   * é uma preferência da própria pessoa, como a senha.
+   */
+  r.put("/me/emails", autenticar({ permitirPendente: true, permitirAusente: true }), async (c) => {
+    const eu = c.get("usuario");
+    const { desligados } = await lerCorpo(c, z.object({ desligados: z.array(z.enum(CATEGORIAS_DE_EMAIL)).max(CATEGORIAS_DE_EMAIL.length) }));
+    const obrigatoria = desligados.find((d) => ehCategoriaObrigatoria(d));
+    if (obrigatoria) throw invalido("categoria_obrigatoria", `Os e-mails de "${ROTULO_DA_CATEGORIA[obrigatoria]}" são obrigatórios e não podem ser desligados`);
+    const unicos = CATEGORIAS_DE_EMAIL.filter((c) => desligados.includes(c));
+    await deps.db.update(usuario).set({ emailsDesligados: unicos }).where(eq(usuario.id, eu.id));
+    return responder(c, { desligados: unicos });
   });
 
   /** Execuções do usuário ainda em andamento (`resultado` nulo), em qualquer OS: a tela de execução as usa para exigir a suspensão de uma esquecida de outro dia. */

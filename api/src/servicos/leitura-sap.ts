@@ -15,7 +15,7 @@ export interface ResultadoLeitura {
   criadas: number;
   atualizadas: number;
   ignoradas: DetalheIgnorada[];
-  /** Não ficam no banco: só no retorno (por exemplo, o intervalo entre ciclos que não foi reconhecido). */
+  /** O que entrou, mas merece atenção (por exemplo, o intervalo entre ciclos que não foi reconhecido); também fica na `importacao`. */
   avisos: AvisoOrdem[];
   /** Preenchido quando a leitura falhou; nesse caso nada foi gravado além da própria `importacao`. */
   erro: string | null;
@@ -116,7 +116,8 @@ export async function executarLeitura(deps: Deps, opcoes: { importacaoId?: strin
   try {
     const resultado = await deps.db.transaction(async (tx) => {
       const r = await processarOrdens(tx as unknown as Db, ordens.map((ordem) => ({ ordem })), { origem: "sap", agora: inicio });
-      const contagens = { criadas: r.criadas, atualizadas: r.atualizadas, ignoradas: r.ignoradas.length, detalheIgnoradas: r.ignoradas, erro: null };
+      // Os avisos (o que entrou, mas merece atenção) ficam na importação, para o cartão da tela do SAP e o histórico os mostrarem.
+      const contagens = { criadas: r.criadas, atualizadas: r.atualizadas, ignoradas: r.ignoradas.length, detalheIgnoradas: r.ignoradas, avisos: r.avisos.length, detalheAvisos: r.avisos.length ? r.avisos : null, erro: null };
       let importacaoId = opcoes.importacaoId;
       if (importacaoId) {
         await tx.update(importacao).set(contagens).where(eq(importacao.id, importacaoId));

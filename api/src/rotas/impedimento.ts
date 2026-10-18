@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { ALERTA_TIPOS } from "../db/schema";
+import { criarAviso } from "../dominio/alertas";
 import { registrarAuditoria, rotuloDaOs } from "../dominio/auditoria";
 import { listarAlertas, marcarComoLido } from "../dominio/impedimento-alertas";
 import { devolverOs, liberarReserva, reservarOs } from "../dominio/atribuicao-os";
@@ -71,9 +72,17 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ usuario_id: uuid }));
     const eu = c.get("usuario");
-    const { mudou, anteriorId, ...resultado } = await reservarOs(deps.db, eu, id, dados.usuario_id, deps.agora());
+    const agora = deps.agora();
+    const { mudou, anteriorId, ...resultado } = await reservarOs(deps.db, eu, id, dados.usuario_id, agora);
     if (mudou) {
       const rotulo = await rotuloDaOs(deps.db, id);
+      // Quem recebe a OS e quem a perdeu ficam sabendo (o supervisor que reserva para si mesmo não se avisa).
+      if (dados.usuario_id !== eu.id) {
+        await criarAviso(deps.db, [dados.usuario_id], { tipo: "os_reservada", osId: id, detalhe: `${eu.nome} reservou a ${rotulo} para você: só você inicia a APR e a execução dela.`, agora });
+      }
+      if (anteriorId && anteriorId !== eu.id) {
+        await criarAviso(deps.db, [anteriorId], { tipo: "os_reserva_desfeita", osId: id, detalhe: `${eu.nome} passou a ${rotulo}, que estava reservada para você, para ${resultado.responsavel.nome}.`, agora });
+      }
       await registrarAuditoria(deps.db, eu, {
         entidade: "os",
         verbo: "reservar",
@@ -92,6 +101,14 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     const eu = c.get("usuario");
     const { responsavelAnteriorId, ...resultado } = await liberarReserva(deps.db, eu, id);
     const rotulo = await rotuloDaOs(deps.db, id);
+    if (responsavelAnteriorId !== eu.id) {
+      await criarAviso(deps.db, [responsavelAnteriorId], {
+        tipo: "os_reserva_desfeita",
+        osId: id,
+        detalhe: `${eu.nome} liberou a ${rotulo}, que estava reservada para você, para a equipe toda.`,
+        agora: deps.agora(),
+      });
+    }
     await registrarAuditoria(deps.db, eu, {
       entidade: "os",
       verbo: "liberar_reserva",

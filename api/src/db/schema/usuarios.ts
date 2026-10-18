@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, pgTable, text, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, pgTable, text, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { CATEGORIAS_DE_EMAIL, ehCategoriaObrigatoria } from "../../../../shared/notificacoes/avisos";
 import { emLista, instante } from "./comum";
 
 /** Supervisor não é perfil: é quem consta em `equipe.supervisor_id` (todo supervisor é `tecnico`). */
@@ -22,10 +23,11 @@ export const SITUACOES_REGISTRO = ["ativo", "afastado", "desligado", "fora_do_re
 export type SituacaoRegistro = (typeof SITUACOES_REGISTRO)[number];
 
 /**
- * Por que o representante está no comando da equipe: o supervisor está ausente (ausência registrada, em curso ou vencida) ou
- * ficou `DIAS_SEM_ATIVIDADE` dias sem fazer nada no sistema (ver `dominio/representacao.ts`).
+ * Por que o representante está no comando da equipe: o supervisor está ausente (ausência registrada, em curso ou vencida),
+ * ficou `DIAS_SEM_ATIVIDADE` dias sem fazer nada no sistema ou a equipe está sem supervisor (nenhum, ou um desativado) (ver
+ * `dominio/representacao.ts`).
  */
-export const MOTIVOS_DA_REPRESENTACAO = ["ausencia", "inatividade"] as const;
+export const MOTIVOS_DA_REPRESENTACAO = ["ausencia", "inatividade", "sem_supervisor"] as const;
 export type MotivoDaRepresentacao = (typeof MOTIVOS_DA_REPRESENTACAO)[number];
 
 /** `equipe.supervisorId` e `usuario.equipeId` se referenciam; o Drizzle cria a segunda chave depois das duas tabelas. */
@@ -46,6 +48,11 @@ export const equipe = pgTable(
     /** Desde quando o representante está no comando; nulo enquanto o supervisor responde pela equipe. Gravado pela `api` para avisar uma vez só. */
     representacaoDesde: instante(),
     representacaoMotivo: text({ enum: MOTIVOS_DA_REPRESENTACAO }),
+    /**
+     * Desde quando os administradores sabem que a equipe está sem supervisor (aviso `equipe_sem_supervisor`, uma vez só); volta a
+     * nulo quando a equipe ganha um supervisor ativo.
+     */
+    semSupervisorAvisadoEm: instante(),
   },
   (t) => [
     check("equipe_representacao_completa", sql`(${t.representacaoDesde} is null) = (${t.representacaoMotivo} is null)`),
@@ -108,6 +115,13 @@ export const usuario = pgTable(
      * supervisor passa `DIAS_SEM_ATIVIDADE` dias sem nenhuma, o representante da equipe assume.
      */
     ultimaAtividadeEm: instante().notNull().defaultNow(),
+    /**
+     * As categorias de e-mail que a pessoa desligou no perfil (`shared/notificacoes/avisos.ts`); o aviso continua no sino. As
+     * obrigatórias (segurança e conta) não entram aqui.
+     */
+    emailsDesligados: text().array().notNull().default(sql`'{}'::text[]`),
+    /** O último dia (de São Paulo) em que o resumo diário por e-mail foi agendado para a pessoa: um por dia. */
+    resumoEmailDia: date({ mode: "string" }),
   },
   (t) => [
     check("usuario_perfil_check", emLista(t.perfil, PERFIS)),
@@ -116,6 +130,10 @@ export const usuario = pgTable(
     check("usuario_assinatura_completa", sql`(${t.assinaturaPath} is null) = (${t.assinaturaEm} is null)`),
     check("usuario_liberacao_check", emLista(t.liberacao, LIBERACOES)),
     check("usuario_situacao_registro_check", emLista(t.situacaoRegistro, SITUACOES_REGISTRO)),
+    check(
+      "usuario_emails_desligados_check",
+      sql`${t.emailsDesligados} <@ array[${sql.raw(CATEGORIAS_DE_EMAIL.filter((c) => !ehCategoriaObrigatoria(c)).map((c) => `'${c}'`).join(", "))}]::text[]`,
+    ),
     index("usuario_liberacao_pendente_idx").on(t.liberacao).where(sql`${t.liberacao} = 'pendente'`),
     index("usuario_equipe_idx").on(t.equipeId).where(sql`${t.ativo}`),
     index("usuario_perfil_idx").on(t.perfil).where(sql`${t.ativo}`),

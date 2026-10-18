@@ -18,7 +18,9 @@ import { contar, esquemaPaginacao, limiteEDeslocamento, meta } from "../http/pag
 import { responder } from "../http/resposta";
 import { booleanoDaConsulta, emailInstitucional, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
 import { assinaturaDoAto } from "../dominio/assinatura";
-import { garantirRepresentantes } from "../dominio/representacao";
+import { apagarAvisosDaConta, avisarAdmins, criarAviso, resolverAvisos } from "../dominio/alertas";
+import { atualizarSupervisaoDasEquipes } from "../dominio/representacao";
+import { avisarMembroDesativado } from "../dominio/rh";
 import { senhaNova } from "./auth";
 
 /** Identificação definitiva da pessoa na empresa; não é o login (o login é o e-mail institucional). */
@@ -109,8 +111,23 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       resumo: admin ? `Cadastrou o usuário ${nome} (${dados.perfil})` : `Cadastrou o técnico ${nome}, que aguarda a liberação`,
       detalhes: { matricula: funcionario.matricula, perfil: admin ? dados.perfil : "tecnico", equipe_id: equipeId },
     });
-    // A equipe que ainda não tinha quem represente o supervisor ganha o primeiro técnico liberado.
-    await garantirRepresentantes(deps.db);
+    // A equipe que ainda não tinha quem represente o supervisor ganha o primeiro técnico liberado (e, se está sem supervisor, ele assume).
+    await atualizarSupervisaoDasEquipes(deps.db, agora);
+    // A pessoa fica sabendo da conta (a senha provisória vem de quem a cadastrou); o cadastro do supervisor espera um admin liberar.
+    await criarAviso(deps.db, [conta.id], {
+      tipo: "conta_criada",
+      usuarioAlvoId: conta.id,
+      detalhe: `${eu.nome} criou a sua conta no SYNQ OS. Entre com o seu e-mail institucional (${email}) e a senha provisória que ${eu.nome} vai lhe passar; no primeiro acesso, você define a sua.${admin ? "" : " Até um administrador liberar o seu acesso, você pode fazer o Campo de treino."}`,
+      agora,
+    });
+    if (!admin) {
+      await avisarAdmins(deps.db, {
+        tipo: "cadastro_pendente",
+        usuarioAlvoId: conta.id,
+        detalhe: `${eu.nome} cadastrou o técnico ${nome} (matrícula ${funcionario.matricula})${equipeSugerida ? ` na equipe ${equipeSugerida.nome}` : ""}. O acesso aguarda a liberação de um administrador.`,
+        agora,
+      });
+    }
     return responder(c, { id: conta.id }, 201);
   });
 
@@ -162,12 +179,19 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       })
       .where(eq(usuario.id, id));
 
-    // Quem saiu da equipe, foi desativado ou mudou de perfil não pode continuar como representante: a equipe ganha outro.
-    await garantirRepresentantes(deps.db);
+    // Quem saiu da equipe, foi desativado ou mudou de perfil não pode continuar como representante: a equipe ganha outro. O
+    // supervisor desativado deixa a equipe sem supervisor (o representante assume e os administradores são avisados).
+    const agora = deps.agora();
+    await atualizarSupervisaoDasEquipes(deps.db, agora);
 
     // Desativar bloqueia a `api` na hora; o Supabase só é revogado depois que a fila offline pendente subir
     // (ver `POST /eventos`). Reativar desfaz uma revogação anterior.
-    if (reativando) await deps.auth.restaurar(id);
+    if (reativando) {
+      await deps.auth.restaurar(id);
+      await resolverAvisos(deps.db, { tipos: ["funcionario_readmitido"], usuarioAlvoId: id }, agora);
+      await criarAviso(deps.db, [id], { tipo: "acesso_liberado", usuarioAlvoId: id, detalhe: `${eu.nome} reativou a sua conta no SYNQ OS: você já pode entrar de novo.`, agora });
+    }
+    if (dados.ativo === false && atual.ativo) await avisarMembroDesativado(deps.db, atual, `desativada por ${eu.nome}`, agora);
 
     const mudancas = diferencas(
       { perfil: atual.perfil, equipe_id: atual.equipeId, ativo: atual.ativo },
@@ -199,7 +223,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     if (!alvo) throw naoEncontrado("Usuário não encontrado");
     const funcionario = await consultarFuncionario(deps, alvo.matricula);
     const resultado = await aplicarConferencia(deps, alvo, funcionario, eu);
-    return responder(c, { situacaoRegistro: resultado.situacao, atualizado: resultado.atualizado, desativado: resultado.desativado, recusado: resultado.recusado });
+    return responder(c, { situacaoRegistro: resultado.situacao, atualizado: resultado.atualizado, desativado: resultado.desativado, recusado: resultado.recusado, readmitido: resultado.readmitido });
   });
 
   /**
@@ -217,9 +241,11 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     if (eu.perfil !== "admin" && !pendenteDoSupervisor(eu, alvo)) throw proibido("Você só cancela o cadastro do técnico que criou e que ainda aguarda a liberação");
 
     try {
-      // Os pontos e as conquistas (a assinatura e o treino pontuam já no cadastro) somem com a pessoa; o histórico de campo a protege.
+      // Os pontos e as conquistas (a assinatura e o treino pontuam já no cadastro) somem com a pessoa, como os avisos da conta
+      // (conta criada, cadastro aguardando liberação); o histórico de campo a protege.
       await deps.db.transaction(async (tx) => {
         await apagarGamificacaoDaPessoa(tx as unknown as Db, id);
+        await apagarAvisosDaConta(tx as unknown as Db, id);
         await tx.delete(usuario).where(eq(usuario.id, id));
       });
     } catch (erro) {
@@ -235,8 +261,12 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
 
   /** Só quem está `pendente` é liberado ou recusado: o `update` já filtra, e é 409 se o usuário existe em outro estado. */
   async function decidirPendente(id: string, valores: Partial<typeof usuario.$inferInsert>) {
-    const [u] = await deps.db.update(usuario).set(valores).where(and(eq(usuario.id, id), eq(usuario.liberacao, "pendente"))).returning({ id: usuario.id, nome: usuario.nome });
-    if (u) return u.nome;
+    const [u] = await deps.db
+      .update(usuario)
+      .set(valores)
+      .where(and(eq(usuario.id, id), eq(usuario.liberacao, "pendente")))
+      .returning({ id: usuario.id, nome: usuario.nome, criadoPorId: usuario.criadoPorId });
+    if (u) return u;
     const [existe] = await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.id, id));
     if (!existe) throw naoEncontrado("Usuário não encontrado");
     throw conflito("nao_pendente", "Este usuário não está aguardando liberação");
@@ -245,8 +275,14 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
   r.post("/usuarios/:id/liberar", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const eu = c.get("usuario");
-    const nome = await decidirPendente(id, { liberacao: "liberado", liberadoPorId: eu.id, liberadoEm: deps.agora(), liberacaoAssinaturaPath: assinaturaDoAto(eu) });
-    await garantirRepresentantes(deps.db);
+    const agora = deps.agora();
+    const { nome, criadoPorId } = await decidirPendente(id, { liberacao: "liberado", liberadoPorId: eu.id, liberadoEm: agora, liberacaoAssinaturaPath: assinaturaDoAto(eu) });
+    await atualizarSupervisaoDasEquipes(deps.db, agora);
+    await resolverAvisos(deps.db, { tipos: ["cadastro_pendente"], usuarioAlvoId: id }, agora);
+    await criarAviso(deps.db, [id], { tipo: "acesso_liberado", usuarioAlvoId: id, detalhe: `${eu.nome} liberou o seu acesso ao SYNQ OS. No próximo acesso, cadastre a sua assinatura: é a primeira coisa que o sistema pede.`, agora });
+    if (criadoPorId && criadoPorId !== eu.id) {
+      await criarAviso(deps.db, [criadoPorId], { tipo: "cadastro_liberado", usuarioAlvoId: id, detalhe: `${eu.nome} liberou o acesso de ${nome}, que você cadastrou.`, agora });
+    }
     await registrarAuditoria(deps.db, eu, { entidade: "usuario", verbo: "liberar", entidadeId: id, alvo: nome, resumo: `Liberou o acesso de ${nome}` });
     return responder(c, {});
   });
@@ -254,8 +290,15 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
   r.post("/usuarios/:id/recusar", autenticar(), exigirPerfil("admin"), async (c) => {
     const id = lerId(c);
     const { motivo } = await lerCorpo(c, z.object({ motivo: textoObrigatorio }));
-    const nome = await decidirPendente(id, { liberacao: "recusado", ativo: false, recusaMotivo: motivo, liberacaoAssinaturaPath: assinaturaDoAto(c.get("usuario")) });
+    const eu = c.get("usuario");
+    const agora = deps.agora();
+    const { nome, criadoPorId } = await decidirPendente(id, { liberacao: "recusado", ativo: false, recusaMotivo: motivo, liberacaoAssinaturaPath: assinaturaDoAto(eu) });
     await deps.auth.revogar(id);
+    await resolverAvisos(deps.db, { tipos: ["cadastro_pendente"], usuarioAlvoId: id }, agora);
+    await criarAviso(deps.db, [id], { tipo: "acesso_recusado", usuarioAlvoId: id, detalhe: `O seu acesso ao SYNQ OS foi recusado por ${eu.nome}. Motivo: ${motivo}`, agora });
+    if (criadoPorId && criadoPorId !== eu.id) {
+      await criarAviso(deps.db, [criadoPorId], { tipo: "cadastro_recusado", usuarioAlvoId: id, detalhe: `${eu.nome} recusou o acesso de ${nome}, que você cadastrou. Motivo: ${motivo}`, agora });
+    }
     await registrarAuditoria(deps.db, c.get("usuario"), { entidade: "usuario", verbo: "recusar", entidadeId: id, alvo: nome, resumo: `Recusou o acesso de ${nome}`, detalhes: { motivo } });
     return responder(c, {});
   });
@@ -267,7 +310,17 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     const senha = gerarSenhaInicial();
     await deps.auth.definirSenha(id, senha);
     await deps.db.update(usuario).set({ senhaProvisoria: true }).where(eq(usuario.id, id));
-    await registrarAuditoria(deps.db, c.get("usuario"), { entidade: "usuario", verbo: "redefinir_senha", entidadeId: id, alvo: u.nome, resumo: `Redefiniu a senha de ${u.nome}` });
+    const eu = c.get("usuario");
+    // A pessoa fica sabendo (a senha nunca vai no aviso): se ela não pediu, é com o administrador que fala.
+    if (id !== eu.id) {
+      await criarAviso(deps.db, [id], {
+        tipo: "senha_redefinida",
+        usuarioAlvoId: id,
+        detalhe: `${eu.nome} redefiniu a sua senha do SYNQ OS. Peça a nova senha provisória a ${eu.nome}; no próximo acesso, você define a sua. Se você não pediu, avise o administrador.`,
+        agora: deps.agora(),
+      });
+    }
+    await registrarAuditoria(deps.db, eu, { entidade: "usuario", verbo: "redefinir_senha", entidadeId: id, alvo: u.nome, resumo: `Redefiniu a senha de ${u.nome}` });
     return responder(c, { senhaInicial: senha });
   });
 

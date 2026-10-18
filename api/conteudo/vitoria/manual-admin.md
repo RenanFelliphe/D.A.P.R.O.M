@@ -41,6 +41,13 @@
 ## Alertas
 
 - Os alertas avisam sobre bloqueios de APR e outras pendências que precisam de atenção. [alertas]
+- Para o admin chegam também: cadastro feito por um supervisor aguardando a liberação, funcionário readmitido no
+  registro (com o botão "Reativar a conta" no próprio aviso: o sistema nunca devolve o acesso sozinho), equipe sem
+  supervisor (o representante responde por ela até você escolher um), falha na leitura do SAP ou do registro de
+  funcionários, PDF de OS que não saiu e a Vitória respondendo sem IA. [alertas]
+- Cada aviso também vai por e-mail, conforme o que cada pessoa deixou ligado em "E-mails", no perfil; os de segurança
+  e os da conta sempre vão. De manhã sai um resumo diário com o que espera por cada um. Sem o servidor de e-mail
+  configurado (`SMTP_URL`), os avisos ficam só no sino. [perfil]
 
 ## Catálogo de serviços e materiais
 

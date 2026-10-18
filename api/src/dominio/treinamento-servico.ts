@@ -16,6 +16,7 @@ import { contar } from "../http/paginacao";
 import { validar } from "../http/validacao";
 import type { ContextoDePontos, Ganho } from "./lancamentos";
 import { pontuarTreinamentoServico } from "./pontuacao";
+import { avisarAdmins, criarAviso } from "./alertas";
 import { pendenciasAbertas, type PendenciaAberta } from "../../../shared/treinamento-servico/ia";
 import {
   esquemaFases,
@@ -627,4 +628,40 @@ export async function marcarReporteTratado(db: Db, id: string, usuarioId: string
     .where(eq(treinamentoServicoReporte.id, id))
     .returning();
   return salvo!;
+}
+
+// ---- Avisos -------------------------------------------------------------------------------------------------------
+
+/** A descrição do serviço no catálogo, para as frases dos avisos ("8.7.1 · Inspeção de ERP"). */
+async function nomeDoServico(db: Db, atividadeCodigo: string): Promise<string> {
+  const [a] = await db.select({ descricao: atividade.descricao }).from(atividade).where(eq(atividade.codigo, atividadeCodigo));
+  return a ? `${atividadeCodigo} · ${a.descricao}` : atividadeCodigo;
+}
+
+/**
+ * A primeira publicação do treinamento de um serviço avisa os técnicos (inclusive os que aguardam a liberação, que também jogam):
+ * no sino e, para quem não desligou, por e-mail. As versões seguintes não avisam de novo.
+ */
+export async function avisarTreinamentoPublicado(db: Db, atividadeCodigo: string, agora: Date): Promise<void> {
+  const treinamento = await treinamentoDoCodigo(db, atividadeCodigo);
+  if (!treinamento) return;
+  const tecnicos = await db
+    .select({ id: usuario.id })
+    .from(usuario)
+    .where(and(eq(usuario.perfil, "tecnico"), eq(usuario.ativo, true), inArray(usuario.liberacao, ["liberado", "pendente"])));
+  const servico = await nomeDoServico(db, atividadeCodigo);
+  await criarAviso(
+    db,
+    tecnicos.map((t) => t.id),
+    { tipo: "treinamento_publicado", treinamentoId: treinamento.id, detalhe: `Novo treinamento de serviço: ${servico}. A Vitória explica o serviço e depois vem o jogo, que vale pontos.`, agora },
+  );
+}
+
+/** O técnico reportou um problema num treinamento: os administradores ficam sabendo, com o texto e a fase. */
+export async function avisarProblemaReportado(db: Db, atividadeCodigo: string, dados: { quem: string; fase: number | null; texto: string }, agora: Date): Promise<void> {
+  const treinamento = await treinamentoDoCodigo(db, atividadeCodigo);
+  if (!treinamento) return;
+  const servico = await nomeDoServico(db, atividadeCodigo);
+  const onde = dados.fase === null ? "no treinamento" : `na fase ${dados.fase + 1} do treinamento`;
+  await avisarAdmins(db, { tipo: "treinamento_problema", treinamentoId: treinamento.id, detalhe: `${dados.quem} reportou um problema ${onde} de ${servico}: "${dados.texto.trim()}"`, agora });
 }

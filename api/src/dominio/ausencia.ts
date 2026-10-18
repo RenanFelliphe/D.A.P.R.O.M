@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { alerta, ausencia, ausenciaAto, equipe, execucao, execucaoPausa, os, usuario, type AlertaTipo, type AusenciaAto } from "../db/schema";
-import { destinatariosDaEquipe } from "./alertas";
+import { ausencia, ausenciaAto, equipe, execucao, execucaoPausa, os, usuario, type AlertaTipo, type AusenciaAto } from "../db/schema";
+import { criarAviso, destinatariosDaEquipe } from "./alertas";
 import { registrarAuditoria } from "./auditoria";
 import { recalcularStatusOs } from "./status-os";
 import { dataBr, diaDe, inicioDoDia } from "./tempo";
@@ -88,19 +88,15 @@ export async function gravarAto(
   });
 }
 
-/** Cria o aviso do sino de uma ausência, um por destinatário (sem repetir a pessoa). Quem chama passa a própria transação. */
+/** Cria o aviso de uma ausência, um por destinatário (sem repetir a pessoa), no sino e por e-mail. Quem chama passa a própria transação. */
 export async function avisarAusencia(
   db: Db,
   dados: { tipo: AlertaTipo; ausenciaId: string; usuarioAlvoId: string; destinatarios: string[]; detalhe: string; agora: Date },
 ): Promise<void> {
-  for (const destinatarioId of new Set(dados.destinatarios)) {
-    await db
-      .insert(alerta)
-      .values({ tipo: dados.tipo, ausenciaId: dados.ausenciaId, usuarioAlvoId: dados.usuarioAlvoId, destinatarioId, detalhe: dados.detalhe, criadoEm: dados.agora });
-  }
+  await criarAviso(db, dados.destinatarios, { tipo: dados.tipo, ausenciaId: dados.ausenciaId, usuarioAlvoId: dados.usuarioAlvoId, detalhe: dados.detalhe, agora: dados.agora });
 }
 
-/** Quem responde pela equipe: o supervisor ativo dela; sem supervisor, os administradores (mesma regra dos demais alertas da equipe). */
+/** Quem responde pela equipe: o supervisor ativo dela, o representante no comando (também na equipe sem supervisor) e, sem ninguém, os administradores (mesma regra dos demais alertas da equipe). */
 export async function destinatariosDoSupervisor(db: Db, equipeId: string): Promise<string[]> {
   return (await destinatariosDaEquipe(db, equipeId)).map((d) => d.id);
 }

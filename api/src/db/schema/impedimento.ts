@@ -1,52 +1,56 @@
-import { sql } from "drizzle-orm";
-import { check, date, index, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { sql, type SQL } from "drizzle-orm";
+import { check, date, index, pgTable, text, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { ALVO_DO_AVISO, ALVOS_DE_AVISO, AVISOS_DE_AUSENCIA, AVISOS_DE_REPRESENTACAO, TIPOS_DE_AVISO, type AlvoDeAviso, type TipoDeAviso } from "../../../../shared/notificacoes/avisos";
 import { emLista, instante } from "./comum";
 import { planoPreventiva } from "./preventivas";
+import { leituraRh } from "./rh";
 import { importacao, os } from "./sap";
+import { treinamentoServico } from "./treinamento-servico";
 import { equipe, usuario } from "./usuarios";
 import { ausencia } from "./ausencia";
 
-/** Os avisos da ausência de um usuário: apontam para a ausência, não para uma OS. */
-export const ALERTA_TIPOS_DE_AUSENCIA = [
-  "ausencia_pedida",
-  "ausencia_aprovada",
-  "ausencia_recusada",
-  "ausencia_registrada",
-  "ausencia_fim_pedido",
-  "ausencia_fim_respondido",
-  "ausencia_alterada",
-  "ausencia_vencida",
-  "ausencia_cancelada",
-] as const;
+/** Os tipos de aviso (o sino) ficam em `shared/notificacoes/avisos.ts`, com o alvo e a categoria de e-mail de cada um. */
+export const ALERTA_TIPOS = TIPOS_DE_AVISO;
+export type AlertaTipo = TipoDeAviso;
+export { AVISOS_DE_AUSENCIA as ALERTA_TIPOS_DE_AUSENCIA, AVISOS_DE_REPRESENTACAO as ALERTA_TIPOS_DE_REPRESENTACAO };
 
-/** Os avisos de que o representante assumiu a equipe ou de que o supervisor voltou: apontam para a equipe. */
-export const ALERTA_TIPOS_DE_REPRESENTACAO = ["representacao_iniciada", "representacao_encerrada"] as const;
+/** As colunas que cada alvo exige; as demais colunas de alvo ficam nulas (`CHECK` `alerta_alvo`). */
+const COLUNAS_DO_ALVO: Record<AlvoDeAviso, readonly string[]> = {
+  os: ["osId"],
+  importacao: ["importacaoId"],
+  ausencia: ["ausenciaId", "usuarioAlvoId"],
+  equipe: ["equipeId"],
+  usuario: ["usuarioAlvoId"],
+  leitura_rh: ["leituraRhId"],
+  treinamento: ["treinamentoId"],
+  nenhum: [],
+};
 
-export const ALERTA_TIPOS = [
-  "bloqueio",
-  "conflito_planejamento",
-  "execucao_duplicada",
-  "apoio_encerrado",
-  "falha_importacao",
-  "preventiva_proxima",
-  "preventiva_vencida",
-  "inspecao_com_pendencia",
-  ...ALERTA_TIPOS_DE_AUSENCIA,
-  ...ALERTA_TIPOS_DE_REPRESENTACAO,
-] as const;
-export type AlertaTipo = (typeof ALERTA_TIPOS)[number];
+/** Cada tipo de aviso aponta exatamente para o seu alvo: `(tipo in (...) and <colunas do alvo> is not null and <as outras> is null) or ...`. */
+function alvoCoerente(colunas: Record<string, AnyPgColumn>, tipo: AnyPgColumn): SQL {
+  const grupos = ALVOS_DE_AVISO.flatMap((alvo) => {
+    const tipos = TIPOS_DE_AVISO.filter((t) => ALVO_DO_AVISO[t] === alvo);
+    if (tipos.length === 0) return [];
+    const exigidas = COLUNAS_DO_ALVO[alvo];
+    const partes = Object.entries(colunas).map(([nome, coluna]) => (exigidas.includes(nome) ? sql`${coluna} is not null` : sql`${coluna} is null`));
+    return [sql`(${emLista(tipo, tipos)} and ${sql.join(partes, sql.raw(" and "))})`];
+  });
+  return sql.join(grupos, sql.raw(" or "));
+}
 
 /**
- * Aviso no sino do painel. Os alertas de OS (impedimento, conflito, execução duplicada, apoio encerrado) apontam para a OS;
- * a falha de importação (sincronização ou planilha) aponta para o registro da importação que falhou, e não tem OS. Os do ciclo
- * das preventivas (próximo ou vencido) apontam para o plano e para a última OS dele.
+ * Aviso no sino. Cada tipo aponta para um alvo (`ALVO_DO_AVISO`): a OS (impedimento, conflito, execução duplicada, apoio
+ * encerrado, reserva, ciência, ciclo das preventivas, com o plano), a importação que falhou, a ausência e a pessoa dela, a
+ * equipe (representação, equipe sem supervisor), a conta de uma pessoa (cadastro, acesso, desligamento, readmissão), a leitura
+ * do registro de funcionários que falhou, o treinamento de serviço ou nada (a Vitória sem IA). Quando o tipo tem categoria de
+ * e-mail, o aviso também sai por e-mail (`email_enviado_em`).
  */
 export const alerta = pgTable(
   "alerta",
   {
     id: uuid().primaryKey().defaultRandom(),
     tipo: text({ enum: ALERTA_TIPOS }).notNull(),
-    /** Obrigatória em todo alerta, menos na falha de importação. */
+    /** Nos avisos de OS. */
     osId: uuid().references(() => os.id),
     /** Só na falha de importação. */
     importacaoId: uuid().references(() => importacao.id),
@@ -54,11 +58,15 @@ export const alerta = pgTable(
     planoPreventivaId: uuid().references(() => planoPreventiva.id),
     /** Só nos alertas da ausência de um usuário (`ausencia_*`). */
     ausenciaId: uuid().references(() => ausencia.id),
-    /** A pessoa da ausência, nos mesmos alertas. */
+    /** A pessoa da ausência, nos alertas da ausência; a conta de quem se fala, nos avisos de conta (`conta_criada`, `membro_desativado` etc.). */
     usuarioAlvoId: uuid().references(() => usuario.id),
-    /** Só nos alertas da representação da equipe (`representacao_*`). */
+    /** Nos avisos da equipe (`representacao_*`, `equipe_sem_supervisor`). */
     equipeId: uuid().references(() => equipe.id),
-    /** Alerta de OS: supervisor da equipe; sem supervisor, um alerta por administrador ativo. Falha de importação: ver `dominio/alertas.ts`. */
+    /** Só na falha da leitura do registro de funcionários (`rh_leitura_falhou`). */
+    leituraRhId: uuid().references(() => leituraRh.id),
+    /** Só nos avisos do treinamento de serviço (`treinamento_*`). */
+    treinamentoId: uuid().references(() => treinamentoServico.id),
+    /** Quem recebe: ver `dominio/alertas.ts` (o supervisor da equipe, o representante no comando, os administradores, a própria pessoa). */
     destinatarioId: uuid()
       .notNull()
       .references(() => usuario.id),
@@ -71,9 +79,11 @@ export const alerta = pgTable(
     check("alerta_tipo_check", emLista(t.tipo, ALERTA_TIPOS)),
     check(
       "alerta_alvo",
-      sql`(${t.tipo} = 'falha_importacao' and ${t.importacaoId} is not null and ${t.osId} is null and ${t.ausenciaId} is null and ${t.equipeId} is null) or (${emLista(t.tipo, ALERTA_TIPOS_DE_AUSENCIA)} and ${t.ausenciaId} is not null and ${t.osId} is null and ${t.importacaoId} is null and ${t.equipeId} is null) or (${emLista(t.tipo, ALERTA_TIPOS_DE_REPRESENTACAO)} and ${t.equipeId} is not null and ${t.osId} is null and ${t.importacaoId} is null and ${t.ausenciaId} is null) or (${t.tipo} <> 'falha_importacao' and not ${emLista(t.tipo, ALERTA_TIPOS_DE_AUSENCIA)} and not ${emLista(t.tipo, ALERTA_TIPOS_DE_REPRESENTACAO)} and ${t.osId} is not null and ${t.importacaoId} is null and ${t.ausenciaId} is null and ${t.equipeId} is null)`,
+      alvoCoerente(
+        { osId: t.osId, importacaoId: t.importacaoId, ausenciaId: t.ausenciaId, usuarioAlvoId: t.usuarioAlvoId, equipeId: t.equipeId, leituraRhId: t.leituraRhId, treinamentoId: t.treinamentoId },
+        t.tipo,
+      ),
     ),
-    check("alerta_alvo_da_ausencia", sql`(${t.ausenciaId} is null) = (${t.usuarioAlvoId} is null)`),
     check(
       "alerta_plano_so_na_preventiva",
       sql`(${t.tipo} in ('preventiva_proxima', 'preventiva_vencida')) = (${t.planoPreventivaId} is not null)`,
@@ -83,6 +93,7 @@ export const alerta = pgTable(
     index("alerta_os_idx").on(t.osId),
     index("alerta_ausencia_idx").on(t.ausenciaId).where(sql`${t.ausenciaId} is not null`),
     index("alerta_plano_idx").on(t.planoPreventivaId).where(sql`${t.planoPreventivaId} is not null`),
+    index("alerta_usuario_alvo_idx").on(t.usuarioAlvoId).where(sql`${t.usuarioAlvoId} is not null`),
   ],
 ).enableRLS();
 

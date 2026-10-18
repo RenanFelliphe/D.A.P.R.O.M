@@ -7,7 +7,8 @@ import { registrarAuditoria, rotuloDaOs } from "../dominio/auditoria";
 import { dashboardDeEquipes, dashboardDeOs, dashboardGeral } from "../dominio/dashboards";
 import { exportarParaSap, MENSAGEM_SEM_NOVAS, nomeDoArquivo, TIPO_XLSX } from "../dominio/painel-exportacao";
 import { equipeDoIndicador, historicoDoLocal, indicadoresDeTempo, indicadoresMensais } from "../dominio/painel-indicadores";
-import { darCiencia, detalharOs, listarAprsDaOs, listarOs } from "../dominio/painel-os";
+import { darCiencia, detalharOs, executoresDaOs, listarAprsDaOs, listarOs } from "../dominio/painel-os";
+import { criarAviso } from "../dominio/alertas";
 import { meusResultados } from "../dominio/meus-resultados";
 import { escolhaDoModelo } from "../dominio/recomendacao-apr";
 import { esquemaPeriodo } from "../dominio/periodo";
@@ -61,8 +62,16 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
   r.post("/os/:id/ciencia", autenticar(), exigirPerfil("supervisor"), async (c) => {
     const eu = c.get("usuario");
     const id = lerId(c);
-    const resultado = await darCiencia(deps.db, eu, id, deps.agora());
+    const agora = deps.agora();
+    const resultado = await darCiencia(deps.db, eu, id, agora);
     const rotulo = await rotuloDaOs(deps.db, id);
+    // Quem executou a OS fica sabendo que o supervisor deu a ciência (o trabalho dele foi conferido e o PDF sai de novo, com ela).
+    const executores = await executoresDaOs(deps.db, id);
+    await criarAviso(
+      deps.db,
+      executores.filter((x) => x !== eu.id),
+      { tipo: "os_ciencia", osId: id, detalhe: `${eu.nome} deu a ciência da ${rotulo}, que você executou. O PDF da OS sai de novo, agora com a ciência.`, agora },
+    );
     await registrarAuditoria(deps.db, eu, { entidade: "os", verbo: "ciencia", entidadeId: id, alvo: rotulo, resumo: `Deu ciência da ${rotulo}` });
     return responder(c, resultado);
   });

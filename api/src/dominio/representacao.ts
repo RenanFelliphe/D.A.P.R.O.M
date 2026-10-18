@@ -1,7 +1,8 @@
-import { and, asc, eq, inArray, isNotNull, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
-import { alerta, ausencia, equipe, usuario, type MotivoDaRepresentacao } from "../db/schema";
+import { ausencia, equipe, usuario, type MotivoDaRepresentacao } from "../db/schema";
+import { avisarAdmins, criarAviso, resolverAvisos } from "./alertas";
 import { registrarAuditoria } from "./auditoria";
 import { dataBr, diaDe } from "./tempo";
 
@@ -9,13 +10,15 @@ import { dataBr, diaDe } from "./tempo";
  * O representante da equipe: um membro dela que substitui o supervisor quando ele não está. Toda equipe com gente tem um
  * (a `api` escolhe quando falta) para não faltar quem responda se o supervisor sumir de repente.
  *
- * O representante assume **sozinho**, sem o supervisor designar ninguém na hora, por dois motivos:
+ * O representante assume **sozinho**, sem o supervisor designar ninguém na hora, por três motivos:
+ * - `sem_supervisor`: a equipe não tem supervisor, ou o dela foi desativado (desligado no registro de funcionários, por exemplo);
+ *   os administradores recebem o aviso `equipe_sem_supervisor` para escolher um;
  * - `ausencia`: o supervisor tem uma ausência registrada, em curso ou vencida (a mesma que o deixa só em consulta);
  * - `inatividade`: o supervisor passou `DIAS_SEM_ATIVIDADE` dias sem usar o sistema, sem ter registrado ausência.
  *
  * Enquanto está no comando, o representante tem as ações de supervisão da equipe (`UsuarioAutenticado.equipesSupervisionadas`),
  * menos as que só o titular faz (registrar a própria ausência e a ausência do supervisor). Ele volta a ser só técnico no instante
- * em que o supervisor confirma o retorno, encerra a ausência ou volta a usar o sistema.
+ * em que o supervisor confirma o retorno, encerra a ausência ou volta a usar o sistema, ou em que a equipe ganha um supervisor.
  */
 export const DIAS_SEM_ATIVIDADE = 3;
 
@@ -27,12 +30,17 @@ const DIA_MS = 86_400_000;
 export interface RepresentacaoEmVigor {
   equipeId: string;
   representanteId: string;
-  supervisorId: string;
+  /** Nulo na equipe sem supervisor. */
+  supervisorId: string | null;
   motivo: MotivoDaRepresentacao;
 }
 
-/** O motivo de o representante estar no comando agora, ou `null` quando o supervisor responde pela equipe. */
-export function motivoDaRepresentacao(supervisor: { ausente: boolean; ultimaAtividadeEm: Date }, agora: Date): MotivoDaRepresentacao | null {
+/**
+ * O motivo de o representante estar no comando agora, ou `null` quando o supervisor responde pela equipe. `supervisor` nulo é a
+ * equipe sem supervisor que responda (nenhum, ou um desativado).
+ */
+export function motivoDaRepresentacao(supervisor: { ausente: boolean; ultimaAtividadeEm: Date } | null, agora: Date): MotivoDaRepresentacao | null {
+  if (!supervisor) return "sem_supervisor";
   if (supervisor.ausente) return "ausencia";
   return agora.getTime() - supervisor.ultimaAtividadeEm.getTime() >= DIAS_SEM_ATIVIDADE * DIA_MS ? "inatividade" : null;
 }
@@ -52,11 +60,12 @@ export async function representacoesEmVigor(
       equipeId: equipe.id,
       representanteId: representante.id,
       supervisorId: supervisor.id,
+      supervisorValido: sql<boolean>`coalesce(${supervisor.ativo} and ${supervisor.liberacao} = 'liberado', false)`,
       ultimaAtividadeEm: supervisor.ultimaAtividadeEm,
       ausente: sql<boolean>`exists (select 1 from ${ausencia} where ${ausencia.usuarioId} = ${supervisor.id} and ${ausencia.estado} = 'confirmada' and ${ausencia.inicio} <= ${hoje})`,
     })
     .from(equipe)
-    .innerJoin(supervisor, eq(supervisor.id, equipe.supervisorId))
+    .leftJoin(supervisor, eq(supervisor.id, equipe.supervisorId))
     .innerJoin(representante, eq(representante.id, equipe.representanteId))
     .where(
       and(
@@ -68,8 +77,8 @@ export async function representacoesEmVigor(
     );
   const vigor: RepresentacaoEmVigor[] = [];
   for (const l of linhas) {
-    const motivo = motivoDaRepresentacao(l, agora);
-    if (motivo) vigor.push({ equipeId: l.equipeId, representanteId: l.representanteId, supervisorId: l.supervisorId, motivo });
+    const motivo = motivoDaRepresentacao(l.supervisorValido && l.ultimaAtividadeEm ? { ausente: l.ausente, ultimaAtividadeEm: l.ultimaAtividadeEm } : null, agora);
+    if (motivo) vigor.push({ equipeId: l.equipeId, representanteId: l.representanteId, supervisorId: l.supervisorValido ? l.supervisorId : null, motivo });
   }
   return vigor;
 }
@@ -123,13 +132,17 @@ export async function garantirRepresentantes(db: Db, equipeIds?: string[]): Prom
 
 const SISTEMA = { id: null, nome: "Sistema" } as const;
 
-/** O motivo, na frase de quem fala do supervisor: "Fulano está ausente" / "Fulano ficou 3 dias sem usar o sistema". */
+/** O motivo, na frase de quem fala do supervisor: "Fulano está ausente" / "Fulano ficou 3 dias sem usar o sistema" / "a equipe está sem supervisor". */
 const frase = (motivo: MotivoDaRepresentacao, supervisor: string) =>
-  motivo === "ausencia" ? `${supervisor} está ausente` : `${supervisor} ficou ${DIAS_SEM_ATIVIDADE} dias sem usar o sistema`;
+  motivo === "sem_supervisor"
+    ? "a equipe está sem supervisor"
+    : motivo === "ausencia"
+      ? `${supervisor} está ausente`
+      : `${supervisor} ficou ${DIAS_SEM_ATIVIDADE} dias sem usar o sistema`;
 
 async function avisar(db: Db, dados: { tipo: "representacao_iniciada" | "representacao_encerrada"; equipeId: string; destinatario: string | null; detalhe: string; agora: Date }) {
   if (!dados.destinatario) return;
-  await db.insert(alerta).values({ tipo: dados.tipo, equipeId: dados.equipeId, destinatarioId: dados.destinatario, detalhe: dados.detalhe, criadoEm: dados.agora });
+  await criarAviso(db, [dados.destinatario], { tipo: dados.tipo, equipeId: dados.equipeId, detalhe: dados.detalhe, agora: dados.agora });
 }
 
 const nomeDe = async (db: Db, usuarioId: string | null) =>
@@ -161,20 +174,26 @@ export async function sincronizarRepresentacao(db: Db, agora: Date, equipeIds?: 
         await tx.update(equipe).set({ representacaoDesde: agora, representacaoMotivo: v.motivo }).where(eq(equipe.id, id));
         const supervisor = await nomeDe(tx, v.supervisorId);
         const representante = await nomeDe(tx, v.representanteId);
+        const semSupervisor = v.motivo === "sem_supervisor";
         await avisar(tx, {
           tipo: "representacao_iniciada",
           equipeId: id,
           destinatario: v.representanteId,
-          detalhe: `Você assumiu a supervisão da equipe ${e.nome}: ${frase(v.motivo, supervisor)}. Até ele voltar, você faz o que o supervisor faz pela equipe.`,
+          detalhe: semSupervisor
+            ? `Você assumiu a supervisão da equipe ${e.nome}: a equipe está sem supervisor. Até o administrador escolher um, você faz o que o supervisor faz pela equipe.`
+            : `Você assumiu a supervisão da equipe ${e.nome}: ${frase(v.motivo, supervisor)}. Até ele voltar, você faz o que o supervisor faz pela equipe.`,
           agora,
         });
-        await avisar(tx, {
-          tipo: "representacao_iniciada",
-          equipeId: id,
-          destinatario: v.supervisorId,
-          detalhe: `${representante} assumiu a supervisão da equipe ${e.nome} (${frase(v.motivo, "você")}) e devolve a equipe quando você voltar.`,
-          agora,
-        });
+        // Na equipe sem supervisor não há a quem avisar: os administradores recebem `equipe_sem_supervisor` (`avisarEquipesSemSupervisor`).
+        if (!semSupervisor) {
+          await avisar(tx, {
+            tipo: "representacao_iniciada",
+            equipeId: id,
+            destinatario: v.supervisorId,
+            detalhe: `${representante} assumiu a supervisão da equipe ${e.nome} (${frase(v.motivo, "você")}) e devolve a equipe quando você voltar.`,
+            agora,
+          });
+        }
         return { tipo: "iniciada" as const, equipe: e.nome, supervisor, representante, motivo: v.motivo };
       }
       if (v && e.representacaoMotivo !== v.motivo) {
@@ -186,18 +205,24 @@ export async function sincronizarRepresentacao(db: Db, agora: Date, equipeIds?: 
         await tx.update(equipe).set({ representacaoDesde: null, representacaoMotivo: null }).where(eq(equipe.id, id));
         const supervisor = await nomeDe(tx, e.supervisorId);
         const representante = await nomeDe(tx, e.representanteId);
+        // A equipe que estava sem supervisor ganhou um: ele não "volta", assume.
+        const novoSupervisor = e.representacaoMotivo === "sem_supervisor";
         await avisar(tx, {
           tipo: "representacao_encerrada",
           equipeId: id,
           destinatario: e.representanteId,
-          detalhe: `A supervisão da equipe ${e.nome} voltou para ${supervisor}: você deixa de responder por ela.`,
+          detalhe: novoSupervisor
+            ? `A equipe ${e.nome} ganhou um supervisor, ${supervisor}: você deixa de responder por ela.`
+            : `A supervisão da equipe ${e.nome} voltou para ${supervisor}: você deixa de responder por ela.`,
           agora,
         });
         await avisar(tx, {
           tipo: "representacao_encerrada",
           equipeId: id,
           destinatario: e.supervisorId,
-          detalhe: `${representante || "O representante"} deixou de responder pela equipe ${e.nome}: a supervisão voltou para você.`,
+          detalhe: novoSupervisor
+            ? `Você é o supervisor da equipe ${e.nome}. ${representante || "O representante"}, que respondia por ela enquanto a equipe estava sem supervisor, deixou de responder.`
+            : `${representante || "O representante"} deixou de responder pela equipe ${e.nome}: a supervisão voltou para você.`,
           agora,
         });
         return { tipo: "encerrada" as const, equipe: e.nome, supervisor, representante, motivo: e.representacaoMotivo! };
@@ -215,7 +240,9 @@ export async function sincronizarRepresentacao(db: Db, agora: Date, equipeIds?: 
       resumo:
         feito.tipo === "iniciada"
           ? `${feito.representante} assumiu a supervisão da equipe ${feito.equipe} (${frase(feito.motivo, feito.supervisor)})`
-          : `${feito.supervisor} retomou a supervisão da equipe ${feito.equipe}`,
+          : feito.motivo === "sem_supervisor"
+            ? `${feito.supervisor} assumiu a supervisão da equipe ${feito.equipe}, que estava sem supervisor`
+            : `${feito.supervisor} retomou a supervisão da equipe ${feito.equipe}`,
       detalhes: { motivo: feito.motivo },
     });
   }
@@ -228,6 +255,79 @@ export async function equipesComRepresentacaoGravada(db: Db, supervisorId: strin
   return linhas.map((l) => l.id);
 }
 
-/** Texto curto para a faixa e as telas: "o supervisor está ausente até 03/11" / "ficou 3 dias sem usar o sistema". */
+/** Texto curto para a faixa e as telas: "o supervisor está ausente até 03/11" / "ficou 3 dias sem usar o sistema" / "a equipe está sem supervisor". */
 export const rotuloDoMotivo = (motivo: MotivoDaRepresentacao, retorno?: string | null) =>
-  motivo === "ausencia" ? `o supervisor está ausente${retorno ? ` até ${dataBr(retorno)}` : ""}` : `o supervisor ficou ${DIAS_SEM_ATIVIDADE} dias sem usar o sistema`;
+  motivo === "sem_supervisor"
+    ? "a equipe está sem supervisor"
+    : motivo === "ausencia"
+      ? `o supervisor está ausente${retorno ? ` até ${dataBr(retorno)}` : ""}`
+      : `o supervisor ficou ${DIAS_SEM_ATIVIDADE} dias sem usar o sistema`;
+
+/**
+ * Avisa os administradores, uma vez só, da equipe que ficou sem supervisor (nenhum, ou um desativado) e que tem gente: o
+ * representante responde por ela, mas é o admin quem escolhe o supervisor. Quando a equipe ganha um supervisor ativo, a marca
+ * volta a nulo e os avisos ainda não lidos saem do "não lido". Idempotente. Devolve quantas equipes foram avisadas.
+ */
+export async function avisarEquipesSemSupervisor(db: Db, agora: Date, equipeIds?: string[]): Promise<number> {
+  if (equipeIds && equipeIds.length === 0) return 0;
+  const supervisor = alias(usuario, "supervisor_da_equipe");
+  const representante = alias(usuario, "representante_da_equipe");
+  const equipes = await db
+    .select({
+      id: equipe.id,
+      nome: equipe.nome,
+      supervisorId: equipe.supervisorId,
+      supervisorNome: supervisor.nome,
+      supervisorValido: sql<boolean>`coalesce(${supervisor.ativo} and ${supervisor.liberacao} = 'liberado', false)`,
+      representanteNome: representante.nome,
+      representanteValido: sql<boolean>`coalesce(${representante.ativo} and ${representante.liberacao} = 'liberado', false)`,
+      avisadoEm: equipe.semSupervisorAvisadoEm,
+      membros: sql<number>`(select count(*)::int from ${usuario} where ${usuario.equipeId} = ${equipe.id} and ${usuario.ativo} and ${usuario.liberacao} = 'liberado')`,
+    })
+    .from(equipe)
+    .leftJoin(supervisor, eq(supervisor.id, equipe.supervisorId))
+    .leftJoin(representante, eq(representante.id, equipe.representanteId))
+    .where(equipeIds ? inArray(equipe.id, equipeIds) : undefined);
+
+  let avisadas = 0;
+  for (const e of equipes) {
+    if (e.supervisorValido) {
+      if (e.avisadoEm) {
+        await db.update(equipe).set({ semSupervisorAvisadoEm: null }).where(eq(equipe.id, e.id));
+        await resolverAvisos(db, { tipos: ["equipe_sem_supervisor"], equipeId: e.id }, agora);
+      }
+      continue;
+    }
+    // A equipe vazia não tem ninguém esperando por um supervisor (a OS dela vai para os administradores).
+    if (e.avisadoEm || e.membros === 0) continue;
+    const feito = await db.transaction(async (transacao) => {
+      const tx = transacao as unknown as Db;
+      const [marcada] = await tx
+        .update(equipe)
+        .set({ semSupervisorAvisadoEm: agora })
+        .where(and(eq(equipe.id, e.id), isNull(equipe.semSupervisorAvisadoEm)))
+        .returning({ id: equipe.id });
+      if (!marcada) return false;
+      const porque = e.supervisorId ? `o supervisor dela, ${e.supervisorNome ?? "a pessoa"}, foi desativado` : "ela não tem supervisor";
+      const quem =
+        e.representanteValido && e.representanteNome
+          ? `${e.representanteNome}, o representante, responde por ela até você escolher um supervisor na tela da equipe.`
+          : "Ninguém responde por ela até você escolher um supervisor na tela da equipe.";
+      await avisarAdmins(tx, { tipo: "equipe_sem_supervisor", equipeId: e.id, detalhe: `A equipe ${e.nome} está sem supervisor: ${porque}. ${quem}`, agora });
+      return true;
+    });
+    if (feito) avisadas++;
+  }
+  return avisadas;
+}
+
+/**
+ * Tudo o que mantém "quem responde por cada equipe" em dia, na ordem: o representante de cada equipe, quem está no comando
+ * agora (e os avisos de quem assumiu ou devolveu) e o aviso aos administradores das equipes sem supervisor. Chamada depois de
+ * qualquer mudança em pessoas ou equipes (cadastro, liberação, desativação, troca de supervisor) e pela tarefa de hora em hora.
+ */
+export async function atualizarSupervisaoDasEquipes(db: Db, agora: Date, equipeIds?: string[]): Promise<void> {
+  await garantirRepresentantes(db, equipeIds);
+  await sincronizarRepresentacao(db, agora, equipeIds);
+  await avisarEquipesSemSupervisor(db, agora, equipeIds);
+}

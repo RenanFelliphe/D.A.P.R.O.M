@@ -1,15 +1,32 @@
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
-import { alerta, apr, aprResposta, equipe, evidencia, execucao, itemModeloApr, localInstalacao, os, usuario } from "../db/schema";
+import { alias } from "drizzle-orm/pg-core";
+import {
+  ALVO_DO_AVISO,
+  CATEGORIA_DO_AVISO,
+  caminhoDoAviso,
+  ehCategoriaObrigatoria,
+  emailLigado,
+  ROTULO_DA_CATEGORIA,
+  ROTULO_DO_AVISO,
+  type CategoriaDeEmail,
+} from "../../../shared/notificacoes/avisos";
+import { alerta, apr, aprResposta, atividade, ausencia, equipe, evidencia, execucao, itemModeloApr, localInstalacao, os, treinamentoServico, usuario } from "../db/schema";
 import type { Deps } from "../deps";
 import { bucketDaEvidencia } from "../dominio/evidencias";
+import { escaparHtml, montarEmail, type PartesDoEmail } from "./email-modelo";
 import { dataHoraBr } from "./pdf-formato";
 
 type TarefaAtual = { id: string; referenciaId: string | null };
+type LinhaAlerta = typeof alerta.$inferSelect;
 
 /** Validade dos links das fotos e dos PDFs no e-mail: o supervisor pode abri-lo dias depois. */
 const VALIDADE_LINKS_S = 7 * 24 * 3600;
 
-const escaparHtml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+/** Por que a pessoa recebe e como deixar de receber (as categorias obrigatórias não desligam). */
+export function rodapeDoEmail(categoria: CategoriaDeEmail, painelUrl: string): string {
+  if (ehCategoriaObrigatoria(categoria)) return "Este aviso é enviado sempre: é sobre a segurança do campo ou sobre a sua conta no SYNQ OS.";
+  return `Você recebe este e-mail porque os avisos de "${ROTULO_DA_CATEGORIA[categoria]}" estão ligados no seu perfil. Para deixar de recebê-los, desligue em ${painelUrl}/app/perfil#emails; o aviso continua no sino do SYNQ OS.`;
+}
 
 /** Um arquivo de evidência no e-mail: "Foto 2" ou "PDF 1: laudo.pdf", com o link assinado. */
 interface Anexo {
@@ -34,23 +51,14 @@ function anexosDe(deps: Deps, linhas: { tipo: "foto" | "pdf"; caminho: string; n
 }
 
 /**
- * Tarefa `email_alerta`: `referenciaId` é o `alerta.id`. Só o alerta `bloqueio` vai por e-mail, para o e-mail institucional do destinatário.
- * Reenvio da tarefa não duplica: `email_enviado_em` preenchido encerra sem enviar.
+ * O e-mail da atividade impedida (APR bloqueada ou execução interrompida por risco): a OS, o local, a equipe, o técnico, os
+ * itens reprovados com a observação e os links das fotos e dos PDFs, e o link do painel.
  */
-export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Promise<void> {
-  if (!tarefa.referenciaId) throw new Error("Tarefa email_alerta sem referência ao alerta");
+async function conteudoDoBloqueio(deps: Deps, a: LinhaAlerta): Promise<{ assunto: string } & PartesDoEmail> {
   const { db } = deps;
-
-  const [a] = await db.select().from(alerta).where(eq(alerta.id, tarefa.referenciaId));
-  if (!a) throw new Error("Alerta não encontrado");
-  if (a.tipo !== "bloqueio" || a.emailEnviadoEm !== null) return;
-  // O banco garante a OS em todo alerta de bloqueio (`alerta_alvo`); só a falha de importação vem sem ela.
+  // O banco garante a OS em todo alerta de bloqueio (`alerta_alvo`).
   const osId = a.osId;
   if (!osId) throw new Error("Alerta de bloqueio sem OS");
-
-  const [destinatario] = await db.select({ email: usuario.email }).from(usuario).where(eq(usuario.id, a.destinatarioId));
-  if (!destinatario?.email) return;
-
   const [base] = await db
     .select({ os, local: localInstalacao, equipe })
     .from(os)
@@ -98,55 +106,158 @@ export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Pro
 
   const [tecnico] = tecnicoId ? await db.select({ nome: usuario.nome, matricula: usuario.matricula }).from(usuario).where(eq(usuario.id, tecnicoId)) : [];
   const numero = base.os.numeroOrdem ?? "(OS de apoio)";
-  const link = `${deps.config.painelUrl}/app/os/${base.os.id}`;
   const nomeTecnico = tecnico ? `${tecnico.nome} (${tecnico.matricula})` : "não identificado";
 
-  const linhas: string[] = [
-    `Atividade impedida na OS ${numero}.`,
-    "",
-    `OS: ${numero} — ${base.os.titulo}`,
-    `Local: ${base.local.codigo}`,
-    `Equipe: ${base.equipe.nome}`,
-    `Técnico: ${nomeTecnico}`,
-    `Registrado em: ${dataHoraBr(a.criadoEm)}`,
-  ];
-  if (a.detalhe) linhas.push(`Detalhe: ${a.detalhe}`);
+  const textoExtra: string[] = [];
+  const blocos: string[] = [];
+  const links = (anexos: Anexo[]) => anexos.map((x) => `<a href="${escaparHtml(x.url)}" style="color:#0F5C78">${escaparHtml(x.rotulo)}</a>`).join(" · ");
   if (interrupcao) {
-    linhas.push("", "Execução interrompida por risco.", `Motivo: ${interrupcao.motivo}`);
-    interrupcao.anexos.forEach((x) => linhas.push(`${x.rotulo}: ${x.url}`));
+    textoExtra.push("Execução interrompida por risco.", `Motivo: ${interrupcao.motivo}`);
+    interrupcao.anexos.forEach((x) => textoExtra.push(`${x.rotulo}: ${x.url}`));
+    textoExtra.push("");
+    blocos.push(
+      `<p style="margin:0 0 14px;font-size:14px;line-height:1.5;color:#17212B"><strong>Execução interrompida por risco.</strong><br>Motivo: ${escaparHtml(interrupcao.motivo)}${interrupcao.anexos.length ? `<br>${links(interrupcao.anexos)}` : ""}</p>`,
+    );
   }
   if (reprovados.length > 0) {
-    linhas.push("", "Itens reprovados:");
+    textoExtra.push("Itens reprovados:");
     reprovados.forEach((r, i) => {
-      linhas.push(`${i + 1}. ${r.texto}`);
-      if (r.observacao) linhas.push(`   Observação: ${r.observacao}`);
-      r.anexos.forEach((x) => linhas.push(`   ${x.rotulo}: ${x.url}`));
+      textoExtra.push(`${i + 1}. ${r.texto}`);
+      if (r.observacao) textoExtra.push(`   Observação: ${r.observacao}`);
+      r.anexos.forEach((x) => textoExtra.push(`   ${x.rotulo}: ${x.url}`));
     });
+    blocos.push(
+      `<p style="margin:0 0 6px;font-size:14px;color:#17212B"><strong>Itens reprovados:</strong></p><ol style="margin:0 0 14px;padding-left:20px;color:#17212B">${reprovados
+        .map(
+          (r) =>
+            `<li style="margin:0 0 8px;font-size:14px;line-height:1.4">${escaparHtml(r.texto)}${r.observacao ? `<br>Observação: ${escaparHtml(r.observacao)}` : ""}${r.anexos.length ? `<br>${links(r.anexos)}` : ""}</li>`,
+        )
+        .join("")}</ol>`,
+    );
   }
-  linhas.push("", `Abrir no painel: ${link}`);
 
-  const li = (s: string) => `<li>${s}</li>`;
-  const links = (anexos: Anexo[]) => anexos.map((x) => `<a href="${escaparHtml(x.url)}">${escaparHtml(x.rotulo)}</a>`).join(" · ");
-  const html = [
-    `<p><strong>Atividade impedida na OS ${escaparHtml(numero)}.</strong></p>`,
-    "<ul>",
-    li(`<strong>OS:</strong> ${escaparHtml(numero)} — ${escaparHtml(base.os.titulo)}`),
-    li(`<strong>Local:</strong> ${escaparHtml(base.local.codigo)}`),
-    li(`<strong>Equipe:</strong> ${escaparHtml(base.equipe.nome)}`),
-    li(`<strong>Técnico:</strong> ${escaparHtml(nomeTecnico)}`),
-    li(`<strong>Registrado em:</strong> ${dataHoraBr(a.criadoEm)}`),
-    a.detalhe ? li(`<strong>Detalhe:</strong> ${escaparHtml(a.detalhe)}`) : "",
-    "</ul>",
-    interrupcao ? `<p><strong>Execução interrompida por risco.</strong><br>Motivo: ${escaparHtml(interrupcao.motivo)}<br>${links(interrupcao.anexos)}</p>` : "",
-    reprovados.length > 0
-      ? `<p><strong>Itens reprovados:</strong></p><ol>${reprovados
-          .map((r) => li(`${escaparHtml(r.texto)}${r.observacao ? `<br>Observação: ${escaparHtml(r.observacao)}` : ""}${r.anexos.length ? `<br>${links(r.anexos)}` : ""}`))
-          .join("")}</ol>`
-      : "",
-    `<p><a href="${escaparHtml(link)}">Abrir a OS no painel</a></p>`,
-  ].join("\n");
+  return {
+    assunto: `[SYNQ OS] Atividade impedida — OS ${numero}`,
+    titulo: `Atividade impedida na OS ${numero}`,
+    urgente: true,
+    itens: [
+      { rotulo: "OS", valor: `${numero} — ${base.os.titulo}` },
+      { rotulo: "Local", valor: base.local.codigo },
+      { rotulo: "Equipe", valor: base.equipe.nome },
+      { rotulo: "Técnico", valor: nomeTecnico },
+      { rotulo: "Registrado em", valor: dataHoraBr(a.criadoEm) },
+      ...(a.detalhe ? [{ rotulo: "Detalhe", valor: a.detalhe }] : []),
+    ],
+    textoExtra,
+    htmlExtra: blocos.join(""),
+    botao: { texto: "Abrir a OS no painel", url: `${deps.config.painelUrl}/app/os/${base.os.id}` },
+    rodape: rodapeDoEmail("seguranca", deps.config.painelUrl),
+  };
+}
 
-  await deps.email.enviar({ para: destinatario.email, assunto: `[SYNQ OS] Atividade impedida — OS ${numero}`, texto: linhas.join("\n"), html });
+const alvoDoAviso = alias(usuario, "alvo_do_aviso");
+
+/**
+ * O e-mail dos demais avisos: o rótulo do aviso no título, o texto do sino, o que ele aponta (a OS, a pessoa, a equipe, o
+ * treinamento) e o botão para abrir no painel, no mesmo lugar para onde o sino leva.
+ */
+async function conteudoDoAviso(deps: Deps, a: LinhaAlerta): Promise<{ assunto: string } & PartesDoEmail> {
+  const { db } = deps;
+  const [r] = await db
+    .select({
+      numeroOrdem: os.numeroOrdem,
+      tituloOs: os.titulo,
+      localCodigo: localInstalacao.codigo,
+      equipeDaOs: equipe.nome,
+      alvoNome: alvoDoAviso.nome,
+      alvoMatricula: alvoDoAviso.matricula,
+      ausenciaEquipeId: ausencia.equipeId,
+      treinamentoCodigo: treinamentoServico.atividadeCodigo,
+      servicoDescricao: atividade.descricao,
+    })
+    .from(alerta)
+    .leftJoin(os, eq(os.id, alerta.osId))
+    .leftJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
+    .leftJoin(equipe, eq(equipe.id, os.equipeId))
+    .leftJoin(alvoDoAviso, eq(alvoDoAviso.id, alerta.usuarioAlvoId))
+    .leftJoin(ausencia, eq(ausencia.id, alerta.ausenciaId))
+    .leftJoin(treinamentoServico, eq(treinamentoServico.id, alerta.treinamentoId))
+    .leftJoin(atividade, eq(atividade.codigo, treinamentoServico.atividadeCodigo))
+    .where(eq(alerta.id, a.id));
+  const [equipeAlvo] = a.equipeId ? await db.select({ nome: equipe.nome }).from(equipe).where(eq(equipe.id, a.equipeId)) : [];
+
+  const alvo = ALVO_DO_AVISO[a.tipo];
+  const itens: { rotulo: string; valor: string }[] = [];
+  let sufixo = "";
+  if (alvo === "os" && r?.tituloOs) {
+    const numero = r.numeroOrdem ?? "(OS de apoio)";
+    sufixo = ` — OS ${numero}`;
+    itens.push({ rotulo: "OS", valor: `${numero} — ${r.tituloOs}` });
+    if (r.localCodigo) itens.push({ rotulo: "Local", valor: r.localCodigo });
+    if (r.equipeDaOs) itens.push({ rotulo: "Equipe", valor: r.equipeDaOs });
+  } else if ((alvo === "usuario" || alvo === "ausencia") && r?.alvoNome && a.usuarioAlvoId !== a.destinatarioId) {
+    sufixo = ` — ${r.alvoNome}`;
+    itens.push({ rotulo: "Pessoa", valor: `${r.alvoNome}${r.alvoMatricula ? ` (matrícula ${r.alvoMatricula})` : ""}` });
+  } else if (alvo === "equipe" && equipeAlvo) {
+    sufixo = ` — ${equipeAlvo.nome}`;
+    itens.push({ rotulo: "Equipe", valor: equipeAlvo.nome });
+  } else if (alvo === "treinamento" && r?.treinamentoCodigo) {
+    const servico = r.servicoDescricao ? `${r.treinamentoCodigo} · ${r.servicoDescricao}` : r.treinamentoCodigo;
+    sufixo = ` — ${r.servicoDescricao ?? r.treinamentoCodigo}`;
+    itens.push({ rotulo: "Serviço", valor: servico });
+  }
+  itens.push({ rotulo: "Registrado em", valor: dataHoraBr(a.criadoEm) });
+
+  const caminho = caminhoDoAviso({
+    id: a.id,
+    tipo: a.tipo,
+    destinatarioId: a.destinatarioId,
+    osId: a.osId,
+    ausenciaEquipeId: r?.ausenciaEquipeId ?? null,
+    usuarioAlvoId: a.usuarioAlvoId,
+    equipeAlvoId: a.equipeId,
+    treinamentoCodigo: r?.treinamentoCodigo ?? null,
+  });
+  // Quem teve o acesso recusado não entra mais: não há o que abrir.
+  const botao = a.tipo === "acesso_recusado" ? undefined : { texto: a.tipo === "conta_criada" || a.tipo === "senha_redefinida" ? "Entrar no SYNQ OS" : "Abrir no SYNQ OS", url: `${deps.config.painelUrl}${caminho}` };
+  const rotulo = ROTULO_DO_AVISO[a.tipo];
+  return {
+    assunto: `[SYNQ OS] ${rotulo}${sufixo}`,
+    titulo: rotulo,
+    urgente: a.tipo === "preventiva_vencida" || a.tipo === "ausencia_vencida" || a.tipo === "falha_importacao" || a.tipo === "rh_leitura_falhou",
+    paragrafos: [a.detalhe],
+    itens,
+    ...(botao ? { botao } : {}),
+    rodape: rodapeDoEmail(CATEGORIA_DO_AVISO[a.tipo]!, deps.config.painelUrl),
+  };
+}
+
+/**
+ * Tarefa `email_alerta`: `referenciaId` é o `alerta.id`. Envia o aviso por e-mail ao e-mail institucional do destinatário
+ * quando: o servidor de e-mail está configurado, o tipo tem categoria de e-mail, a pessoa está ativa (menos no acesso recusado,
+ * que é o aviso de que ela não entra mais) e não desligou a categoria no perfil. Fora isso, termina sem enviar: o aviso fica
+ * no sino. Reenvio da tarefa não duplica: `email_enviado_em` preenchido encerra sem enviar.
+ */
+export async function manipularEmailAlerta(deps: Deps, tarefa: TarefaAtual): Promise<void> {
+  if (!tarefa.referenciaId) throw new Error("Tarefa email_alerta sem referência ao alerta");
+  const { db } = deps;
+
+  const [a] = await db.select().from(alerta).where(eq(alerta.id, tarefa.referenciaId));
+  // O aviso pode ter sido apagado junto com a conta (o cadastro pendente cancelado): não há o que enviar.
+  if (!a || a.emailEnviadoEm !== null) return;
+  if (!deps.email.configurado || CATEGORIA_DO_AVISO[a.tipo] === null) return;
+
+  const [destinatario] = await db
+    .select({ email: usuario.email, ativo: usuario.ativo, emailsDesligados: usuario.emailsDesligados })
+    .from(usuario)
+    .where(eq(usuario.id, a.destinatarioId));
+  if (!destinatario?.email) return;
+  if (!destinatario.ativo && a.tipo !== "acesso_recusado") return;
+  if (!emailLigado(a.tipo, destinatario.emailsDesligados)) return;
+
+  const { assunto, ...partes } = a.tipo === "bloqueio" ? await conteudoDoBloqueio(deps, a) : await conteudoDoAviso(deps, a);
+  const { texto, html } = montarEmail(partes);
+  await deps.email.enviar({ para: destinatario.email, assunto, texto, html });
 
   // Condicional: duas tarefas simultâneas (ou um reenvio) não marcam duas vezes.
   await db.update(alerta).set({ emailEnviadoEm: deps.agora() }).where(and(eq(alerta.id, a.id), isNull(alerta.emailEnviadoEm)));

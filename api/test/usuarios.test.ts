@@ -12,6 +12,8 @@ describe("Plataforma, usuários e equipes", () => {
     amb = await criarAmbiente();
     equipeId = (await amb.criarEquipe()).id;
     admin = await amb.criarUsuario({ perfil: "admin" });
+    // A equipe tem supervisor: sem ele, o técnico seria o representante no comando (equipe sem supervisor) e deixaria de ser um técnico comum.
+    await amb.criarUsuario({ perfil: "tecnico", equipeId, supervisor: true, nome: "Supervisor da Equipe" });
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId });
   });
   after(() => amb.fechar());

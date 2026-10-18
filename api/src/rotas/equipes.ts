@@ -7,7 +7,7 @@ import { ausenciaDaPessoaParaApi, ausentesEm } from "../dominio/ausencia";
 import { diferencas, registrarAuditoria } from "../dominio/auditoria";
 import { buscaDeEquipes, equipesVisiveis } from "../dominio/busca";
 import { listarOs } from "../dominio/painel-os";
-import { garantirRepresentantes, motivoDeNaoPoderRepresentar, rotuloDoMotivo, sincronizarRepresentacao } from "../dominio/representacao";
+import { atualizarSupervisaoDasEquipes, motivoDeNaoPoderRepresentar, rotuloDoMotivo, sincronizarRepresentacao } from "../dominio/representacao";
 import { diaDe } from "../dominio/tempo";
 import { equipeParaApi } from "../dominio/usuarios";
 import { podeVerEquipe, type Autenticacao, type Ambiente } from "../http/autenticacao";
@@ -67,7 +67,9 @@ export function rotasEquipes(deps: Deps, { autenticar, exigirPerfil }: Autentica
         ...(eraORepresentante && { representanteId: null, representacaoDesde: null, representacaoMotivo: null }),
       })
       .where(eq(equipe.id, id));
-    if (dados.supervisor_id !== undefined) await garantirRepresentantes(deps.db, [id]);
+    // A troca do supervisor muda quem responde pela equipe: o representante que estava no comando por falta de supervisor devolve
+    // a equipe, e a equipe que perdeu o supervisor passa ao representante (com o aviso aos administradores).
+    if (dados.supervisor_id !== undefined) await atualizarSupervisaoDasEquipes(deps.db, deps.agora(), [id]);
     const mudancas = diferencas({ nome: atual.nome, supervisor_id: atual.supervisorId }, { nome: dados.nome, supervisor_id: dados.supervisor_id });
     if (Object.keys(mudancas).length > 0) {
       await registrarAuditoria(deps.db, c.get("usuario"), {

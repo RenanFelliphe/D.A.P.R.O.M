@@ -24,6 +24,7 @@ const esquema = z.object({
   RH_LEITURA_HORA: z.coerce.number().int().min(0).max(23).default(3),
   SMTP_URL: z.string().default(""),
   EMAIL_REMETENTE: z.string().default("synqos@localhost"),
+  EMAIL_RESUMO_HORA: z.coerce.number().int().min(0).max(23).default(7),
   PAINEL_URL: z.string().default("http://localhost:3000"),
   VITORIA_LIMITE_POR_CONVERSA: z.coerce.number().int().positive().default(20),
   VITORIA_LIMITE_POR_CONTA_DIA: z.coerce.number().int().positive().default(40),
@@ -71,8 +72,11 @@ export interface Config {
   rhAvisoUrl: string;
   /** Hora (de São Paulo) da leitura diária completa do registro. */
   rhLeituraHora: number;
+  /** Servidor de e-mail (`smtp://usuario:senha@servidor:587`); vazio, os avisos ficam só no sino. */
   smtpUrl: string;
   emailRemetente: string;
+  /** Hora (de São Paulo) a partir da qual sai o resumo diário por e-mail. */
+  emailResumoHora: number;
   painelUrl: string;
   /** Módulo de IA genérico (`servicos/ia`): `ligada` é o único ponto de decisão "tem IA ou não" (vitoria.md, seção 1). */
   ia: {
@@ -145,6 +149,7 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     rhLeituraHora: e.RH_LEITURA_HORA,
     smtpUrl: e.SMTP_URL,
     emailRemetente: e.EMAIL_REMETENTE,
+    emailResumoHora: e.EMAIL_RESUMO_HORA,
     painelUrl: e.PAINEL_URL.replace(/\/$/, ""),
     ia: lerConfigIA(env),
     vitoria: {

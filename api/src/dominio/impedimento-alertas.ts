@@ -1,7 +1,7 @@
 import { and, desc, eq, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
-import { alerta, ausencia, importacao, os, usuario, type AlertaTipo } from "../db/schema";
+import { alerta, ausencia, equipe, importacao, os, treinamentoServico, usuario, type AlertaTipo } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { naoEncontrado } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
@@ -9,8 +9,11 @@ import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 /** O admin enxerga os alertas de todos os destinatários; o supervisor, só os seus. */
 const veTodosOsAlertas = (u: UsuarioAutenticado) => u.perfil === "admin";
 
-/** A pessoa da ausência, nos alertas `ausencia_*`. */
+/** A pessoa de quem o aviso fala: a da ausência (`ausencia_*`) ou a conta (`conta_criada`, `membro_desativado` etc.). */
 const alvoDaAusencia = alias(usuario, "alvo_da_ausencia");
+
+/** A equipe dos avisos que apontam para ela (`representacao_*`, `equipe_sem_supervisor`). */
+const equipeDoAviso = alias(equipe, "equipe_do_aviso");
 
 /**
  * A OS (alertas de OS), a importação (falha de importação): o que não se aplica vem nulo. O destinatário diz de quem é
@@ -34,8 +37,14 @@ const colunas = {
   usuarioAlvoNome: alvoDaAusencia.nome,
   /** A equipe da ausência (é nela que o supervisor responde). */
   ausenciaEquipeId: ausencia.equipeId,
-  /** Só nos alertas da representação (`representacao_*`): a equipe cujo representante assumiu ou devolveu o comando. */
-  representacaoEquipeId: alerta.equipeId,
+  /** Nos avisos da equipe (`representacao_*`, `equipe_sem_supervisor`): a equipe e o nome dela. */
+  equipeAlvoId: alerta.equipeId,
+  equipeAlvoNome: equipeDoAviso.nome,
+  /** Na falha da leitura do registro de funcionários (`rh_leitura_falhou`). */
+  leituraRhId: alerta.leituraRhId,
+  /** Nos avisos do treinamento de serviço (`treinamento_*`): o treinamento e o código do serviço (o endereço da tela). */
+  treinamentoId: alerta.treinamentoId,
+  treinamentoCodigo: treinamentoServico.atividadeCodigo,
   detalhe: alerta.detalhe,
   emailEnviadoEm: alerta.emailEnviadoEm,
   lidoEm: alerta.lidoEm,
@@ -63,6 +72,8 @@ export async function listarAlertas(db: Db, eu: UsuarioAutenticado, filtros: Pag
     .leftJoin(usuario, eq(usuario.id, alerta.destinatarioId))
     .leftJoin(alvoDaAusencia, eq(alvoDaAusencia.id, alerta.usuarioAlvoId))
     .leftJoin(ausencia, eq(ausencia.id, alerta.ausenciaId))
+    .leftJoin(equipeDoAviso, eq(equipeDoAviso.id, alerta.equipeId))
+    .leftJoin(treinamentoServico, eq(treinamentoServico.id, alerta.treinamentoId))
     .where(onde)
     .orderBy(desc(alerta.criadoEm), desc(alerta.id))
     .limit(limit)

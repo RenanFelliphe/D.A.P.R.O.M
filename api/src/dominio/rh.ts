@@ -1,13 +1,14 @@
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { equipe, leituraRh, tarefa, usuario, type SituacaoRegistro } from "../db/schema";
+import { alerta, equipe, leituraRh, os, tarefa, usuario, type SituacaoRegistro } from "../db/schema";
 import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { conflito, ErroApi, invalido } from "../http/erros";
 import { enfileirarTarefa } from "../servicos/fila";
 import type { FuncionarioRh } from "../servicos/rh";
+import { adminsAtivos, avisarAdmins, criarAviso, destinatariosDaEquipe, quemPediuOuAdmins, resolverAvisos } from "./alertas";
 import { diferencas, registrarAuditoria, type Ator } from "./auditoria";
-import { garantirRepresentantes } from "./representacao";
+import { atualizarSupervisaoDasEquipes } from "./representacao";
 
 /** Quem aparece na auditoria quando a mudança veio do registro de funcionários e não de uma pessoa (`ator_id` nulo). */
 export const ATOR_REGISTRO: Ator = { id: null, nome: "Registro de funcionários" };
@@ -67,6 +68,24 @@ export interface ResultadoConferencia {
   desativado: boolean;
   /** A conta pendente de liberação virou recusada. */
   recusado: boolean;
+  /** A pessoa voltou a ficar ativa no registro (readmissão) com a conta desativada: os administradores foram avisados. */
+  readmitido: boolean;
+}
+
+/**
+ * Avisa a equipe (o supervisor, ou quem responde por ela) de que um membro perdeu o acesso, dizendo quantas OS ainda estão
+ * reservadas para ele: a desativação não desfaz a reserva, e só o supervisor a libera. Quem chama passa a própria transação.
+ */
+export async function avisarMembroDesativado(db: Db, u: Pick<LinhaUsuario, "id" | "nome" | "matricula" | "equipeId">, porque: string, agora: Date): Promise<void> {
+  if (!u.equipeId) return;
+  const destinatarios = (await destinatariosDaEquipe(db, u.equipeId)).map((d) => d.id).filter((id) => id !== u.id);
+  const [reservas] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(os)
+    .where(and(eq(os.responsavelId, u.id), inArray(os.status, ["liberada", "pendente"])));
+  const n = reservas?.n ?? 0;
+  const reservadas = n > 0 ? ` ${n === 1 ? "Uma OS continua reservada" : `${n} OS continuam reservadas`} para essa pessoa: libere-as para a equipe.` : "";
+  await criarAviso(db, destinatarios, { tipo: "membro_desativado", usuarioAlvoId: u.id, detalhe: `A conta de ${u.nome} (matrícula ${u.matricula}) foi desativada: ${porque}.${reservadas}`, agora });
 }
 
 /** Quantos administradores liberados e ativos existem, fora `exceto`. */
@@ -185,8 +204,33 @@ export async function aplicarConferencia(deps: Deps, u: LinhaUsuario, funcionari
     }
   }
 
-  // Quem perdeu o acesso não pode ser o representante da equipe: a equipe ganha outro.
-  if (desativado || recusado) await garantirRepresentantes(db);
+  // Quem perdeu o acesso não pode ser o representante da equipe: a equipe ganha outro. O supervisor desligado deixa a equipe sem
+  // supervisor: o representante assume e os administradores são avisados.
+  if (desativado || recusado) await atualizarSupervisaoDasEquipes(db, agora);
+  if (desativado) await avisarMembroDesativado(db, u, `${comoSaiu(situacao)} no registro de funcionários`, agora);
+  if (recusado) {
+    await resolverAvisos(db, { tipos: ["cadastro_pendente"], usuarioAlvoId: u.id }, agora);
+    if (u.criadoPorId) {
+      await criarAviso(db, [u.criadoPorId], {
+        tipo: "cadastro_recusado",
+        usuarioAlvoId: u.id,
+        detalhe: `O cadastro de ${u.nome}, que você fez, foi recusado: a pessoa está ${comoSaiu(situacao)} no registro de funcionários.`,
+        agora,
+      });
+    }
+  }
+
+  // Readmissão: o automático só tira acesso, então a conta continua desativada e os administradores decidem (reativar é um clique no aviso).
+  const readmitido =
+    situacao === "ativo" && (u.situacaoRegistro === "desligado" || u.situacaoRegistro === "fora_do_registro") && !u.ativo && u.liberacao === "liberado";
+  if (readmitido) {
+    await avisarAdmins(db, {
+      tipo: "funcionario_readmitido",
+      usuarioAlvoId: u.id,
+      detalhe: `${novos.nome ?? u.nome} (matrícula ${u.matricula}) voltou a ficar ativo no registro de funcionários. A conta no SYNQ OS continua desativada: reative-a se a pessoa deve voltar a usar o sistema.`,
+      agora,
+    });
+  }
 
   // Mudança de situação sem efeito no acesso (ex.: virou afastado) também fica registrada, para o admin saber.
   if (!desativado && !recusado && u.situacaoRegistro && u.situacaoRegistro !== situacao && !perdeAcesso(situacao)) {
@@ -200,8 +244,11 @@ export async function aplicarConferencia(deps: Deps, u: LinhaUsuario, funcionari
     });
   }
 
-  return { situacao, atualizado, desativado, recusado };
+  return { situacao, atualizado, desativado, recusado, readmitido };
 }
+
+/** "desligada" ou "fora do registro de funcionários", para as frases dos avisos. */
+const comoSaiu = (s: SituacaoRegistro) => (s === "desligado" ? "desligada" : "fora do registro de funcionários");
 
 /** Tarefa `conferencia_rh`: o registro avisou que a matrícula mudou; `referenciaId` é o id do usuário. Consulta e aplica. */
 export async function manipularConferenciaRh(deps: Deps, t: { id: string; referenciaId: string | null }): Promise<void> {
@@ -282,14 +329,9 @@ export async function executarLeituraRh(deps: Deps, leituraId: string): Promise<
   const ativos = usuarios.filter((u) => u.ativo && u.liberacao !== "recusado").length;
   const perderiam = situacoes.filter(({ u, f }) => u.ativo && u.liberacao !== "recusado" && perdeAcesso(situacaoNoRegistro(f))).length;
   if (perderiam > ativos / 2) {
-    await deps.db
-      .update(leituraRh)
-      .set({
-        concluidaEm: deps.agora(),
-        conferidos: 0,
-        erro: `Leitura interrompida: desativaria ${perderiam} dos ${ativos} usuários ativos e nada foi aplicado. Confira o registro de funcionários.`,
-      })
-      .where(eq(leituraRh.id, leituraId));
+    const erro = `Leitura interrompida: desativaria ${perderiam} dos ${ativos} usuários ativos e nada foi aplicado. Confira o registro de funcionários.`;
+    await deps.db.update(leituraRh).set({ concluidaEm: deps.agora(), conferidos: 0, erro }).where(eq(leituraRh.id, leituraId));
+    await avisarFalhaDaLeituraRh(deps, leituraId, erro);
     return;
   }
 
@@ -306,6 +348,35 @@ export async function executarLeituraRh(deps: Deps, leituraId: string): Promise<
     throw erro;
   }
   await deps.db.update(leituraRh).set({ concluidaEm: deps.agora(), conferidos: usuarios.length, atualizados, desativados, erro: null }).where(eq(leituraRh.id, leituraId));
+}
+
+/**
+ * Avisa que a leitura do registro de funcionários falhou de vez (a trava de segurança, ou as tentativas esgotadas): quem pediu o
+ * "Ler agora", se ainda é admin ativo, ou os administradores, na leitura agendada. Como na falha de importação, o aviso ainda
+ * não lido é reaproveitado (aponta para a falha mais recente e sobe para o topo) e só o aviso novo vai por e-mail.
+ */
+export async function avisarFalhaDaLeituraRh(deps: Deps, leituraId: string, erro: string): Promise<void> {
+  const [l] = await deps.db.select({ origem: leituraRh.origem, usuarioId: leituraRh.usuarioId }).from(leituraRh).where(eq(leituraRh.id, leituraId));
+  if (!l) return;
+  const agora = deps.agora();
+  const admins = new Set(await adminsAtivos(deps.db));
+  const destinatarios = (await quemPediuOuAdmins(deps.db, l.usuarioId)).filter((id) => admins.has(id));
+  const qual = l.origem === "agendada" ? "A leitura diária do registro de funcionários" : "A leitura do registro de funcionários pedida em \"Ler agora\"";
+  const detalhe = `${qual} falhou: ${erro.replace(/\.$/, "")}. Os desligamentos que o aviso do registro já aplicou continuam valendo; confira o cartão do registro de funcionários na tela de usuários e use "Ler agora" para tentar de novo.`;
+  for (const destinatarioId of destinatarios.length ? destinatarios : admins) {
+    const [aberto] = await deps.db
+      .select({ id: alerta.id })
+      .from(alerta)
+      .where(and(eq(alerta.tipo, "rh_leitura_falhou"), eq(alerta.destinatarioId, destinatarioId), isNull(alerta.lidoEm)))
+      .limit(1);
+    if (aberto) await deps.db.update(alerta).set({ leituraRhId: leituraId, detalhe, criadoEm: agora }).where(eq(alerta.id, aberto.id));
+    else await criarAviso(deps.db, [destinatarioId], { tipo: "rh_leitura_falhou", leituraRhId: leituraId, detalhe, agora });
+  }
+}
+
+/** A tarefa `leitura_rh` esgotou as tentativas (o registro fora do ar o dia inteiro, por exemplo). */
+export async function alertarFalhaDaLeituraRh(deps: Deps, tarefa: { referenciaId: string | null }, erro: string): Promise<void> {
+  if (tarefa.referenciaId) await avisarFalhaDaLeituraRh(deps, tarefa.referenciaId, `${erro} (depois de todas as tentativas)`);
 }
 
 /** Tarefa `leitura_rh`: `referenciaId` é a `leitura_rh`. */

@@ -45,6 +45,7 @@ export const configDeTeste: Config = {
   rhLeituraHora: 3,
   smtpUrl: "",
   emailRemetente: "synqos@teste",
+  emailResumoHora: 7,
   painelUrl: "http://painel.local",
   // Sem chave real: os testes programam o `ProvedorIAEmMemoria` (amb.ia) quando precisam simular a IA ligada.
   ia: { provedor: "anthropic", apiKey: "", ligada: false, modelos: { vitoria: "modelo-vitoria-teste", rascunho: "modelo-rascunho-teste", digitalizacao: "modelo-digitalizacao-teste" } },

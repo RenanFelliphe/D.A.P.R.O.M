@@ -7,6 +7,7 @@ import { ehSupervisorTitular, type UsuarioAutenticado } from "../http/autenticac
 import { ErroApi, conflito, invalido, naoEncontrado, proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { registrarAuditoria } from "./auditoria";
+import { representacoesEmVigor } from "./representacao";
 import {
   ESTADOS_ABERTOS,
   aplicarInicioDaAusencia,
@@ -287,8 +288,20 @@ export async function pedirOuRegistrarAusencia(deps: Deps, eu: UsuarioAutenticad
     } else {
       origem = "pedido";
       if (!pessoa.equipeId) throw conflito("sem_equipe", "Você não está em uma equipe: não há supervisor para responder ao pedido");
-      const [e] = await tx.select({ supervisorId: equipe.supervisorId }).from(equipe).where(eq(equipe.id, pessoa.equipeId));
-      if (!e?.supervisorId) throw conflito("equipe_sem_supervisor", "A sua equipe está sem supervisor: não há quem responda ao pedido de ausência");
+      // Quem responde ao pedido: o supervisor ativo da equipe ou, na equipe sem supervisor, o representante no comando (que não
+      // pode ser a própria pessoa: ninguém responde ao próprio pedido).
+      const [e] = await tx
+        .select({ supervisorId: equipe.supervisorId, ativo: usuario.ativo, liberacao: usuario.liberacao })
+        .from(equipe)
+        .leftJoin(usuario, eq(usuario.id, equipe.supervisorId))
+        .where(eq(equipe.id, pessoa.equipeId));
+      const temSupervisor = !!e?.supervisorId && e.ativo === true && e.liberacao === "liberado";
+      if (!temSupervisor) {
+        const [quemResponde] = await representacoesEmVigor(tx, agora, { equipeIds: [pessoa.equipeId] });
+        if (!quemResponde || quemResponde.representanteId === pessoa.id) {
+          throw conflito("equipe_sem_supervisor", "A sua equipe está sem supervisor e não há quem responda ao pedido de ausência: fale com o administrador");
+        }
+      }
       equipeId = pessoa.equipeId;
     }
     const assinatura = origem === "pedido" ? null : assinaturaDe(eu);

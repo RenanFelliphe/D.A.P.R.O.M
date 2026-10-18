@@ -65,6 +65,7 @@ const config: Config = {
   rhLeituraHora: 3,
   smtpUrl: "",
   emailRemetente: "synqos@localhost",
+  emailResumoHora: 7,
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
   ia: lerConfigIA(),
   vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
@@ -86,7 +87,8 @@ async function main() {
     config,
     auth,
     armazenamento,
-    email: new EmailEmMemoria(),
+    // Sem SMTP no modo local: os e-mails ficam na memória e o console mostra quem receberia e o assunto.
+    email: new EmailEmMemoria({ registrar: true }),
     sap: new ClienteSapHttp(config.sapApiUrl, TOKEN_SAP),
     rh: new ClienteRhHttp(config.rhApiUrl, TOKEN_RH),
     ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),

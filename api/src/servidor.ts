@@ -9,7 +9,7 @@ import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
 import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servico-imagens";
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
-import { EmailEmMemoria, EmailSmtp } from "./servicos/email";
+import { EmailSemServidor, EmailSmtp } from "./servicos/email";
 import { criarProvedorIA } from "./servicos/ia";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
@@ -42,8 +42,10 @@ async function main() {
     console.error("Gamificação: não foi possível preencher o histórico (nada foi gravado):", erro);
   }
 
-  const email = config.smtpUrl ? new EmailSmtp(config.smtpUrl, config.emailRemetente) : new EmailEmMemoria();
-  if (!config.smtpUrl) console.warn("SMTP_URL vazio: os e-mails de alerta não serão enviados.");
+  // Sem servidor de e-mail, os avisos continuam no sino e nenhum e-mail sai (nem fica marcado como enviado).
+  const email = config.smtpUrl ? new EmailSmtp(config.smtpUrl, config.emailRemetente) : new EmailSemServidor();
+  if (config.smtpUrl) console.log(`E-mail ligado: os avisos saem de ${config.emailRemetente}; o resumo diário, a partir das ${config.emailResumoHora}h.`);
+  else console.warn("SMTP_URL vazio: os avisos ficam só no sino, sem e-mail (pnpm email:testar confere a configuração).");
 
   const armazenamento = new ArmazenamentoSupabase(config.supabaseUrl, config.supabaseServiceRoleKey);
   await armazenamento.garantirBuckets().catch((erro) => console.warn(`Buckets do Storage não verificados: ${erro.message}`));

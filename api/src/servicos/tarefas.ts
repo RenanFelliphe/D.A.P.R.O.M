@@ -2,13 +2,14 @@ import { and, asc, eq, inArray, lt, lte, or } from "drizzle-orm";
 import { tarefa } from "../db/schema";
 import type { Deps } from "../deps";
 import { enfileirarTarefa } from "./fila";
-import { manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
+import { alertarFalhaDoPdf, manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
+import { agendarResumosDiarios, manipularEmailResumo } from "./email-resumo";
 import { manipularLeituraSap } from "./leitura-sap";
 import { fecharTemporadasVencidas } from "../dominio/fechamento-temporada";
 import { conferirAusencias } from "../dominio/ausencia";
-import { garantirRepresentantes, sincronizarRepresentacao } from "../dominio/representacao";
+import { atualizarSupervisaoDasEquipes } from "../dominio/representacao";
 import { verificarCiclos } from "../dominio/preventivas";
-import { agendarLeituraDiariaRh, manipularConferenciaRh, manipularLeituraRh } from "../dominio/rh";
+import { agendarLeituraDiariaRh, alertarFalhaDaLeituraRh, manipularConferenciaRh, manipularLeituraRh } from "../dominio/rh";
 
 type Tarefa = typeof tarefa.$inferSelect;
 type Manipulador = (deps: Deps, tarefa: { id: string; referenciaId: string | null }) => Promise<void>;
@@ -16,9 +17,19 @@ type Manipulador = (deps: Deps, tarefa: { id: string; referenciaId: string | nul
 const MANIPULADORES: Record<string, Manipulador> = {
   pdf_os: manipularPdfOs,
   email_alerta: manipularEmailAlerta,
+  email_resumo: manipularEmailResumo,
   leitura_sap: manipularLeituraSap,
   leitura_rh: manipularLeituraRh,
   conferencia_rh: manipularConferenciaRh,
+};
+
+/**
+ * O que fazer quando a tarefa esgota as tentativas e fica em `falhou`: avisar quem precisa saber (o PDF da OS que não saiu, a
+ * leitura do registro de funcionários que não terminou). As demais só ficam registradas com o erro.
+ */
+const AO_ESGOTAR: Record<string, (deps: Deps, tarefa: { referenciaId: string | null }, erro: string) => Promise<void>> = {
+  pdf_os: alertarFalhaDoPdf,
+  leitura_rh: alertarFalhaDaLeituraRh,
 };
 
 /** Máximo de tentativas; a quinta falha deixa a tarefa em `falhou`. */
@@ -36,6 +47,8 @@ export const INTERVALO_AUSENCIAS_MIN = 60;
 export const INTERVALO_TEMPORADAS_MIN = 60;
 /** De quanto em quanto tempo se confere se já é hora da leitura diária do registro de funcionários (o índice único evita repetir). */
 export const INTERVALO_LEITURA_RH_MIN = 1;
+/** De quanto em quanto tempo se confere se já é hora do resumo diário por e-mail (`usuario.resumo_email_dia` evita repetir). */
+export const INTERVALO_RESUMO_MIN = 1;
 
 const minutos = (n: number) => n * 60_000;
 
@@ -78,6 +91,9 @@ async function registrarFalha(deps: Deps, t: Tarefa, erro: unknown) {
       proximaEm: new Date(deps.agora().getTime() + minutos(ESPERAS_MIN[Math.min(tentativas, ESPERAS_MIN.length) - 1]!)),
     })
     .where(eq(tarefa.id, t.id));
+  const aoEsgotar = esgotada ? AO_ESGOTAR[t.tipo] : undefined;
+  // O aviso da falha não pode derrubar o executor: se ele mesmo falhar, fica no log.
+  if (aoEsgotar) await aoEsgotar(deps, t, mensagem).catch((e) => console.error(`Falha ao avisar que a tarefa ${t.tipo} esgotou as tentativas:`, e));
 }
 
 /** Processa, uma a uma, as tarefas vencidas. Devolve quantas foram tentadas (com sucesso ou não). */
@@ -131,7 +147,8 @@ export async function agendarLeituraSap(deps: Deps): Promise<boolean> {
  * `SAP_API_URL` está configurada, a cada `SAP_LEITURA_INTERVALO_MIN` minutos), agenda a leitura diária do registro de funcionários
  * (quando `RH_API_URL` está configurada, uma por dia a partir de `RH_LEITURA_HORA`), confere o ciclo das preventivas (ao subir e a
  * cada `INTERVALO_CICLOS_MIN` minutos, criando os alertas de ciclo próximo e vencido), confere as ausências (ao subir e a cada
- * `INTERVALO_AUSENCIAS_MIN` minutos) e executa as tarefas vencidas, sem que
+ * `INTERVALO_AUSENCIAS_MIN` minutos, com quem responde por cada equipe), agenda o resumo diário por e-mail (quando há servidor de
+ * e-mail, uma vez por dia a partir de `EMAIL_RESUMO_HORA`) e executa as tarefas vencidas, sem que
  * duas rodadas se sobreponham. Devolve a função que o encerra.
  */
 export function iniciarTarefas(deps: Deps): () => void {
@@ -142,6 +159,7 @@ export function iniciarTarefas(deps: Deps): () => void {
   let ultimoFechamentoDeTemporadas = 0;
   let ultimaConferenciaDeAusencias = 0;
   let ultimaChecagemDaLeituraRh = 0;
+  let ultimaChecagemDoResumo = 0;
 
   async function rodada() {
     if (rodando || parado) return;
@@ -166,10 +184,13 @@ export function iniciarTarefas(deps: Deps): () => void {
         ultimaConferenciaDeAusencias = agora;
         // Idempotente: a subida e a rodada não repetem nada. Uma falha aqui não impede as tarefas da rodada.
         await conferirAusencias(deps.db, deps.agora()).catch((erro) => console.error("Falha ao conferir as ausências:", erro));
-        // Depois das ausências (o início aplicado vale para o representante): toda equipe com representante e quem responde por ela.
-        await garantirRepresentantes(deps.db)
-          .then(() => sincronizarRepresentacao(deps.db, deps.agora()))
-          .catch((erro) => console.error("Falha ao conferir os representantes das equipes:", erro));
+        // Depois das ausências (o início aplicado vale para o representante): toda equipe com representante, quem responde por ela e o
+        // aviso aos administradores das equipes sem supervisor.
+        await atualizarSupervisaoDasEquipes(deps.db, deps.agora()).catch((erro) => console.error("Falha ao conferir quem responde pelas equipes:", erro));
+      }
+      if (deps.email.configurado && agora - ultimaChecagemDoResumo >= minutos(INTERVALO_RESUMO_MIN)) {
+        ultimaChecagemDoResumo = agora;
+        await agendarResumosDiarios(deps).catch((erro) => console.error("Falha ao agendar o resumo diário por e-mail:", erro));
       }
       if (agora - ultimoFechamentoDeTemporadas >= minutos(INTERVALO_TEMPORADAS_MIN)) {
         ultimoFechamentoDeTemporadas = agora;

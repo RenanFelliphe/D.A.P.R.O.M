@@ -193,6 +193,8 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
           atualizadas: processado.atualizadas,
           ignoradas: processado.ignoradas.length,
           detalheIgnoradas: processado.ignoradas,
+          avisos: processado.avisos.length,
+          detalheAvisos: processado.avisos.length ? processado.avisos : null,
         });
         return processado;
       });
@@ -293,6 +295,8 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
           atualizadas: processado.atualizadas,
           ignoradas: processado.ignoradas.length,
           detalheIgnoradas: processado.ignoradas,
+          avisos: processado.avisos.length,
+          detalheAvisos: processado.avisos.length ? processado.avisos : null,
         });
         return processado;
       });
@@ -324,7 +328,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
     }
   });
 
-  /** Histórico das leituras e importações, inclusive as que falharam (com `erro`). */
+  /** Histórico das leituras e importações, inclusive as que falharam (com `erro`), com as linhas ignoradas e os avisos de cada uma. */
   r.get("/importacoes", autenticar(), exigirPerfil("admin"), async (c) => {
     const p = lerConsulta(c, esquemaPaginacao);
     const { limit, offset } = limiteEDeslocamento(p);
@@ -339,6 +343,8 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
         atualizadas: importacao.atualizadas,
         ignoradas: importacao.ignoradas,
         detalheIgnoradas: importacao.detalheIgnoradas,
+        avisos: importacao.avisos,
+        detalheAvisos: importacao.detalheAvisos,
         erro: importacao.erro,
         criadaEm: importacao.criadaEm,
       })

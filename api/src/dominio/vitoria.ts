@@ -1,9 +1,10 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolverAcao, type AcaoBruta, type AcaoResolvida, DESTINOS } from "../../../shared/vitoria/destinos";
 import { sugestoesDaTela, type SugestaoFixa } from "../../../shared/vitoria/sugestoes";
 import type { Db } from "../db/conexao";
-import { treinamentoServicoVersao, vitoriaEstatistica, vitoriaPerguntaSemResposta, vitoriaUso, type Perfil } from "../db/schema";
+import { alerta, treinamentoServicoVersao, vitoriaEstatistica, vitoriaPerguntaSemResposta, vitoriaUso, type Perfil } from "../db/schema";
+import { avisarAdmins } from "./alertas";
 import type { Deps } from "../deps";
 import type { ExpressaoVitoria } from "./treinamento-servico-esquema";
 import { contar, type limiteEDeslocamento } from "../http/paginacao";
@@ -11,7 +12,7 @@ import { naoEncontrado } from "../http/erros";
 import { IAIndisponivel, type BlocoDeMensagem, type PedidoDeTexto } from "../servicos/ia";
 import { blocoDeDatas } from "./vitoria-datas";
 import { buscarNoManual, manualDoPerfil } from "./vitoria-manual";
-import { diaDe } from "./tempo";
+import { diaDe, inicioDoDia } from "./tempo";
 
 /**
  * O assistente de ajuda (`vitoria.md`, seção 2), níveis 1 a 3: responde pelo manual do perfil, oferece "Me leve lá" e
@@ -308,6 +309,29 @@ export async function sobreAVitoria(deps: Pick<Deps, "db" | "ia" | "config" | "a
 // ---- Orquestração -------------------------------------------------------------------------------------------------
 
 /**
+ * Avisa os administradores, uma vez por dia, de que a Vitória passou a responder sem IA por um problema (o limite do dia, o
+ * fornecedor fora do ar ou sem cota). A IA desligada de propósito (sem chave) não avisa. Nunca lança: a Vitória responde mesmo
+ * que o aviso falhe. A trava (`pg_advisory_xact_lock`) evita dois avisos no mesmo dia com perguntas simultâneas.
+ */
+async function avisarVitoriaSemIA(db: Db, agora: Date, porque: string): Promise<void> {
+  try {
+    await db.transaction(async (transacao) => {
+      const tx = transacao as unknown as Db;
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('vitoria_sem_ia'))`);
+      const [hoje] = await tx
+        .select({ id: alerta.id })
+        .from(alerta)
+        .where(and(eq(alerta.tipo, "vitoria_sem_ia"), gte(alerta.criadoEm, inicioDoDia(diaDe(agora)))))
+        .limit(1);
+      if (hoje) return;
+      await avisarAdmins(tx, { tipo: "vitoria_sem_ia", detalhe: `A Vitória está respondendo sem IA, pelas sugestões fixas e pela busca no manual: ${porque}.`, agora });
+    });
+  } catch (erro) {
+    console.error("Vitória: não foi possível avisar os administradores de que ela está sem IA", erro);
+  }
+}
+
+/**
  * Resolve uma mensagem da Vitória: confere os 3 limites, tenta a IA (se disponível) e cai no fallback sem IA em
  * qualquer problema. Nunca lança — é seguro chamar de dentro de uma resposta já em streaming, que não tem mais como
  * virar um erro HTTP.
@@ -322,7 +346,10 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
   if (usoDaConta >= config.vitoria.limitePorContaDia) return respostaSemIA(db, agora(), pedido, "limite_conta");
 
   const usoGlobal = await usoGlobalDoDia(db, dia);
-  if (usoGlobal >= config.vitoria.limiteGlobalDia) return respostaSemIA(db, agora(), pedido, "limite_global");
+  if (usoGlobal >= config.vitoria.limiteGlobalDia) {
+    await avisarVitoriaSemIA(db, agora(), `ela atingiu o limite de ${config.vitoria.limiteGlobalDia} respostas com IA do dia (VITORIA_LIMITE_GLOBAL_DIA) e volta a usar a IA à meia-noite`);
+    return respostaSemIA(db, agora(), pedido, "limite_global");
+  }
 
   if (!ia.disponivel()) return respostaSemIA(db, agora(), pedido, "sem_ia");
 
@@ -336,6 +363,8 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
     // (a resposta da rota já pode estar em streaming, sem mais como virar um erro HTTP).
     if (erro instanceof IAIndisponivel) console.warn(`Vitória: IA indisponível, respondendo sem IA (${erro.message})`);
     else console.error("Vitória: IA falhou de um jeito inesperado", erro);
+    const motivo = erro instanceof Error ? erro.message.slice(0, 300) : "erro desconhecido";
+    await avisarVitoriaSemIA(db, agora(), `a IA do fornecedor falhou (${motivo}). Se for a cota do dia, ela volta quando a cota renovar`);
     return respostaSemIA(db, agora(), pedido, "sem_ia");
   }
 

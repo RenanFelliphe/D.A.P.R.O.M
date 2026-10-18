@@ -613,6 +613,12 @@ export async function listarAprsDaOs(db: Db, eu: UsuarioAutenticado, osId: strin
 }
 
 /** A pessoa executou, preencheu ou assinou a APR de alguma execução da OS: não pode dar ciência nela. */
+/** Quem executou a OS (a execução encerrada; mais de uma só na execução duplicada vinda do modo offline). */
+export async function executoresDaOs(db: Db, osId: string): Promise<string[]> {
+  const linhas = await db.selectDistinct({ id: execucao.executorId }).from(execucao).where(and(eq(execucao.osId, osId), eq(execucao.resultado, "encerrada")));
+  return linhas.map((l) => l.id);
+}
+
 async function participouDaExecucao(db: Db, osId: string, usuarioId: string): Promise<boolean> {
   const [executou] = await db.select({ id: execucao.id }).from(execucao).where(and(eq(execucao.osId, osId), eq(execucao.executorId, usuarioId))).limit(1);
   if (executou) return true;

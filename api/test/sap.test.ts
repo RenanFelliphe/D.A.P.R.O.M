@@ -250,8 +250,8 @@ describe("Integração SAP: leitura das ordens", () => {
     assert.equal(alertas.length, 1);
     assert.deepEqual([alertas[0]!.tipo, alertas[0]!.destinatarioId, alertas[0]!.lidoEm, alertas[0]!.emailEnviadoEm], ["conflito_planejamento", supervisor.id, null, null]);
     assert.match(alertas[0]!.detalhe, new RegExp(o.numero_ordem));
-    // Conflito vira alerta, e não e-mail (só o bloqueio vai por e-mail).
-    assert.equal((await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, alertas[0]!.id))).length, 0);
+    // O conflito também sai por e-mail (categoria "Ordens de serviço"): uma tarefa email_alerta para o aviso.
+    assert.deepEqual((await amb.db.select().from(tarefa).where(eq(tarefa.referenciaId, alertas[0]!.id))).map((t) => t.tipo), ["email_alerta"]);
 
     // Ler de novo a mesma ordem não repete o alerta.
     await ler();
@@ -574,7 +574,7 @@ describe("Integração SAP: cursor, \"Ler agora\" e permissões", () => {
     assert.equal(pagina1.tamanho, 2);
     assert.ok(pagina1.total >= 5);
     assert.ok(pagina1.importacoes[0].criada_em >= pagina1.importacoes[1].criada_em);
-    assert.deepEqual(Object.keys(pagina1.importacoes[0]).sort(), ["arquivo", "atualizadas", "criada_em", "criadas", "detalhe_ignoradas", "erro", "id", "ignoradas", "origem", "usuario_id", "usuario_nome"]);
+    assert.deepEqual(Object.keys(pagina1.importacoes[0]).sort(), ["arquivo", "atualizadas", "avisos", "criada_em", "criadas", "detalhe_avisos", "detalhe_ignoradas", "erro", "id", "ignoradas", "origem", "usuario_id", "usuario_nome"]);
     const todas = await amb.esperar(200, "GET", "/importacoes", { como: admin });
     const feita = todas.importacoes.find((i: any) => i.usuario_id === admin.id);
     const [dono] = await amb.db.select({ nome: usuario.nome }).from(usuario).where(eq(usuario.id, admin.id));

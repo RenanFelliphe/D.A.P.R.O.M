@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import { eq } from "drizzle-orm";
 import { os } from "../db/schema";
 import type { Deps } from "../deps";
+import { avisarAdmins } from "../dominio/alertas";
 import { carregarDadosPdf } from "./pdf-dados";
 import { abrirEscala, fecharEscala, MARGEM, novoCursor, rodape, type Cursor, type Doc } from "./pdf-layout";
 import { paginaApr, paginaOs } from "./pdf-paginas";
@@ -88,4 +89,20 @@ export async function gerarEGuardarPdfOs(deps: Deps, osId: string): Promise<{ ca
 export async function manipularPdfOs(deps: Deps, tarefa: TarefaAtual): Promise<void> {
   if (!tarefa.referenciaId) throw new Error("Tarefa pdf_os sem referência à OS");
   await gerarEGuardarPdfOs(deps, tarefa.referenciaId);
+}
+
+/**
+ * A tarefa `pdf_os` esgotou as tentativas: os administradores recebem o aviso `pdf_os_falhou` (o PDF é a evidência da OS
+ * executada). Abrir o PDF no painel tenta gerá-lo de novo, na hora.
+ */
+export async function alertarFalhaDoPdf(deps: Deps, tarefa: { referenciaId: string | null }, erro: string): Promise<void> {
+  if (!tarefa.referenciaId) return;
+  const [o] = await deps.db.select({ id: os.id, numero: os.numeroOrdem, titulo: os.titulo }).from(os).where(eq(os.id, tarefa.referenciaId));
+  if (!o) return;
+  await avisarAdmins(deps.db, {
+    tipo: "pdf_os_falhou",
+    osId: o.id,
+    detalhe: `O PDF da OS ${o.numero ?? "de apoio"} (${o.titulo}) não foi gerado depois de várias tentativas: ${erro.replace(/\.$/, "")}. A execução continua registrada; abrir o PDF da OS no painel tenta gerá-lo de novo.`,
+    agora: deps.agora(),
+  });
 }

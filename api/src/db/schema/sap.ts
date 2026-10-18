@@ -169,6 +169,9 @@ export const importacao = pgTable(
     ignoradas: integer().notNull().default(0),
     /** `[{linha ou numero_ordem, motivo}]`. */
     detalheIgnoradas: jsonb(),
+    /** O que entrou mas merece atenção (ex.: o intervalo entre ciclos que não foi reconhecido): quantos e `[{linha ou numero_ordem, motivo}]`. */
+    avisos: integer().notNull().default(0),
+    detalheAvisos: jsonb(),
     erro: text(),
     criadaEm: instante().notNull().defaultNow(),
   },
@@ -177,6 +180,7 @@ export const importacao = pgTable(
     check("importacao_criadas_check", sql`${t.criadas} >= 0`),
     check("importacao_atualizadas_check", sql`${t.atualizadas} >= 0`),
     check("importacao_ignoradas_check", sql`${t.ignoradas} >= 0`),
+    check("importacao_avisos_check", sql`${t.avisos} >= 0`),
     index("importacao_criada_idx").on(t.criadaEm.desc()),
   ],
 ).enableRLS();

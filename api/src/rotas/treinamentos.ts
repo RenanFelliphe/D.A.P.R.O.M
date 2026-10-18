@@ -7,6 +7,8 @@ import { ganhosDe } from "../dominio/lancamentos";
 import {
   abrirPreVisualizacao,
   abrirTentativa,
+  avisarProblemaReportado,
+  avisarTreinamentoPublicado,
   concluirTentativa,
   listarReportes,
   listarTreinamentosPublicados,
@@ -148,7 +150,10 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
 
   r.post("/treinamentos/:atividade{.+}/reportes", ...quemTreina, async (c) => {
     const dados = await lerCorpo(c, esquemaReporte);
-    const reporte = await reportarProblema(deps.db, c.get("usuario").id, codigoDoServico(c.req.param("atividade")), { fase: dados.fase ?? null, texto: dados.texto });
+    const eu = c.get("usuario");
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    const reporte = await reportarProblema(deps.db, eu.id, codigo, { fase: dados.fase ?? null, texto: dados.texto });
+    await avisarProblemaReportado(deps.db, codigo, { quem: eu.nome, fase: dados.fase ?? null, texto: dados.texto }, deps.agora());
     return responder(c, reporte, 201);
   });
 
@@ -187,6 +192,8 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
       throw invalido("arquivo_inexistente", "Envie a imagem da assinatura antes (PUT /arquivos/{id})");
     }
     const publicado = await publicarVersao(deps.db, codigo, eu.id, arquivo_id, deps.agora());
+    // Só a primeira publicação avisa os técnicos: as seguintes corrigem o que já está lá.
+    if (publicado.versao === 1) await avisarTreinamentoPublicado(deps.db, codigo, deps.agora());
     await registrarAuditoria(deps.db, eu, {
       entidade: "treinamento",
       verbo: "publicar",
