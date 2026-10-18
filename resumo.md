@@ -28,7 +28,7 @@ O SYNQ OS obriga a equipe de campo a analisar os riscos **antes** de executar ca
 | Perfil | O que faz |
 |---|---|
 | **Técnico** | Recebe as OS da equipe, faz a APR, executa e encerra. Joga a gamificação e os treinamentos |
-| **Supervisor** | É o técnico designado como supervisor da equipe. Faz tudo o que o técnico faz e ainda gerencia a equipe: ciência, reserva e devolução de OS, reprogramação, ausências, cadastro de técnicos, ciclo das preventivas |
+| **Supervisor** | É o técnico designado como supervisor da equipe. Faz tudo o que o técnico faz e ainda gerencia a equipe: assinatura final das OS, reserva e devolução de OS, reprogramação, ausências, cadastro de técnicos, ciclo das preventivas |
 | **Admin** | Cuida da plataforma: importação de OS, modelos de APR, catálogo, usuários, equipes, gamificação, treinamentos e auditoria. **Não executa OS** |
 
 A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio da APR, e o admin o cadastra no editor de modelos.
@@ -38,9 +38,9 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 1. **Entra** pelo SAP (leitura automática), por planilha ou pelo PDF da OS.
 2. **A equipe faz a APR** da OS: escolhe o modelo, marca os riscos e responde o checklist inteiro.
 3. **O servidor valida.** Item eliminatório reprovado bloqueia a execução: a OS fica pendente e o supervisor recebe alerta e e-mail.
-4. **APR aprovada**: os participantes assinam e a execução é liberada.
-5. **Execução**: início, pausas, evidências e encerramento com as assinaturas.
-6. **Sai o PDF** de 2 páginas (APR e OS), o supervisor dá ciência e a OS entra na planilha de baixa do SAP.
+4. **APR aprovada**: cada participante (no mínimo 2) assina na própria conta, ou recusa, e a execução é liberada quando todos assinaram.
+5. **Execução**: início, pausas e suspensão com motivo, localização, evidências e encerramento em dois passos (o clique em "Encerrar OS", que para o tempo, e o preenchimento com a assinatura do responsável).
+6. **O supervisor lê o relatório da execução e assina por último.** Só então a OS está concluída: sai o PDF (a APR e a folha do SAP) e a OS entra na planilha de baixa do SAP.
 
 ---
 
@@ -73,10 +73,10 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 
 ### 3. Quadro e detalhe da OS
 
-- **Quadro** em quatro colunas: Liberada, Pendente, Em execução e Encerrada. Há ainda os estados Cancelada e Devolvida.
+- **Quadro** em cinco colunas: Liberada, Pendente, Em execução, Aguardando assinaturas (OS `encerrando`, que espera o responsável, e `aguardando_supervisor`, que espera o supervisor) e Encerrada. Há ainda os estados Cancelada e Devolvida.
 - Filtros por equipe, tipo, criticidade, período e busca. Ordenação por prioridade ou data limite.
-- Cartões com selos de **atrasada**, **execução aberta há mais de 12 horas**, **reservada para alguém** e, para a gestão, ciência pendente e PDF pronto.
-- **Detalhe da OS**: dados do SAP, local, instruções, materiais recomendados, ciclo da preventiva, checklist de inspeção, todas as APRs e execuções, fotos, PDF, alertas e **linha do tempo** (APRs, pausas, reprogramações, reserva, devolução e ciência).
+- Cartões com selos de **atrasada**, **execução aberta há mais de 12 horas**, **reservada para alguém** e, para a gestão, assinatura do supervisor pendente e PDF pronto.
+- **Detalhe da OS**: dados do SAP, local, instruções, materiais recomendados, ciclo da preventiva, checklist de inspeção, todas as APRs e execuções, fotos, localização, PDF, relatório da execução (supervisor e admin), alertas e **linha do tempo** (APRs, assinaturas e recusas, pausas, encerramento assinado, reprogramações, reserva, devolução e a assinatura final do supervisor).
 - **Histórico por local e por equipamento**, e o selo de **local crítico**, marcado pelo admin.
 - A tela se atualiza sozinha a cada 30 segundos.
 
@@ -84,7 +84,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 
 - Uma **APR nova para cada OS e cada tentativa**, nunca copiada de outra. Cada APR ampara uma única execução e vale só no dia.
 - O **técnico escolhe o modelo**. O sistema lê a OS e **recomenda** o que mais combina (palavras-chave no título, na descrição do serviço e na descrição da OS), mas nunca escolhe sozinho.
-- **Participantes**: um responsável e os executores. Todos precisam ser da equipe, ter assinatura e não estar ausentes.
+- **Participantes**: um responsável e os executores, no mínimo 2 (sem máximo). Todos precisam ser da equipe, ter assinatura e não estar ausentes nem desligados.
 - **Riscos**: a equipe marca os riscos presentes, e só as medidas desses riscos são respondidas.
 - **Checklist** (Sim, Não e NA) respondido por inteiro, uma pergunta por vez, e **validado no servidor**. O NA só existe onde o modelo permite e exige observação.
 - O técnico **não sabe o que é eliminatório**: todos os itens têm a mesma aparência, e só o admin vê essa classificação. O técnico descobre ao validar.
@@ -92,7 +92,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 - **APR bloqueada** fica registrada na hora, a OS fica pendente e a equipe pode retomar com uma APR nova, sem esperar o supervisor.
 - **Troca de modelo** durante o preenchimento, aproveitando as respostas equivalentes.
 - **Materiais, ferramentas e EPIs recomendados** do serviço aparecem como lembrete na revisão.
-- Os participantes **assinam** com a assinatura do perfil para registrar a APR aprovada.
+- A APR aprovada é registrada sem assinaturas. Cada participante recebe o aviso no sino e **assina na própria conta**, com a assinatura do perfil; a execução só começa quando todos assinaram. Quem não concorda exerce o **direito de recusa** (com motivo) e sai da APR, e o supervisor é avisado. A assinatura de todos acontece só no começo.
 - O rascunho fica salvo no navegador, para continuar depois.
 
 ### 5. Modelos de APR (admin)
@@ -108,22 +108,25 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 ### 6. Execução
 
 - **Iniciar** só com APR aprovada, do dia, da própria OS e com a pessoa entre os participantes.
-- **Pausar** (motivo opcional: almoço, descanso ou outro) e continuar. O tempo de pausa alimenta os indicadores.
-- **Suspender** no fim do expediente: a OS fica pendente, sem alerta.
+- **Pausar** (motivo obrigatório: almoço, aguardando, descanso, condição climática, enfermidade, lesão ou outro) e continuar. "Aguardando" e "outro" pedem a descrição. O tempo de pausa alimenta os indicadores.
+- **Suspender** quando o serviço não continua hoje (motivo obrigatório: enfermidade, lesão, fim de expediente, condição climática, falta de material ou equipamento ou outro): a OS fica pendente.
+- **Lesão e enfermidade**, na pausa ou na suspensão, avisam o supervisor na hora, no sino e por e-mail.
 - **Interromper por risco**: exige motivo, ao menos uma foto e assinatura. A OS fica pendente e o supervisor recebe alerta e e-mail.
 - **Cancelar por engano**: só até 10 minutos depois do início, sem pausa nem foto, com assinatura.
-- **Encerrar**: descrição, de 1 a 10 fotos (com GPS, quando o aparelho permite), até 5 PDFs e a assinatura de todos os participantes.
+- **Localização** gravada no início, na pausa, na suspensão, na interrupção e no encerramento. Sem GPS o serviço não é bloqueado: fica "sem localização".
+- **Encerrar** em dois passos: o clique em "Encerrar OS", com confirmação, para o tempo; depois vêm a descrição e as fotos (opcionais, até 10 fotos), até 5 PDFs, o checklist de inspeção e a assinatura do responsável. Sem descrição, o documento traz "Executado conforme a OS, sem ocorrências".
 - **Execução esquecida** de outro dia: o sistema exige suspendê-la, informando a hora real, antes de iniciar outra.
 - Quem executa é quem encerra, e cada retomada da OS exige uma APR nova.
 
-### 7. Documento (PDF) e baixa no SAP
+### 7. Documento (PDF), relatório da execução e baixa no SAP
 
-- **PDF de 2 páginas**, gerado em segundo plano, com nova tentativa automática se falhar:
-  - **página 1**: a APR (modelo, participantes com assinatura, riscos, todas as respostas, itens reprovados e alertas em cor, contatos de emergência e observação geral);
-  - **página 2**: a OS (dados do SAP, horários, tempo líquido, pausas, checklist de inspeção, assinaturas, ciência do supervisor e fotos com data, hora e GPS).
+- **PDF da OS**, gerado em segundo plano, com nova tentativa automática se falhar, que reproduz os documentos de referência, sem nada a mais:
+  - a **APR** (modelo, participantes, riscos, todas as respostas, itens reprovados e alertas em cor, contatos de emergência e observação geral), com a coluna de assinatura nos modelos que a têm;
+  - a **folha da OS do SAP** (dados do SAP, número de pessoas, início e fim, descrição da atividade, o atesto com a assinatura de cada executante, a do responsável e a do supervisor).
 - Cada página é reduzida (até 45%) para caber numa folha A4.
-- O PDF é **gerado de novo depois da ciência**, para ela constar no documento.
-- **Ciência do supervisor**: só o supervisor da equipe, com assinatura. Não segura o PDF nem a baixa.
+- O PDF **só sai depois da assinatura final do supervisor**.
+- **Assinatura final do supervisor** (a antiga ciência): o supervisor da equipe (ou o representante, se estiver no comando), mesmo que tenha participado do serviço, assina por último, depois de ler o relatório da execução. Só então a OS está concluída, o PDF é gerado e ela entra na baixa. Pontua se vier no prazo.
+- **Relatório da execução**, em PDF à parte, para o supervisor e o admin: tempo total, pausado e líquido, cada pausa com motivo e localização, suspensões e interrupções, a localização do início e do fim ao lado do endereço da OS, fotos e PDFs da execução, checklist de inspeção e as assinaturas da APR com a hora.
 - **Planilha de baixa do SAP** (admin), com 4 abas: **Encerradas**, **Sem ordem SAP**, **Impedimentos** e **Devolvidas**. Cada OS sai uma vez só.
 
 ### 8. Impedimentos, reprogramação e OS de apoio
@@ -139,6 +142,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
   - **operação (8)**: bloqueio, conflito de planejamento, execução duplicada, apoio encerrado, falha de importação, preventiva próxima, preventiva vencida e inspeção com pendência;
   - **ausência (9)**: pedida, aprovada, recusada, registrada, fim pedido, fim respondido, alterada, vencida e cancelada;
   - **representação (2)**: iniciada e encerrada.
+- Na execução, o sino também avisa quem precisa assinar a APR, o supervisor quando alguém recusa a APR, quando há lesão ou enfermidade na pausa ou na suspensão e quando uma OS espera a assinatura dele.
 - Vão para o supervisor da equipe e, se estiver no comando, para o representante. Sem supervisor, vão para os admins.
 - **E-mail** só para o bloqueio (APR bloqueada ou interrupção por risco), com os itens reprovados e links de 7 dias para fotos e PDFs. Os demais ficam no sino.
 - Tela de alertas da gestão, com lista, detalhe e filtros por tipo e equipe.
@@ -151,7 +155,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 
 ### 11. Assinaturas e auditoria
 
-- A assinatura do perfil **valida as ações importantes**: participantes da APR, encerramento, ciência, liberação ou recusa de cadastro, reprogramação, cancelamento e devolução de OS, interrupção por risco, cancelamento por engano, publicação de treinamento e os atos de ausência.
+- A assinatura do perfil **valida as ações importantes**: participantes da APR (cada um na própria conta, ou a recusa), encerramento (o responsável), a assinatura final do supervisor, liberação ou recusa de cadastro, reprogramação, cancelamento e devolução de OS, interrupção por risco, cancelamento por engano, publicação de treinamento e os atos de ausência.
 - Cada ato guarda uma **cópia da imagem usada**: refazer a assinatura só vale dali em diante.
 - **Auditoria** (admin): trilha que só cresce, com filtros por tipo, autor, texto e período, e os detalhes do que mudou. Cobre usuários, equipes, modelos, atividades, materiais, OS, importações, exportações, ciclos de preventiva, gamificação, registro de funcionários, ausências e treinamentos.
 
@@ -173,7 +177,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 - **Geral**, **Equipes e usuários**, **OS**, **APR** e **Meus resultados**.
 - Filtro de período (7 dias, 30 dias, 90 dias, 12 meses ou um mês) e de equipe, comparando com o período anterior.
 - Medem carteira de OS, atrasos, tempo de execução e de pausa (por equipe, técnico, motivo e OS), interrupções, reprogramações, locais com mais OS, preventivas em dia e atrasadas, e APRs aprovadas e bloqueadas.
-- **Precisa de atenção**: ciência pendente, baixa no SAP e execuções abertas há mais de 12 horas, com atalho para cada um.
+- **Precisa de atenção**: OS aguardando a assinatura do supervisor, baixa no SAP e execuções abertas há mais de 12 horas, com atalho para cada um.
 - Privacidade: o técnico só vê a própria equipe e não vê colegas. Só o admin vê o que é eliminatório e a entrada de OS.
 
 ### 15. Equipes e usuários
@@ -194,7 +198,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 
 ### 17. Gamificação
 
-- **16 tarefas pontuam**, calculadas só no servidor, entre elas APR completa, execução concluída, responsável pela APR, preventiva concluída e em dia, local crítico, resgate de OS, apoio, acompanhar técnico novo, assinatura cadastrada, Campo de treino, treinamentos de serviço e, para o supervisor, ciência no prazo e intervalo de preventiva definido. O admin edita os valores.
+- **16 tarefas pontuam**, calculadas só no servidor, entre elas APR completa, execução concluída, responsável pela APR, preventiva concluída e em dia, local crítico, resgate de OS, apoio, acompanhar técnico novo, assinatura cadastrada, Campo de treino, treinamentos de serviço e, para o supervisor, assinatura final no prazo e intervalo de preventiva definido. O admin edita os valores.
 - **Temporadas trimestrais** (Verão, Outono, Inverno e Primavera), com fechamento automático.
 - **Ranking** de pessoas e de equipes (a equipe pela média por membro), por temporada ou geral, com opção de **anonimato**.
 - **5 patentes** (com imagem de pessoa e de equipe) e **26 conquistas**.
@@ -258,6 +262,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 ## O que ainda não está pronto
 
 - **App Android e modo offline** (fila local, login sem sinal): não iniciados. O servidor já está pronto para eles, e a web funciona no navegador do celular, sem instalação.
+- **Assinatura com validade jurídica** (ZapSign, token ou gov.br), **login corporativo** pela conta Microsoft com segundo fator e **sincronização em segundo plano** no app: registrados na Reunião 3, mas dependem de contas e do app, que ainda não existem. A assinatura continua desenhada, como no protótipo.
 - **Digitalização de OS antigas por IA**: decidida, não iniciada. A tela de câmera só abre a câmera, sem ler nada, e PDF escaneado (sem texto) é recusado.
 - **Vitória com IA**: a bateria de perguntas está pronta, mas ainda não rodou inteira (a cota diária do Gemini gratuito acabou na primeira rodada).
 - **E-mail**: só o alerta de bloqueio é enviado, e só com o SMTP configurado. Os avisos de ausência e representação ficam no sino.

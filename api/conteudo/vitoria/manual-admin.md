@@ -19,6 +19,8 @@
 ## Modelos de APR
 
 - Em APR › Modelos ficam os modelos publicados e os rascunhos; "Novo modelo" começa um do zero. [modelos_apr]
+- Cada modelo diz se a folha tem a coluna "Assinatura" na tabela de participantes (as APR 04, 05 e 06 têm): o PDF da OS
+  reproduz a folha como ela é, e sem a coluna as assinaturas da APR aparecem só no relatório da execução. [modelos_apr]
 - Editar um modelo publicado cria uma versão nova; as APR já respondidas guardam a versão em que foram feitas, então
   nada muda retroativamente.
 - A aba Atividades mostra a quais atividades cada modelo está ligado. [atividades_apr]
@@ -40,7 +42,8 @@
 
 ## Alertas
 
-- Os alertas avisam sobre bloqueios de APR e outras pendências que precisam de atenção. [alertas]
+- Os alertas avisam sobre bloqueios de APR, direito de recusa, lesão ou enfermidade na execução e outras pendências
+  que precisam de atenção. [alertas]
 - Para o admin chegam também: cadastro feito por um supervisor aguardando a liberação, funcionário readmitido no
   registro (com o botão "Reativar a conta" no próprio aviso: o sistema nunca devolve o acesso sozinho), equipe sem
   supervisor (o representante responde por ela até você escolher um), falha na leitura do SAP ou do registro de
@@ -75,7 +78,10 @@
 ## Dashboards
 
 - O Dashboard geral reúne a visão de OS, equipes e APR num só lugar. [dashboard_geral]
-- O dashboard de OS traz os tempos de execução e a entrada de ordens. [dashboard_os]
+- O dashboard de OS traz os tempos de execução (com a pausa por motivo) e a entrada de ordens. [dashboard_os]
+- A OS só está concluída quando o responsável assina o encerramento e, por último, o supervisor assina depois de ler o
+  relatório da execução (um PDF à parte, que o supervisor e o admin veem no detalhe da OS). Enquanto isso a OS fica
+  "encerrando" ou "aguardando o supervisor"; o PDF da OS e a baixa no SAP só valem para a OS concluída. [dashboard_os]
 - O dashboard de APR traz os indicadores de aprovação e bloqueio, por equipe e por período. [dashboard_apr]
 - O dashboard de equipes compara o desempenho entre elas. [dashboard_equipes]
 

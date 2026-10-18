@@ -14,6 +14,10 @@
 | 62 | O horário de início e fim vale por executante? | Iago | 🟢 Depois |
 | 67 | Quem responde pela equipe quando o supervisor está ausente? | Iago (respondida em 16/10/2026) | 🟡 MVP |
 | 68 | Qual servidor de e-mail (SMTP) o SYNQ OS usa para os avisos? | Empresa (TI), pelo Iago | 🟡 MVP |
+| 69 | O supervisor pode devolver a OS ao responsável em vez de assinar? | Time | 🟡 MVP |
+| 70 | O SYNQ OS preenche "Houve desvio?" e "Tempo parada" na folha do SAP? | Iago | 🟡 MVP |
+| 71 | O que fazer com mais de 3 executantes na folha do SAP? | Time | 🟢 Depois |
+| 72 | O que a equipe com só 1 pessoa disponível faz, com o mínimo de 2 participantes? | Time | 🟡 MVP |
 
 **Impacto:** 🔴 muda tabelas ou contratos; 🟡 muda uma tela ou regra da demonstração; 🟢 não afeta a demonstração.
 
@@ -104,3 +108,35 @@ A OS corretiva 4023470 não tem nada disso. O texto parece vir da descrição lo
 Também vale confirmar se a empresa aceita o que vai nos e-mails: nome, matrícula, número e título da OS, local e motivo da ausência, sempre para o e-mail institucional.
 
 **Adotado por enquanto:** os avisos ficam só no sino. Com a resposta, basta preencher `SMTP_URL`, `EMAIL_REMETENTE` e `PAINEL_URL` e conferir com `pnpm --dir api email:testar -- seu.email@empresa.com.br` (seção 6 do [avisos-e-emails.md](funcionalidades/avisos-e-emails.md)).
+
+## 69. O supervisor pode devolver a OS ao responsável em vez de assinar?
+
+**Contexto:** na Reunião 3 (17/10/2026), o time decidiu que o supervisor lê o relatório da execução e assina por último, e só então a OS está concluída ([correcoes-da-reuniao-3.md](funcionalidades/correcoes-da-reuniao-3.md)). Se a leitura mostrar um problema, hoje o supervisor só tem a assinatura.
+
+**Pergunta:** o supervisor deve poder devolver a OS ao responsável, com um motivo, em vez de assinar? Na prática, isso é mandar refazer o serviço, o que pede regras próprias (a OS voltaria para o encerramento, a execução já terminou, o tempo já parou).
+
+**Adotado por enquanto:** não existe devolução: o supervisor assina.
+
+## 70. O SYNQ OS preenche "Houve desvio?" e "Tempo parada" na folha do SAP?
+
+**O que os documentos mostram:** a folha da OS do SAP tem os campos "Houve desvio?" (com a justificativa do desvio) e "Tempo parada" ([`base/os-examples`](base/os-examples/)). O SYNQ OS já sabe de interrupções, suspensões e pausas, com motivo e horário.
+
+**Pergunta:** esses campos devem ser preenchidos pelo SYNQ OS (por exemplo, com a interrupção ou a suspensão, ou com o tempo pausado) ou ficam em branco, como no papel? O que o SAP espera neles?
+
+**Adotado por enquanto:** os dois ficam em branco no PDF, como no papel; as pausas, suspensões e interrupções estão no relatório da execução.
+
+## 71. O que fazer com mais de 3 executantes na folha do SAP?
+
+**O que os documentos mostram:** a página 2 da OS tem três blocos de executante, e a APR não limita o número de participantes (o mínimo é 2, sem máximo, desde a Reunião 3).
+
+**Pergunta:** quando a equipe tem mais de 3 executantes, o SAP aceita mais blocos ou só os 3? Quem não cabe nos 3 entra em outra folha ou fica só na APR?
+
+**Adotado por enquanto:** os executantes extras seguem em novas linhas de blocos iguais.
+
+## 72. O que a equipe com só 1 pessoa disponível faz, com o mínimo de 2 participantes?
+
+**Contexto:** desde 18/10/2026 a APR exige ao menos 2 participantes (ninguém trabalha sozinho), e os participantes vêm da equipe da OS (Reunião 2). Ausente e desligado não entram.
+
+**Pergunta:** quando só uma pessoa da equipe está disponível (as outras ausentes, de folga ou desligadas), como o serviço é feito? A equipe pode chamar alguém de outra equipe (a regra de hoje é só a equipe da OS e a do técnico que preenche, ver a questão 10) ou a OS espera?
+
+**Adotado por enquanto:** a APR é recusada com a mensagem de que faltam participantes (`participantes_insuficientes`), e a OS espera até haver a segunda pessoa.

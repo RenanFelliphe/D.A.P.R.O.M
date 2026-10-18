@@ -16,10 +16,10 @@ O objetivo é apoiar a operação para que cada OS tenha sua própria APR, a exe
 
 1. **Receber a OS:** as ordens são originadas no SAP e chegam à plataforma por uma API de leitura ou, como alternativa, por arquivo: a planilha exportada ou o PDF da OS impresso pelo SAP, conferido campo a campo antes de registrar. A plataforma não cria OS por iniciativa do usuário: a única que nasce nela é a OS de apoio, aberta pelo supervisor da equipe ou pelo admin a partir de um impedimento e ligada à OS original. A equipe indicada na ordem é usada para apresentar os participantes; os dados de atribuição não são recriados manualmente.
 2. **Analisar os riscos:** antes de executar, a equipe realiza uma APR nova, exclusiva para aquela OS e para aquela tentativa. As respostas não são copiadas nem pré-preenchidas a partir de outra APR. O técnico escolhe o modelo a cada APR, entre os modelos publicados: o sistema lê a OS e recomenda o que mais combina, mas não escolhe por ele, porque o mesmo serviço pode pedir APRs diferentes conforme a situação no local. Os modelos e a orientação de cada um são cadastrados pelo admin com o que a Segurança do Trabalho define. A equipe marca os riscos que existem na atividade, e só as medidas desses riscos são respondidas.
-3. **Validar a APR:** o checklist é respondido por inteiro antes da validação. Respostas reprovadas em itens eliminatórios impedem a execução, mas o técnico não sabe quais itens são eliminatórios (só o admin, que edita o modelo, vê isso): o sistema valida as respostas depois que tudo foi respondido e só então mostra o que reprovou. Todos os itens reprovados devem ser documentados, com foto quando se tratar de um obstáculo físico ou justificativa em texto quando a evidência visual não for adequada, como no direito de recusa.
+3. **Validar a APR:** o checklist é respondido por inteiro antes da validação. A APR exige ao menos 2 participantes (ninguém trabalha sozinho). Respostas reprovadas em itens eliminatórios impedem a execução, mas o técnico não sabe quais itens são eliminatórios (só o admin, que edita o modelo, vê isso): o sistema valida as respostas depois que tudo foi respondido e só então mostra o que reprovou. Todos os itens reprovados devem ser documentados, com foto quando se tratar de um obstáculo físico ou justificativa em texto quando a evidência visual não for adequada, como no direito de recusa.
 4. **Manter a OS pendente quando houver impedimento:** a APR bloqueada é preservada no histórico, a OS continua pendente e o supervisor é avisado. A equipe pode retomar a OS com uma APR totalmente nova, sem duplicar a ordem nem depender de reprogramação prévia.
-5. **Registrar a execução:** uma APR aprovada libera o início. A execução registra horários, quantidade de pessoas, descrição do serviço, pausas e evidências. Pausar uma atividade por intervalo é diferente de interrompê-la por risco; cada nova retomada da OS exige uma nova APR.
-6. **Encerrar e documentar:** quem executa encerra a atividade após as confirmações e assinaturas dos participantes. O registro previsto é um PDF de duas páginas: APR e OS no formato de referência do SAP. O supervisor da equipe dá ciência pelo painel.
+5. **Assinar a APR e registrar a execução:** depois de aprovada, a APR é assinada por todos os participantes, cada um na própria conta e só nesse momento; quem não concorda exerce o direito de recusa e sai da APR. Com todas as assinaturas, a execução começa. Ela registra horários, quantidade de pessoas, descrição do serviço, pausas (com motivo obrigatório), localização e evidências. Pausar uma atividade por intervalo é diferente de suspendê-la (também com motivo obrigatório) e de interrompê-la por risco; cada nova retomada da OS exige uma nova APR.
+6. **Encerrar e documentar:** o encerramento tem dois passos. Quem executa clica em "Encerrar OS" e, depois de uma confirmação, o tempo para; em seguida preenche a descrição e as fotos (opcionais) e o responsável assina. O supervisor da equipe lê o relatório da execução e assina por último; só então a OS está concluída. O registro é o PDF da OS, que reproduz a APR e a folha da OS do SAP como são; tempos, pausas, localização e fotos ficam no relatório da execução, à parte, para o supervisor e o admin. A baixa no SAP é por planilha.
 
 ## O que a demonstração apresenta
 
@@ -32,8 +32,8 @@ A aplicação `web` reúne as telas de campo, de gestão e do documento:
 - Abertura de APR vinculada a uma OS, escolha do modelo pelo técnico (com a recomendação do sistema), seleção dos participantes e indicação do responsável.
 - Checklist de 18 itens demonstrativos, respondido por completo e validado somente ao final; todas as perguntas têm a mesma aparência, sem marcar o que é eliminatório ou alerta.
 - Justificativa e evidência fotográfica dos itens reprovados, pedidas só depois da validação, tela de APR bloqueada e tela de APR aprovada.
-- Confirmação das assinaturas dos participantes antes de iniciar a execução.
-- Tela de execução com pausa/continuação, descrição e exemplos de evidências.
+- Assinatura da APR por cada participante, na própria conta, com o direito de recusa, antes de iniciar a execução.
+- Tela de execução com pausa (com motivo), suspensão, interrupção por risco, encerramento em dois passos, descrição opcional e evidências.
 - Perfil com histórico de OS e assinatura cadastrada de exemplo.
 - Fila de sincronização ilustrativa.
 
@@ -41,11 +41,12 @@ A aplicação `web` reúne as telas de campo, de gestão e do documento:
 
 - Quadro de OS por estado, com indicadores, filtros e criticidade.
 - Detalhe e histórico da ordem, alertas de impedimento e acompanhamento de OS de apoio.
+- Assinatura final do supervisor, depois da leitura do relatório da execução.
 - Telas ilustrativas para importação do SAP, indicadores/exportação, modelos de APR e administração de equipes e usuários.
 
 ### Documento
 
-- Visualização de referência do PDF de duas páginas, com uma página para a APR e outra para a OS.
+- O PDF da OS, com a APR e a folha da OS do SAP como o papel, e o relatório da execução, em documento à parte.
 
 **As telas são uma demonstração de fluxo e interface, não módulos funcionais conectados.** A importação, sincronização, notificações, login, armazenamento de fotos, edição de modelos, geração/baixa de documentos e indicadores reais não são executados por serviços de backend neste repositório. Interações como câmera e algumas exportações são representadas visualmente ou por mensagens de demonstração.
 
@@ -58,8 +59,12 @@ A aplicação `web` reúne as telas de campo, de gestão e do documento:
 - Alertas não eliminatórios são registrados, mas não bloqueiam automaticamente a OS. O técnico não é avisado de qual resposta é alerta nem de qual é eliminatória.
 - APRs bloqueadas e tentativas anteriores permanecem no histórico da OS.
 - A OS pendente pode ser retomada por alguém da equipe mediante uma APR nova.
-- A execução só é liberada após uma APR aprovada; quem executa é responsável pelo encerramento.
-- Pausa, suspensão por fim de expediente e interrupção por risco são situações diferentes.
+- A execução só é liberada após uma APR aprovada e assinada por todos os participantes; quem executa é responsável pelo encerramento.
+- A APR exige ao menos 2 participantes. Cada um assina na própria conta, só no começo (a assinatura de todos não se repete no fim), e quem não concorda recusa e sai da APR (direito de recusa, com motivo obrigatório). Se restarem menos de 2, ou se quem recusou foi o responsável, é preciso uma APR nova.
+- Pausa, suspensão e interrupção por risco são situações diferentes. A pausa e a suspensão exigem um motivo (e a descrição, quando o motivo é "aguardando" ou "outro"); lesão e enfermidade avisam o supervisor na hora, no sino e por e-mail.
+- A localização é gravada no início, na pausa, na suspensão, na interrupção e no encerramento; sem GPS o serviço não é bloqueado e fica "sem localização".
+- O encerramento tem dois passos: o clique em "Encerrar OS" (com confirmação), em que o tempo para, e o preenchimento com a assinatura do responsável. Descrição e fotos são opcionais; a foto da interrupção por risco continua obrigatória.
+- Depois do responsável, o supervisor assina por último (mesmo que tenha participado do serviço), depois de ler o relatório da execução. A OS passa por `encerrando` e `aguardando_supervisor` e só fica `encerrada` (concluída) com essa assinatura; o PDF só sai depois dela.
 - O sistema é online e atende todos os perfis, no app e na web. O modo offline é um recurso adicional para o campo sem sinal: os dados produzidos offline devem ser sincronizados sem descartar registros, e conflitos de planejamento devem gerar alertas.
 - O protótipo e os testes de demonstração devem usar somente dados fictícios.
 
@@ -131,6 +136,7 @@ As oito planilhas de referência de APR correspondem aos modelos de operação, 
 - [vitoria.md](./vitoria.md) — a Vitória (assistente do sistema), os treinamentos de serviço e a digitalização de OS antigas, todos com apoio da IA: decisões, custos e plano de implementação.
 - [Especificação funcional e técnica](./base/.design/especificacao.md) — escopo, regras de negócio, arquitetura proposta, contratos e decisões.
 - [Pontos a validar](./base/.design/pontos-a-validar.md) — questões que ainda dependem de confirmação.
+- [Correções da Reunião 3](./funcionalidades/correcoes-da-reuniao-3.md) — o que foi implementado em 18/10/2026 (assinaturas, execução, relatório e PDF) e, no [resumo](./base/reunioes/correcoes-reuniao-3-resumo.md), o que a reunião decidiu.
 - [Resumo das correções da reunião 2](./base/reunioes/correcoes-reuniao-2-resumo.md) — decisões recentes sobre APR, execução, integração e stack.
 - [Materiais de APR](./base/apr-examples/) e [exemplos de OS](./base/os-examples/) — referências de processo e formato.
 

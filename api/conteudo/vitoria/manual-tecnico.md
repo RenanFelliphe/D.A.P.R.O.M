@@ -12,8 +12,9 @@
 
 ## Quadro de OS
 
-- O quadro mostra as OS da sua equipe. As cores indicam a situação: liberada, em execução, encerrada, pendente ou
-  cancelada. Toque numa OS para abrir o detalhe. [quadro_os]
+- O quadro mostra as OS da sua equipe. As cores indicam a situação: liberada, em execução, encerrando, aguardando o
+  supervisor, encerrada, pendente ou cancelada. Toque numa OS para abrir o detalhe. [quadro_os]
+- Se uma APR espera a sua assinatura, uma faixa no topo do quadro avisa e leva direto à tela de assinatura. [quadro_os]
 - As OS preventivas (as que seguem um ciclo, como inspeções periódicas) aparecem numa janela à parte, aberta pelo
   botão "OS preventivas" no topo do quadro. [preventivas]
 - Use os filtros do quadro (status, urgência ou busca) para achar uma OS específica sem rolar a lista toda.
@@ -32,16 +33,38 @@
   os riscos da atividade e responda ao checklist. [apr_nova]
 - Dá para trocar de modelo enquanto nenhuma pergunta foi respondida; depois de começar a responder, a troca não é
   mais oferecida.
-- Cada participante da OS confirma a própria presença com a assinatura já cadastrada no perfil.
+- A APR precisa de pelo menos 2 participantes: ninguém executa o serviço sozinho. Não há máximo.
+- Depois que a APR é validada, cada participante assina a APR na própria conta, com a assinatura do perfil (a pessoa
+  recebe o aviso no sino e a faixa no quadro). A execução só começa quando todos assinaram. Essa é a única hora em
+  que todos assinam: no fim, só o responsável.
+- Quem não concorda com a APR (por exemplo, por não estar bem física ou emocionalmente) usa o direito de recusa: informa
+  o motivo e sai da APR. O supervisor é avisado na hora. Se restarem menos de 2 participantes, ou se quem recusou foi o
+  responsável, é preciso fazer uma APR nova.
 - Se alguma resposta do checklist pedir uma evidência (normalmente uma foto) ou um comentário, a APR só se completa
   com isso preenchido. A OS pode ficar pendente até o seu supervisor revisar o que foi registrado.
 
 ## Execução
 
 - Com a APR aprovada, o botão para iniciar a execução aparece no detalhe da OS. [execucao]
-- Durante a execução é possível registrar uma pausa (por exemplo, para almoço) e retomar depois.
-- Para encerrar, é preciso descrever o que foi feito, anexar ao menos uma foto de evidência e confirmar a assinatura
-  de quem participou.
+- São quatro botões. Pausar: parada curta, a equipe volta ao mesmo serviço no mesmo dia; só o tempo líquido para e o
+  motivo é obrigatório (almoço, aguardando [o que ou quem], descanso, condição climática, enfermidade, lesão ou
+  outro [com a descrição]). Suspender: o serviço não continua hoje; encerra esta execução, a OS fica pendente e a retomada
+  pede APR nova; o motivo é obrigatório (enfermidade, lesão, fim de expediente, condição climática, falta de material
+  ou equipamento ou outro). Interromper por risco: apareceu um risco ou impedimento; pede o motivo, ao menos uma foto e
+  a assinatura, a OS fica pendente e o supervisor é avisado. Encerrar: o serviço terminou. [execucao]
+- Lesão e enfermidade, na pausa ou na suspensão, avisam o supervisor na hora (no sino e por e-mail): a lesão no
+  trabalho, mesmo leve, é acidente de trabalho e a empresa precisa registrá-la.
+- O sistema registra a sua localização ao iniciar, pausar, suspender, interromper e encerrar a execução, para constar no
+  relatório. Sem permissão de localização o serviço segue normalmente, marcado como "sem localização". A localização
+  não é registrada na assinatura da APR.
+- Ao tocar em "Encerrar OS", o sistema pede uma confirmação: o tempo para ali e a execução não pode ser retomada. Depois
+  vêm a descrição e as fotos, que são opcionais (só vale registrar quando aconteceu algo), o checklist de inspeção das
+  preventivas e a assinatura do responsável. Esse preenchimento não entra no tempo. Sem descrição, o documento sai com
+  "Executado conforme a OS, sem ocorrências".
+- Depois que o responsável assina, a OS fica aguardando o supervisor, que lê o relatório da execução e assina por último.
+  Só então a OS está concluída e o PDF é gerado.
+- O cronômetro não depende do aplicativo aberto: o tempo é calculado a partir do início, então continua certo com o
+  celular bloqueado.
 - Interromper por risco e cancelar por engano também são assinados: o sistema abre a confirmação com a sua assinatura
   do perfil antes de concluir.
 - Esqueceu de encerrar no mesmo dia? Ao abrir a OS de novo, o sistema pede a hora real em que o trabalho parou antes
@@ -54,8 +77,8 @@
 - A troca de senha e de assinatura valem a partir do momento em que são salvas; execuções anteriores não mudam.
 - A assinatura é a primeira coisa a fazer depois do primeiro acesso e da liberação do admin: sem ela nenhuma outra
   tela abre. Ela valida o que você faz de importante no sistema (APR, encerramento, interrupção, ausência).
-- Os avisos chegam no sino, no topo da tela: a OS reservada para você (ou tirada de você), a ciência do supervisor na OS
-  que você executou, a sua ausência, o treinamento novo. Tocar no aviso leva à tela dele.
+- Os avisos chegam no sino, no topo da tela: a OS reservada para você (ou tirada de você), a assinatura final do supervisor
+  na OS que você executou, a APR que espera a sua assinatura, a sua ausência, o treinamento novo. Tocar no aviso leva à tela dele.
 - Em "E-mails", no perfil, você escolhe quais avisos também vão para o seu e-mail institucional, por assunto (OS,
   ausências, equipe, treinamentos e o resumo diário). Os de segurança e os da sua conta sempre vão. Desligar um assunto
   só tira o e-mail: o aviso continua no sino. [perfil]
@@ -65,8 +88,12 @@
 - A tela da sua equipe (ou "Minha equipe", se você é supervisor) mostra quem faz parte dela, o total de OS e quem é
   o supervisor. [equipe]
 - Quem supervisiona pode cadastrar novos técnicos ali; quem não supervisiona só consulta.
-- Quem supervisiona assina, com a assinatura do perfil, ao dar ciência numa OS encerrada, ao reprogramar uma OS e ao
-  devolvê-la ao SAP; a assinatura da ciência vai para o PDF da OS.
+- Quem supervisiona assina, com a assinatura do perfil, ao concluir uma OS (lê o relatório da execução e assina por
+  último, mesmo que tenha participado do serviço), ao reprogramar uma OS e ao devolvê-la ao SAP; a assinatura
+  final vai para o PDF da OS.
+- O relatório da execução é um documento à parte do PDF: traz o tempo total, as pausas (quem, por quê, quando), as
+  suspensões e interrupções, a localização, as fotos, o checklist e as assinaturas da APR. Quem supervisiona o lê
+  antes de assinar.
 - O representante da equipe é quem assume as tarefas do supervisor quando ele está ausente ou fica alguns dias sem
   usar o sistema — a equipe continua funcionando normalmente nesse meio-tempo.
 - Na equipe sem supervisor (nenhum, ou um que foi desligado), o representante responde por ela até o administrador

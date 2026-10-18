@@ -6,12 +6,13 @@
 
 ## Resumo
 
-- **O fluxo online está completo na `api` e na `web`.** A OS entra pela API do SAP, pela planilha ou pelo PDF. A APR é respondida e validada no servidor, a execução é registrada e sai o PDF de 2 páginas. Também já funcionam o painel, os alertas, os indicadores, a auditoria e a gamificação. A web é responsiva e funciona no navegador do celular.
+- **As correções da Reunião 3 foram feitas em 18/10/2026** ([correcoes-da-reuniao-3.md](funcionalidades/correcoes-da-reuniao-3.md)): cada participante assina a APR na própria conta, só no começo, com direito de recusa e mínimo de 2 participantes; pausa e suspensão pedem motivo (lesão e enfermidade avisam o supervisor); a localização é gravada em cinco momentos; o encerramento tem dois passos (o clique que para o tempo e, depois, o preenchimento com a assinatura do responsável); o supervisor assina por último, depois de ler o relatório da execução, e só então a OS está concluída e o PDF sai; o PDF reproduz a APR e a folha do SAP, e o resto foi para o relatório da execução. A migração é a `0032`. **Ficaram de fora:** a assinatura com validade jurídica, o login corporativo e a sincronização em segundo plano (dependem de contas e do app) e a digitalização, que será feita à parte.
+- **O fluxo online está completo na `api` e na `web`.** A OS entra pela API do SAP, pela planilha ou pelo PDF. A APR é respondida e validada no servidor, a execução é registrada e o supervisor assina por último e sai o PDF da OS (a APR e a folha do SAP). Também já funcionam o painel, os alertas, os indicadores, a auditoria e a gamificação. A web é responsiva e funciona no navegador do celular.
 - **Falta das essenciais o app Android e, com ele, o modo offline** (fila local, cópia da equipe e login sem sinal). A `api` já está pronta para os dois. Sem eles, o critério de sucesso da demo não fecha.
 - **O formulário de inspeção das preventivas** virou o checklist de inspeção, implementado em 15/10/2026 ([inspecao-preventivas.md](inspecao-preventivas.md)); a pergunta ao Iago (questão 57) fica para conferir se ele cobre o uso real.
 - **Os materiais recomendados foram decididos e feitos em 15/10/2026:** a conferência obrigatória (foto e bloqueio) saiu, e a lista do serviço virou só consulta (seção 4).
 - **O usuário ausente foi feito em 15/10/2026** ([ausencia.md](ausencia.md)): o ausente continua ativo, mas só visualiza; a ausência é pedida pelo técnico ou registrada pelo supervisor, sempre assinada. Quem responde pela equipe com o supervisor ausente é o representante, feito em 16/10/2026 ([representante.md](representante.md)); desde 17/10/2026 ele também responde pela equipe sem supervisor ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.4).
-- **A assinatura nas ações importantes foi feita em 17/10/2026** ([assinaturas.md](funcionalidades/assinaturas.md)): depois da liberação a assinatura é a primeira coisa a cadastrar (todos os perfis), e a ciência do supervisor, a liberação de cadastro, a reprogramação, o cancelamento e a devolução de OS e a interrupção ou o cancelamento por engano da execução passaram a ser assinados.
+- **A assinatura nas ações importantes foi feita em 17/10/2026** ([assinaturas.md](funcionalidades/assinaturas.md)): depois da liberação a assinatura é a primeira coisa a cadastrar (todos os perfis), e a ciência do supervisor (desde 18/10/2026, a assinatura final do supervisor), a liberação de cadastro, a reprogramação, o cancelamento e a devolução de OS e a interrupção ou o cancelamento por engano da execução passaram a ser assinados.
 - **Os treinamentos de serviço foram feitos em 16/10/2026, sem IA** ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)): o jogo por serviço do catálogo (explicação da Vitória + até 10 fases), publicado pelo admin com termo e assinatura, jogado pelo técnico (inclusive quem aguarda liberação) e pontuado pela gamificação. No mesmo dia, o **módulo de IA genérico** (desligado até a chave existir) e a **Vitória assistente, níveis 1 a 3**, também foram feitos ([vitoria.md](funcionalidades/vitoria.md), seções 1.5 e 2.10): botão flutuante em toda tela, respostas pelo manual do perfil, "Me leve lá", "mostrar na tela" e consultas filtradas. Em 17/10/2026 o módulo ganhou o Gemini gratuito, para a demonstração (seção 1.6); a primeira chamada real foi conferida no mesmo dia (13 perguntas, todas certas, inclusive "mês passado" e "maio" sem o ano), e sem IA ela responde por palavra-chave. Ainda em 17/10/2026 entraram o rascunho de treinamento pela IA, a bateria de 53 perguntas e "Perguntas à Vitória" no menu do admin (seções 3.9, 2.9.1 e 2.10.6 do [vitoria.md](funcionalidades/vitoria.md)).
 - **Os avisos e os e-mails foram feitos em 17/10/2026** ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md)): todo aviso do sino pode sair também por e-mail, conforme as categorias que cada pessoa deixa ligadas no perfil, e de manhã sai um resumo diário. A varredura acrescentou 18 avisos (OS reservada, ciência, conta criada, acesso liberado, cadastro aguardando liberação, readmissão, equipe sem supervisor, falhas do registro e do PDF, Vitória sem IA, treinamentos). No mesmo dia saíram as pendências menores: o alerta da leitura do registro de funcionários que falha, a reativação na readmissão (um clique no aviso), os avisos da leitura do SAP no cartão, a equipe sem supervisor (o representante assume) e o e-mail dos avisos de ausência. **Para os e-mails saírem, falta só configurar o SMTP** (seção 6 do arquivo).
 - **A escolha do modelo da APR foi decidida e feita em 14/10/2026:** o técnico escolhe o modelo a cada APR, entre os publicados, e o sistema só recomenda um pela leitura da OS (seção 5).
@@ -19,7 +20,7 @@
 - **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com os materiais recomendados, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
 - **Extras não iniciadas:**
   - a digitalização de OS e APR antigas, decidida com leitura por IA em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (a câmera é só protótipo).
-- **Números (17/10/2026):** 166 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 32 migrações (`0000` a `0031`) e 828 testes em 46 arquivos. Os 828 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
+- **Números (18/10/2026):** 168 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 33 migrações (`0000` a `0032`) e 878 testes em 47 arquivos. Os 878 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
 
 ## O que ainda falta, num relance
 
@@ -88,11 +89,11 @@ O supervisor não é um perfil, e a web tem uma casca única para todos.
      3. revisão, com os materiais recomendados como lembrete;
      4. validação no servidor (`POST /aprs/avaliar`).
    - **Bloqueada:** quando um item eliminatório é reprovado. A APR fica registrada na hora, a OS fica pendente e o supervisor recebe alerta e e-mail. O técnico documenta cada item reprovado com foto, texto ou PDF, conforme o modelo pede.
-   - **Aprovada:** os participantes assinam com a assinatura do perfil, e a APR é registrada.
-4. **Execução.** Iniciar, pausar com motivo, suspender no fim do expediente, interromper por risco (com motivo e foto), cancelar por engano (até 10 minutos depois do início) e encerrar. O encerramento pede descrição, de 1 a 10 fotos e as assinaturas, e aceita até 5 PDFs.
+   - **Aprovada:** a APR é registrada sem assinaturas (exige ao menos 2 participantes). Cada participante assina na própria conta, ou recusa, e a execução só começa quando todos assinaram.
+4. **Execução.** Iniciar, pausar e suspender (os dois com motivo obrigatório), interromper por risco (com motivo, foto e assinatura), cancelar por engano (até 10 minutos depois do início) e encerrar. A localização é gravada no início, na pausa, na suspensão, na interrupção e no encerramento. O encerramento tem dois passos: o clique em "Encerrar OS" (o tempo para) e o preenchimento, com a assinatura do responsável; a descrição e as fotos são opcionais, e entram até 5 PDFs.
 5. **Documento e baixa.**
-   - O PDF de 2 páginas (APR e OS) é gerado em segundo plano.
-   - O supervisor dá ciência.
+   - O supervisor lê o relatório da execução e assina por último (a ciência de antes); a OS passa de `encerrando` e `aguardando_supervisor` a `encerrada`.
+   - O PDF da OS (a APR e a folha do SAP, como o papel) é gerado em segundo plano, depois dessa assinatura.
    - A planilha de baixa no SAP sai com quatro abas: Encerradas, Sem ordem SAP, Impedimentos e Devolvidas.
 6. **Depois.** Dashboards, alertas de ciclo das preventivas e pontos da gamificação.
 
@@ -110,9 +111,9 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale 
 | Modelos de APR | **Pronta.** 8 modelos na carga inicial, versões imutáveis, editor, orientação de cada modelo para a escolha do técnico, arquivamento e restauração. O critério de bloqueio da carga é provisório até a Segurança do Trabalho validar |
 | Catálogo de serviço | **Pronta.** Materiais, ferramentas e EPIs recomendados por serviço, com quantidade |
 | APR | **Pronta na web.** Modelo escolhido pelo técnico, com a recomendação e a troca, checklist inteiro, validação no servidor, materiais recomendados, evidência por foto, texto ou PDF e APR bloqueada registrada na validação |
-| Execução | **Pronta na web.** Pausa com motivo, suspensão, interrupção por risco, cancelamento por engano, assinaturas e PDF de 2 páginas |
+| Execução | **Pronta na web.** Assinatura da APR por participante, pausa e suspensão com motivo, localização, interrupção por risco, cancelamento por engano, encerramento em dois passos, assinatura final do supervisor, PDF da OS e relatório da execução |
 | Impedimento e alertas | **Pronta.** 7 tipos de alerta (e-mail só no bloqueio), reprogramação e OS de apoio |
-| Painel | **Pronta.** Quadro, detalhe, ciência, local crítico, busca global, PDF e exportação para baixa |
+| Painel | **Pronta.** Quadro, detalhe, assinatura final do supervisor, local crítico, busca global, PDF e exportação para baixa |
 | Indicadores | **Pronta.** 5 dashboards (Geral, Equipes, OS, APR e Meus resultados), com tempo de execução e de pausa por equipe, técnico e OS |
 | Ciclo das preventivas | **Pronta.** Contagem até o próximo ciclo por plano e item, com alertas de ciclo próximo e vencido; não cria OS |
 | Gamificação | **Pronta.** Pontos por tarefa, temporadas trimestrais, ranking, patentes de pessoa e de equipe, conquistas e anonimato |
@@ -163,7 +164,7 @@ As definições e telas do DesignDoc (dados da OS, regras da APR, execução, PD
 
 **Parcial**
 
-- **Formulário de inspeção das preventivas (questão 57).** A `api` aceita `dados_inspecao` no encerramento, guarda e imprime no PDF como pares de campo e valor. Mas a web não tem o formulário, e o detalhe da OS não o mostra. Em 15/10/2026 virou o checklist de inspeção, definido no ciclo de cada preventiva: plano em [inspecao-preventivas.md](inspecao-preventivas.md). **Implementado no mesmo dia:** o encerramento pede o checklist e o detalhe da OS o mostra.
+- **Formulário de inspeção das preventivas (questão 57).** A `api` aceita `dados_inspecao` no encerramento, guarda e, desde 18/10/2026, mostra no relatório da execução (fora do PDF). Mas a web não tem o formulário, e o detalhe da OS não o mostra. Em 15/10/2026 virou o checklist de inspeção, definido no ciclo de cada preventiva: plano em [inspecao-preventivas.md](inspecao-preventivas.md). **Implementado no mesmo dia:** o encerramento pede o checklist e o detalhe da OS o mostra.
 - **Planilha do SAP.** O mapeamento das colunas é provisório até chegar a planilha de 2025.
 
 **Para o piloto, não para a demo**

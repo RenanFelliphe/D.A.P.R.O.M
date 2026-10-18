@@ -317,7 +317,7 @@
 | 20 | Desde 17/10/2026, todo aviso pode ir por e-mail, conforme as categorias que cada pessoa deixa ligadas no perfil; segurança (bloqueio) e conta são obrigatórias, e sai um resumo diário ([avisos-e-emails.md](../../funcionalidades/avisos-e-emails.md)). O envio é do back-end Node e espera o servidor de e-mail (questão 68) |
 | 21 | O supervisor da equipe e o admin podem reprogramar e criar OS de apoio para qualquer equipe |
 | 26 | Confirmar com o Iago se o volume é ~390 ou ~900 OS por mês |
-| 38 | Confirmar com o Iago se a rubrica desenhada vale para auditoria; ele sugeriu "rubrica ou assinatura digital" (26:13) |
+| 38 | Confirmar com o Iago se a rubrica desenhada vale para auditoria; ele sugeriu "rubrica ou assinatura digital" (26:13). Reunião 3: o Mario contou que a empresa usa o ZapSign e a sala citou token e gov.br; o protótipo segue com a assinatura desenhada e, se sobrar tempo, integra uma dessas ferramentas |
 | 41 | Definir antes do piloto quem fornece os aparelhos e a versão mínima do Android |
 
 ## 5. Respondidas ou sem objeto

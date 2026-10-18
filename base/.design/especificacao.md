@@ -24,7 +24,7 @@ Volume: ~390 OS encerradas no mês passado, variando de ~200 a 409 por mês (Reu
 
 ## Escopo
 
-Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por arquivo (a planilha exportada ou o PDF da OS impresso pelo SAP); aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa, suspensão e interrupção por risco, assinaturas, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (página da APR e página da OS); alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e ciência do supervisor da equipe; escolha do modelo de APR pelo técnico, com a recomendação do sistema; editor versionado de modelos, com a orientação de cada um para essa escolha; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP. Só há dois perfis, `tecnico` e `admin`; o supervisor é o técnico que a equipe aponta, não um perfil, e a Segurança do Trabalho não usa o sistema.
+Dentro: leitura das OS pela API do SAP (simulada no protótipo) ou por arquivo (a planilha exportada ou o PDF da OS impresso pelo SAP); aplicação da APR e realização da OS, no app Android e na web, usados online no dia a dia (login, OS da equipe, APR respondida por inteiro e validada no fim, execução com pausa e suspensão com motivo, localização, interrupção por risco, assinaturas, encerramento em dois passos, perfil e histórico); modo offline de contingência no app, para o campo sem sinal (cópia local dos dados da equipe, fila de eventos e sincronização); PDF da OS executada (a APR e a folha da OS do SAP, como o papel) e relatório da execução à parte, para o supervisor e o admin; alertas de bloqueio no painel e por e-mail; OS pendente retomada por qualquer pessoa da equipe, reprogramação opcional e OS de apoio; painel web com quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, indicadores de preventivas e de tempo, e a assinatura final do supervisor da equipe, que conclui a OS; escolha do modelo de APR pelo técnico, com a recomendação do sistema; editor versionado de modelos, com a orientação de cada um para essa escolha; gestão de usuários, perfis e equipes; planilha de encerradas para baixa manual no SAP. Só há dois perfis, `tecnico` e `admin`; o supervisor é o técnico que a equipe aponta, não um perfil, e a Segurança do Trabalho não usa o sistema.
 
 Fora: escrita no SAP por API — a baixa continua por planilha até o Iago confirmar o contrário ([pontos-a-validar.md](pontos-a-validar.md), questão 51). MFA/SSO e vínculo dispositivo–usuário — ver [Usuário e Equipe](#usuário-e-equipe). Push notification no celular — a OS nova aparece quando a lista é atualizada (e, no modo offline, na próxima sincronização). iOS — o desafio é para Android. Cadastro de equipamentos como entidade — o histórico usa o texto de equipamento que vem do SAP. Terceiros no app. Escaneamento de OS e APR antigas e chatbot de consulta — ideias do time e sugestões dos mentores, depois do MVP (o catálogo de serviço, a evidência em PDF, o intervalo entre ciclos das preventivas e a gamificação, que também eram ideias para depois, foram feitos em 13/10/2026: ver [Catálogo de serviço](#catálogo-de-serviço), [Execução](#execução), [Ciclo das preventivas](#ciclo-das-preventivas) e [Gamificação](#gamificação)). Baixa de material consumido na execução — o catálogo diz o que cada serviço prevê, não o que foi gasto. Substituir o BI ou o site Lovable — são de outra equipe. Cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin (pronto na API), e tela de treinamento no primeiro login (ver [Cadastro pelo supervisor, liberação e treinamento](#cadastro-pelo-supervisor-liberação-e-treinamento)). Importação de OS pelo supervisor foi adiada: fica só com o admin ([pontos-a-validar.md](pontos-a-validar.md), questão 63).
 
@@ -40,7 +40,7 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 2. **Quem executa é dono da execução e quem planeja é dono do planejamento, em qualquer plataforma; a sincronização nunca descarta dado de campo.** Os registros de campo (APR, respostas, participantes, Execução, pausas, evidências e assinaturas) vêm dos eventos de quem aplica a APR e executa a OS, pelo app ou pela web; equipe, datas programadas, prioridade e criticidade são gravadas por quem planeja; o SAP, por leitura, grava os dados da ordem. Quando um evento de campo chega para uma OS que o planejamento mudou nesse meio-tempo (reatribuída, reprogramada, outra equipe já executou), ele é aplicado mesmo assim e gera um `alerta` para o supervisor — conflito vira alerta, nunca sobrescrita. Online, o intervalo para isso acontecer é curto; no modo offline, pode durar horas.
 3. **Todo registro de campo nasce com ID gerado no cliente, e reenviar não tem efeito; o `status` da OS é derivado no servidor, nenhum cliente o grava direto.** Isso torna o envio seguro contra rede instável, reenvio e duplo toque, online ou pela fila offline. As transições ficam no diagrama de [Eventos e modo offline](#eventos-e-modo-offline).
 4. **Uma APR vale para uma única OS e ampara uma única Execução; nenhuma Execução começa sem a APR aprovada, do dia, da própria OS; uma APR bloqueada é imutável.** A relação é 1:1, como o Iago e o Mario confirmaram (a mesma APR para várias OS foi descartada porque os riscos de cada atividade são diferentes). Toda nova tentativa, mesmo no mesmo local e na mesma hora, exige uma APR nova, e as respostas nunca são pré-preenchidas nem copiadas de outra APR. O registro das APRs bloqueadas fica para auditoria e para o indicador de atraso justificado.
-5. **A APR é respondida por inteiro e só então validada; cada item do modelo define `resposta_bloqueante`, `tipo` e `evidencia`.** O técnico responde todos os itens, em qualquer ordem, e volta a corrigir enquanto não concluir; ao concluir, o resultado é `bloqueada` se qualquer item `eliminatorio` tiver a resposta bloqueante, e todos os itens reprovados são registrados, cada um com observação e, quando o item pede foto, ao menos 1 foto. O servidor recalcula o resultado a partir das respostas e da versão do modelo; o valor enviado pelo aparelho é só conferido. **O técnico não sabe quais itens são eliminatórios**: o modelo que ele recebe (`GET /modelos-apr/{codigo}/versoes/{versao}` e a cópia offline) vem sem `tipo`, `resposta_bloqueante` e `evidencia`, o checklist trata todas as perguntas do mesmo jeito e nada pede evidência durante as respostas; se soubesse, bastaria responder "certo" nesses itens para fazer o serviço. Quem avalia é o servidor, em `POST /aprs/avaliar`, chamado ao concluir com a APR inteira (menos as fotos): confere tudo o que o registro confere (OS da equipe, participantes com assinatura, respostas completas, "NA" com observação) antes de dizer o resultado, para que a recusa nunca revele o que reprova, e devolve `aprovada` ou `bloqueada` e, se bloqueada, os itens reprovados com a evidência que cada um pede. A aprovada não é gravada ali (segue para as assinaturas). A bloqueada vale na hora: é registrada já na validação, pelo canal dos eventos (OS `pendente`, alerta e e-mail ao supervisor), porque descobrir o que reprova precisa deixar registro; descartar o rascunho e refazer a APR não a apaga, e a nova é outra APR. Só então o técnico fica sabendo quais itens reprovaram; as respostas ficam travadas e falta a evidência de cada item, que chega no `apr_concluida` da mesma APR. Só o admin, que edita o modelo, vê e define `tipo`, `resposta_bloqueante` e `evidencia`; os rankings e o detalhe da OS também escondem isso dos demais perfis (o técnico vê apenas o que reprovou).
+5. **A APR é respondida por inteiro e só então validada; cada item do modelo define `resposta_bloqueante`, `tipo` e `evidencia`.** O técnico responde todos os itens, em qualquer ordem, e volta a corrigir enquanto não concluir; ao concluir, o resultado é `bloqueada` se qualquer item `eliminatorio` tiver a resposta bloqueante, e todos os itens reprovados são registrados, cada um com observação e, quando o item pede foto, ao menos 1 foto. O servidor recalcula o resultado a partir das respostas e da versão do modelo; o valor enviado pelo aparelho é só conferido. **O técnico não sabe quais itens são eliminatórios**: o modelo que ele recebe (`GET /modelos-apr/{codigo}/versoes/{versao}` e a cópia offline) vem sem `tipo`, `resposta_bloqueante` e `evidencia`, o checklist trata todas as perguntas do mesmo jeito e nada pede evidência durante as respostas; se soubesse, bastaria responder "certo" nesses itens para fazer o serviço. Quem avalia é o servidor, em `POST /aprs/avaliar`, chamado ao concluir com a APR inteira (menos as fotos): confere tudo o que o registro confere (OS da equipe, participantes com assinatura, respostas completas, "NA" com observação) antes de dizer o resultado, para que a recusa nunca revele o que reprova, e devolve `aprovada` ou `bloqueada` e, se bloqueada, os itens reprovados com a evidência que cada um pede. A aprovada não é gravada ali (é registrada pelo `apr_concluida`, sem assinaturas, e cada participante assina depois). A bloqueada vale na hora: é registrada já na validação, pelo canal dos eventos (OS `pendente`, alerta e e-mail ao supervisor), porque descobrir o que reprova precisa deixar registro; descartar o rascunho e refazer a APR não a apaga, e a nova é outra APR. Só então o técnico fica sabendo quais itens reprovaram; as respostas ficam travadas e falta a evidência de cada item, que chega no `apr_concluida` da mesma APR. Só o admin, que edita o modelo, vê e define `tipo`, `resposta_bloqueante` e `evidencia`; os rankings e o detalhe da OS também escondem isso dos demais perfis (o técnico vê apenas o que reprovou).
 6. **Um modelo de APR publicado é imutável; editar cria versão nova, e toda APR aponta para a versão exata que respondeu.** Quem escolhe o modelo de cada APR é o técnico, entre os modelos publicados; o sistema só orienta: mostra a descrição de cada modelo e recomenda o que mais combina com a OS, pela leitura do título e das descrições, mas nunca aplica a recomendação sozinho. Não há atribuição automática: as preventivas têm nome padrão, mas as corretivas não têm código padronizado, e o mesmo serviço pode pedir APRs diferentes conforme a situação no local (remover marimbondo com ou sem trabalho em altura), como o Iago explicou em 14/10/2026 (questão 58). A atividade da OS (`codigo_atividade`) é só o serviço do catálogo. A APR guarda a versão escolhida. APRs antigas e PDFs continuam reproduzíveis depois de uma revisão, e uma APR preenchida offline numa versão anterior é aceita com a versão que usou.
 7. **O SAP é fonte de leitura e destino de planilha: a OS entra por um adaptador de leitura (API, simulada no protótipo) ou por planilha, a leitura insere ou atualiza por `numero_ordem` tocando só colunas de planejamento, e a saída é PDF mais planilha para baixa manual.** Nenhuma OS nasce à mão: a única criada no sistema é a OS de apoio, aberta a partir de um impedimento (Decisão-chave 8). Reler nunca reabre uma OS encerrada nem apaga execução de campo. Trocar a API simulada pela real muda só o endereço e as credenciais, porque o contrato é o mesmo.
 8. **Uma tentativa que não conclui não trava a OS: ela fica `pendente` e qualquer pessoa da equipe a retoma com uma APR nova, sem esperar o supervisor.** O supervisor é avisado e acompanha, e pode reprogramar ou abrir uma OS de apoio, mas não autoriza a retomada. Quem executa é quem encerra, com todas as assinaturas dos participantes; nenhum usuário encerra a OS de outro e a OS pendente nunca é duplicada.
@@ -55,9 +55,9 @@ O registro central é a OS lida do SAP; cada tentativa de executá-la é uma Exe
 | [Modelo de APR](#modelo-de-apr) | modelos versionados, a orientação para o técnico escolher o modelo e os 8 modelos de `base/apr-examples/` | aberta — 4 suposições adotadas |
 | [Eventos e modo offline](#eventos-e-modo-offline) | envio idempotente dos eventos de campo (online e pela fila offline) e cópia local da equipe para o campo sem sinal | definida |
 | [APR](#apr) | checklist respondido por inteiro, evidência e validação | definida |
-| [Execução](#execução) | execução com pausa, assinaturas, interrupção e PDF de 2 páginas | definida |
+| [Execução](#execução) | execução com pausa e suspensão com motivo, localização, encerramento em dois passos, assinaturas, interrupção, relatório da execução e PDF da OS | definida |
 | [Impedimento](#impedimento) | OS pendente, alerta ao supervisor, reprogramação e OS de apoio | aberta — 3 suposições adotadas |
-| [Painel](#painel) | quadro, histórico, ciência, indicadores e planilha para o SAP | aberta — 3 suposições adotadas |
+| [Painel](#painel) | quadro, histórico, assinatura final do supervisor, indicadores e planilha para o SAP | aberta — 3 suposições adotadas |
 | [Catálogo de serviço](#catálogo-de-serviço) | materiais, ferramentas e EPIs de cada serviço (atividade), mostrados no detalhe da OS | feita em 13/10/2026 — a lista real depende da ES Gás (questão 65) |
 | [Ciclo das preventivas](#ciclo-das-preventivas) | intervalo entre ciclos de cada plano de manutenção, contagem até o próximo ciclo e alertas de ciclo próximo e vencido (sem criar OS) | feita em 13/10/2026 — onde o SAP guarda o ciclo depende do Iago (questão 66) |
 | [Gamificação](#gamificação) | pontos por tarefa, patentes e ranking por temporada, conquistas e anonimato, calculados no servidor | feita em 13/10/2026 — os limites das patentes se revisam no fim da primeira temporada real |
@@ -111,7 +111,7 @@ Tabela `tarefa`.
 Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_SIMULADO` (`true` liga as rotas do simulador), `SAP_LEITURA_INTERVALO_MIN` (padrão 15), `RH_SIMULADO` (`true` liga o registro de funcionários simulado em `/rh-simulado`), `RH_API_URL`, `RH_API_TOKEN` (o que o SYNQ OS usa para ler o registro), `RH_AVISO_TOKEN` (o que o registro usa para avisar o SYNQ OS), `RH_AVISO_URL` (para onde o simulador manda os avisos; só ele a usa) e `RH_LEITURA_HORA` (hora, em São Paulo, da leitura diária; padrão 3), `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`. Com `RH_SIMULADO=true`, endereços e tokens do RH têm padrão, como no SAP; no `docker-compose.yml` o simulador do RH vem ligado. Do `web`: `API_URL`. Do app: o endereço da API no momento do build.
 
 1. Banco, autenticação e arquivos — Supabase, na nuvem para a demo; o mesmo código funciona com o Supabase hospedado no Coolify, só trocando as variáveis.
-2. PDF e e-mail — gerados pelo back-end Node (o Supabase não gera PDF): biblioteca de PDF declarativa para as 2 páginas e envio por SMTP configurável.
+2. PDF e e-mail — gerados pelo back-end Node (o Supabase não gera PDF): biblioteca de PDF declarativa para o PDF da OS e o relatório da execução, e envio por SMTP configurável.
 3. Dados — só fictícios no protótipo; a empresa precisa avalizar o armazenamento antes do piloto (LGPD).
 
 - RFC: fila de tarefas em serviço próprio (Redis ou similar) — só compensa se o volume de PDFs passar do que um processo atende; a estimativa é de poucas centenas por mês. Não decidido.
@@ -135,12 +135,13 @@ Variáveis de ambiente da `api`: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVI
 | Logout com fila pendente | recusado | "Há N registros não enviados" |
 | Pessoa sem assinatura no perfil confirma uma assinatura | desenha na hora e a assinatura fica cadastrada no perfil | — |
 | Refazer a assinatura do perfil | vale para as próximas assinaturas; as já feitas guardam a imagem que usaram | `200` |
-| Dupla em campo | todos assinam no app ou no navegador de quem está logado, sem login próprio | lista de participantes vinda da equipe da OS |
+| Dupla em campo | cada participante assina a APR na própria conta, só no começo (no offline, a assinatura presencial no aparelho do responsável) | lista de participantes vinda da equipe da OS |
 
 `POST /auth/login` `{email, senha}` → `200` `{access_token, refresh_token, expira_em, usuario, senha_provisoria}`
 `POST /auth/refresh` `{refresh_token}` → `200` `{access_token, expira_em}`
 `POST /auth/trocar-senha` `{senha_atual, senha_nova}` → `200`
 `GET /me` → `200` `{usuario, equipe}`
+`GET /me/aprs-para-assinar` → `200` `{aprs: [{apr_id, os_id, numero_ordem, titulo, local_codigo, concluida_em, preenchida_por, preenchida_por_nome, funcao}]}` — as APRs aprovadas de hoje que esperam a assinatura de quem pergunta
 `PUT /me/assinatura` `{arquivo_id}` → `200`
 `POST /usuarios` `{matricula, email, perfil?, equipe_id?, senha_inicial}` → `201` `{id}` (a `api` consulta o registro de funcionários e grava o nome, o cargo e o registro profissional de lá; sem `equipe_id`, o admin cadastra na equipe do setor, e `null` cadastra sem equipe)
 `PATCH /usuarios/{id}` `{perfil?, equipe_id?, ativo?}` → `200` (só o admin; nome, e-mail, cargo e registro profissional não se editam: vêm do registro; reativar consulta o registro e é `409` `funcionario_desligado` ou `funcionario_afastado` se ele não disser que a pessoa está ativa; a matrícula não muda)
@@ -195,7 +196,8 @@ Perfis e permissões. Só existem dois perfis, `tecnico` e `admin`. O supervisor
 | Digitalizar OS em papel (câmera; em desenvolvimento) | — | — | sim |
 | Criar OS de apoio | — | sim, para qualquer equipe, a partir de OS das equipes que supervisiona | sim |
 | Reprogramar OS | — | equipes que supervisiona | sim |
-| Dar ciência da execução | — | equipes que supervisiona | — |
+| Assinar a OS por último (assinatura final do supervisor, antes a ciência) | — | equipes que supervisiona | — |
+| Ver o relatório da execução (`GET /os/{id}/relatorio-execucao`) | — | equipes que supervisiona | sim |
 | Cancelar OS de apoio | — | — | sim |
 | Receber alertas | — | das equipes que supervisiona | de OS de equipe sem supervisor e `falha_importacao` |
 | Criar, editar, publicar e excluir modelos, definir o critério de bloqueio, escrever a orientação de cada modelo e editar a tabela de atividades | — | — | sim |
@@ -210,8 +212,8 @@ O supervisor da equipe não se confunde com o `responsavel` que lidera a APR em 
 
 Supervisor é quem a equipe aponta em `equipe.supervisor_id`, e é sempre um técnico: faz tudo o que o técnico faz (aplica APR, executa OS, usa o modo offline) e mais a gestão da(s) equipe(s) que supervisiona. O admin muda a supervisão editando a equipe, escolhendo qualquer técnico ativo. Não existe o perfil `supervisor`.
 
-- **O que a pessoa ganha:** as ações da coluna "técnico que supervisiona" da tabela acima, nas equipes que supervisiona: ver as OS e o quadro (além da própria equipe, se tiver uma), receber os alertas, reprogramar, abrir OS de apoio, dar ciência e ver os indicadores. Em outras equipes, não.
-- **Ciência:** só de quem supervisiona a equipe da OS, e nunca de quem participou da execução (executou, preencheu a APR ou assinou como participante): `409` `ciencia_propria`. Outro supervisor ou a ausência de ciência resolve; a ciência não segura o PDF nem a exportação.
+- **O que a pessoa ganha:** as ações da coluna "técnico que supervisiona" da tabela acima, nas equipes que supervisiona: ver as OS e o quadro (além da própria equipe, se tiver uma), receber os alertas, reprogramar, abrir OS de apoio, assinar as OS por último e ver os indicadores. Em outras equipes, não.
+- **Assinatura final (a antiga ciência):** só de quem supervisiona a equipe da OS (ou do representante que está no comando), na OS `aguardando_supervisor`; é ela que conclui a OS e libera o PDF e a exportação. Quem participou do serviço também pode assinar: o bloqueio `ciencia_propria` não existe mais (Reunião 3).
 - **Telas:** o técnico que supervisiona entra no painel de gestão pelo menu do app ("Painel de supervisão") e volta ao app por "Minhas OS (campo)". O técnico sem equipe supervisionada só vê o menu de campo; o admin entra direto no painel de gestão da plataforma (usuários, equipes, importação, modelos, indicadores). `GET /me` devolve `equipes_supervisionadas`.
 - **Sem supervisor:** os alertas da equipe vão aos admins ativos (ver [Impedimento](#impedimento)), que também reprogramam e abrem OS de apoio nesse caso.
 
@@ -341,7 +343,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.prioridade` | text | sim | | como vem do SAP (`Muito alto`) |
 | `os.data_inicio_prog` | date | não | | planejamento (web) |
 | `os.data_fim_prog` | date | sim | | planejamento (web) |
-| `os.status` | text | não | | `liberada` \| `pendente` \| `em_execucao` \| `encerrada` \| `cancelada` \| `devolvida`; derivado no servidor (Decisão-chave 3), salvo `cancelada` e `devolvida`, que ficam — ver [Eventos e modo offline](#eventos-e-modo-offline) |
+| `os.status` | text | não | | `liberada` \| `pendente` \| `em_execucao` \| `encerrando` \| `aguardando_supervisor` \| `encerrada` \| `cancelada` \| `devolvida`; derivado no servidor (Decisão-chave 3), salvo `cancelada` e `devolvida`, que ficam — ver [Eventos e modo offline](#eventos-e-modo-offline) |
 | `os.data_ordem` | date | sim | | "Data da Ordem" (emissão), do cabeçalho da OS impressa |
 | `os.criado_por_sap` | text | sim | | quem criou a ordem no SAP (`RFAVARO`, `IP1020251202`); aparece no PDF |
 | `os.status_sap` | text | sim | | "Status do sistema" do SAP, uma lista de códigos (`LIB IMPR CAPC NOAP SCDM`); a api procura o `LIB` |
@@ -350,7 +352,7 @@ Tabelas `os`, `local_instalacao`, `importacao`.
 | `os.origem` | text | não | | `sap` \| `planilha` \| `pdf` \| `apoio`; `apoio` é a OS aberta pelo supervisor ou pelo admin a partir de um impedimento, a única sem origem no SAP |
 | `os.pdf_path` | text | sim | | PDF da OS, no bucket `pdfs`; um por OS |
 | `os.pdf_em` | timestamptz | sim | | |
-| `os.ciencia_por` | uuid | sim | `usuario.id` | supervisor que deu ciência |
+| `os.ciencia_por` | uuid | sim | `usuario.id` | supervisor que assinou por último (a assinatura final, antes chamada ciência); com `ciencia_em` nulo, a OS ainda não está concluída |
 | `os.ciencia_em` | timestamptz | sim | | |
 | `os.exportada_sap_em` | timestamptz | sim | | preenchida pela exportação do [Painel](#painel) |
 | `os.cancelada_em` | timestamptz | sim | | quando a OS foi cancelada (no SAP, ou na web, no caso da OS de apoio) |
@@ -430,6 +432,7 @@ Tabelas `modelo_apr`, `risco_modelo_apr`, `item_modelo_apr`, `orientacao_modelo_
 | `modelo_apr.versao` | integer | não | | começa no número da VERSÃO do documento; cada edição soma 1 |
 | `modelo_apr.data_documento` | date | sim | | "DATA" do documento em papel |
 | `modelo_apr.titulo` | text | não | | ex.: `ESPAÇO CONFINADO E/OU TRABALHO EM ALTURA` |
+| `modelo_apr.participantes_com_assinatura` | boolean | não | | padrão `true`; a folha de participantes do modelo tem a coluna "Assinatura" (APR 04, 05 e 06); `false` nos demais, em que as assinaturas da APR só aparecem no relatório da execução |
 | `modelo_apr.pae` | jsonb | sim | | plano de atendimento a emergências, mostrado no app e na página 1 do PDF: `{titulo, subtitulo, fluxo, linhas: [{rotulo, celulas: [{coluna, texto}]}]}`, a grade de contatos da planilha (a posição de cada célula é a `coluna`, relativa ao rótulo) |
 | `modelo_apr.publicado_em` | timestamptz | sim | | nulo = rascunho; publicado não aceita escrita |
 | `modelo_apr.arquivado_em` | timestamptz | sim | | modelo excluído depois de publicado, em todas as versões do código; é a única coluna que a versão publicada aceita mudar, e rascunho não é arquivado |
@@ -584,8 +587,8 @@ Regras do jogo: a segurança nunca custa pontos (APR bloqueada vale o mesmo que 
 
 | Tarefa (`regra_pontuacao.codigo`) | Pontos | Quem ganha e quando |
 |---|---|---|
-| `apr_completa` | 10 | todo participante da APR: a aprovada, quando chega com as assinaturas; a bloqueada, quando chega a evidência completa dos itens reprovados (sem ela não pontua) |
-| `execucao_concluida` | 10 | todo participante da APR que amparou a execução, ao encerrar com as assinaturas ou ao interromper por risco; vale a primeira encerrada da OS |
+| `apr_completa` | 10 | todo participante da APR: a aprovada, quando todos os participantes assinaram; a bloqueada, quando chega a evidência completa dos itens reprovados (sem ela não pontua) |
+| `execucao_concluida` | 10 | todo participante da APR que amparou a execução, quando o responsável assina o encerramento, ou ao interromper por risco; vale a primeira encerrada da OS |
 | `responsavel_apr` | 5 | o responsável pela APR, junto com a APR completa |
 | `preventiva_em_dia` | 5 | quem concluiu a execução na OS (inclusive quem interrompeu por risco), quando a preventiva é encerrada até a data limite (`data_fim_prog`, senão `data_inicio_prog`) ou depois dela com atraso justificado (a OS ficou pendente antes da data, ou foi reprogramada) |
 | `local_critico` | 5 | quem concluiu a execução (encerrada ou interrompida) numa OS de local crítico |
@@ -593,7 +596,7 @@ Regras do jogo: a segurança nunca custa pontos (APR bloqueada vale o mesmo que 
 | `apoio` | 5 | quem concluiu a execução de uma OS de apoio |
 | `tecnico_novo` | 5 | o responsável pela APR, quando outro participante tem a conta há menos de 60 dias |
 | `assinatura_cadastrada` · `treinamento_concluido` | 5 · 10 | o técnico, ao cadastrar a assinatura e ao concluir o Campo de treino (uma vez por conta) |
-| `ciencia_no_prazo` | 3 | o supervisor que dá a ciência até 72 h depois do encerramento (uma por OS) |
+| `ciencia_no_prazo` | 3 | o supervisor que assina por último (a antiga ciência) até 72 h depois do encerramento (uma por OS) |
 | `intervalo_definido` | 3 | o supervisor que define o intervalo de um plano de preventiva que estava sem (uma por plano) |
 | `conquista_obtida` | da conquista | quem obtém uma conquista de pessoa (25, 50 ou 100 na carga inicial); sem valor próprio: desativar a tarefa desliga os pontos de todas |
 
@@ -664,7 +667,7 @@ Com sinal, a aplicação da APR e a realização da OS não passam por fila nem 
 | OS reatribuída ou reprogramada enquanto o técnico estava offline | execução de campo aplicada; `alerta` `conflito_planejamento` (Decisão-chave 2) | a OS aparece com o novo planejamento após a próxima sincronização |
 | Duas pessoas executam a mesma OS offline | as duas Execuções são guardadas; vale a primeira encerrada; `alerta` `execucao_duplicada` | |
 | OS removida do escopo da equipe | sai do celular na próxima sincronização, a menos que tenha execução local pendente | |
-| Dados do snapshot de uma equipe | OS `liberada`, `pendente` e `em_execucao` da equipe, com o resumo das APRs e execuções de cada uma; as OS `encerrada` do próprio técnico nos últimos 60 dias (para o histórico do perfil); em cada OS, a escolha do modelo (o recomendado e o que cada modelo achou nela); modelos publicados, com a orientação; tabela de atividades; locais dessas OS; usuários da equipe | |
+| Dados do snapshot de uma equipe | OS `liberada`, `pendente` e `em_execucao` da equipe, com o resumo das APRs e execuções de cada uma; as OS `encerrando`, `aguardando_supervisor` e `encerrada` do próprio técnico nos últimos 60 dias (para o histórico do perfil); em cada OS, a escolha do modelo (o recomendado e o que cada modelo achou nela); modelos publicados, com a orientação; tabela de atividades; locais dessas OS; usuários da equipe | |
 | Snapshot em vez de cursor | o snapshot nunca apaga do aparelho uma OS com evento local pendente | |
 
 `POST /eventos` `{eventos: [{id, tipo, os_id, payload, ocorrido_em}]}` → `200` `{confirmados: [id], alertas: [id], aprs?: [{id, resultado}], os?: [{id, status}]}` — o canal único de escrita de campo, usado por web e app; online, o cliente manda um evento por vez e usa `aprs` e `os` da resposta para mostrar o resultado
@@ -676,16 +679,19 @@ Tipos de evento e o que cada `payload` leva:
 
 | Tipo | Payload |
 |---|---|
-| `apr_concluida` | a APR completa: `os_id`, versão do modelo, participantes com função e assinatura, riscos marcados, respostas com observação, evidências, observação geral e `concluida_em`; o resultado enviado é só conferido |
-| `execucao_iniciada` | `id`, `os_id`, `apr_id`, `numero_pessoas`, `inicio` |
-| `pausa_iniciada` | `id`, `execucao_id`, `inicio`, `motivo?` |
+| `apr_concluida` | a APR completa: `os_id`, versão do modelo, participantes (**no mínimo 2**) com função, riscos marcados, respostas com observação, evidências, observação geral e `concluida_em`; o resultado enviado é só conferido. A APR aprovada é registrada **sem assinaturas**; só no modo offline vai `assinatura_presencial: true` (padrão `false`), que copia as assinaturas dos perfis na hora, marcadas como presenciais |
+| `apr_assinada` | `apr_id`, `assinada_em?`: o participante que age assina a APR com a assinatura do perfil (só a APR de hoje e antes de a execução começar) |
+| `apr_recusada` | `apr_id`, `motivo` (obrigatório), `recusada_em?`: o direito de recusa; o participante sai da APR e o supervisor é avisado |
+| `execucao_iniciada` | `id`, `os_id`, `apr_id`, `numero_pessoas`, `inicio`, `latitude?`, `longitude?`; só com todos os participantes da APR assinados (`apr_sem_assinaturas`) |
+| `pausa_iniciada` | `id`, `execucao_id`, `inicio`, `motivo` (obrigatório: `almoco`, `aguardando`, `descanso`, `clima`, `enfermidade`, `lesao`, `outro`), `complemento?` (obrigatório em `aguardando` e `outro`), `latitude?`, `longitude?` |
 | `pausa_encerrada` | `pausa_id`, `fim` |
-| `execucao_encerrada` | `execucao_id`, `fim`, `descricao_atividade`, `dados_inspecao?`, evidências, assinaturas de todos os participantes |
-| `execucao_interrompida` | `execucao_id`, `fim`, `motivo`, evidências |
-| `execucao_suspensa` | `execucao_id`, `fim` |
+| `execucao_encerrada` | `execucao_id`, `fim`, `latitude?`, `longitude?`: o clique em "Encerrar OS", em que o tempo para |
+| `encerramento_assinado` | `execucao_id`, `assinada_em?`, `descricao_atividade?`, `dados_inspecao?`, evidências (opcionais): o preenchimento e a assinatura do responsável, depois do clique; a OS passa a `aguardando_supervisor` |
+| `execucao_interrompida` | `execucao_id`, `fim`, `motivo`, evidências (ao menos 1 foto), `latitude?`, `longitude?` |
+| `execucao_suspensa` | `execucao_id`, `fim`, `motivo` (obrigatório: `enfermidade`, `lesao`, `fim_expediente`, `clima`, `falta_material`, `outro`), `complemento?` (obrigatório em `outro`), `latitude?`, `longitude?` |
 | `execucao_cancelada` | `execucao_id` |
 
-Fotos, PDFs e assinaturas sobem ao Storage (`PUT /arquivos/{id}`) antes do evento que os referencia. Cada evidência do payload é `{id, arquivo_id?, tipo?: foto | pdf, nome?, item_id?, capturada_em, latitude?, longitude?}`; sem `tipo`, é foto, e `nome` (o nome do PDF anexado) só vale no PDF. No MVP o `pull` entrega o snapshot completo; o `cursor` continua no contrato, opcional, para a troca por pull incremental sem quebrar o app (questão 4).
+`latitude` e `longitude` vêm juntas (as duas, ou nenhuma: "sem localização", sem bloquear o serviço). Lesão e enfermidade, na pausa e na suspensão, avisam o supervisor na hora (`lesao_ou_enfermidade`). No offline, o `execucao_iniciada` que chega da fila antes de uma assinatura de outro aparelho fica pendente em vez de recusado. Fotos, PDFs e assinaturas sobem ao Storage (`PUT /arquivos/{id}`) antes do evento que os referencia. Cada evidência do payload é `{id, arquivo_id?, tipo?: foto | pdf, nome?, item_id?, capturada_em, latitude?, longitude?}`; sem `tipo`, é foto, e `nome` (o nome do PDF anexado) só vale no PDF. No MVP o `pull` entrega o snapshot completo; o `cursor` continua no contrato, opcional, para a troca por pull incremental sem quebrar o app (questão 4).
 
 Tabela `evento_campo`.
 
@@ -732,7 +738,7 @@ sequenceDiagram
   S-->>A: snapshot da equipe
 ```
 
-O `status` da OS é derivado, nesta ordem: `cancelada` se o SAP a cancelou (ou, na OS de apoio, se ela foi cancelada na web) e `devolvida` se o supervisor a devolveu ao SAP (as duas ficam; só o SAP traz a devolvida de volta, ao alterar a ordem); `encerrada` se há Execução encerrada; `em_execucao` se há Execução em andamento (inclui em pausa); `pendente` se há APR bloqueada, ou Execução interrompida ou suspensa, e nenhuma Execução em andamento; `liberada` nos demais casos.
+O `status` da OS é derivado, nesta ordem: `cancelada` se o SAP a cancelou (ou, na OS de apoio, se ela foi cancelada na web) e `devolvida` se o supervisor a devolveu ao SAP (as duas ficam; só o SAP traz a devolvida de volta, ao alterar a ordem); havendo Execução encerrada (o clique em "Encerrar OS"), `encerrando` até o responsável assinar o encerramento, `aguardando_supervisor` até o supervisor assinar por último e só então `encerrada` (concluída); `em_execucao` se há Execução em andamento (inclui em pausa); `pendente` se há APR bloqueada, ou Execução interrompida ou suspensa, e nenhuma Execução em andamento; `liberada` nos demais casos.
 
 ```mermaid
 stateDiagram-v2
@@ -741,7 +747,9 @@ stateDiagram-v2
   liberada --> em_execucao: execução iniciada (APR aprovada)
   pendente --> em_execucao: execução iniciada (APR nova aprovada)
   pendente --> pendente: nova APR bloqueada
-  em_execucao --> encerrada: execução encerrada
+  em_execucao --> encerrando: Encerrar OS (o tempo para)
+  encerrando --> aguardando_supervisor: responsável assina o encerramento
+  aguardando_supervisor --> encerrada: supervisor assina por último
   em_execucao --> pendente: interrompida ou suspensa
   em_execucao --> liberada: cancelada por engano, sem histórico
   em_execucao --> pendente: cancelada por engano, com histórico
@@ -766,7 +774,7 @@ Alternativas consideradas: replicação genérica com mesclagem campo a campo �
 | Iniciar APR | o técnico escolhe uma OS `liberada` ou `pendente` da equipe, e a janela "Escolha o modelo da APR" abre com todos os modelos publicados (`GET /os/{id}/modelos-apr`; vale a versão publicada mais recente de cada um). O recomendado vem sozinho no topo, em destaque, com o aviso para conferir se é esse mesmo, porque a recomendação vem da leitura da OS, não da avaliação do local; os demais vêm abaixo, em cartões de duas colunas. Nada é escolhido sozinho (Decisão-chave 6) | em cada modelo, título, descrição dos serviços que atende, o que foi encontrado na OS e "Selecionar" (os exemplos de serviço não aparecem); os títulos "Opção recomendada" e "Outros modelos de APR", ou o aviso de que nenhum modelo se destacou (ou de que mais de um combina) |
 | Trocar o modelo | na etapa 1 ("Trocar modelo") ou no checklist ("Trocar o modelo"), enquanto a APR não foi registrada como bloqueada. Escolhido o modelo novo, o técnico confere os riscos (os de mesmo nome já vêm marcados). A pergunta igual (mesma seção e mesmo texto, sem acento, maiúsculas e pontuação; na medida preventiva, também o mesmo risco, pelo nome) guarda a resposta e a observação; "NA" só passa se o modelo novo aceita NA; as demais ficam em branco. A conferência dos materiais fica (é do serviço da OS); a validação anterior é apagada, e o checklist volta para a primeira pergunta em branco | quantas respostas continuam e quantas perguntas ficam em branco |
 | OS com execução em andamento | recusado | "Esta OS já está em execução" |
-| Escolher os participantes | a lista é a equipe da OS; o técnico logado é o `responsavel` por padrão e é sempre participante; marca quem está presente (de 1 pessoa em diante) | participantes da equipe |
+| Escolher os participantes | a lista é a equipe da OS; o técnico logado é o `responsavel` por padrão e é sempre participante; marca quem está presente (de 2 pessoas em diante: `participantes_insuficientes`; ausente e desligado não entram) | participantes da equipe |
 | Marcar os riscos | o técnico marca os riscos que existem na atividade (a "( )" da planilha), agrupados por classificação; só as medidas desses riscos aparecem para resposta e só elas são exigidas | lista de riscos por classificação |
 | Responder item | livre, em qualquer ordem, nos itens de verificação e nas medidas dos riscos marcados; dá para voltar e mudar até concluir; as respostas nunca vêm preenchidas | pergunta atual e lista numerada |
 | Resposta bloqueante em item `eliminatorio` | não bloqueia na hora e **nada muda na tela**: a pergunta não é marcada e nenhuma evidência é pedida; o técnico segue respondendo sem saber que o item é eliminatório | a mesma tela de qualquer pergunta |
@@ -781,8 +789,9 @@ Alternativas consideradas: replicação genérica com mesclagem campo a campo �
 | Concluir e validar, com item reprovado | `POST /aprs/avaliar` devolve `bloqueada` e os itens reprovados e já registra a APR `bloqueada` com **todos** os itens reprovados: a OS fica `pendente` e o supervisor é avisado na hora. As respostas ficam travadas e o técnico informa, para **cada** item reprovado, a observação e, quando o item pede, a foto; ao registrar, vai o evento `apr_concluida` da mesma APR, que só acrescenta a evidência (na fila offline, a APR vai inteira e sem a evidência: o aparelho não pôde perguntar) | "Itens reprovados" com a evidência de cada um, e depois "Atividade impedida — supervisor será avisado" |
 | Descartar o rascunho de uma APR que reprovou e refazer | a bloqueada continua registrada; a nova é outra APR | "Esta APR já foi registrada como bloqueada…" |
 | Concluir com evidência faltando | recusado | "Falta evidência em N item(ns)" |
-| APR aprovada | cada participante confirma a assinatura do perfil, no app ou no navegador de quem está logado | "Confirmar assinatura" |
-| Assinaturas confirmadas | a execução é liberada | botão "Iniciar execução" |
+| APR aprovada | é registrada sem assinaturas (`apr_concluida`); cada participante recebe o aviso `apr_para_assinar` e assina na própria conta (`apr_assinada`), só no começo; no offline, `assinatura_presencial: true` no aparelho do responsável | "APR aguardando a sua assinatura" |
+| Participante recusa a APR | `apr_recusada` com motivo obrigatório: sai da APR, não assina e o supervisor é avisado (`direito_de_recusa`); com menos de 2 participantes, ou se foi o responsável, é preciso uma APR nova; só vale antes da execução e para quem ainda não assinou | "Recusar" |
+| Todos os que ficaram assinaram | a execução é liberada (antes disso, `apr_sem_assinaturas`) | botão "Iniciar execução" |
 | App ou página fechados no meio | rascunho local retomado (no app, no SQLite; na web, no navegador); nada é enviado até concluir | "Continuar APR" |
 | APR aprovada de outro dia, ou já usada por uma Execução | não ampara execução nova | exige APR nova |
 | Observação geral | texto opcional, vai ao PDF | campo "Observações" |
@@ -807,8 +816,11 @@ Tabelas `apr`, `apr_participante`, `apr_risco`, `apr_resposta`. Todos os IDs nas
 | `apr_participante.apr_id` | uuid | não | `apr.id` | |
 | `apr_participante.usuario_id` | uuid | não | `usuario.id` | |
 | `apr_participante.funcao` | text | não | | `responsavel` \| `executor`; exatamente um `responsavel` (o que o papel chama de "Supervisor da Atividade"). Não confundir com o supervisor da equipe |
-| `apr_participante.assinatura_path` | text | não | | cópia da assinatura do perfil no momento da confirmação |
-| `apr_participante.assinada_em` | timestamptz | não | | |
+| `apr_participante.assinatura_path` | text | sim | | cópia da assinatura do perfil no momento em que o participante assina; nulo enquanto não assinou |
+| `apr_participante.assinada_em` | timestamptz | sim | | nulo junto com `assinatura_path` |
+| `apr_participante.assinatura_presencial` | boolean | não | | `true` quando a assinatura foi dada no aparelho do responsável (contingência offline) |
+| `apr_participante.recusou_em` | timestamptz | sim | | quando exerceu o direito de recusa; nulo junto com `recusa_motivo`, e nunca junto com `assinada_em` |
+| `apr_participante.recusa_motivo` | text | sim | | |
 | `apr_risco.apr_id` | uuid | não | `apr.id` | PK composta com `risco_id` |
 | `apr_risco.risco_id` | uuid | não | `risco_modelo_apr.id` | risco que a equipe marcou "( )" nesta APR; deve ser do modelo da APR (a api confere) |
 | `apr_resposta.apr_id` | uuid | não | `apr.id` | unique com `item_id` |
@@ -840,37 +852,40 @@ erDiagram
   os ||--o{ os : "OS de apoio"
 ```
 
-1. Ninguém trabalha sozinho — vale como item do modelo ("A atividade será feita em dupla…"), não como regra do app: a APR exige o `responsavel`, e o Iago descreveu casos de uma pessoa só preenchendo (22:40).
+1. Ninguém trabalha sozinho — desde 18/10/2026 é regra do app: a APR exige ao menos 2 participantes, sem máximo (Reunião 3; antes valia só como item do modelo, e o Iago tinha descrito casos de uma pessoa só).
 2. Quem pode participar — só quem está na equipe da OS; participante de fora da equipe (apoio, terceiros) fica para depois (questão 10).
 3. Validade — a APR vale para uma execução, no dia em que foi concluída (questão 8).
 
 ### Execução
 
-**Entrega** o registro da execução em campo, com cronômetro, pausa, evidência, assinaturas, suspensão e interrupção, e o PDF de 2 páginas. **Status: definida.**
+**Entrega** o registro da execução em campo, com cronômetro, pausa e suspensão com motivo, localização, evidência, assinaturas, interrupção e encerramento em dois passos, e os documentos: o PDF da OS e o relatório da execução. **Status: definida.**
 
 Uma Execução é um trecho de trabalho amparado por uma APR. Uma atividade de vários dias, ou que troca de executor, tem várias Execuções, e cada retomada começa com uma APR nova.
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
 | Iniciar sem APR aprovada do dia, da própria OS e ainda não usada | recusado (Decisão-chave 4) | "Preencha a APR antes de iniciar" |
-| Iniciar | informa o número de pessoas (padrão: os participantes da APR); grava o início com a hora do dispositivo; a OS fica `em_execucao` | cronômetro rodando |
-| Pausar | abre uma pausa, com motivo opcional (almoço, descanso, outro); a pausa não entra no tempo líquido | "Em pausa" |
+| Iniciar com participante da APR sem assinar | recusado (`apr_sem_assinaturas`; a mensagem diz quem falta) | "Falta a assinatura de …" |
+| Iniciar | informa o número de pessoas (padrão: os participantes da APR); grava o início com a hora do dispositivo e a localização; a OS fica `em_execucao` | cronômetro rodando |
+| Pausar | abre uma pausa com motivo obrigatório (almoço, aguardando, descanso, condição climática, enfermidade, lesão ou outro; "aguardando" e "outro" pedem o complemento) e grava a localização; a pausa não entra no tempo líquido; lesão e enfermidade avisam o supervisor na hora | "Em pausa" |
 | Continuar | fecha a pausa; só vale na mesma Execução, no mesmo dia e pelo mesmo usuário | cronômetro rodando |
 | Continuar noutro dia, ou por outra pessoa | não existe: a Execução anterior é suspensa e é preciso uma APR nova | "Faça uma APR nova para retomar" |
 | Execução esquecida em andamento de outro dia | o app exige suspendê-la, informando a hora real do fim, antes de iniciar outra; o painel destaca execuções abertas há mais de 12 h; nada é encerrado sozinho | "Suspender a execução de ontem" |
-| Suspender (fim do expediente) | Execução `suspensa`; a OS fica `pendente`; sem alerta | "OS pendente — retome com APR nova" |
-| Interromper por risco | motivo e ao menos 1 foto obrigatórios; Execução `interrompida`; a OS fica `pendente`; `alerta` `bloqueio` | "Atividade interrompida — supervisor será avisado" |
+| Suspender (o serviço não continua hoje) | motivo obrigatório (enfermidade, lesão, fim de expediente, condição climática, falta de material ou equipamento ou outro, com o complemento) e localização; Execução `suspensa`; a OS fica `pendente`; lesão e enfermidade avisam o supervisor na hora | "OS pendente — retome com APR nova" |
+| Interromper por risco | motivo, ao menos 1 foto e assinatura obrigatórios, e a localização; Execução `interrompida`; a OS fica `pendente`; `alerta` `bloqueio` | "Atividade interrompida — supervisor será avisado" |
 | Cancelar por engano | só até 10 minutos depois do início, sem foto nem pausa; a Execução fica `cancelada` e a APR volta a poder ser usada no mesmo dia; a OS volta ao status anterior | "Execução cancelada" |
-| Encerrar sem descrição, sem foto ou sem a assinatura de todos os participantes | recusado; só PDF, sem foto, também | "Descrição, foto e assinaturas de todos são obrigatórias" |
-| Encerrar | grava descrição da atividade, fim, fotos (de 1 a 10), PDFs opcionais (até 5: laudo, relatório de medição) e as assinaturas de todos os participantes da APR; a OS fica `encerrada` (aguardando envio) | "Encerrada (aguardando envio)" |
+| Encerrar OS (1º passo) | depois de uma confirmação, grava o fim e a localização (`execucao_encerrada`): o tempo para aqui, e a Execução não pode ser retomada; a OS fica `encerrando` | janela de confirmação, depois "Encerrando" |
+| Assinar o encerramento (2º passo) | só o responsável pela execução (`encerramento_assinado`): descrição da atividade (opcional), fotos (até 10, opcionais), PDFs opcionais (até 5), o checklist de inspeção da preventiva e a assinatura do perfil; esse preenchimento não entra no tempo; a OS fica `aguardando_supervisor` e o supervisor é avisado (`os_para_assinar`) | "Aguardando o supervisor" |
+| Encerrar sem ter clicado em "Encerrar OS" | recusado (`execucao_nao_encerrada`) | |
 | Interromper com PDF | o PDF acompanha a foto obrigatória (até 5) | |
-| Evento de encerramento chega ao servidor | cria a tarefa `pdf_os`; o PDF é gerado e guardado no Storage | link do PDF na OS, no app e na web |
+| Supervisor assina por último | lê o relatório da execução e assina (`POST /os/{id}/ciencia`, só na OS `aguardando_supervisor`); a OS fica `encerrada` (concluída), cria a tarefa `pdf_os` e entra na planilha de baixa; o PDF é gerado e guardado no Storage | "Concluída em dd/mm hh:mm" e o link do PDF |
 | Falha ao gerar o PDF | a OS continua `encerrada`; nova tentativa automática (ver [Plataforma](#plataforma)) | "PDF pendente" no painel |
-| Supervisor dá ciência | o PDF é gerado de novo, agora com a ciência | "Ciente em dd/mm hh:mm" |
 
-`GET /os/{id}/pdf` → `200` `application/pdf`
+`GET /os/{id}/pdf` → `200` `application/pdf`; só existe depois da assinatura final do supervisor
 
-O PDF segue o papel atual: **página 1, a APR** (cabeçalho com ordem, instalação ou local, data, hora e descrição do serviço; participantes com função, nome, matrícula e assinatura; todos os itens com a resposta, destacando os alertas e as observações; observação geral; o bloco de contatos de emergência do modelo; o código, a versão e a data do documento) e **página 2, a OS** (cabeçalho da ordem com o número, a data de emissão e o registro digital; centro de trabalho, tipo de atividade, status e criador; local de instalação e equipamento; nota de manutenção; planejamento com prioridade e criticidade; execução com início, fim, tempo total, pausas, tempo líquido, número de pessoas e descrição; assinaturas de **todos** os executantes, do responsável da manutenção, a ciência do supervisor e o solicitante, quando existir; fotos com data, hora e posição; os PDFs anexados à execução só são listados, com o nome e a hora, porque o arquivo não entra nas 2 páginas e fica no detalhe da OS). Em atividades de vários dias, a página 1 é a APR da Execução que encerrou, o tempo líquido soma os trechos, e a página 2 lista as datas dos trechos anteriores. Cada página cabe numa folha A4: como a planilha da APR, que é impressa "ajustada à página" (de 41% a 61%), o conteúdo que passa da folha é reduzido por inteiro (até 45%; a maior APR da carga inicial, com todos os riscos marcados, cabe em 60%), e a observação de cada item sai sob o texto dele. Só uma APR ou uma lista de fotos que não caiba nem na menor escala continua em outra folha, em vez de cortar.
+O PDF reproduz os documentos de referência, sem nada a mais (Reunião 3). Traz a **APR** (cabeçalho com ordem, instalação ou local, data, hora e descrição do serviço; participantes com função, nome e matrícula, e a coluna "Assinatura" só nos modelos que a têm: APR 04, 05 e 06, `modelo_apr.participantes_com_assinatura`; todos os itens com a resposta, destacando os alertas e as observações; observação geral; o bloco de contatos de emergência do modelo; o código, a versão e a data do documento) e a **folha da OS do SAP**, em duas folhas (cabeçalho, objetos técnicos e planejamento da ordem com os dados do SAP; operações com o número de pessoas, o início e o fim; a descrição da atividade, ou "Executado conforme a OS, sem ocorrências"; o atesto com a assinatura que cada executante deu na APR, sem assinar de novo; o responsável da manutenção; a assinatura final do supervisor; o solicitante em branco, como no papel). Tempos, pausas, localização, fotos, PDFs anexados, checklist de inspeção e as assinaturas da APR com a hora **não vão para o PDF**: estão no relatório da execução. O PDF só é gerado depois da assinatura final do supervisor. Em atividades de vários dias, a APR é a da Execução que encerrou. Cada página é reduzida por inteiro até 45% para caber numa folha A4 (a observação de cada item sai sob o texto dele); só uma APR que não caiba nem na menor escala continua em outra folha, em vez de cortar. Com mais de 3 executantes, os extras seguem em novas linhas de blocos iguais (solução provisória: a folha do SAP tem só 3 blocos, e a pergunta continua em aberto).
+
+`GET /os/{id}/relatorio-execucao` → `200` `application/pdf`, gerado na hora: só o supervisor da equipe e o admin (`403` para os demais, `404` fora do escopo, `409` `os_sem_execucao` sem execução finalizada). Traz o tempo total, o pausado e o líquido; cada pausa com início, fim, motivo, complemento e localização; as suspensões e interrupções com motivo e localização; a localização do início e do encerramento ao lado do endereço da OS; as fotos e os PDFs da execução; o checklist de inspeção das preventivas; e as assinaturas da APR com a hora de cada uma. O supervisor o lê antes de assinar por último.
 
 Tabelas `execucao`, `execucao_pausa`, `execucao_assinatura`, `evidencia`.
 
@@ -884,16 +899,23 @@ Tabelas `execucao`, `execucao_pausa`, `execucao_assinatura`, `evidencia`.
 | `execucao.inicio` | timestamptz | não | | |
 | `execucao.fim` | timestamptz | sim | | |
 | `execucao.resultado` | text | sim | | `encerrada` \| `interrompida` \| `suspensa` \| `cancelada`; nulo = em andamento |
-| `execucao.descricao_atividade` | text | sim | | obrigatória se `encerrada` |
+| `execucao.descricao_atividade` | text | sim | | opcional; em branco, o PDF e a planilha de baixa trazem "Executado conforme a OS, sem ocorrências" |
 | `execucao.motivo` | text | sim | | obrigatório se `interrompida` |
+| `execucao.suspensao_motivo` | text | sim | | só na `suspensa`: `enfermidade` \| `lesao` \| `fim_expediente` \| `clima` \| `falta_material` \| `outro`; as suspensas antigas não têm |
+| `execucao.suspensao_complemento` | text | sim | | a descrição, obrigatória em `outro` |
+| `execucao.inicio_latitude` / `inicio_longitude` | numeric | sim | | onde a pessoa estava ao iniciar; nulas = "sem localização"; as duas ou nenhuma |
+| `execucao.fim_latitude` / `fim_longitude` | numeric | sim | | onde estava ao encerrar, suspender ou interromper; as duas ou nenhuma |
+| `execucao.encerramento_assinado_em` | timestamptz | sim | | quando o responsável assinou o encerramento; nulo na `encerrada` = a OS está `encerrando` |
 | `execucao.dados_inspecao` | jsonb | sim | | leituras e conformidades do formulário de inspeção da OS preventiva (horímetro, tensões, "Conforme / Não conforme" por componente); a estrutura do formulário está em aberto (questão 57) |
 | `execucao_pausa.id` | uuid | não | | nasce no aparelho |
 | `execucao_pausa.execucao_id` | uuid | não | `execucao.id` | |
 | `execucao_pausa.inicio` | timestamptz | não | | |
 | `execucao_pausa.fim` | timestamptz | sim | | nulo = pausa aberta |
-| `execucao_pausa.motivo` | text | sim | | `almoco` \| `descanso` \| `outro` |
+| `execucao_pausa.motivo` | text | sim | | `almoco` \| `aguardando` \| `descanso` \| `clima` \| `enfermidade` \| `lesao` \| `outro`; obrigatório nas pausas novas |
+| `execucao_pausa.complemento` | text | sim | | o que ou quem se espera (`aguardando`) ou a descrição (`outro`) |
+| `execucao_pausa.latitude` / `longitude` | numeric | sim | | onde a pessoa estava ao pausar; as duas ou nenhuma |
 | `execucao_assinatura.execucao_id` | uuid | não | `execucao.id` | PK composta com `usuario_id` |
-| `execucao_assinatura.usuario_id` | uuid | não | `usuario.id` | um por participante da APR |
+| `execucao_assinatura.usuario_id` | uuid | não | `usuario.id` | só o responsável pela execução assina o encerramento (os participantes assinaram a APR, no começo) |
 | `execucao_assinatura.assinatura_path` | text | não | | cópia da assinatura do perfil |
 | `execucao_assinatura.assinada_em` | timestamptz | não | | |
 | `evidencia.id` | uuid | não | | nasce no aparelho |
@@ -913,7 +935,7 @@ stateDiagram-v2
   [*] --> em_andamento: iniciar (APR aprovada)
   em_andamento --> em_pausa: pausar
   em_pausa --> em_andamento: continuar
-  em_andamento --> encerrada: encerrar (assinaturas de todos)
+  em_andamento --> encerrada: encerrar (o tempo para; o responsável assina depois)
   em_andamento --> interrompida: interromper por risco
   em_andamento --> suspensa: suspender
   em_pausa --> suspensa: suspender
@@ -926,9 +948,11 @@ stateDiagram-v2
 
 Alternativas consideradas: gerar o PDF no aparelho — ganha se o técnico precisar entregar o PDF ao cliente ainda em campo, sem sinal.
 
-1. Pausa — o motivo é opcional, escolhido numa lista curta, e o tempo de pausa alimenta os indicadores (questão 53).
-2. Assinatura — todos os participantes da APR assinam o encerramento, e o PDF lista todos; as 3 vagas do papel não limitam o sistema (questões 11 e 47).
+1. Pausa — o motivo é obrigatório, escolhido numa lista (a suspensão tem a sua), e o tempo de pausa alimenta os indicadores (questão 53).
+2. Assinatura — todos assinam a APR no começo, cada um na própria conta; no encerramento assina só o responsável e, por último, o supervisor. O PDF lista todos os participantes (questões 11 e 47); a folha do SAP tem 3 blocos de executante, e os extras seguem em novas linhas de blocos (solução provisória; a pergunta continua em aberto).
 3. Execução esquecida — o painel destaca, e ninguém a encerra por outro usuário (questão 7).
+4. Localização — gravada no início, na pausa, na suspensão, na interrupção e no encerramento; sem GPS o serviço segue ("sem localização"). No notebook a posição é aproximada, e a OS só tem o endereço em texto, então o relatório mostra o ponto ao lado do endereço, sem calcular a distância.
+5. Migração `0032_execucao_em_dois_passos_e_assinaturas` — cria as colunas acima, afrouxa a assinatura da APR (nula até assinar), troca as restrições de `os.status`, de `evento_campo.tipo` e dos motivos da pausa, e acrescenta os avisos novos. O que já existia vale como era: as assinaturas antigas ficam como presenciais e os encerramentos antigos como assinados.
 
 ### Impedimento
 
@@ -980,7 +1004,7 @@ Tabela `alerta`.
 | Coluna | Tipo | Nulo | Referência | Nota |
 |---|---|---|---|---|
 | `alerta.id` | uuid | não | | |
-| `alerta.tipo` | text | não | | `bloqueio` \| `conflito_planejamento` \| `execucao_duplicada` \| `apoio_encerrado` \| `falha_importacao` |
+| `alerta.tipo` | text | não | | `bloqueio` \| `conflito_planejamento` \| `execucao_duplicada` \| `apoio_encerrado` \| `falha_importacao` \| `apr_para_assinar` (só no sino) \| `direito_de_recusa` \| `lesao_ou_enfermidade` \| `os_para_assinar`; a lista completa dos avisos está em `shared/notificacoes/avisos.ts` |
 | `alerta.os_id` | uuid | sim | `os.id` | obrigatório em todo tipo, menos `falha_importacao` |
 | `alerta.importacao_id` | uuid | sim | `importacao.id` | só em `falha_importacao` (o banco exige um ou outro, conforme o tipo) |
 | `alerta.destinatario_id` | uuid | não | `usuario.id` | supervisor da equipe; sem supervisor, um alerta por admin ativo. Na `falha_importacao`, quem iniciou a importação (na leitura agendada, cada admin ativo) |
@@ -997,18 +1021,18 @@ Tabela `reprogramacao`: `id`, `os_id` → `os.id`, `usuario_id` → `usuario.id`
 
 ### Painel
 
-**Entrega** a visão web de gestão: quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, ciência, indicadores e planilha para o SAP. **Status: aberta.**
+**Entrega** a visão web de gestão: quadro por status, detalhe com o histórico de APRs, histórico por local e equipamento, criticidade, assinatura final do supervisor, indicadores e planilha para o SAP. **Status: aberta.**
 
 | Estado | O que deve acontecer | O que o usuário vê |
 |---|---|---|
-| Abrir o painel | quadro com colunas `liberada`, `pendente`, `em_execucao`, `encerrada`; filtros por equipe, tipo, criticidade e período; ordenado por prioridade (padrão) ou por data limite (`?ordem=data_limite`) | |
+| Abrir o painel | quadro com colunas `liberada`, `pendente`, `em_execucao`, "Aguardando assinaturas" (as OS `encerrando` e `aguardando_supervisor`) e `encerrada`; filtros por equipe, tipo, criticidade e período; ordenado por prioridade (padrão) ou por data limite (`?ordem=data_limite`) | |
 | Supervisor | vê só a própria equipe e as que supervisiona; o admin vê todas | |
-| Buscar por nº da ordem | detalhe: dados SAP, **todas as APRs** (bloqueadas e aprovada, com participantes, itens reprovados e evidências), execuções e pausas, tempos, fotos, PDF, alertas, reprogramações e linha do tempo | |
-| Dar ciência | o supervisor da equipe aprova a OS encerrada com "Ciente", desde que não tenha participado da execução; grava `ciencia_por` e `ciencia_em`; não segura o PDF nem a exportação | "Ciente em dd/mm hh:mm" |
+| Buscar por nº da ordem | detalhe: dados SAP, **todas as APRs** (bloqueadas e aprovada, com participantes, itens reprovados e evidências), execuções e pausas, tempos, localização, fotos, PDF, relatório da execução (supervisor e admin), alertas, reprogramações e linha do tempo | |
+| Assinar por último (a antiga ciência) | o supervisor da equipe (ou o representante) lê o relatório da execução e assina a OS `aguardando_supervisor`, mesmo que tenha participado do serviço; grava `ciencia_por` e `ciencia_em`, conclui a OS (`encerrada`) e libera o PDF e a exportação | "Concluída em dd/mm hh:mm" |
 | Histórico de um local ou equipamento | execuções encerradas, da mais recente para a mais antiga ("última calibração do manômetro X") | |
 | Marcar local como crítico | `local_instalacao.critico` = true; OS desse local aparecem no filtro "Crítica", com o selo "Crítico", e desempatam a ordem do quadro | `200` |
 | Indicador mensal de preventivas | encerradas, atrasadas justificadas (`pendente`, ou com reprogramação, após a data) e atrasadas sem justificativa (`liberada` após a data, sem reprogramação); o atraso conta a partir de `data_fim_prog` quando existe, senão de `data_inicio_prog` | |
-| Indicador de tempo | por equipe, técnico e OS: tempo total médio, tempo líquido médio, pausa média, proporção de pausa (pausa total sobre o tempo total), execuções com pausa e pausas por execução; o tempo em pausa por motivo (almoço, descanso, outro, sem motivo) e as OS com mais pausa; só de Execuções `encerrada` iniciadas no período | Dashboard: tempo por equipe e por técnico (barra do tempo médio dividida em líquido e pausa) e pausas por motivo em Equipes e usuários; tempo, pausas por motivo e OS com mais pausa em OS e em Meus resultados |
+| Indicador de tempo | por equipe, técnico e OS: tempo total médio, tempo líquido médio, pausa média, proporção de pausa (pausa total sobre o tempo total), execuções com pausa e pausas por execução; o tempo em pausa por motivo (os sete motivos e `sem_motivo`) e as OS com mais pausa; só de Execuções `encerrada` iniciadas no período | Dashboard: tempo por equipe e por técnico (barra do tempo médio dividida em líquido e pausa) e pausas por motivo em Equipes e usuários; tempo, pausas por motivo e OS com mais pausa em OS e em Meus resultados |
 | Execução aberta há mais de 12 h | destacada no quadro | "Execução aberta há N h" |
 | Exportar para o SAP | planilha com 4 abas: `Encerradas` (OS `encerrada` ainda não exportadas), `Sem ordem SAP` (OS de apoio, que o Iago cria no SAP depois), `Impedimentos` (OS `pendente`, com o motivo) e `Devolvidas` (OS `devolvida` ainda não exportadas, com a justificativa do supervisor); marca `exportada_sap_em` nas encerradas e `devolucao_exportada_em` nas devolvidas | download `.xlsx` |
 | Exportar de novo sem OS novas | planilha vazia | "Nenhuma OS nova para exportar" |
@@ -1018,17 +1042,18 @@ Colunas da aba `Encerradas`: `numero_ordem`, `data_inicio`, `hora_inicio`, `data
 
 `GET /os` `?equipe_id&tipo&critica&periodo&status` → `200` `{os[]}`
 `GET /os/{id}` → `200` `{os, aprs[], execucoes[], alertas[], reprogramacoes[]}`
-`POST /os/{id}/ciencia` → `200` `{ciencia_em}`
+`POST /os/{id}/ciencia` → `200` `{ciencia_em, status, pontos_ganhos, ganhos}` — a assinatura final do supervisor; só com a OS `aguardando_supervisor` (`409` `os_nao_aguardando_supervisor`; `409` `ciencia_ja_dada`)
+`GET /os/{id}/relatorio-execucao` → `200` `application/pdf` (ver [Execução](#execução))
 `GET /indicadores?mes=2026-09&equipe_id?` → `200` `{encerradas, atrasadas_justificadas, atrasadas_sem_justificativa, por_equipe[]}`
 `GET /indicadores/tempo?mes=2026-09&equipe_id?&usuario_id?` → `200` `{execucoes, tempo_total_medio_min, tempo_liquido_medio_min, pausa_media_min, proporcao_pausa, execucoes_com_pausa, pausas_por_execucao, por_equipe[], por_usuario[], por_motivo: [{motivo, pausas, minutos}], os_com_mais_pausa: [{os_id, numero_ordem, titulo, executor, fim, tempo_total_min, tempo_liquido_min, pausa_min, pausas, proporcao_pausa}]}` (as mesmas medidas em cada linha de `por_equipe` e `por_usuario`)
 
-No painel, os indicadores ficam na seção Indicadores e exportação, em quatro dashboards com o mesmo filtro: `?periodo=` (os últimos 7 dias, 30 dias, 13 semanas ou 12 meses, ou um mês fechado `AAAA-MM`, que é o indicador mensal; o período anterior de mesmo tamanho serve de comparação) e `?equipe_id=` (o supervisor só vê as equipes do próprio escopo, a dele e as que supervisiona; pedir outra é `403`). Geral (`GET /indicadores/geral`): a carteira de OS de agora, o resumo do período e as pendências (baixa no SAP, ciência, execução aberta há mais de 12 h). Equipes e usuários (`GET /indicadores/equipes`): por equipe e por técnico (preventivas, execuções, APRs e bloqueios, interrupções e as medidas de tempo do indicador de tempo), o tempo do conjunto com a pausa por motivo e, só para o admin, o estado do cadastro; o técnico que não supervisiona vê a própria equipe, sem nada por pessoa. OS (`GET /indicadores/os`): carteira, programadas e encerradas por tipo e por faixa, preventivas, tempo (com a pausa por motivo e as OS com mais pausa; o nome de quem executou só para quem acompanha a equipe), interrupções por risco, reprogramações e locais; só para o admin, a entrada de OS (`GET /importacoes/resumo`) e a planilha de baixa no SAP. APR (`GET /aprs/resumo`).
+No painel, os indicadores ficam na seção Indicadores e exportação, em quatro dashboards com o mesmo filtro: `?periodo=` (os últimos 7 dias, 30 dias, 13 semanas ou 12 meses, ou um mês fechado `AAAA-MM`, que é o indicador mensal; o período anterior de mesmo tamanho serve de comparação) e `?equipe_id=` (o supervisor só vê as equipes do próprio escopo, a dele e as que supervisiona; pedir outra é `403`). Geral (`GET /indicadores/geral`): a carteira de OS de agora, o resumo do período e as pendências (baixa no SAP, assinatura do supervisor, execução aberta há mais de 12 h). Equipes e usuários (`GET /indicadores/equipes`): por equipe e por técnico (preventivas, execuções, APRs e bloqueios, interrupções e as medidas de tempo do indicador de tempo), o tempo do conjunto com a pausa por motivo e, só para o admin, o estado do cadastro; o técnico que não supervisiona vê a própria equipe, sem nada por pessoa. OS (`GET /indicadores/os`): carteira, programadas e encerradas por tipo e por faixa, preventivas, tempo (com a pausa por motivo e as OS com mais pausa; o nome de quem executou só para quem acompanha a equipe), interrupções por risco, reprogramações e locais; só para o admin, a entrada de OS (`GET /importacoes/resumo`) e a planilha de baixa no SAP. APR (`GET /aprs/resumo`).
 `GET /historico?local_instalacao_id&equipamento?` → `200` `{execucoes[]}`
 `POST /exportacoes/sap` → `200` `.xlsx`
 `PATCH /locais/{id}` `{critico}` → `200`
 
 1. Criticidade inicial — marcar como críticos os locais que são ponto de recebimento (PR), ERP, ERS, autorizações e clientes Vale e Suzano (Reunião 1); a prioridade do SAP aparece ao lado, sem ser recalculada.
-2. Ciência do supervisor — botão na web depois do encerramento, dado pelo supervisor da equipe (questão 49).
+2. Assinatura final do supervisor — botão na web depois da assinatura do responsável e da leitura do relatório, dado pelo supervisor da equipe; é o que conclui a OS (questão 49 e Reunião 3).
 3. Planilha de baixa — as colunas acima valem até o Iago mostrar a planilha de saída que o SAP espera (questões 12, 13, 40 e 51).
 
 ## Suposições adotadas
@@ -1048,7 +1073,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 12 | aba `Sem ordem SAP` na planilha de baixa | Iago |
 | 13 | aba `Impedimentos` na planilha de baixa | Iago |
 | 14 | reprogramação no sistema vence a data do SAP | time |
-| 16 | foto comprimida a ~1600 px e qualidade 70% (~300 KB); de 1 a 10 fotos por execução; apagada do aparelho depois do envio confirmado | time |
+| 16 | foto comprimida a ~1600 px e qualidade 70% (~300 KB); até 10 fotos por execução (opcionais no encerramento; ao menos 1 só na interrupção); apagada do aparelho depois do envio confirmado | time |
 | 17 | guardam-se `ocorrido_em` e `recebido_em`; o painel sinaliza a diferença | time |
 | 18 | senha trocada na web vale no aparelho após o próximo login online; redefinição só online | time |
 | 20 | e-mail só para `bloqueio` | Iago |
@@ -1074,7 +1099,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 | 66 | ciclo das preventivas: o intervalo vem do campo Periodicidade (PDF), da coluna da planilha, de `intervalo_ciclo` na API ou é definido no sistema; o próximo ciclo conta do encerramento da última OS | Iago |
 | 47 | o PDF lista todos os participantes | Iago |
 | 48 | sem vínculo automático entre OS pendente e a OS nova do mês | Iago |
-| 49 | ciência por botão na web, depois do encerramento | Iago |
+| 49 | ciência por botão na web, depois do encerramento; desde 18/10/2026 é a assinatura final do supervisor, que conclui a OS (Reunião 3) | Iago |
 | 50 | `evidencia` no item do modelo, definida pela Segurança do Trabalho e cadastrada pelo admin | Mario |
 | 52 e 58 | **respondida pelo Iago em 14/10/2026:** sem atribuição automática; o técnico escolhe o modelo a cada APR e o sistema só recomenda; a tabela `atividade` é só o serviço do catálogo, e a OS entra mesmo sem atividade | Iago (respondida) |
 | 53 | motivo da pausa opcional, em lista curta | time e Iago |
@@ -1091,9 +1116,7 @@ Para cada questão que estava em aberto em [pontos-a-validar.md](pontos-a-valida
 A interface em `web/` (migrada do protótipo HTML original, que ficou no histórico do git) é a referência de layout e fluxo. Ela ainda difere desta especificação em:
 
 - falta a ação "Suspender (fim do expediente)" e o cancelamento por engano na tela de execução;
-- o motivo da pausa não é pedido;
 - as versões dos modelos aparecem como v3 e v4 em vez de seguir o documento em papel, e a tabela de atividades usa exemplos em vez dos códigos reais do plano de manutenção;
-- o texto "Ninguém trabalha sozinho" na tela de nova APR não vale como regra (Decisão-chave 4 e item 1 da fatia APR).
 
 ## Fontes
 

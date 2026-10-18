@@ -27,10 +27,10 @@ Execução da OS
 - A atividade pode durar vários dias e trocar de executor; cada retomada começa com uma APR nova
 - Interromper por risco (com motivo e foto) é diferente de pausar (almoço, café)
 
-Após a execução do processo, gerar um documento PDF de registro, em 2 páginas: a da APR e a da OS, no modelo do SAP
-- Data e hora de início e fim, número de pessoas, duração e pausas, descrição da atividade
-- Assinatura de cada executante ao fim da atividade
-- Responsável pela manutenção (líder) e ciência do supervisor
+Após a execução do processo, gerar um documento PDF de registro, com a APR e a OS, no modelo do SAP, como o papel (o que o sistema acrescenta, como tempos, pausas e fotos, vai no relatório da execução)
+- Data e hora de início e fim, número de pessoas, descrição da atividade
+- Assinatura de cada executante (dada na APR, no começo da atividade)
+- Responsável pela manutenção (líder) e assinatura final do supervisor
 
 ---
 
