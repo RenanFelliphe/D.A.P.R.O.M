@@ -4,6 +4,10 @@
  * treino, que é outra funcionalidade (`web/src/components/treino/`, `web/src/treino/`).
  */
 
+import type { MetaIA, PendenciaAberta } from "../../../shared/treinamento-servico/ia";
+
+export { impressaoDoItem, itemSemRevisao, pendenciasAbertas, type MetaIA, type PendenciaAberta } from "../../../shared/treinamento-servico/ia";
+
 export const EXPRESSOES_VITORIA = ["padrao", "feliz", "explicando", "pensando", "alerta", "comemorando", "ops"] as const;
 export type ExpressaoVitoria = (typeof EXPRESSOES_VITORIA)[number];
 
@@ -12,6 +16,8 @@ export interface PassoExplicacao {
   texto: string;
   expressao: ExpressaoVitoria;
   imagem_path?: string | null;
+  /** Só nos passos montados pela IA: o trecho de origem e as pendências (seção 3.6 do `vitoria.md`). */
+  ia?: MetaIA | null;
 }
 
 export interface FaseQuiz {
@@ -20,6 +26,7 @@ export interface FaseQuiz {
   opcoes: string[];
   correta: number;
   explicacao: string;
+  ia?: MetaIA | null;
 }
 export interface FaseDecisao {
   tipo: "decisao";
@@ -27,6 +34,7 @@ export interface FaseDecisao {
   opcoes: { texto: string; consequencia: string }[];
   correta: number;
   explicacao: string;
+  ia?: MetaIA | null;
 }
 export interface FaseSepararItens {
   tipo: "separar_itens";
@@ -34,17 +42,20 @@ export interface FaseSepararItens {
   material_ids: string[];
   quantidade_errados: number;
   explicacao: string;
+  ia?: MetaIA | null;
 }
 export interface FaseLigar {
   tipo: "ligar";
   pares: { esquerda: string; direita: string }[];
   explicacao: string;
+  ia?: MetaIA | null;
 }
 export interface FaseOrdem {
   tipo: "ordem";
   enunciado: string;
   etapas: string[];
   explicacao: string;
+  ia?: MetaIA | null;
 }
 /** O gabarito de uma fase (o que o admin edita); nunca chega ao jogador antes da resposta. */
 export type Fase = FaseQuiz | FaseDecisao | FaseSepararItens | FaseLigar | FaseOrdem;
@@ -66,6 +77,42 @@ export interface RascunhoDoEditor {
   fases: Fase[];
   cenario_path: string | null;
   tem_publicada: boolean;
+  /** O texto do procedimento que o admin colou para a IA (nulo no rascunho feito só à mão). */
+  texto_origem: string | null;
+  gerado_com_ia: boolean;
+  rodadas_ia: number;
+  pendencias: PendenciaAberta[];
+}
+
+/** O que o editor pode fazer com a IA agora (`GET /treinamentos/{codigo}/rascunho`, campo `ia`). */
+export interface SituacaoIA {
+  disponivel: boolean;
+  usa_ia: boolean;
+  treinamentos_usados: number;
+  limite_treinamentos: number;
+  rodadas_usadas: number;
+  limite_rodadas: number;
+  pode_gerar: boolean;
+  pode_ajustar: boolean;
+  motivo: string | null;
+}
+
+/** Evento `progresso` do streaming da IA ("Montando a fase 5 de 10…"), com o tempo corrido. */
+export interface ProgressoDaIA {
+  mensagem: string;
+  passos_prontos: number;
+  fases_prontas: number;
+  total_passos: number | null;
+  total_fases: number | null;
+  segundos: number;
+}
+
+/** Evento `final` do streaming da IA: o rascunho já gravado. */
+export interface ResultadoDaIA {
+  rascunho: RascunhoDoEditor;
+  ia: SituacaoIA;
+  resumo: string;
+  descartados: number;
 }
 
 export interface VersaoAnterior {

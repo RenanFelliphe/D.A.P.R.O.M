@@ -7,7 +7,7 @@ import { EditorTreinamentoServico } from "@/components/web/treinamento-servico/E
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
 import type { ServicoDaOs } from "@/lib/catalogo";
 import { rotas } from "@/lib/rotas";
-import type { RascunhoDoEditor, ReporteDeTreinamento, VersaoAnterior } from "@/lib/treinamento-servico";
+import type { RascunhoDoEditor, ReporteDeTreinamento, SituacaoIA, VersaoAnterior } from "@/lib/treinamento-servico";
 
 export const metadata: Metadata = { title: "Treinamento de serviço" };
 
@@ -32,7 +32,7 @@ export default async function TreinamentoServicoPage({ params }: { params: Promi
   if (!servico) notFound();
 
   const [rascunho, { versoes }, { reportes }] = await Promise.all([
-    api<RascunhoDoEditor>(`/treinamentos/${encodeURIComponent(codigo)}/rascunho`),
+    api<RascunhoDoEditor & { ia: SituacaoIA }>(`/treinamentos/${encodeURIComponent(codigo)}/rascunho`),
     api<{ versoes: VersaoAnterior[] }>(`/treinamentos/${encodeURIComponent(codigo)}/versoes`),
     api<{ reportes: ReporteDeTreinamento[] }>("/treinamentos/reportes", { consulta: { tamanho: 200 } }),
   ]);
@@ -47,7 +47,7 @@ export default async function TreinamentoServicoPage({ params }: { params: Promi
         / <span className="mono">{codigo}</span> / Treinamento
       </div>
       <h1>Treinamento de {servico.descricao}</h1>
-      <EditorTreinamentoServico codigo={codigo} descricao={servico.descricao} rascunhoInicial={rascunho} versoesIniciais={versoes} reportesIniciais={reportesDoServico} />
+      <EditorTreinamentoServico codigo={codigo} descricao={servico.descricao} rascunhoInicial={rascunho} versoesIniciais={versoes} reportesIniciais={reportesDoServico} situacaoIA={rascunho.ia} />
     </Screen>
   );
 }
