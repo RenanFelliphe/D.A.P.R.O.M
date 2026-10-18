@@ -33,6 +33,9 @@ export interface Importacao {
   atualizadas: number;
   ignoradas: number;
   detalhe_ignoradas: LinhaIgnorada[] | null;
+  /** O que entrou mas merece atenção; ausentes nas importações gravadas antes de os avisos irem para o banco. */
+  avisos?: number;
+  detalhe_avisos?: AvisoDaOrdem[] | null;
   erro: string | null;
   criada_em: string;
 }

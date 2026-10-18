@@ -18,7 +18,10 @@ export interface SincronizacaoSap {
   intervalo_min: number;
 }
 
-/** Uma leitura de `GET /importacoes` (as da API; o `detalhe_ignoradas` guarda o motivo de cada ordem ignorada). */
+/**
+ * Uma leitura de `GET /importacoes` (as da API): o `detalhe_ignoradas` guarda o motivo de cada ordem ignorada, e o `detalhe_avisos`, o
+ * que entrou mas merece atenção (o intervalo entre ciclos que não foi reconhecido, por exemplo).
+ */
 export interface LeituraSap {
   id: string;
   origem: string;
@@ -26,6 +29,9 @@ export interface LeituraSap {
   atualizadas: number;
   ignoradas: number;
   detalhe_ignoradas: { numero_ordem?: string; motivo: string }[] | null;
+  /** Ausentes nas leituras gravadas antes de os avisos irem para o banco. */
+  avisos?: number;
+  detalhe_avisos?: { numero_ordem?: string; motivo: string }[] | null;
   erro: string | null;
   criada_em: string;
 }
@@ -36,7 +42,7 @@ const TENTATIVAS = 40;
 /**
  * Cartão "Sincronização com o SYNQ OS" da tela das ordens: a última leitura sem erro, se a automática está ligada, o intervalo e a
  * próxima prevista (`GET /sap/sincronizacao`), e o "Ler agora" (`POST /sap/leituras`). Quando a leitura termina, mostra o resultado
- * (OS criadas, atualizadas e as ordens ignoradas com o motivo, de `GET /importacoes`) e a coluna "No SYNQ OS" se atualiza. O SYNQ OS só lê
+ * (OS criadas, atualizadas, as ordens ignoradas com o motivo e os avisos da leitura, de `GET /importacoes`) e a coluna "No SYNQ OS" se atualiza. O SYNQ OS só lê
  * o SAP, por intervalo ou sob demanda: o SAP real não avisa, então não há sincronização em tempo real.
  */
 export function CartaoSincronizacaoSap({ inicial, ultimaLeitura }: { inicial: SincronizacaoSap; ultimaLeitura: LeituraSap | null }) {
@@ -85,6 +91,7 @@ export function CartaoSincronizacaoSap({ inicial, ultimaLeitura }: { inicial: Si
 
   const proxima = sinc.automatica && sinc.ultima_leitura_sem_erro_em ? new Date(new Date(sinc.ultima_leitura_sem_erro_em).getTime() + sinc.intervalo_min * 60_000) : null;
   const ignoradas = leitura?.detalhe_ignoradas ?? [];
+  const avisos = leitura?.detalhe_avisos ?? [];
   return (
     <Panel>
       <div className="row between wrap">
@@ -118,7 +125,20 @@ export function CartaoSincronizacaoSap({ inicial, ultimaLeitura }: { inicial: Si
           ) : (
             <span className="muted">
               {leitura.criadas} OS criadas · {leitura.atualizadas} atualizadas · {leitura.ignoradas} ordens ignoradas
+              {avisos.length > 0 ? ` · ${avisos.length} ${avisos.length === 1 ? "aviso" : "avisos"}` : ""}
             </span>
+          )}
+          {avisos.length > 0 && (
+            <details open>
+              <summary className="small">Ver os avisos da leitura (entraram, mas merecem atenção)</summary>
+              <ul className="sim-recusados">
+                {avisos.map((a, n) => (
+                  <li key={`aviso-${a.numero_ordem ?? n}-${n}`}>
+                    <span className="mono">{a.numero_ordem ?? "—"}</span> — {a.motivo}
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
           {ignoradas.length > 0 && (
             <details>

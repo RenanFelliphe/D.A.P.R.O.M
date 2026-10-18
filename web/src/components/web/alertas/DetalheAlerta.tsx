@@ -5,16 +5,20 @@ import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/web/Panel";
 import { apiOuNulo } from "@/lib/api";
 import { data, dataDoDia, dataHora } from "@/lib/formatar";
-import { rotas } from "@/lib/rotas";
+import { rotas, urlDoPdf } from "@/lib/rotas";
 import { rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
 import { DecisoesDaOs } from "./DecisoesDaOs";
 import { CausaDoBloqueio } from "./DetalheBloqueio";
 import { DetalheCicloPreventiva } from "./DetalheCicloPreventiva";
 import { DetalheAusencia } from "./DetalheAusencia";
+import { DetalheAvisoGeral } from "./DetalheAvisoGeral";
 import { DetalheRepresentacao } from "./DetalheRepresentacao";
 import { DetalheFalhaImportacao } from "./DetalheFalhaImportacao";
 import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
-import { ehDeAusencia, ehDeCiclo, ehDeRepresentacao, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
+import { aparenciaDoAlerta, ehAvisoGeral, ehDeAusencia, ehDeCiclo, ehDeRepresentacao, ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta, type DetalheDaOs } from "./tipos";
+
+/** Avisos de OS que só informam (a reserva, a ciência, o PDF): não pedem decisão sobre a OS, mesmo encerrada. */
+const SO_INFORMAM: Alerta["tipo"][] = ["os_reservada", "os_reserva_desfeita", "os_ciencia", "pdf_os_falhou"];
 
 interface DetalheAlertaProps {
   alerta: Alerta;
@@ -33,6 +37,8 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
   if (ehDeAusencia(alerta)) return <DetalheAusencia alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   // O representante que assumiu a equipe (ou a devolveu) também não tem OS.
   if (ehDeRepresentacao(alerta)) return <DetalheRepresentacao alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
+  // A conta de uma pessoa, a equipe sem supervisor, o registro de funcionários, o treinamento e a Vitória: detalhe geral.
+  if (ehAvisoGeral(alerta)) return <DetalheAvisoGeral alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   // A falha de importação não tem OS: detalhe próprio.
   if (alerta.tipo === "falha_importacao" || !alerta.os_id) return <DetalheFalhaImportacao alerta={alerta} usuario={usuario} marcarAoAbrir={marcarAoAbrir} />;
   // O do ciclo das preventivas fala do plano, não de uma decisão sobre a OS.
@@ -40,6 +46,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
   const osId = alerta.os_id;
   const bloqueio = alerta.tipo === "bloqueio";
   const inspecao = alerta.tipo === "inspecao_com_pendencia";
+  const { icone, urgente } = aparenciaDoAlerta(alerta);
   const podeAgir = perfilAgeSobreAlertas(usuario);
   const naoLido = alerta.lido_em === null;
 
@@ -54,8 +61,8 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
       <div className="row between wrap" style={{ alignItems: "flex-start" }}>
         <div className="stack g6" style={{ minWidth: 0 }}>
           <div className="row wrap g8">
-            <Badge tone={bloqueio ? "blq" : inspecao ? "al" : "lib"}>
-              <Icon name={bloqueio ? "octagon" : inspecao ? "clip" : "refresh"} size={13} />
+            <Badge tone={urgente ? "blq" : inspecao ? "al" : "lib"}>
+              <Icon name={icone} size={13} />
               {rotuloDoAlerta(alerta)}
             </Badge>
             <Badge tone="neu">{rotuloDaLeitura(alerta, usuario)}</Badge>
@@ -65,13 +72,21 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
           </h2>
         </div>
         {os && (
-          <Link href={rotas.app.os(osId)} style={{ fontSize: 14, fontWeight: 600 }}>
-            Abrir OS
-          </Link>
+          <div className="row wrap g12">
+            {/* O PDF que não saiu: abrir o PDF gera de novo, na hora. */}
+            {alerta.tipo === "pdf_os_falhou" && os.status === "encerrada" && (
+              <a href={urlDoPdf(osId)} target="_blank" rel="noreferrer" style={{ fontSize: 14, fontWeight: 600 }}>
+                Abrir o PDF
+              </a>
+            )}
+            <Link href={rotas.app.os(osId)} style={{ fontSize: 14, fontWeight: 600 }}>
+              Abrir OS
+            </Link>
+          </div>
         )}
       </div>
 
-      <Notice tone={bloqueio ? "blq" : "info"} icon={bloqueio ? "octagon" : "info"} style={{ fontSize: 14.5 }}>
+      <Notice tone={urgente ? "blq" : "info"} icon={bloqueio ? "octagon" : urgente ? "alert" : "info"} style={{ fontSize: 14.5 }}>
         {alerta.detalhe}
       </Notice>
 
@@ -98,7 +113,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
             <dt>Recebido em</dt>
             <dd>
               {dataHora(alerta.criado_em)}
-              {alerta.email_enviado_em ? ` · e-mail enviado ${data(alerta.email_enviado_em)}` : " · e-mail ainda não enviado"}
+              {alerta.email_enviado_em ? ` · e-mail enviado ${data(alerta.email_enviado_em)}` : ""}
             </dd>
           </div>
         </dl>
@@ -110,7 +125,7 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
 
       {bloqueio && detalhe && <CausaDoBloqueio aprs={detalhe.aprs} execucoes={detalhe.execucoes} />}
 
-      {os && !aberta && !inspecao && (
+      {os && !aberta && !inspecao && !SO_INFORMAM.includes(alerta.tipo) && (
         <Notice tone="off" icon="info" style={{ fontSize: 14 }}>
           A OS está {rotuloDoStatus[os.status].toLowerCase()}: não há mais o que decidir sobre ela.
         </Notice>

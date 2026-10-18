@@ -10,8 +10,8 @@ import { MarcarLidoAoAbrir } from "./MarcarLidoAoAbrir";
 import { ehDoUsuario, perfilAgeSobreAlertas, rotuloDaLeitura, rotuloDoAlerta, type Alerta } from "./tipos";
 
 /**
- * Detalhe do aviso de que o representante assumiu a equipe (o supervisor está ausente ou parado) ou de que a supervisão
- * voltou para o supervisor. Não tem OS: leva à equipe.
+ * Detalhe do aviso de que o representante assumiu a equipe (o supervisor está ausente ou parado, ou a equipe está sem supervisor)
+ * ou de que a supervisão voltou para o supervisor. Não tem OS: leva à equipe.
  */
 export function DetalheRepresentacao({ alerta, usuario, marcarAoAbrir }: { alerta: Alerta; usuario: Usuario; marcarAoAbrir: boolean }) {
   const naoLido = alerta.lido_em === null;
@@ -29,8 +29,8 @@ export function DetalheRepresentacao({ alerta, usuario, marcarAoAbrir }: { alert
           </div>
           <h2 style={{ fontSize: 21, lineHeight: 1.25 }}>{iniciada ? "O representante assumiu a equipe" : "A supervisão voltou para o supervisor"}</h2>
         </div>
-        {alerta.representacao_equipe_id && (
-          <Link href={`${rotas.app.equipe(alerta.representacao_equipe_id)}#representante`} style={{ fontSize: 14, fontWeight: 600 }}>
+        {alerta.equipe_alvo_id && (
+          <Link href={`${rotas.app.equipe(alerta.equipe_alvo_id)}#representante`} style={{ fontSize: 14, fontWeight: 600 }}>
             Abrir a equipe
           </Link>
         )}
@@ -47,7 +47,10 @@ export function DetalheRepresentacao({ alerta, usuario, marcarAoAbrir }: { alert
         </div>
         <div>
           <dt>Como funciona</dt>
-          <dd>O representante faz o que o supervisor faz pela equipe enquanto ele está ausente ou parado há 3 dias, e a devolve quando ele volta a usar o sistema.</dd>
+          <dd>
+            O representante faz o que o supervisor faz pela equipe enquanto ele está ausente ou parado há 3 dias, ou enquanto a equipe está sem supervisor, e a devolve quando ele volta a usar o
+            sistema ou quando a equipe ganha um supervisor.
+          </dd>
         </div>
       </dl>
 

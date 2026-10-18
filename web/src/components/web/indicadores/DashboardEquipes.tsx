@@ -179,7 +179,7 @@ function Cadastro({ cadastro }: { cadastro: NonNullable<Dados["cadastro"]> }) {
     { total: cadastro.tecnicos_sem_assinatura, texto: ["técnico sem assinatura", "técnicos sem assinatura"], nota: "a APR exige a assinatura de cada participante" },
     { total: cadastro.senha_provisoria, texto: ["usuário com a senha provisória", "usuários com a senha provisória"], nota: "o primeiro acesso ainda não foi feito" },
     { total: cadastro.sem_equipe, texto: ["técnico ou supervisor sem equipe", "técnicos e supervisores sem equipe"], nota: "sem equipe, não se vê nenhuma OS" },
-    { total: cadastro.equipes_sem_supervisor, texto: ["equipe sem supervisor", "equipes sem supervisor"], nota: "os alertas ficam só com o admin" },
+    { total: cadastro.equipes_sem_supervisor, texto: ["equipe sem supervisor", "equipes sem supervisor"], nota: "o representante responde por ela até o admin escolher um supervisor" },
   ];
   return (
     <Panel>

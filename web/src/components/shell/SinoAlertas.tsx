@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { aparenciaDoAlerta, ehDeRepresentacao, referenciaDoAlerta, rotuloDoAlerta, type Alerta } from "@/components/web/alertas/tipos";
+import { aparenciaDoAlerta, destinoDoAlerta, ehDeRepresentacao, referenciaDoAlerta, rotuloDoAlerta, type Alerta } from "@/components/web/alertas/tipos";
 import { chamar } from "@/lib/cliente-api";
 import { diaMes, hora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
@@ -15,7 +15,8 @@ interface SinoAlertasProps {
   recentes: Alerta[];
   /**
    * Quem acompanha os alertas da gestão (admin e supervisor): cada item abre a tela de alertas. O técnico só tem o sino, com os
-   * avisos endereçados a ele (os da própria ausência): cada item leva às ausências do perfil e abrir o marca como lido.
+   * avisos endereçados a ele (a própria ausência, a OS reservada, a ciência, a conta, o treinamento novo): cada item leva à tela
+   * do aviso (`destinoDoAlerta`, os mesmos endereços dos e-mails) e abrir o marca como lido.
    */
   gestao: boolean;
 }
@@ -83,7 +84,7 @@ export function SinoAlertas({ naoLidos, recentes, gestao }: SinoAlertasProps) {
                 const referencia = referenciaDoAlerta(a);
                 return (
                   <li key={a.id}>
-                    <Link href={ehDeRepresentacao(a) && a.representacao_equipe_id ? `${rotas.app.equipe(a.representacao_equipe_id)}#representante` : gestao ? `${rotas.web.alertas}?alerta=${a.id}` : `${rotas.app.perfil}#ausencias`} className={a.lido_em === null ? "sino-item novo" : "sino-item"} onClick={() => abrir(a)}>
+                    <Link href={ehDeRepresentacao(a) && a.equipe_alvo_id ? `${rotas.app.equipe(a.equipe_alvo_id)}#representante` : gestao ? `${rotas.web.alertas}?alerta=${a.id}` : destinoDoAlerta(a)} className={a.lido_em === null ? "sino-item novo" : "sino-item"} onClick={() => abrir(a)}>
                       <span className={urgente ? "ic red" : "ic blue"}>
                         <Icon name={icone} size={16} />
                       </span>

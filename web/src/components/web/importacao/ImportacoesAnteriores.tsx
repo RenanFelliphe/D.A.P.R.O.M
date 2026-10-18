@@ -4,7 +4,7 @@ import { dataHora } from "@/lib/formatar";
 import { TabelaIgnoradas } from "./LinhasIgnoradas";
 import { metodoDaImportacao, nomeDoArquivo, origensDeEntrada, type Importacao } from "./tipos";
 
-/** Histórico das sincronizações com a API e dos arquivos importados (planilha e PDF), com o detalhe do que ficou de fora (o título fica na página). */
+/** Histórico das sincronizações com a API e dos arquivos importados (planilha e PDF), com o detalhe do que ficou de fora e dos avisos (o título fica na página). */
 export function ImportacoesAnteriores({ importacoes }: { importacoes: Importacao[] }) {
   return (
     <Panel>
@@ -45,7 +45,7 @@ export function ImportacoesAnteriores({ importacoes }: { importacoes: Importacao
                     <td className="r">{i.atualizadas}</td>
                     <td className="r">{i.ignoradas}</td>
                   </tr>
-                  {(i.erro || (i.detalhe_ignoradas?.length ?? 0) > 0) && (
+                  {(i.erro || (i.detalhe_ignoradas?.length ?? 0) > 0 || (i.detalhe_avisos?.length ?? 0) > 0) && (
                     <tr>
                       <td colSpan={6} style={{ paddingTop: 0 }}>
                         {i.erro && (
@@ -61,6 +61,20 @@ export function ImportacoesAnteriores({ importacoes }: { importacoes: Importacao
                             <div style={{ marginTop: 8 }}>
                               <TabelaIgnoradas ignoradas={i.detalhe_ignoradas!} />
                             </div>
+                          </details>
+                        )}
+                        {(i.detalhe_avisos?.length ?? 0) > 0 && (
+                          <details>
+                            <summary style={{ cursor: "pointer", fontSize: 13.5, fontWeight: 600 }}>
+                              Ver {i.detalhe_avisos!.length} {i.detalhe_avisos!.length === 1 ? "aviso" : "avisos"} (a OS entrou, mas merece atenção)
+                            </summary>
+                            <ul style={{ margin: "8px 0 0", paddingLeft: 18, fontSize: 13.5 }}>
+                              {i.detalhe_avisos!.map((a, n) => (
+                                <li key={`${a.numero_ordem}-${n}`}>
+                                  <span className="mono">{a.linha !== undefined ? `Linha ${a.linha}` : a.numero_ordem}</span> — {a.motivo}
+                                </li>
+                              ))}
+                            </ul>
                           </details>
                         )}
                       </td>

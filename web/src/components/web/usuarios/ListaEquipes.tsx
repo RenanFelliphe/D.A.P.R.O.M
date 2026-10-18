@@ -58,7 +58,7 @@ export function ListaEquipes({ equipes, supervisores, somenteLeitura = false, ca
         <p className="small">A contagem considera só os técnicos ativos com o acesso liberado. Quem foi cadastrado agora aparece na lista de técnicos como pendente.</p>
       ) : (
         <p className="small">
-          O centro de trabalho da OS no SAP define a equipe. Os técnicos da equipe aparecem como participantes da APR. Equipe sem supervisor deixa os alertas só com o admin.
+          O centro de trabalho da OS no SAP define a equipe. Os técnicos da equipe aparecem como participantes da APR. Na equipe sem supervisor, o representante responde por ela e recebe os alertas, e os administradores são avisados para escolher um supervisor.
         </p>
       )}
     </Panel>

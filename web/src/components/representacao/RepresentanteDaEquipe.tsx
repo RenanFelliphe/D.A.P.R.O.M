@@ -68,7 +68,9 @@ export function RepresentanteDaEquipe({ equipeId, representante, representacao, 
       )}
       {representacao ? (
         <Notice tone="info" icon="users" style={{ fontSize: 14 }}>
-          {`${MOTIVO_DA_REPRESENTACAO[representacao.motivo]} O representante responde pela equipe desde ${desdeDaRepresentacao(representacao)} e a devolve quando o supervisor voltar.`}
+          {representacao.motivo === "sem_supervisor"
+            ? `${MOTIVO_DA_REPRESENTACAO.sem_supervisor} Ele responde desde ${desdeDaRepresentacao(representacao)}.`
+            : `${MOTIVO_DA_REPRESENTACAO[representacao.motivo]} O representante responde pela equipe desde ${desdeDaRepresentacao(representacao)} e a devolve quando o supervisor voltar.`}
         </Notice>
       ) : (
         <p className="small muted">{REGRA_DO_REPRESENTANTE}</p>

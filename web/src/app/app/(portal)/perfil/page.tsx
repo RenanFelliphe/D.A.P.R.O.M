@@ -3,13 +3,14 @@ import { CabecalhoPagina, Colunas } from "@/components/app/AppChrome";
 import { MinhasAusencias } from "@/components/ausencia/MinhasAusencias";
 import { LinhaHistorico, type ExecucaoDoHistorico } from "@/components/app/perfil/LinhaHistorico";
 import { MinhaAssinatura } from "@/components/app/perfil/MinhaAssinatura";
+import { PreferenciasDeEmail } from "@/components/app/perfil/PreferenciasDeEmail";
 import { TrocarSenha } from "@/components/app/perfil/TrocarSenha";
 import { Screen } from "@/components/ui/Screen";
 import { CartaoDaMinhaPontuacao } from "@/components/web/gamificacao/BlocosDoPerfil";
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
 import type { Ausencia } from "@/lib/ausencia";
 import { data } from "@/lib/formatar";
-import { ehAdmin, ehSupervisor, rotuloDoPerfil } from "@/lib/tipos";
+import { ehAdmin, rotuloDoPerfil } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Perfil" };
 
@@ -19,14 +20,25 @@ export const metadata: Metadata = { title: "Perfil" };
  * encerrou nos últimos 60 dias, que o admin não tem.
  */
 export default async function PerfilPage() {
-  const { usuario, equipe, ausencia } = await usuarioAtual();
+  const { usuario, equipe, ausencia, emails } = await usuarioAtual();
   const executa = !ehAdmin(usuario);
   const historico = executa ? (await api<{ execucoes: ExecucaoDoHistorico[] }>("/me/historico")).execucoes : null;
   // As minhas ausências; no campo de treino a rota não existe (404) e a seção não aparece.
   const ausencias = executa ? (await apiOuNulo<{ ausencias: Ausencia[] }>("/ausencias", { consulta: { usuario_id: usuario.id, tamanho: 50 } }))?.ausencias ?? null : null;
-  const supervisor = ehSupervisor(usuario);
-  // O técnico pede ao supervisor da equipe: sem equipe, ou numa equipe sem supervisor, não há a quem pedir.
-  const motivoSemPedido = supervisor ? null : !equipe ? "Você não está em uma equipe: não há supervisor para responder ao pedido." : !equipe.supervisor_id ? "A sua equipe está sem supervisor: não há quem responda ao pedido de ausência." : null;
+  // Só o supervisor titular registra a própria ausência; o representante no comando pede, como qualquer técnico.
+  const titular = (usuario.equipes_supervisionadas ?? []).some((e) => !(usuario.equipes_representadas ?? []).some((r) => r.id === e.id));
+  // O técnico pede a quem responde pela equipe: o supervisor ou, na equipe sem supervisor, o representante. Sem equipe, sem
+  // ninguém, ou quando quem responde é a própria pessoa (o representante da equipe sem supervisor), não há a quem pedir.
+  const semSupervisor = equipe?.representacao?.motivo === "sem_supervisor";
+  const motivoSemPedido = titular
+    ? null
+    : !equipe
+      ? "Você não está em uma equipe: não há supervisor para responder ao pedido."
+      : semSupervisor && equipe.representante_id === usuario.id
+        ? "A sua equipe está sem supervisor e é você quem responde por ela: não há quem responda ao seu pedido de ausência. Fale com o administrador."
+        : !equipe.supervisor_id && !equipe.representante_id
+          ? "A sua equipe está sem supervisor e ninguém responde por ela: fale com o administrador."
+          : null;
   const supervisao = usuario.equipes_supervisionadas?.map((e) => e.nome).join(", ");
 
   const dados: [string, string | null][] = [
@@ -71,7 +83,7 @@ export default async function PerfilPage() {
               <MinhasAusencias
                 ausencias={ausencias}
                 eu={{ id: usuario.id, nome: usuario.nome, assinaturaPath: usuario.assinatura_path, ausente: Boolean(ausencia) }}
-                modo={supervisor ? "registrar" : "pedir"}
+                modo={titular ? "registrar" : "pedir"}
                 motivoSemPedido={motivoSemPedido}
               />
             )}
@@ -95,6 +107,7 @@ export default async function PerfilPage() {
           <>
             {executa && usuario.gamificacao && <CartaoDaMinhaPontuacao resumo={usuario.gamificacao} anonimo={usuario.ranking_anonimo ?? false} />}
             <MinhaAssinatura assinaturaPath={usuario.assinatura_path} assinaturaEm={usuario.assinatura_em} />
+            {emails && <PreferenciasDeEmail perfil={usuario.perfil} inicial={emails} />}
             <TrocarSenha />
           </>
         }
