@@ -146,6 +146,23 @@
     grid-template-columns: minmax(0, 1fr)
   }
 
+  /* As abas das seções (Gamificação tem 5, o treinamento 6) não cabem no tablet: rolam de lado em vez de quebrar o rótulo
+     em duas linhas. */
+  .abas {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none
+  }
+
+  .abas::-webkit-scrollbar {
+    display: none
+  }
+
+  .abas a {
+    flex: none;
+    white-space: nowrap
+  }
+
   .col-side {
     position: static
   }

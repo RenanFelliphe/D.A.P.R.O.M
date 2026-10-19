@@ -54,19 +54,25 @@ function posicionar(medida: Medida): { estilo: CSSProperties; lado: "centro" | "
   const espacoAcima = rect.top - FOLGA - DISTANCIA;
   const seta = (valor: number, maximo: number) => ({ "--seta": `${limitar(valor, 24, maximo - 24)}px` }) as CSSProperties;
 
-  if (espacoAbaixo >= 250) return { lado: "abaixo", estilo: { top: base + FOLGA + DISTANCIA, left: esquerda, width: largura, ...seta(centroX - esquerda, largura) } };
-  if (espacoAcima >= 250) return { lado: "acima", estilo: { bottom: vh - rect.top + FOLGA + DISTANCIA, left: esquerda, width: largura, ...seta(centroX - esquerda, largura) } };
+  // `maxHeight` em todos os lados: em tela baixa (celular deitado) o balão passava da borda e "Próximo" ficava fora de alcance;
+  // limitado, só o corpo rola (treino.css).
+  if (espacoAbaixo >= 250) {
+    return { lado: "abaixo", estilo: { top: base + FOLGA + DISTANCIA, maxHeight: espacoAbaixo - 12, left: esquerda, width: largura, ...seta(centroX - esquerda, largura) } };
+  }
+  if (espacoAcima >= 250) {
+    return { lado: "acima", estilo: { bottom: vh - rect.top + FOLGA + DISTANCIA, maxHeight: espacoAcima - 12, left: esquerda, width: largura, ...seta(centroX - esquerda, largura) } };
+  }
 
   const topo = limitar(rect.top, 76, vh - 330);
   const centroY = rect.top + rect.height / 2;
   if (rect.left + rect.width + FOLGA + DISTANCIA + largura + 12 <= vw) {
-    return { lado: "direita", estilo: { top: topo, left: rect.left + rect.width + FOLGA + DISTANCIA, width: largura, ...seta(centroY - topo, 230) } };
+    return { lado: "direita", estilo: { top: topo, maxHeight: vh - topo - 12, left: rect.left + rect.width + FOLGA + DISTANCIA, width: largura, ...seta(centroY - topo, 230) } };
   }
   if (rect.left - FOLGA - DISTANCIA - largura - 12 >= 0) {
-    return { lado: "esquerda", estilo: { top: topo, left: rect.left - FOLGA - DISTANCIA - largura, width: largura, ...seta(centroY - topo, 230) } };
+    return { lado: "esquerda", estilo: { top: topo, maxHeight: vh - topo - 12, left: rect.left - FOLGA - DISTANCIA - largura, width: largura, ...seta(centroY - topo, 230) } };
   }
-  // Alvo grande ocupando a tela: o balão fica num canto, sem seta.
-  return { lado: "canto", estilo: { bottom: 16, right: 16, width: largura } };
+  // Alvo grande ocupando a tela: o balão fica num canto, sem seta, acima da barra de navegação inferior quando ela existe (`--tr-rodape`).
+  return { lado: "canto", estilo: { bottom: "calc(var(--tr-rodape) + 16px)", right: 16, maxHeight: `calc(${vh - 32}px - var(--tr-rodape))`, width: largura } };
 }
 
 /** Texto do indicador de passo: "3 de 17". */

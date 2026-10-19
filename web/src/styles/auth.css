@@ -215,9 +215,11 @@
   color: var(--ink3)
 }
 
+/* Nome de quem cadastrou ou da equipe sem espaço (e-mail, sigla longa) quebra em vez de estourar o cartão no celular. */
 .aguardando-dados dd {
   margin: 0;
-  font-weight: 600
+  font-weight: 600;
+  overflow-wrap: anywhere
 }
 
 .aguardando-motivo {
@@ -233,5 +235,18 @@
   .aguardando {
     padding: 20px 16px;
     margin-top: 8px
+  }
+}
+
+/* Celular: os botões ("Continuar no Campo de treino", "Verificar liberação") quebram de linha; cada um ocupa a linha toda,
+   em vez de ficarem com larguras diferentes alinhados à esquerda. Em 320px o rótulo pode quebrar dentro do botão. */
+@media (max-width: 479px) {
+  .aguardando > .row > .btn {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 48px;
+    padding-block: 8px;
+    white-space: normal;
+    text-align: center
   }
 }

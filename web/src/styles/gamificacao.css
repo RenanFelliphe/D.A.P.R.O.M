@@ -329,7 +329,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  min-width: 0
+  min-width: 0;
+  overflow-wrap: anywhere
 }
 
 .conquista .c-corpo h3 {

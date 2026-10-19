@@ -49,11 +49,13 @@
   color: currentColor
 }
 
+/* O texto encolhe e corta; os botões nunca: a faixa tem altura fixa e não pode quebrar em duas linhas. */
 .tr-faixa-texto {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
+  overflow: hidden;
   white-space: nowrap
 }
 
@@ -62,6 +64,7 @@
 }
 
 .tr-faixa-acoes {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 8px
@@ -252,7 +255,7 @@
 
 .tr-opcoes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px
 }
 
@@ -357,16 +360,18 @@
   color: currentColor
 }
 
+/* 200px: com 260px o texto não cabia ao lado do ícone no celular estreito e o ícone ficava sozinho numa linha. */
 .tr-aviso-pagina span {
-  flex: 1 1 260px
+  flex: 1 1 200px
 }
 
 /* ===== Botão "Roteiro" do modo livre ===== */
 
+/* Fica à esquerda do botão da Vitória (56px, a 20px do canto), centrado na altura dele: no canto os dois se sobrepunham. */
 .tr-roteiro {
   position: fixed;
-  right: 20px;
-  bottom: 20px;
+  right: 88px;
+  bottom: 28px;
   z-index: 80;
   height: 40px;
   padding: 0 16px 0 14px;
@@ -407,7 +412,9 @@
 
 /* ===== Tutorial direcionado ===== */
 
+/* `--tr-rodape`: a altura da barra de navegação inferior (abaixo de 900px), para o balão do canto ficar acima dela. */
 .tr-raiz {
+  --tr-rodape: 0px;
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -434,9 +441,12 @@
   animation: tr-aparece .25s ease both
 }
 
+/* Coluna: com a altura limitada (tela baixa, celular deitado) só o corpo encolhe e rola; cabeçalho e botões ficam à vista. */
 .tr-balao {
   position: fixed;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
   width: min(360px, calc(100vw - 24px));
   padding: 16px;
   border: 1px solid var(--tr-bd);
@@ -502,10 +512,12 @@
   border-bottom: 0
 }
 
-/* Passos sem alvo na tela: aviso centralizado. */
+/* Passos sem alvo na tela: aviso centralizado. O `transform` fica também fora da animação: com movimento reduzido
+   (animação desligada) o balão perdia o deslocamento de -50% e saía da tela pela direita e por baixo. */
 .tr-balao[data-lado="centro"] {
   top: 50%;
   left: 50%;
+  transform: translate(-50%, -50%);
   width: min(440px, calc(100vw - 24px));
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
@@ -546,6 +558,7 @@
 }
 
 .tr-balao-cab {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px
@@ -583,6 +596,15 @@
   gap: 8px;
   margin-top: 12px;
   animation: tr-troca .22s ease both
+}
+
+/* O corpo rola quando o balão bate no limite de altura. A folga de 4px (compensada na margem) evita cortar o anel de foco
+   dos botões. O passo final fica de fora: a rolagem cortaria as ondas animadas em volta do ícone de conclusão. */
+.tr-balao:not([data-final]) .tr-balao-corpo {
+  min-height: 0;
+  overflow-y: auto;
+  margin: 8px -4px -4px;
+  padding: 4px
 }
 
 .tr-balao-corpo h2 {
@@ -672,6 +694,7 @@
 }
 
 .tr-balao-rodape {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -891,14 +914,19 @@
     height: 32px
   }
 
+  /* Acima da barra inferior e à esquerda da Vitória, que no celular sobe para cima da barra (60px + 16px). */
   .tr-roteiro {
-    right: 12px;
-    bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom) + 12px);
+    right: 84px;
+    bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom) + 22px);
     height: 44px
   }
 
   .tr-pausa {
     bottom: calc(var(--bottombar-h) + env(safe-area-inset-bottom) + 8px)
+  }
+
+  .tr-raiz {
+    --tr-rodape: calc(var(--bottombar-h) + env(safe-area-inset-bottom))
   }
 
   .tr-btn {
@@ -908,7 +936,7 @@
 
 @media (max-width: 640px) {
   .tr-opcoes {
-    grid-template-columns: 1fr
+    grid-template-columns: minmax(0, 1fr)
   }
 
   .tr-dialogo {
@@ -924,9 +952,8 @@
   .tr-opcao {
     padding: 16px
   }
-}
 
-@media (max-width: 520px) {
+  /* Rótulos curtos da faixa: os longos ("dados fictícios", "Recomeçar treino", "Sair do treino") só cabem a partir de ~600px. */
   .tr-longo {
     display: none
   }
@@ -934,7 +961,58 @@
   .tr-curto {
     display: inline
   }
+}
 
+/* Celular deitado (tela baixa): a janela de boas-vindas aperta o respiro para mostrar mais antes de rolar. Depois do bloco
+   de 640px para valer também no celular pequeno em pé. */
+@media (max-height: 560px) {
+  .tr-fundo {
+    padding: 8px
+  }
+
+  .tr-dialogo {
+    max-height: calc(100dvh - 16px);
+    padding: 18px 20px;
+    gap: 10px
+  }
+
+  .tr-dialogo h2 {
+    font-size: 22px
+  }
+
+  .tr-opcao {
+    padding: 14px;
+    gap: 6px
+  }
+
+  .tr-opcao-icone {
+    width: 40px;
+    height: 40px
+  }
+}
+
+/* Celular: só "Campo de treino" e os dois botões; o "· fictício" empurrava os botões para fora da faixa. A faixa violeta e o
+   selo TREINO da barra continuam dizendo que é treino. */
+@media (max-width: 479px) {
+  .tr-faixa {
+    gap: 8px
+  }
+
+  .tr-faixa-sep,
+  .tr-faixa-texto .tr-curto {
+    display: none
+  }
+}
+
+/* Celular bem estreito (320px): sem os ícones da faixa e do selo da barra, para tudo caber na linha. */
+@media (max-width: 359px) {
+  .tr-faixa .i,
+  .topbar .tr-selo .i {
+    display: none
+  }
+}
+
+@media (max-width: 520px) {
   .tr-selo {
     padding: 0 10px
   }
