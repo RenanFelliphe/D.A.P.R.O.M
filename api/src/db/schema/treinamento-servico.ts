@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 import { atividade } from "./modelos-apr";
 import { usuario } from "./usuarios";
@@ -44,7 +44,7 @@ export const treinamentoServicoVersao = pgTable(
     estado: text({ enum: TREINAMENTO_SERVICO_VERSAO_ESTADOS }).notNull().default("rascunho"),
     /** Array de 1 a 12 `{ordem, texto, expressao, imagem_path}` (Zod). */
     explicacao: jsonb().notNull().default(sql`'[]'::jsonb`),
-    /** Array de 0 a 10 em rascunho (3 a 10 para publicar), união discriminada por `tipo` (Zod); é o gabarito, nunca enviado ao cliente antes da resposta. */
+    /** Array de fases, sem máximo no produto (ao menos 3 para publicar), união discriminada por `tipo` (Zod); é o gabarito, nunca enviado ao cliente antes da resposta. */
     fases: jsonb().notNull().default(sql`'[]'::jsonb`),
     /** Imagem do cenário mostrada na abertura, no bucket `treinamentos`. */
     cenarioPath: text(),
@@ -74,7 +74,7 @@ export const treinamentoServicoVersao = pgTable(
 
 /**
  * Uma tentativa do jogo: `apresentacao` guarda o embaralhamento gerado uma única vez na abertura (a ordem das opções, dos
- * pares e das etapas, e o sorteio dos itens errados de "separar os itens"), sem nenhum dado de gabarito. `pre_visualizacao`
+ * pares e das etapas, e o sorteio dos itens errados do Selecione com os materiais do serviço), sem nenhum dado de gabarito. `pre_visualizacao`
  * marca quando o admin está testando o rascunho (nunca pontua). O índice parcial único (pontuada) garante no próprio banco
  * que só a primeira conclusão de cada treinamento pontua.
  */
@@ -102,11 +102,22 @@ export const treinamentoServicoTentativa = pgTable(
     apresentacao: jsonb().notNull(),
     preVisualizacao: boolean().notNull().default(false),
     pontuada: boolean().notNull().default(false),
-    /** Fases cuja primeira resposta foi certa, até o total de fases da versão (no máximo 10). */
+    /** Fases certas (todos os acertos possíveis), até o total de fases da versão. A gamificação conta no máximo 10. */
     fasesCertas: integer().notNull().default(0),
+    /**
+     * O cronômetro de cada fase (seção 12 do `treinamentos-de-servico.md`): os milissegundos acumulados por fase, a fase em que
+     * a pessoa está agora (e desde quando) e o instante do último evento. Ao sair de uma fase o tempo dela fica guardado; ao
+     * voltar, continua de onde parou. Tudo pelo relógio do servidor (`deps.agora()`).
+     */
+    tempos: jsonb().notNull().default(sql`'{}'::jsonb`),
+    /** A resposta em andamento de cada fase ainda não confirmada, para corrigir os acertos parciais ao finalizar. */
+    progresso: jsonb().notNull().default(sql`'{}'::jsonb`),
+    /** A nota do treinamento nesta tentativa (soma das fases × fases × 10); nula até concluir. */
+    nota: integer(),
   },
   (t) => [
-    check("treinamento_servico_tentativa_fases_certas_check", sql`${t.fasesCertas} between 0 and 10`),
+    check("treinamento_servico_tentativa_fases_certas_check", sql`${t.fasesCertas} >= 0`),
+    check("treinamento_servico_tentativa_nota_check", sql`${t.nota} is null or ${t.nota} >= 0`),
     check("treinamento_servico_tentativa_pontuada_concluida", sql`not ${t.pontuada} or ${t.concluidaEm} is not null`),
     // Pré-visualização nunca pontua (é o admin testando o rascunho, que não joga).
     check("treinamento_servico_tentativa_previa_sem_pontos", sql`not ${t.preVisualizacao} or not ${t.pontuada}`),
@@ -117,7 +128,9 @@ export const treinamentoServicoTentativa = pgTable(
 
 /**
  * A resposta de uma fase. PK composta (`tentativa_id`, `fase`): a segunda chamada à mesma fase não substitui a primeira
- * (`on conflict do nothing`), porque vale a primeira resposta (Decisão da seção 3.8 do `vitoria.md`).
+ * (`on conflict do nothing`), porque vale a primeira resposta (Decisão da seção 3.8 do `vitoria.md`). Com a nota (seção 12
+ * do `treinamentos-de-servico.md`), guarda também os acertos, o tempo e os pontos da fase; `confirmada` é falsa na fase que
+ * a pessoa não confirmou e que foi corrigida, ao finalizar, pelo que tinha feito nela.
  */
 export const treinamentoServicoResposta = pgTable(
   "treinamento_servico_resposta",
@@ -130,8 +143,21 @@ export const treinamentoServicoResposta = pgTable(
     resposta: jsonb().notNull(),
     certa: boolean().notNull(),
     respondidaEm: instante().notNull().defaultNow(),
+    /** Os acertos e as respostas certas possíveis da fase (a base: 10 × acertos ÷ possíveis). */
+    acertos: integer().notNull().default(0),
+    possiveis: integer().notNull().default(1),
+    /** O tempo gasto na fase, somadas as vezes que a pessoa esteve nela. */
+    tempoMs: integer().notNull().default(0),
+    /** Os pontos da fase: a base vezes o multiplicador do tempo (de 0 a 10). */
+    pontos: doublePrecision().notNull().default(0),
+    confirmada: boolean().notNull().default(true),
   },
-  (t) => [primaryKey({ name: "treinamento_servico_resposta_pkey", columns: [t.tentativaId, t.fase] }), check("treinamento_servico_resposta_fase_check", sql`${t.fase} >= 0`)],
+  (t) => [
+    primaryKey({ name: "treinamento_servico_resposta_pkey", columns: [t.tentativaId, t.fase] }),
+    check("treinamento_servico_resposta_fase_check", sql`${t.fase} >= 0`),
+    check("treinamento_servico_resposta_acertos_check", sql`${t.acertos} between 0 and ${t.possiveis}`),
+    check("treinamento_servico_resposta_pontos_check", sql`${t.pontos} between 0 and 10`),
+  ],
 ).enableRLS();
 
 /** "Reportar problema": um aviso de texto livre do técnico sobre uma fase (ou o treinamento todo, com `fase` nula) para o admin tratar. */

@@ -8,6 +8,8 @@
  * até o admin editar o item (a impressão deixa de bater) ou confirmá-lo (`conferido`).
  */
 
+import { fnv1a } from "./jogos";
+
 export interface PendenciaDoItem {
   codigo: string;
   mensagem: string;
@@ -48,13 +50,7 @@ function canonico(valor: unknown): string {
 
 /** FNV-1a de 32 bits do conteúdo canônico do item: não é segurança, só "mudou ou não mudou desde que a IA entregou". */
 export function impressaoDoItem(item: object): string {
-  const texto = canonico(item);
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < texto.length; i++) {
-    hash ^= texto.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  return hash.toString(16).padStart(8, "0");
+  return fnv1a(canonico(item));
 }
 
 /** O item ainda está como a IA o entregou (não foi editado nem confirmado)? Só então as pendências dele valem. */

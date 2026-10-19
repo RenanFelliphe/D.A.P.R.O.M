@@ -10,6 +10,8 @@ import {
   avisarProblemaReportado,
   avisarTreinamentoPublicado,
   concluirTentativa,
+  entrarNaFase,
+  guardarProgresso,
   listarReportes,
   listarTreinamentosPublicados,
   marcarReporteTratado,
@@ -22,14 +24,17 @@ import {
   versoesAnteriores,
 } from "../dominio/treinamento-servico";
 import { esquemaConteudo } from "../dominio/treinamento-servico-esquema";
+import { LINHAS_DO_RANKING, rankingDoTreinamento } from "../dominio/treinamento-servico-ranking";
 import {
   executarRascunhoIA,
   LIMITE_TEXTO_PROCEDIMENTO,
   prepararRascunhoIA,
   situacaoDaIA,
+  PEDIDOS_DO_PLANO,
   type ChamadaDeRascunhoIA,
   type ProgressoDoRascunho,
 } from "../dominio/treinamento-servico-ia";
+import { TETO_DE_FASES } from "../../../shared/treinamento-servico/jogos";
 import type { Deps } from "../deps";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { ErroApi, invalido, naoEncontrado } from "../http/erros";
@@ -54,9 +59,14 @@ const esquemaPublicar = z.object({ arquivo_id: uuid });
 const esquemaReporte = z.object({ fase: z.number().int().min(0).nullable().optional(), texto: textoObrigatorio.max(500) });
 const esquemaGerar = z.object({
   texto: z.string().trim().min(40, "Cole o texto do procedimento (ao menos algumas frases)").max(LIMITE_TEXTO_PROCEDIMENTO),
+  /** O plano do jogo: ao menos 3 fases, cada uma com o minijogo pedido ou `null` (a Vitória escolhe). Sem ele, ela decide tudo. */
+  plano: z.array(z.enum(PEDIDOS_DO_PLANO).nullable()).min(3).max(TETO_DE_FASES).nullable().optional(),
 });
 /** Sem `fase`, um pedido no chat ("encurte a explicação"); com `fase`, regera só aquela (o pedido é opcional). */
-const esquemaAjustar = z.object({ pedido: z.string().trim().max(1000).optional(), fase: z.number().int().min(0).max(9).optional() });
+const esquemaAjustar = z.object({ pedido: z.string().trim().max(1000).optional(), fase: z.number().int().min(0).max(TETO_DE_FASES - 1).optional() });
+/** O progresso de uma fase não confirmada: a resposta pela metade, no mesmo formato da resposta (conferido ao finalizar). */
+const esquemaProgresso = z.object({ resposta: z.unknown() });
+const esquemaRanking = z.object({ limite: z.coerce.number().int().min(1).max(100).default(LINHAS_DO_RANKING) });
 
 /**
  * A resposta do rascunho pela IA (seção 3.6 do `vitoria.md`), em SSE: `progresso` a cada item que a IA termina ("montando a
@@ -122,20 +132,31 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
    * (`:atividade{.+}/tentativas`): como o código do serviço casa com qualquer caminho, a mais específica tem que vir primeiro.
    */
   r.post("/treinamentos/:atividade{.+}/rascunho/pre-visualizar/tentativas", autenticar(), soAdmin, async (c) => {
-    const tentativa = await abrirPreVisualizacao(deps.db, c.get("usuario").id, codigoDoServico(c.req.param("atividade")));
+    const tentativa = await abrirPreVisualizacao(deps.db, c.get("usuario").id, codigoDoServico(c.req.param("atividade")), deps.agora());
     return responder(c, tentativa, 201);
   });
 
   r.post("/treinamentos/:atividade{.+}/tentativas", ...quemTreina, async (c) => {
-    const tentativa = await abrirTentativa(deps.db, c.get("usuario").id, codigoDoServico(c.req.param("atividade")));
+    const tentativa = await abrirTentativa(deps.db, c.get("usuario").id, codigoDoServico(c.req.param("atividade")), deps.agora());
     return responder(c, tentativa, 201);
   });
 
-  // Responder e concluir servem tanto a tentativa real (técnico) quanto a pré-visualização do admin; a posse da
-  // tentativa (conferida no domínio) é quem decide, não o perfil.
+  // Entrar, guardar o progresso, responder e concluir servem tanto a tentativa real (técnico) quanto a pré-visualização do
+  // admin; a posse da tentativa (conferida no domínio) é quem decide, não o perfil. O tempo de cada fase é pelo relógio do
+  // servidor (seção 12 do `treinamentos-de-servico.md`).
+  r.post("/treinamentos/tentativas/:id/fases/:fase/entrar", autenticar({ permitirPendente: true }), async (c) => {
+    return responder(c, await entrarNaFase(deps.db, c.get("usuario").id, lerId(c), indiceDaFase(c.req.param("fase")), deps.agora()));
+  });
+
+  r.put("/treinamentos/tentativas/:id/fases/:fase/progresso", autenticar({ permitirPendente: true }), async (c) => {
+    const { resposta } = await lerCorpo(c, esquemaProgresso);
+    await guardarProgresso(deps.db, c.get("usuario").id, lerId(c), indiceDaFase(c.req.param("fase")), resposta, deps.agora());
+    return c.body(null, 204);
+  });
+
   r.post("/treinamentos/tentativas/:id/fases/:fase", autenticar({ permitirPendente: true }), async (c) => {
     const resposta = await lerJson(c);
-    const resultado = await responderFase(deps.db, c.get("usuario").id, lerId(c), indiceDaFase(c.req.param("fase")), resposta);
+    const resultado = await responderFase(deps.db, c.get("usuario").id, lerId(c), indiceDaFase(c.req.param("fase")), resposta, deps.agora());
     return responder(c, resultado);
   });
 
@@ -145,7 +166,24 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
       const tx = transacao as unknown as Db;
       return concluirTentativa({ tx, agora: deps.agora() }, eu.id, lerId(c));
     });
-    return responder(c, { fases_certas: resultado.fasesCertas, total_fases: resultado.totalFases, ...ganhosDe(resultado.ganhos, eu.id) });
+    return responder(c, {
+      fases_certas: resultado.fasesCertas,
+      total_fases: resultado.totalFases,
+      nota: resultado.nota,
+      nota_maxima: resultado.notaMaxima,
+      melhor_anterior: resultado.melhorAnterior,
+      fases: resultado.fases,
+      ...ganhosDe(resultado.ganhos, eu.id),
+    });
+  });
+
+  /**
+   * O ranking do treinamento (quem já concluiu, pela nota da primeira conclusão), com a linha de quem pede mesmo fora das
+   * primeiras. Todos veem, inclusive o admin (que não aparece) e quem aguarda liberação. Antes da rota "nua" lá embaixo.
+   */
+  r.get("/treinamentos/:atividade{.+}/ranking", autenticar({ permitirPendente: true }), async (c) => {
+    const { limite } = lerConsulta(c, esquemaRanking);
+    return responder(c, await rankingDoTreinamento(deps.db, c.get("usuario"), codigoDoServico(c.req.param("atividade")), limite));
   });
 
   r.post("/treinamentos/:atividade{.+}/reportes", ...quemTreina, async (c) => {
@@ -167,8 +205,8 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
 
   // O rascunho pela IA: `503` sem IA configurada, `409` com o limite esgotado (antes do streaming); depois, os eventos SSE.
   r.post("/treinamentos/:atividade{.+}/rascunho/gerar", autenticar(), soAdmin, async (c) => {
-    const { texto } = await lerCorpo(c, esquemaGerar);
-    const chamada = await prepararRascunhoIA(deps, codigoDoServico(c.req.param("atividade")), c.get("usuario").id, { tipo: "gerar", texto });
+    const { texto, plano } = await lerCorpo(c, esquemaGerar);
+    const chamada = await prepararRascunhoIA(deps, codigoDoServico(c.req.param("atividade")), c.get("usuario").id, { tipo: "gerar", texto, plano });
     return responderRascunhoIA(c, deps, chamada);
   });
 
@@ -226,7 +264,7 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
   /**
    * `:atividade{.+}` não tem sufixo fixo, então casa com qualquer caminho sob `/treinamentos/` (o código pode ter pontos e
    * barras, como em `/atividades/{codigo}`): precisa ser o último `GET` registrado, senão engoliria `/reportes`,
-   * `/rascunho` e `/versoes` antes de chegarem às rotas acima.
+   * `/rascunho`, `/versoes` e `/ranking` antes de chegarem às rotas acima.
    */
   r.get("/treinamentos/:atividade{.+}", autenticar({ permitirPendente: true }), async (c) => {
     const treinamento = await treinamentoParaJogador(deps.db, codigoDoServico(c.req.param("atividade")));

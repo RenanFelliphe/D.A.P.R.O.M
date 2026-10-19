@@ -21,9 +21,14 @@ import { pendenciasAbertas, type PendenciaAberta } from "../../../shared/treinam
 import {
   esquemaFases,
   esquemaRespostaEscolha,
+  esquemaRespostaGrade,
+  esquemaRespostaLetras,
+  esquemaRespostaMarcadas,
+  esquemaRespostaMemoria,
+  esquemaRespostaPalpites,
   esquemaRespostaPares,
-  esquemaRespostaSelecionados,
   esquemaRespostaSequencia,
+  esquemaRespostaVerdadeiroFalso,
   validarConteudo,
   validarFasesContraCatalogo,
   validarPublicavel,
@@ -32,6 +37,22 @@ import {
   type FaseEntrada,
   type PassoExplicacao,
 } from "./treinamento-servico-esquema";
+import {
+  embaralhar,
+  embaralharLetras,
+  limiteDeErrosDaMemoria,
+  permutacaoDesordenada,
+  sortearIndice,
+  mesaDaMemoria,
+  montarGrade,
+  palavrasAchadas,
+  permutacao,
+  refazerMemoria,
+  type CartaNaMesa,
+  type PosicaoNaGrade,
+} from "./treinamento-servico-jogos";
+import { multiplicadorDoTempo, notaDoTreinamento, notaMaxima, pontosDaFase } from "../../../shared/treinamento-servico/nota";
+import { chaveDaPalavra, codificarTermo, letrasDaGrade, letrasDaPalavra, tentativasDoTermo } from "../../../shared/treinamento-servico/jogos";
 
 /**
  * Domínio dos treinamentos de serviço (seção 3 do `vitoria.md`). Segue o espírito de `modelo-apr-banco.ts`
@@ -175,37 +196,49 @@ export async function treinamentoParaJogador(db: Db, atividadeCodigo: string): P
 
 // ---- Embaralhamento (apresentação) -----------------------------------------------------------------------------------
 
-/** Fisher-Yates: embaralha sem repetir nem perder nenhum. */
-function embaralhar<T>(itens: readonly T[]): T[] {
-  const copia = [...itens];
-  for (let i = copia.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copia[i], copia[j]] = [copia[j]!, copia[i]!];
-  }
-  return copia;
-}
-/** Uma permutação de `0..n-1`: a posição mostrada → o índice original no gabarito. Não revela nada sozinha. */
-const permutacao = (n: number): number[] => embaralhar([...Array(n).keys()]);
-
 interface ApItemComOrdem {
   tipo: "quiz" | "decisao" | "ordem";
   ordem: number[];
 }
-interface ApSepararItens {
-  tipo: "separar_itens";
-  itens: { materialId: string; descricao: string }[];
+/** Selecione: com opções escritas, a ordem embaralhada; com os materiais do serviço, os itens sorteados já com nome. */
+interface ApSelecione {
+  tipo: "selecione";
+  ordem?: number[];
+  itens?: { materialId: string; descricao: string }[];
+}
+interface ApVerdadeiroFalso {
+  tipo: "verdadeiro_falso";
+}
+/** Termo e Desembaralhe: qual palavra do banco foi sorteada nesta tentativa (e, no Desembaralhe, a ordem das letras). */
+interface ApTermo {
+  tipo: "termo";
+  sorteada: number;
+}
+interface ApDesembaralhe {
+  tipo: "desembaralhe";
+  sorteada: number;
+  ordem: number[];
+}
+interface ApCacaPalavras {
+  tipo: "caca_palavras";
+  linhas: string[];
+  posicoes: PosicaoNaGrade[];
+}
+interface ApMemoria {
+  tipo: "memoria";
+  cartas: CartaNaMesa[];
 }
 interface ApLigar {
   tipo: "ligar";
   esquerdaOrdem: number[];
   direitaOrdem: number[];
 }
-type ApresentacaoFase = ApItemComOrdem | ApSepararItens | ApLigar;
+type ApresentacaoFase = ApItemComOrdem | ApSelecione | ApLigar | ApVerdadeiroFalso | ApCacaPalavras | ApMemoria | ApTermo | ApDesembaralhe;
 interface Apresentacao {
   fases: ApresentacaoFase[];
 }
 
-/** Materiais ativos de outros serviços, para misturar em "separar os itens"; nunca os já certos desta fase. */
+/** Materiais ativos de outros serviços, para misturar no Selecione com os materiais do serviço; nunca os já certos desta fase. */
 async function sortearItensErrados(db: Db, atividadeAtual: string, materialIdsCertos: string[], quantidade: number) {
   const candidatos = await db
     .selectDistinctOn([material.id], { id: material.id, descricao: material.descricao })
@@ -221,7 +254,11 @@ async function sortearItensErrados(db: Db, atividadeAtual: string, materialIdsCe
   return embaralhar(candidatos).slice(0, quantidade);
 }
 
-/** Gera a apresentação (embaralhamento) e o que o jogador vê de cada fase, nunca o gabarito. */
+/**
+ * Gera a apresentação (embaralhamento) e o que o jogador vê de cada fase, nunca o gabarito. Roda a cada tentativa aberta
+ * (cada "Começar o jogo", "Jogar de novo" ou recarga da página), então toda fase com opções vem numa ordem nova: as opções,
+ * os itens, os pares, as etapas, as cartas, a grade e as letras, e a palavra sorteada do banco no Termo e no Desembaralhe.
+ */
 async function montarApresentacao(db: Db, atividadeCodigo: string, fases: FaseEntrada[]) {
   const apFases: ApresentacaoFase[] = [];
   const paraJogar: Record<string, unknown>[] = [];
@@ -229,29 +266,74 @@ async function montarApresentacao(db: Db, atividadeCodigo: string, fases: FaseEn
   for (let indice = 0; indice < fases.length; indice++) {
     const fase = fases[indice]!;
     if (fase.tipo === "quiz") {
-      const ordem = permutacao(fase.opcoes.length);
+      const ordem = permutacaoDesordenada(fase.opcoes.length);
       apFases.push({ tipo: "quiz", ordem });
       paraJogar.push({ indice, tipo: "quiz", enunciado: fase.enunciado, opcoes: ordem.map((i) => fase.opcoes[i]) });
     } else if (fase.tipo === "decisao") {
-      const ordem = permutacao(fase.opcoes.length);
+      const ordem = permutacaoDesordenada(fase.opcoes.length);
       apFases.push({ tipo: "decisao", ordem });
       paraJogar.push({ indice, tipo: "decisao", situacao: fase.situacao, opcoes: ordem.map((i) => fase.opcoes[i]!.texto) });
-    } else if (fase.tipo === "separar_itens") {
-      const certos = await db.select({ id: material.id, descricao: material.descricao }).from(material).where(inArray(material.id, fase.material_ids));
-      const errados = await sortearItensErrados(db, atividadeCodigo, fase.material_ids, fase.quantidade_errados);
-      const pool = embaralhar([...certos, ...errados]).map((m) => ({ materialId: m.id, descricao: m.descricao }));
-      apFases.push({ tipo: "separar_itens", itens: pool });
-      paraJogar.push({ indice, tipo: "separar_itens", enunciado: fase.enunciado, itens: pool });
     } else if (fase.tipo === "ligar") {
       const n = fase.pares.length;
-      const esquerdaOrdem = permutacao(n);
-      const direitaOrdem = permutacao(n);
+      const esquerdaOrdem = permutacaoDesordenada(n);
+      const direitaOrdem = permutacaoDesordenada(n, esquerdaOrdem);
       apFases.push({ tipo: "ligar", esquerdaOrdem, direitaOrdem });
       paraJogar.push({ indice, tipo: "ligar", esquerda: esquerdaOrdem.map((i) => fase.pares[i]!.esquerda), direita: direitaOrdem.map((i) => fase.pares[i]!.direita) });
-    } else {
-      const ordem = permutacao(fase.etapas.length);
+    } else if (fase.tipo === "ordem") {
+      // Nunca começa já na ordem certa: seria a resposta pronta.
+      const ordem = permutacaoDesordenada(fase.etapas.length);
       apFases.push({ tipo: "ordem", ordem });
       paraJogar.push({ indice, tipo: "ordem", enunciado: fase.enunciado, etapas: ordem.map((i) => fase.etapas[i]) });
+    } else if (fase.tipo === "verdadeiro_falso") {
+      apFases.push({ tipo: "verdadeiro_falso" });
+      paraJogar.push({ indice, tipo: "verdadeiro_falso", afirmacao: fase.afirmacao });
+    } else if (fase.tipo === "caca_palavras") {
+      const { linhas, posicoes } = montarGrade(fase.palavras.map((p) => p.palavra));
+      apFases.push({ tipo: "caca_palavras", linhas, posicoes });
+      // No modo de pistas a palavra não vai: só a pista, o tamanho e a impressão (para o jogo reconhecer o trecho marcado).
+      const palavras = fase.palavras.map((p) => ({
+        palavra: fase.modo === "palavras" ? p.palavra : null,
+        pista: p.pista?.trim() || null,
+        letras: letrasDaGrade(p.palavra).length,
+        chave: chaveDaPalavra(p.palavra),
+      }));
+      paraJogar.push({ indice, tipo: "caca_palavras", enunciado: fase.enunciado, modo: fase.modo, grade: linhas, palavras });
+    } else if (fase.tipo === "memoria") {
+      const cartas = mesaDaMemoria(fase.pares.length);
+      // O grupo de cada carta é um número sorteado por par, não o índice do par no gabarito.
+      const grupos = permutacao(fase.pares.length);
+      apFases.push({ tipo: "memoria", cartas });
+      paraJogar.push({
+        indice,
+        tipo: "memoria",
+        limite_erros: limiteDeErrosDaMemoria(fase.pares.length),
+        cartas: cartas.map((c) => ({ texto: c.lado === 0 ? fase.pares[c.par]!.termo : fase.pares[c.par]!.correspondente, grupo: grupos[c.par], lado: c.lado })),
+      });
+    } else if (fase.tipo === "termo") {
+      const sorteada = sortearIndice(fase.palavras.length);
+      const { palavra, dica } = fase.palavras[sorteada]!;
+      const letras = letrasDaGrade(palavra).length;
+      apFases.push({ tipo: "termo", sorteada });
+      paraJogar.push({ indice, tipo: "termo", dica: dica?.trim() || null, letras, tentativas: tentativasDoTermo(letras), codigo: codificarTermo(palavra) });
+    } else if (fase.tipo === "selecione" && fase.materiais) {
+      // Montado com os materiais do serviço: os certos e, misturados, itens de outros serviços sorteados agora.
+      const { material_ids, quantidade_errados } = fase.materiais;
+      const certos = await db.select({ id: material.id, descricao: material.descricao }).from(material).where(inArray(material.id, material_ids));
+      const errados = await sortearItensErrados(db, atividadeCodigo, material_ids, quantidade_errados);
+      const itens = embaralhar([...certos, ...errados]).map((m) => ({ materialId: m.id, descricao: m.descricao }));
+      apFases.push({ tipo: "selecione", itens });
+      paraJogar.push({ indice, tipo: "selecione", enunciado: fase.enunciado, opcoes: itens.map((i) => i.descricao) });
+    } else if (fase.tipo === "selecione") {
+      const ordem = permutacaoDesordenada(fase.opcoes.length);
+      apFases.push({ tipo: "selecione", ordem });
+      paraJogar.push({ indice, tipo: "selecione", enunciado: fase.enunciado, opcoes: ordem.map((i) => fase.opcoes[i]!.texto) });
+    } else {
+      const sorteada = sortearIndice(fase.palavras.length);
+      const { palavra, dica } = fase.palavras[sorteada]!;
+      const letras = letrasDaPalavra(palavra);
+      const ordem = embaralharLetras(letras);
+      apFases.push({ tipo: "desembaralhe", sorteada, ordem });
+      paraJogar.push({ indice, tipo: "desembaralhe", enunciado: dica, letras: ordem.map((i) => letras[i]) });
     }
   }
   return { apresentacao: { fases: apFases } satisfies Apresentacao, paraJogar };
@@ -263,31 +345,31 @@ export interface TentativaAberta {
   fases: Record<string, unknown>[];
 }
 
-async function criarTentativa(db: Db, args: { treinamentoId: string; versaoId: string; atividadeCodigo: string; fases: FaseEntrada[]; usuarioId: string; preVisualizacao: boolean }): Promise<TentativaAberta> {
+async function criarTentativa(db: Db, args: { treinamentoId: string; versaoId: string; atividadeCodigo: string; fases: FaseEntrada[]; usuarioId: string; preVisualizacao: boolean; agora: Date }): Promise<TentativaAberta> {
   const { apresentacao, paraJogar } = await montarApresentacao(db, args.atividadeCodigo, args.fases);
   const [tentativa] = await db
     .insert(treinamentoServicoTentativa)
-    .values({ treinamentoId: args.treinamentoId, versaoId: args.versaoId, usuarioId: args.usuarioId, apresentacao, preVisualizacao: args.preVisualizacao })
+    .values({ treinamentoId: args.treinamentoId, versaoId: args.versaoId, usuarioId: args.usuarioId, apresentacao, preVisualizacao: args.preVisualizacao, tempos: cronometroNovo(args.agora) })
     .returning({ id: treinamentoServicoTentativa.id });
   return { tentativaId: tentativa!.id, totalFases: args.fases.length, fases: paraJogar };
 }
 
 /** Abre uma tentativa na versão publicada (quem treina, inclusive pendente). */
-export async function abrirTentativa(db: Db, usuarioId: string, atividadeCodigo: string): Promise<TentativaAberta> {
+export async function abrirTentativa(db: Db, usuarioId: string, atividadeCodigo: string, agora: Date): Promise<TentativaAberta> {
   const treinamento = await treinamentoDoCodigo(db, atividadeCodigo);
   const publicada = treinamento && (await versaoPublicadaDoTreinamento(db, treinamento.id));
   if (!treinamento || !publicada) throw naoEncontrado("Treinamento não publicado");
-  return criarTentativa(db, { treinamentoId: treinamento.id, versaoId: publicada.id, atividadeCodigo, fases: fasesDe(publicada), usuarioId, preVisualizacao: false });
+  return criarTentativa(db, { treinamentoId: treinamento.id, versaoId: publicada.id, atividadeCodigo, fases: fasesDe(publicada), usuarioId, preVisualizacao: false, agora });
 }
 
 /** Pré-visualização do rascunho pelo admin: o mesmo motor do jogo, mas a tentativa nunca pontua. */
-export async function abrirPreVisualizacao(db: Db, usuarioId: string, atividadeCodigo: string): Promise<TentativaAberta> {
+export async function abrirPreVisualizacao(db: Db, usuarioId: string, atividadeCodigo: string, agora: Date): Promise<TentativaAberta> {
   const treinamento = await treinamentoDoCodigo(db, atividadeCodigo);
   const rascunho = treinamento && (await rascunhoDoTreinamento(db, treinamento.id));
   if (!treinamento || !rascunho) throw naoEncontrado("Rascunho não encontrado");
   const fases = fasesDe(rascunho);
   if (fases.length === 0) throw invalido("sem_fases", "O rascunho ainda não tem fases para pré-visualizar");
-  return criarTentativa(db, { treinamentoId: treinamento.id, versaoId: rascunho.id, atividadeCodigo, fases, usuarioId, preVisualizacao: true });
+  return criarTentativa(db, { treinamentoId: treinamento.id, versaoId: rascunho.id, atividadeCodigo, fases, usuarioId, preVisualizacao: true, agora });
 }
 
 // ---- Corrigir cada fase (o gabarito nunca sai daqui antes da resposta) -----------------------------------------------
@@ -296,70 +378,277 @@ export interface ResultadoDaResposta {
   certa: boolean;
   explicacao: string;
   gabarito: Record<string, unknown>;
+  /** Os acertos e as respostas certas possíveis (a base da fase: 10 × acertos ÷ possíveis). */
+  acertos: number;
+  possiveis: number;
 }
 
+/** A correção de uma fase com o tempo e os pontos dela (o que a rota devolve e o resultado mostra). */
+export interface ResultadoDaFase extends ResultadoDaResposta {
+  tempoMs: number;
+  multiplicador: number;
+  pontos: number;
+}
+
+/**
+ * Corrige uma fase. Aceita também a resposta pela metade (o progresso de uma fase não confirmada, corrigido ao finalizar):
+ * os acertos contam o que já está certo, e a fase só é "certa" com todos eles (seção 12 do `treinamentos-de-servico.md`).
+ */
 function corrigirFase(fase: FaseEntrada, ap: ApresentacaoFase, respostaBruta: unknown): ResultadoDaResposta {
+  const tudoOuNada = (certa: boolean, gabarito: Record<string, unknown>): ResultadoDaResposta => ({ certa, explicacao: fase.explicacao, gabarito, acertos: certa ? 1 : 0, possiveis: 1 });
+  const proporcional = (acertos: number, possiveis: number, gabarito: Record<string, unknown>): ResultadoDaResposta => ({
+    certa: possiveis > 0 && acertos === possiveis,
+    explicacao: fase.explicacao,
+    gabarito,
+    acertos: Math.max(0, Math.min(acertos, possiveis)),
+    possiveis,
+  });
+
   if (fase.tipo === "quiz" || fase.tipo === "decisao") {
-    if (ap.tipo !== fase.tipo) throw invalido("resposta_invalida", "Fase incompatível com a apresentação gravada");
+    if (ap.tipo !== fase.tipo) throw incompativel();
     const { escolha } = validar(esquemaRespostaEscolha, respostaBruta);
     if (escolha >= ap.ordem.length) throw invalido("resposta_invalida", "escolha fora do intervalo das opções mostradas");
     const original = ap.ordem[escolha]!;
-    const certa = original === fase.correta;
     const opcaoCorretaMostrada = ap.ordem.indexOf(fase.correta);
-    if (fase.tipo === "quiz") return { certa, explicacao: fase.explicacao, gabarito: { opcao_correta: opcaoCorretaMostrada } };
-    return {
-      certa,
-      explicacao: fase.explicacao,
-      gabarito: { opcao_correta: opcaoCorretaMostrada, consequencia_escolhida: fase.opcoes[original]!.consequencia, consequencia_correta: fase.opcoes[fase.correta]!.consequencia },
-    };
-  }
-  if (fase.tipo === "separar_itens") {
-    if (ap.tipo !== "separar_itens") throw invalido("resposta_invalida", "Fase incompatível com a apresentação gravada");
-    const { selecionados } = validar(esquemaRespostaSelecionados, respostaBruta);
-    const apresentados = new Set(ap.itens.map((i) => i.materialId));
-    if (selecionados.some((id) => !apresentados.has(id))) throw invalido("resposta_invalida", "item fora da lista apresentada");
-    const certos = new Set(fase.material_ids);
-    const certa = selecionados.length === certos.size && selecionados.every((id) => certos.has(id));
-    return { certa, explicacao: fase.explicacao, gabarito: { certos: ap.itens.filter((i) => certos.has(i.materialId)).map((i) => i.materialId) } };
+    if (fase.tipo === "quiz") return tudoOuNada(original === fase.correta, { opcao_correta: opcaoCorretaMostrada });
+    return tudoOuNada(original === fase.correta, {
+      opcao_correta: opcaoCorretaMostrada,
+      consequencia_escolhida: fase.opcoes[original]!.consequencia,
+      consequencia_correta: fase.opcoes[fase.correta]!.consequencia,
+    });
   }
   if (fase.tipo === "ligar") {
-    if (ap.tipo !== "ligar") throw invalido("resposta_invalida", "Fase incompatível com a apresentação gravada");
+    if (ap.tipo !== "ligar") throw incompativel();
     const { pares } = validar(esquemaRespostaPares, respostaBruta);
-    const n = fase.pares.length;
-    if (pares.length !== n) throw invalido("resposta_invalida", "faltam pares para ligar");
     if (pares.some((p) => p.esquerda >= ap.esquerdaOrdem.length || p.direita >= ap.direitaOrdem.length)) throw invalido("resposta_invalida", "par fora do intervalo mostrado");
-    const ligados = pares.map((p) => ({ l: ap.esquerdaOrdem[p.esquerda]!, r: ap.direitaOrdem[p.direita]! }));
-    const certa = new Set(ligados.map((x) => x.l)).size === n && ligados.every((x) => x.l === x.r);
-    return { certa, explicacao: fase.explicacao, gabarito: { pares: fase.pares } };
+    // Cada item da esquerda e da direita conta uma vez só (vale o primeiro par em que aparece).
+    const usadosE = new Set<number>();
+    const usadosD = new Set<number>();
+    let acertos = 0;
+    for (const p of pares) {
+      if (usadosE.has(p.esquerda) || usadosD.has(p.direita)) continue;
+      usadosE.add(p.esquerda);
+      usadosD.add(p.direita);
+      if (ap.esquerdaOrdem[p.esquerda] === ap.direitaOrdem[p.direita]) acertos++;
+    }
+    return proporcional(acertos, fase.pares.length, { pares: fase.pares });
   }
-  // ordem
-  if (ap.tipo !== "ordem") throw invalido("resposta_invalida", "Fase incompatível com a apresentação gravada");
-  const { sequencia } = validar(esquemaRespostaSequencia, respostaBruta);
-  if (sequencia.length !== fase.etapas.length) throw invalido("resposta_invalida", "sequência incompleta");
-  if (sequencia.some((p) => p >= ap.ordem.length)) throw invalido("resposta_invalida", "posição fora do intervalo mostrado");
-  const originais = sequencia.map((pos) => ap.ordem[pos]!);
-  const certa = originais.every((v, i) => v === i);
-  return { certa, explicacao: fase.explicacao, gabarito: { etapas: fase.etapas } };
+  if (fase.tipo === "ordem") {
+    if (ap.tipo !== "ordem") throw incompativel();
+    const { sequencia } = validar(esquemaRespostaSequencia, respostaBruta);
+    if (sequencia.some((p) => p >= ap.ordem.length) || new Set(sequencia).size !== sequencia.length) throw invalido("resposta_invalida", "posição fora do intervalo mostrado ou repetida");
+    // Uma etapa conta quando está na posição certa.
+    const acertos = sequencia.filter((pos, i) => ap.ordem[pos] === i).length;
+    return proporcional(acertos, fase.etapas.length, { etapas: fase.etapas });
+  }
+  if (fase.tipo === "verdadeiro_falso") {
+    if (ap.tipo !== "verdadeiro_falso") throw incompativel();
+    const { verdadeira } = validar(esquemaRespostaVerdadeiroFalso, respostaBruta);
+    return tudoOuNada(verdadeira === fase.verdadeira, { verdadeira: fase.verdadeira });
+  }
+  if (fase.tipo === "caca_palavras") {
+    if (ap.tipo !== "caca_palavras") throw incompativel();
+    const { selecoes } = validar(esquemaRespostaGrade, respostaBruta);
+    const achadas = palavrasAchadas(ap.linhas, fase.palavras.map((p) => p.palavra), selecoes);
+    const palavras = fase.palavras.map((p, i) => ({ palavra: p.palavra, inicio: ap.posicoes[i]!.inicio, fim: ap.posicoes[i]!.fim, achada: achadas.has(i) }));
+    return proporcional(achadas.size, fase.palavras.length, { palavras });
+  }
+  if (fase.tipo === "memoria") {
+    if (ap.tipo !== "memoria") throw incompativel();
+    const { jogadas } = validar(esquemaRespostaMemoria, respostaBruta);
+    const partida = refazerMemoria(ap.cartas, jogadas);
+    if (!partida.valida) throw invalido("resposta_invalida", "jogada com carta inexistente ou já formada");
+    const limite = limiteDeErrosDaMemoria(fase.pares.length);
+    // Cada par formado conta; cada erro além do limite tira um.
+    const acertos = partida.formados - Math.max(0, partida.erros - limite);
+    return proporcional(acertos, fase.pares.length, { erros: partida.erros, limite_erros: limite, completa: partida.completa, pares_memoria: fase.pares });
+  }
+  if (fase.tipo === "termo") {
+    if (ap.tipo !== "termo") throw incompativel();
+    const { palpites } = validar(esquemaRespostaPalpites, respostaBruta);
+    const palavra = fase.palavras[ap.sorteada]?.palavra;
+    if (!palavra) throw incompativel();
+    const segredo = letrasDaGrade(palavra);
+    const lidos = palpites.map(letrasDaGrade);
+    if (lidos.length > tentativasDoTermo(segredo.length)) throw invalido("resposta_invalida", "palpites além do limite de tentativas");
+    if (lidos.some((p) => p.length !== segredo.length)) throw invalido("resposta_invalida", `cada palpite precisa ter ${segredo.length} letras`);
+    const acerto = lidos.indexOf(segredo);
+    return tudoOuNada(acerto >= 0, { palavra, tentativa_do_acerto: acerto >= 0 ? acerto + 1 : null });
+  }
+  if (fase.tipo === "selecione") {
+    if (ap.tipo !== "selecione") throw incompativel();
+    const { marcadas } = validar(esquemaRespostaMarcadas, respostaBruta);
+    // A posição mostrada de cada opção certa: pelos materiais certos, ou pela marca de certa da opção escrita.
+    const certosDoCatalogo = new Set(fase.materiais?.material_ids ?? []);
+    const corretas = fase.materiais
+      ? (ap.itens ?? []).flatMap((item, mostrada) => (certosDoCatalogo.has(item.materialId) ? [mostrada] : []))
+      : (ap.ordem ?? []).flatMap((original, mostrada) => (fase.opcoes[original]!.correta ? [mostrada] : []));
+    const mostradas = fase.materiais ? (ap.itens ?? []).length : (ap.ordem ?? []).length;
+    if (marcadas.some((p) => p >= mostradas)) throw invalido("resposta_invalida", "opção fora do intervalo mostrado");
+    // Cada certa marcada conta; cada errada marcada anula um acerto (senão marcar tudo daria a nota cheia).
+    const escolhidas = new Set(marcadas);
+    const certasMarcadas = corretas.filter((i) => escolhidas.has(i)).length;
+    return proporcional(certasMarcadas - (escolhidas.size - certasMarcadas), corretas.length, { corretas });
+  }
+  // desembaralhe
+  if (ap.tipo !== "desembaralhe") throw incompativel();
+  const { letras } = validar(esquemaRespostaLetras, respostaBruta);
+  const sorteada = fase.palavras[ap.sorteada]?.palavra;
+  if (!sorteada) throw incompativel();
+  const pecas = letrasDaPalavra(sorteada);
+  if (letras.length > pecas.length || new Set(letras).size !== letras.length || letras.some((p) => p >= ap.ordem.length)) {
+    throw invalido("resposta_invalida", "use cada letra uma vez");
+  }
+  // Uma letra conta quando está na casa certa.
+  const acertos = letras.filter((pos, i) => pecas[ap.ordem[pos]!] === pecas[i]).length;
+  return proporcional(acertos, pecas.length, { palavra: pecas.join("") });
 }
 
-/** Responde uma fase: confere contra o gabarito privado da versão e grava (a primeira resposta vence: `onConflictDoNothing`). */
-export async function responderFase(db: Db, usuarioId: string, tentativaId: string, faseIndice: number, respostaBruta: unknown): Promise<ResultadoDaResposta> {
-  const [tentativa] = await db.select().from(treinamentoServicoTentativa).where(eq(treinamentoServicoTentativa.id, tentativaId));
-  if (!tentativa || tentativa.usuarioId !== usuarioId) throw naoEncontrado("Tentativa não encontrada");
-  if (tentativa.concluidaEm) throw conflito("tentativa_concluida", "Esta tentativa já foi concluída");
-  const [versao] = await db.select().from(treinamentoServicoVersao).where(eq(treinamentoServicoVersao.id, tentativa.versaoId));
-  const fases = fasesDe(versao!);
-  const fase = fases[faseIndice];
-  const apresentacao = tentativa.apresentacao as Apresentacao;
-  const apFase = apresentacao.fases[faseIndice];
-  if (!fase || !apFase) throw naoEncontrado("Fase não encontrada");
+const incompativel = () => invalido("resposta_invalida", "Fase incompatível com a apresentação gravada");
 
-  const resultado = corrigirFase(fase, apFase, respostaBruta);
-  await db
-    .insert(treinamentoServicoResposta)
-    .values({ tentativaId, fase: faseIndice, resposta: respostaBruta as object, certa: resultado.certa })
-    .onConflictDoNothing();
-  return resultado;
+// ---- O cronômetro de cada fase ----------------------------------------------------------------------------------------
+
+/**
+ * O cronômetro guardado na tentativa (`tempos`): os milissegundos de cada fase, a fase em que a pessoa está e desde quando,
+ * e o instante do último evento. Fase já respondida não acumula mais tempo.
+ */
+interface Cronometro {
+  fases: Record<string, number>;
+  atual: { fase: number; desde: string } | null;
+  ultimo: string;
+}
+
+const cronometroNovo = (agora: Date): Cronometro => ({ fases: {}, atual: null, ultimo: agora.toISOString() });
+
+function lerCronometro(tentativa: TentativaLinha): Cronometro {
+  const t = tentativa.tempos as Partial<Cronometro>;
+  return { fases: { ...(t.fases ?? {}) }, atual: t.atual ?? null, ultimo: t.ultimo ?? tentativa.iniciadaEm.toISOString() };
+}
+
+/**
+ * Um evento numa fase (`entrar`, `progresso` ou `responder`) ou o fim da tentativa (`fase` nula). O tempo desde o evento
+ * anterior vai para a fase em que a pessoa estava; se ela não avisou que entrou nesta (`entrar`), o tempo vai para esta:
+ * assim pular o aviso não zera o cronômetro. Depois do evento, a pessoa fica nesta fase.
+ */
+function marcarEvento(c: Cronometro, fase: number | null, tipo: "entrar" | "progresso" | "responder" | "concluir", agora: Date, respondidas: Set<number>): Cronometro {
+  const t = agora.getTime();
+  const desde = Date.parse(c.atual?.desde ?? c.ultimo);
+  const passou = Math.max(0, t - (Number.isNaN(desde) ? t : desde));
+  const fases = { ...c.fases };
+  const creditar = (f: number) => {
+    if (!respondidas.has(f)) fases[f] = (fases[f] ?? 0) + passou;
+  };
+  if (c.atual && (c.atual.fase === fase || !respondidas.has(c.atual.fase))) creditar(c.atual.fase);
+  else if (fase !== null && tipo !== "entrar") creditar(fase);
+  return { fases, atual: fase === null ? null : { fase, desde: agora.toISOString() }, ultimo: agora.toISOString() };
+}
+
+const tempoDaFase = (c: Cronometro, fase: number) => Math.round(c.fases[fase] ?? 0);
+
+interface ContextoDaTentativa {
+  tentativa: TentativaLinha;
+  fases: FaseEntrada[];
+  apresentacao: Apresentacao;
+  respostas: (typeof treinamentoServicoResposta.$inferSelect)[];
+}
+
+/** A tentativa travada para atualizar (`for update`), a versão e as respostas já gravadas; só a dona mexe. */
+async function tentativaParaMexer(tx: Db, usuarioId: string, tentativaId: string): Promise<ContextoDaTentativa> {
+  const [tentativa] = await tx.select().from(treinamentoServicoTentativa).where(eq(treinamentoServicoTentativa.id, tentativaId)).for("update");
+  if (!tentativa || tentativa.usuarioId !== usuarioId) throw naoEncontrado("Tentativa não encontrada");
+  const [versao] = await tx.select().from(treinamentoServicoVersao).where(eq(treinamentoServicoVersao.id, tentativa.versaoId));
+  const respostas = await tx.select().from(treinamentoServicoResposta).where(eq(treinamentoServicoResposta.tentativaId, tentativaId));
+  return { tentativa, fases: fasesDe(versao!), apresentacao: tentativa.apresentacao as Apresentacao, respostas };
+}
+
+const respondidasDe = (ctx: ContextoDaTentativa) => new Set(ctx.respostas.map((r) => r.fase));
+
+function faseDaTentativa(ctx: ContextoDaTentativa, indice: number) {
+  const fase = ctx.fases[indice];
+  const ap = ctx.apresentacao.fases[indice];
+  if (!fase || !ap) throw naoEncontrado("Fase não encontrada");
+  return { fase, ap };
+}
+
+/** Entrar numa fase (ao abrir, voltar ou avançar): o cronômetro da fase anterior pausa e o desta continua de onde parou. */
+export async function entrarNaFase(db: Db, usuarioId: string, tentativaId: string, indice: number, agora: Date): Promise<{ tempoMs: number }> {
+  return db.transaction(async (transacao) => {
+    const tx = transacao as unknown as Db;
+    const ctx = await tentativaParaMexer(tx, usuarioId, tentativaId);
+    if (ctx.tentativa.concluidaEm) throw conflito("tentativa_concluida", "Esta tentativa já foi concluída");
+    faseDaTentativa(ctx, indice);
+    const cronometro = marcarEvento(lerCronometro(ctx.tentativa), indice, "entrar", agora, respondidasDe(ctx));
+    await tx.update(treinamentoServicoTentativa).set({ tempos: cronometro }).where(eq(treinamentoServicoTentativa.id, tentativaId));
+    return { tempoMs: tempoDaFase(cronometro, indice) };
+  });
+}
+
+/** Guarda a resposta em andamento de uma fase não confirmada: se a pessoa finalizar sem confirmar, vale o que já fez nela. */
+export async function guardarProgresso(db: Db, usuarioId: string, tentativaId: string, indice: number, resposta: unknown, agora: Date): Promise<void> {
+  if (JSON.stringify(resposta ?? null).length > 20_000) throw invalido("resposta_invalida", "progresso grande demais");
+  await db.transaction(async (transacao) => {
+    const tx = transacao as unknown as Db;
+    const ctx = await tentativaParaMexer(tx, usuarioId, tentativaId);
+    if (ctx.tentativa.concluidaEm) throw conflito("tentativa_concluida", "Esta tentativa já foi concluída");
+    faseDaTentativa(ctx, indice);
+    const respondidas = respondidasDe(ctx);
+    const cronometro = marcarEvento(lerCronometro(ctx.tentativa), indice, "progresso", agora, respondidas);
+    const progresso = { ...(ctx.tentativa.progresso as Record<string, unknown>) };
+    if (!respondidas.has(indice)) progresso[indice] = resposta;
+    await tx.update(treinamentoServicoTentativa).set({ tempos: cronometro, progresso }).where(eq(treinamentoServicoTentativa.id, tentativaId));
+  });
+}
+
+function comPontos(resultado: ResultadoDaResposta, tempoMs: number): ResultadoDaFase {
+  return { ...resultado, tempoMs, multiplicador: multiplicadorDoTempo(tempoMs), pontos: pontosDaFase(resultado.acertos, resultado.possiveis, tempoMs) };
+}
+
+/**
+ * Responde uma fase: confere contra o gabarito privado da versão e grava com o tempo e os pontos. A primeira resposta vence:
+ * responder de novo (ao voltar à fase) devolve a correção gravada, sem trocar a resposta nem somar pontos.
+ */
+export async function responderFase(db: Db, usuarioId: string, tentativaId: string, indice: number, respostaBruta: unknown, agora: Date): Promise<ResultadoDaFase> {
+  return db.transaction(async (transacao) => {
+    const tx = transacao as unknown as Db;
+    const ctx = await tentativaParaMexer(tx, usuarioId, tentativaId);
+    if (ctx.tentativa.concluidaEm) throw conflito("tentativa_concluida", "Esta tentativa já foi concluída");
+    const { fase, ap } = faseDaTentativa(ctx, indice);
+
+    const gravada = ctx.respostas.find((r) => r.fase === indice);
+    if (gravada) {
+      const correcao = corrigirFase(fase, ap, gravada.resposta);
+      return { ...correcao, certa: gravada.certa, acertos: gravada.acertos, possiveis: gravada.possiveis, tempoMs: gravada.tempoMs, multiplicador: multiplicadorDoTempo(gravada.tempoMs), pontos: gravada.pontos };
+    }
+
+    const correcao = corrigirFase(fase, ap, respostaBruta);
+    const cronometro = marcarEvento(lerCronometro(ctx.tentativa), indice, "responder", agora, respondidasDe(ctx));
+    const resultado = comPontos(correcao, tempoDaFase(cronometro, indice));
+    await tx.insert(treinamentoServicoResposta).values({
+      tentativaId,
+      fase: indice,
+      resposta: respostaBruta as object,
+      certa: resultado.certa,
+      acertos: resultado.acertos,
+      possiveis: resultado.possiveis,
+      tempoMs: resultado.tempoMs,
+      pontos: resultado.pontos,
+      confirmada: true,
+    });
+    await tx.update(treinamentoServicoTentativa).set({ tempos: cronometro }).where(eq(treinamentoServicoTentativa.id, tentativaId));
+    return resultado;
+  });
+}
+
+/** O resultado de uma fase na conclusão (o detalhe do resultado do jogo). */
+export interface FaseDaConclusao {
+  fase: number;
+  acertos: number;
+  possiveis: number;
+  tempoMs: number;
+  multiplicador: number;
+  pontos: number;
+  /** Falsa quando a pessoa não confirmou: a fase foi corrigida pelo que tinha feito nela (ou vale zero). */
+  confirmada: boolean;
 }
 
 export interface ResultadoDaConclusao {
@@ -367,22 +656,102 @@ export interface ResultadoDaConclusao {
   totalFases: number;
   pontuada: boolean;
   ganhos: Ganho[];
+  nota: number;
+  notaMaxima: number;
+  /** A melhor nota da pessoa neste treinamento antes desta tentativa (nula na primeira). */
+  melhorAnterior: number | null;
+  fases: FaseDaConclusao[];
 }
 
-/** Conclui a tentativa: pontua só na primeira conclusão do treinamento (nunca na pré-visualização do admin). */
+const faseDaLinha = (r: typeof treinamentoServicoResposta.$inferSelect): FaseDaConclusao => ({
+  fase: r.fase,
+  acertos: r.acertos,
+  possiveis: r.possiveis,
+  tempoMs: r.tempoMs,
+  multiplicador: multiplicadorDoTempo(r.tempoMs),
+  pontos: r.pontos,
+  confirmada: r.confirmada,
+});
+
+/** A melhor nota já conseguida pela pessoa neste treinamento (tentativas concluídas, fora a pré-visualização e a `exceto`). */
+async function melhorNota(tx: Db, usuarioId: string, treinamentoId: string, exceto: string): Promise<number | null> {
+  const [linha] = await tx
+    .select({ melhor: sql<number | null>`max(${treinamentoServicoTentativa.nota})` })
+    .from(treinamentoServicoTentativa)
+    .where(
+      and(
+        eq(treinamentoServicoTentativa.usuarioId, usuarioId),
+        eq(treinamentoServicoTentativa.treinamentoId, treinamentoId),
+        eq(treinamentoServicoTentativa.preVisualizacao, false),
+        ne(treinamentoServicoTentativa.id, exceto),
+      ),
+    );
+  return linha?.melhor ?? null;
+}
+
+/**
+ * Conclui a tentativa (o "Finalizar"): as fases sem resposta confirmada são corrigidas pelo que a pessoa fez nelas (ou valem
+ * zero), a nota é calculada (seção 12 do `treinamentos-de-servico.md`) e a gamificação pontua só na primeira conclusão do
+ * treinamento (nunca na pré-visualização do admin), como antes. Concluir de novo devolve o mesmo resultado.
+ */
 export async function concluirTentativa(c: ContextoDePontos, usuarioId: string, tentativaId: string): Promise<ResultadoDaConclusao> {
-  const [tentativa] = await c.tx.select().from(treinamentoServicoTentativa).where(eq(treinamentoServicoTentativa.id, tentativaId));
-  if (!tentativa || tentativa.usuarioId !== usuarioId) throw naoEncontrado("Tentativa não encontrada");
-  const [versao] = await c.tx.select({ fases: treinamentoServicoVersao.fases }).from(treinamentoServicoVersao).where(eq(treinamentoServicoVersao.id, tentativa.versaoId));
-  const totalFases = ((versao?.fases as unknown[]) ?? []).length;
+  const ctx = await tentativaParaMexer(c.tx, usuarioId, tentativaId);
+  const { tentativa } = ctx;
+  const totalFases = ctx.fases.length;
+  const melhorAnterior = tentativa.preVisualizacao ? null : await melhorNota(c.tx, usuarioId, tentativa.treinamentoId, tentativaId);
 
-  if (tentativa.concluidaEm) return { fasesCertas: tentativa.fasesCertas, totalFases, pontuada: tentativa.pontuada, ganhos: [] };
+  if (tentativa.concluidaEm) {
+    return {
+      fasesCertas: tentativa.fasesCertas,
+      totalFases,
+      pontuada: tentativa.pontuada,
+      ganhos: [],
+      nota: tentativa.nota ?? 0,
+      notaMaxima: notaMaxima(totalFases),
+      melhorAnterior,
+      fases: ctx.respostas.map(faseDaLinha).sort((a, b) => a.fase - b.fase),
+    };
+  }
 
-  const [linhaDaContagem] = await c.tx
-    .select({ fasesCertas: sql<number>`count(*) filter (where ${treinamentoServicoResposta.certa})::int` })
-    .from(treinamentoServicoResposta)
-    .where(eq(treinamentoServicoResposta.tentativaId, tentativaId));
-  const fasesCertas = linhaDaContagem?.fasesCertas ?? 0;
+  const respondidas = respondidasDe(ctx);
+  const cronometro = marcarEvento(lerCronometro(tentativa), null, "concluir", c.agora, respondidas);
+  const progresso = tentativa.progresso as Record<string, unknown>;
+  const novas: (typeof treinamentoServicoResposta.$inferInsert)[] = [];
+  for (let indice = 0; indice < totalFases; indice++) {
+    if (respondidas.has(indice)) continue;
+    const { fase, ap } = faseDaTentativa(ctx, indice);
+    const andamento = progresso[indice];
+    let correcao: ResultadoDaResposta | null = null;
+    if (andamento !== undefined && andamento !== null) {
+      try {
+        correcao = corrigirFase(fase, ap, andamento);
+      } catch {
+        correcao = null; // progresso fora do formato: a fase vale zero
+      }
+    }
+    const tempoMs = tempoDaFase(cronometro, indice);
+    const acertos = correcao?.acertos ?? 0;
+    const possiveis = correcao?.possiveis ?? 1;
+    novas.push({
+      tentativaId,
+      fase: indice,
+      resposta: (andamento ?? {}) as object,
+      certa: correcao?.certa ?? false,
+      acertos,
+      possiveis,
+      tempoMs,
+      pontos: pontosDaFase(acertos, possiveis, tempoMs),
+      confirmada: false,
+    });
+  }
+  if (novas.length > 0) await c.tx.insert(treinamentoServicoResposta).values(novas).onConflictDoNothing();
+
+  const todas = [...ctx.respostas, ...(novas as (typeof treinamentoServicoResposta.$inferSelect)[])].sort((a, b) => a.fase - b.fase);
+  const fasesCertas = todas.filter((r) => r.certa).length;
+  const nota = notaDoTreinamento(
+    todas.map((r) => r.pontos),
+    totalFases,
+  );
 
   let pontuada = false;
   if (!tentativa.preVisualizacao) {
@@ -393,9 +762,18 @@ export async function concluirTentativa(c: ContextoDePontos, usuarioId: string, 
       .limit(1);
     pontuada = !jaPontuada;
   }
-  await c.tx.update(treinamentoServicoTentativa).set({ concluidaEm: c.agora, fasesCertas, pontuada }).where(eq(treinamentoServicoTentativa.id, tentativaId));
+  await c.tx.update(treinamentoServicoTentativa).set({ concluidaEm: c.agora, fasesCertas, pontuada, nota, tempos: cronometro }).where(eq(treinamentoServicoTentativa.id, tentativaId));
   const ganhos = pontuada ? await pontuarTreinamentoServico(c, usuarioId, tentativa.treinamentoId, fasesCertas, c.agora) : [];
-  return { fasesCertas, totalFases, pontuada, ganhos };
+  return {
+    fasesCertas,
+    totalFases,
+    pontuada,
+    ganhos,
+    nota,
+    notaMaxima: notaMaxima(totalFases),
+    melhorAnterior,
+    fases: todas.map(faseDaLinha),
+  };
 }
 
 /** "Reportar problema": vale para o treinamento publicado que a pessoa está jogando. */

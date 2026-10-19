@@ -232,6 +232,27 @@
       "when": 1792339291197,
       "tag": "0032_execucao_em_dois_passos_e_assinaturas",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1792374235134,
+      "tag": "0033_selecione_com_materiais",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792375822205,
+      "tag": "0034_nota_do_treinamento",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792375843452,
+      "tag": "0035_nota_das_tentativas_antigas",
+      "breakpoints": true
     }
   ]
 }

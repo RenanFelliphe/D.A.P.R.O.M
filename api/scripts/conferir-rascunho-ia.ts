@@ -122,7 +122,7 @@ try {
     const problemas = [
       r.explicacao.length < 1 && "nenhum passo de explicação",
       r.fases.length < 3 && `só ${r.fases.length} fase(s); são precisas 3 para publicar`,
-      r.fases.some((f: any) => f.tipo === "separar_itens" && f.material_ids.some((id: string) => !doServico.has(id))) && "material de fora do serviço",
+      r.fases.some((f: any) => f.tipo === "selecione" && f.materiais?.material_ids.some((id: string) => !doServico.has(id))) && "material de fora do serviço",
     ].filter(Boolean);
     if (problemas.length > 0) falhas++;
     console.log(problemas.length > 0 ? `✗ ${problemas.join("; ")}\n` : "✓ geração no formato do editor\n");

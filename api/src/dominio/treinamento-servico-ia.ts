@@ -1,6 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { impressaoDoItem, itemSemRevisao, type MetaIA, type PendenciaDoItem } from "../../../shared/treinamento-servico/ia";
+import { PALAVRAS_DO_BANCO, SO_LETRAS, TETO_DE_FASES, letrasDaGrade, letrasDaPalavra } from "../../../shared/treinamento-servico/jogos";
 import { atividade, atividadeMaterial, material, treinamentoServicoVersao } from "../db/schema";
 import type { Deps } from "../deps";
 import { conflito, ErroApi, invalido, naoEncontrado } from "../http/erros";
@@ -10,6 +11,7 @@ import {
   EXPRESSOES_VITORIA,
   esquemaFase,
   esquemaPassoExplicacao,
+  problemaDaFase,
   validarConteudo,
   validarFasesContraCatalogo,
   type ExpressaoVitoria,
@@ -134,19 +136,30 @@ const FORMATO = `Responda SOMENTE com objetos JSON, um por linha (JSON Lines), s
 {"item":"plano","passos":N,"fases":M}
 N linhas de passo da explicação (a Vitória explicando o serviço, de 1 a 12 passos):
 {"item":"passo","texto":"...","expressao":"explicando","origem":"trecho do texto"}
-M linhas de fase do jogo (de 3 a 10 fases), cada uma de um destes tipos:
+M linhas de fase do jogo (ao menos 3 fases; sem plano do administrador, de 3 a 10), cada uma de um destes tipos:
 {"item":"fase","tipo":"quiz","enunciado":"pergunta","opcoes":[{"texto":"opção","certa":true},{"texto":"opção","certa":false},{"texto":"opção","certa":false}],"explicacao":"por que a certa é a certa","origem":"trecho do texto"}
 {"item":"fase","tipo":"decisao","situacao":"uma situação de campo","opcoes":[{"texto":"atitude","consequencia":"o que acontece","certa":true},{"texto":"atitude","consequencia":"o que acontece","certa":false},{"texto":"atitude","consequencia":"o que acontece","certa":false}],"explicacao":"...","origem":"..."}
-{"item":"fase","tipo":"separar_itens","enunciado":"Toque nos itens deste serviço","materiais":["M1","M2"],"quantidade_errados":3,"explicacao":"...","origem":"..."}
 {"item":"fase","tipo":"ligar","pares":[{"esquerda":"...","direita":"..."},{"esquerda":"...","direita":"..."}],"explicacao":"...","origem":"..."}
 {"item":"fase","tipo":"ordem","enunciado":"Ponha as etapas na ordem","etapas":["primeira","segunda","terceira"],"explicacao":"...","origem":"..."}
+{"item":"fase","tipo":"verdadeiro_falso","afirmacao":"uma afirmação sobre o serviço","verdadeira":true,"explicacao":"...","origem":"..."}
+{"item":"fase","tipo":"caca_palavras","enunciado":"Encontre os termos do serviço","palavras":[{"palavra":"BLOQUEIO","pista":"definição curta"},{"palavra":"EPI","pista":"definição curta"}],"explicacao":"...","origem":"..."}
+{"item":"fase","tipo":"memoria","pares":[{"termo":"...","correspondente":"..."},{"termo":"...","correspondente":"..."}],"explicacao":"...","origem":"..."}
+{"item":"fase","tipo":"selecione","enunciado":"Toque em tudo o que este serviço usa","materiais":["M1","M2"],"quantidade_errados":3,"explicacao":"...","origem":"..."}
+{"item":"fase","tipo":"selecione","enunciado":"Selecione todos os ...","opcoes":[{"texto":"...","certa":true},{"texto":"...","certa":true},{"texto":"...","certa":false},{"texto":"...","certa":false}],"explicacao":"...","origem":"..."}
+{"item":"fase","tipo":"termo","palavras":[{"palavra":"RISCO","dica":"uma dica curta, sem a palavra"},{"palavra":"...","dica":"..."}],"explicacao":"...","origem":"..."}
+{"item":"fase","tipo":"desembaralhe","palavras":[{"palavra":"INSPEÇÃO","dica":"o que é a palavra, sem escrevê-la"},{"palavra":"...","dica":"..."}],"explicacao":"...","origem":"..."}
 {"item":"resumo","texto":"uma frase sobre o que você montou"}
 
 Regras do formato:
 - expressao do passo: "explicando", "padrao", "feliz", "alerta" (cuidados e riscos) ou "comemorando" (o último passo).
 - quiz e decisao: 3 ou 4 opções e exatamente uma com "certa": true; na decisão, a certa é a atitude segura.
-- separar_itens: só os códigos da lista de materiais do serviço (de 2 a 10) e quantidade_errados de 1 a 5 (o sistema mistura itens de outros serviços). Não use este tipo se o serviço tiver menos de 2 materiais.
 - ligar: de 2 a 5 pares. ordem: de 2 a 6 etapas, já na ordem certa.
+- verdadeiro_falso: uma afirmação só; a falsa contradiz o texto (não é uma pegadinha de palavra). Misture verdadeiras e falsas.
+- caca_palavras: de 2 a 5 palavras que estão no texto, cada uma uma palavra só (sem espaço, hífen ou número), de 3 a 12 letras; a pista é uma definição curta (até 160 caracteres).
+- memoria: de 2 a 5 pares (termo e o que corresponde a ele: a função, a definição, a medida), cada lado até 80 caracteres.
+- selecione: de 4 a 12 opções, de 1 a 8 com "certa": true e ao menos uma errada. Ou, para "o que o serviço usa", em vez de opções: "materiais" com só os códigos da lista de materiais do serviço (de 1 a 10) e "quantidade_errados" de 1 a 5 (o sistema mistura itens de outros serviços). Não use "materiais" se o serviço não tiver materiais.
+- termo: exatamente 10 palavras diferentes do texto, cada uma uma palavra só de 4 a 7 letras (sem contar acento), sem espaço; a cada partida o jogo sorteia uma. A dica é opcional.
+- desembaralhe: exatamente 10 palavras diferentes do texto, cada uma uma palavra só de 3 a 14 letras, sem espaço, e a dica de cada uma (o que ela é, sem escrevê-la); a cada partida o jogo sorteia uma.
 - Tamanhos: texto do passo até 600 caracteres; enunciado e situação até 400; opção, par e etapa até 160; consequência até 300; explicação até 400.
 - Varie os tipos de fase.`;
 
@@ -155,7 +168,7 @@ const INSTRUCAO_AJUSTE = `Agora você ajusta um rascunho já montado, a pedido d
 const INSTRUCAO_FASE = `Agora você refaz uma única fase do rascunho, a pedido do administrador. Responda só com a linha da nova fase (item "fase") e a linha do resumo, nada mais.`;
 
 function blocoDoServico(codigo: string, descricao: string, materiais: MaterialDoServico[], texto: string): string {
-  const lista = materiais.length > 0 ? materiais.map((m) => `${m.codigo} — ${m.descricao} (${ROTULO_DA_CATEGORIA[m.categoria] ?? m.categoria})`).join("\n") : "(nenhum material cadastrado: não use o tipo separar_itens)";
+  const lista = materiais.length > 0 ? materiais.map((m) => `${m.codigo} — ${m.descricao} (${ROTULO_DA_CATEGORIA[m.categoria] ?? m.categoria})`).join("\n") : "(nenhum material cadastrado: no selecione, use opções escritas)";
   return `Serviço: ${codigo} — ${descricao}
 
 Materiais, ferramentas e EPIs do serviço no catálogo (em "materiais", use só estes códigos):
@@ -176,9 +189,16 @@ function rascunhoNoFormatoDaIA(explicacao: PassoExplicacao[], fases: FaseEntrada
     const comum = { item: "fase", numero: i + 1, tipo: f.tipo, explicacao: f.explicacao, origem: f.ia?.origem ?? "" };
     if (f.tipo === "quiz") linhas.push({ ...comum, enunciado: f.enunciado, opcoes: f.opcoes.map((texto, k) => ({ texto, certa: k === f.correta })) });
     else if (f.tipo === "decisao") linhas.push({ ...comum, situacao: f.situacao, opcoes: f.opcoes.map((o, k) => ({ texto: o.texto, consequencia: o.consequencia, certa: k === f.correta })) });
-    else if (f.tipo === "separar_itens") linhas.push({ ...comum, enunciado: f.enunciado, materiais: f.material_ids.flatMap((id) => codigoDoMaterial.get(id) ?? []), quantidade_errados: f.quantidade_errados });
     else if (f.tipo === "ligar") linhas.push({ ...comum, pares: f.pares });
-    else linhas.push({ ...comum, enunciado: f.enunciado, etapas: f.etapas });
+    else if (f.tipo === "ordem") linhas.push({ ...comum, enunciado: f.enunciado, etapas: f.etapas });
+    else if (f.tipo === "verdadeiro_falso") linhas.push({ ...comum, afirmacao: f.afirmacao, verdadeira: f.verdadeira });
+    else if (f.tipo === "caca_palavras") linhas.push({ ...comum, enunciado: f.enunciado, palavras: f.palavras.map((p) => ({ palavra: p.palavra, pista: p.pista ?? "" })) });
+    else if (f.tipo === "memoria") linhas.push({ ...comum, pares: f.pares });
+    else if (f.tipo === "termo") linhas.push({ ...comum, palavras: f.palavras.map((p) => ({ palavra: p.palavra, dica: p.dica ?? "" })) });
+    else if (f.tipo === "selecione" && f.materiais) {
+      linhas.push({ ...comum, enunciado: f.enunciado, materiais: f.materiais.material_ids.flatMap((id) => codigoDoMaterial.get(id) ?? []), quantidade_errados: f.materiais.quantidade_errados });
+    } else if (f.tipo === "selecione") linhas.push({ ...comum, enunciado: f.enunciado, opcoes: f.opcoes.map((o) => ({ texto: o.texto, certa: o.correta })) });
+    else linhas.push({ ...comum, palavras: f.palavras });
   });
   return linhas.map((l) => JSON.stringify(l)).join("\n");
 }
@@ -231,13 +251,23 @@ const esquemaPassoIA = z.object({ item: z.literal("passo"), texto: z.string().ma
 const esquemaOpcaoIA = z.object({ texto: z.string().max(2000), consequencia: z.string().max(2000).optional(), certa: z.boolean().optional() });
 const esquemaFaseIA = z.object({
   item: z.literal("fase"),
-  tipo: z.enum(["quiz", "decisao", "separar_itens", "ligar", "ordem"]),
+  tipo: z.enum(["quiz", "decisao", "separar_itens", "ligar", "ordem", "verdadeiro_falso", "caca_palavras", "memoria", "selecione", "desembaralhe", "termo"]),
+  dica: z.string().max(2000).nullable().optional(),
+  afirmacao: z.string().max(5000).optional(),
+  verdadeira: z.boolean().optional(),
+  /** No caça-palavras, palavra e pista; no Termo e no Desembaralhe, palavra e dica. */
+  palavras: z.array(z.object({ palavra: z.string().max(200), pista: z.string().max(2000).nullable().optional(), dica: z.string().max(2000).nullable().optional() })).max(20).optional(),
+  palavra: z.string().max(200).optional(),
   enunciado: z.string().max(5000).optional(),
   situacao: z.string().max(5000).optional(),
   opcoes: z.array(esquemaOpcaoIA).max(10).optional(),
   materiais: z.array(z.string().max(20)).max(20).optional(),
   quantidade_errados: z.number().optional(),
-  pares: z.array(z.object({ esquerda: z.string().max(2000), direita: z.string().max(2000) })).max(10).optional(),
+  /** No "ligar", esquerda e direita; na memória, termo e correspondente. */
+  pares: z
+    .array(z.object({ esquerda: z.string().max(2000).optional(), direita: z.string().max(2000).optional(), termo: z.string().max(2000).optional(), correspondente: z.string().max(2000).optional() }))
+    .max(10)
+    .optional(),
   etapas: z.array(z.string().max(2000)).max(10).optional(),
   explicacao: z.string().max(5000).optional(),
   origem: z.string().max(5000).optional(),
@@ -267,7 +297,7 @@ function textosVisiveis(valor: unknown): string[] {
   if (Array.isArray(valor)) return valor.flatMap(textosVisiveis);
   if (valor && typeof valor === "object") {
     return Object.entries(valor)
-      .filter(([chave]) => !["tipo", "expressao", "imagem_path", "material_ids", "ia", "ordem", "correta", "quantidade_errados"].includes(chave))
+      .filter(([chave]) => !["tipo", "expressao", "imagem_path", "material_ids", "ia", "ordem", "correta", "quantidade_errados", "modo"].includes(chave))
       .flatMap(([, v]) => textosVisiveis(v));
   }
   return [];
@@ -337,22 +367,74 @@ function converterFase(bruta: FaseIA, materiais: MaterialDoServico[], ctx: Conte
       bruta.tipo === "quiz"
         ? { tipo: "quiz", enunciado: cortar(bruta.enunciado, 400), opcoes: opcoes.map((o) => cortar(o.texto, 160)), correta, explicacao }
         : { tipo: "decisao", situacao: cortar(bruta.situacao ?? bruta.enunciado, 400), opcoes: opcoes.map((o) => ({ texto: cortar(o.texto, 160), consequencia: cortar(o.consequencia, 300) })), correta, explicacao };
-  } else if (bruta.tipo === "separar_itens") {
+  } else if (bruta.tipo === "separar_itens" || (bruta.tipo === "selecione" && bruta.materiais && bruta.materiais.length > 0)) {
+    // "Separar os itens" virou o Selecione com os materiais do serviço; a IA às vezes ainda pede o tipo antigo.
     const porCodigo = new Map(materiais.map((m) => [m.codigo, m.id]));
     const codigos = [...new Set((bruta.materiais ?? []).map((c) => c.trim().toUpperCase()))];
     const desconhecidos = codigos.filter((c) => !porCodigo.has(c));
     if (desconhecidos.length > 0) pendencias.push({ codigo: "material_fora_do_catalogo", mensagem: `A IA citou material fora da lista do serviço (${desconhecidos.slice(0, 5).join(", ")}), que foi tirado.` });
     const errados = Math.min(10, Math.max(1, Math.round(bruta.quantidade_errados ?? 3)));
-    candidata = { tipo: "separar_itens", enunciado: cortar(bruta.enunciado, 400), material_ids: codigos.flatMap((c) => porCodigo.get(c) ?? []).slice(0, 10), quantidade_errados: errados, explicacao };
+    candidata = { tipo: "selecione", enunciado: cortar(bruta.enunciado, 400), opcoes: [], materiais: { material_ids: codigos.flatMap((c) => porCodigo.get(c) ?? []).slice(0, 10), quantidade_errados: errados }, explicacao };
   } else if (bruta.tipo === "ligar") {
     candidata = { tipo: "ligar", pares: (bruta.pares ?? []).map((p) => ({ esquerda: cortar(p.esquerda, 160), direita: cortar(p.direita, 160) })), explicacao };
-  } else {
+  } else if (bruta.tipo === "ordem") {
     candidata = { tipo: "ordem", enunciado: cortar(bruta.enunciado, 400), etapas: (bruta.etapas ?? []).map((e) => cortar(e, 160)), explicacao };
+  } else if (bruta.tipo === "verdadeiro_falso") {
+    if (bruta.verdadeira === undefined) pendencias.push({ codigo: "fase_sem_gabarito", mensagem: "A IA não disse se a afirmação é verdadeira ou falsa: escolha." });
+    candidata = { tipo: "verdadeiro_falso", afirmacao: cortar(bruta.afirmacao ?? bruta.enunciado, 400), verdadeira: bruta.verdadeira ?? true, explicacao };
+  } else if (bruta.tipo === "caca_palavras") {
+    // Palavra com espaço ou número não entra na grade: fica de fora, com pendência.
+    const todas = (bruta.palavras ?? []).map((p) => ({ palavra: p.palavra.trim(), pista: cortar(p.pista ?? "", 160) || null }));
+    const validas = todas.filter((p) => SO_LETRAS.test(p.palavra) && letrasDaGrade(p.palavra).length >= 3 && letrasDaGrade(p.palavra).length <= 12).slice(0, 5);
+    if (validas.length < todas.length) pendencias.push({ codigo: "palavra_invalida", mensagem: "A IA mandou palavra com espaço, número ou tamanho fora de 3 a 12 letras, que foi tirada." });
+    const fora = validas.filter((p) => !ctx.textoNormalizado.includes(letrasDaGrade(p.palavra).toLowerCase()));
+    if (fora.length > 0) pendencias.push({ codigo: "palavra_fora_do_texto", mensagem: `Palavra que não aparece no texto do procedimento: ${fora.map((p) => p.palavra).join(", ")}.` });
+    candidata = { tipo: "caca_palavras", enunciado: cortar(bruta.enunciado, 400) || "Encontre as palavras do serviço.", modo: "palavras", palavras: validas, explicacao };
+  } else if (bruta.tipo === "memoria") {
+    candidata = { tipo: "memoria", pares: (bruta.pares ?? []).map((p) => ({ termo: cortar(p.termo ?? p.esquerda, 80), correspondente: cortar(p.correspondente ?? p.direita, 80) })), explicacao };
+  } else if (bruta.tipo === "selecione") {
+    candidata = { tipo: "selecione", enunciado: cortar(bruta.enunciado, 400), opcoes: (bruta.opcoes ?? []).map((o) => ({ texto: cortar(o.texto, 160), correta: o.certa === true })), explicacao };
+  } else {
+    // Termo e Desembaralhe: o banco de palavras. Palavra fora da regra sai; repetida também; o que faltar até 10 vira pendência.
+    const termo = bruta.tipo === "termo";
+    const [min, max] = termo ? [4, 7] : [3, 14];
+    const brutas = bruta.palavras ?? (bruta.palavra ? [{ palavra: bruta.palavra, dica: bruta.dica ?? bruta.enunciado }] : []);
+    const vistas = new Set<string>();
+    const palavras = brutas
+      .map((p) => ({ palavra: p.palavra.trim(), dica: termo ? cortar(p.dica ?? "", 160) || null : cortar(p.dica ?? p.pista ?? "", 400) }))
+      .filter((p) => {
+        const naGrade = letrasDaGrade(p.palavra);
+        const tamanho = termo ? naGrade.length : letrasDaPalavra(p.palavra).length;
+        const valida = SO_LETRAS.test(p.palavra) && tamanho >= min && tamanho <= max && !vistas.has(naGrade) && (termo || (p.dica && new Set(letrasDaPalavra(p.palavra)).size >= 2));
+        if (valida) vistas.add(naGrade);
+        return valida;
+      })
+      .slice(0, PALAVRAS_DO_BANCO);
+    if (palavras.length < brutas.length) pendencias.push({ codigo: "palavra_invalida", mensagem: `A IA mandou palavra repetida, com espaço, sem dica ou fora de ${min} a ${max} letras, que foi tirada.` });
+    if (palavras.length < PALAVRAS_DO_BANCO) pendencias.push({ codigo: "palavras_insuficientes", mensagem: `O banco tem ${palavras.length} de ${PALAVRAS_DO_BANCO} palavras: complete as que faltam para publicar.` });
+    const fora = palavras.filter((p) => !ctx.textoNormalizado.includes(letrasDaGrade(p.palavra).toLowerCase()));
+    if (fora.length > 0) pendencias.push({ codigo: "palavra_fora_do_texto", mensagem: `Palavra que não aparece no texto do procedimento: ${fora.map((p) => p.palavra).join(", ")}.` });
+    candidata = { tipo: bruta.tipo, palavras, explicacao };
   }
   const lida = esquemaFase.safeParse(candidata);
-  if (!lida.success) return null;
+  if (!lida.success || problemaDaFase(lida.data)) return null;
   const origem = bruta.origem ?? "";
   return comMeta(lida.data, origem, [...pendencias, ...conferirItem(lida.data, origem, ctx)]);
+}
+
+/**
+ * Confere as fases geradas contra o plano: a que veio de outro tipo ganha a pendência `fora_do_plano` (o admin troca a
+ * fase ou confirma como está), e o que passar do número de fases pedido fica de fora.
+ */
+function conferirPlano(fases: FaseEntrada[], plano: PlanoDoJogo): FaseEntrada[] {
+  return fases.slice(0, plano.length).map((f, i) => {
+    const pedido = plano[i];
+    const montado = f.tipo === "selecione" && f.materiais ? "selecione_materiais" : f.tipo;
+    // O Selecione com opções escritas atende a "selecione"; o com materiais atende aos dois.
+    if (!pedido || pedido === montado || (pedido === "selecione" && f.tipo === "selecione") || !f.ia) return f;
+    const pendencia = { codigo: "fora_do_plano", mensagem: `O plano pedia ${ROTULO_DO_PEDIDO[pedido]} nesta fase, e a Vitória montou ${ROTULO_DO_PEDIDO[montado]}: troque a fase ou confirme como está.` };
+    return { ...f, ia: { ...f.ia, pendencias: [...f.ia.pendencias, pendencia].slice(0, 20) } };
+  });
 }
 
 // ---- Progresso -------------------------------------------------------------------------------------------------------
@@ -376,7 +458,39 @@ function mensagemDoProgresso(p: Omit<ProgressoDoRascunho, "mensagem">, soUmaFase
 
 // ---- Preparo (antes do streaming: os erros ainda viram HTTP) ----------------------------------------------------------
 
-export type PedidoDeRascunhoIA = { tipo: "gerar"; texto: string } | { tipo: "ajustar"; pedido?: string; fase?: number };
+/** Os tipos de fase e como a Vitória e o admin os chamam (no pedido à IA e nas pendências do plano). */
+export const ROTULO_DO_TIPO: Record<FaseEntrada["tipo"], string> = {
+  quiz: "Quiz",
+  decisao: "Decisão",
+  ligar: "Ligar",
+  ordem: "Pôr em ordem",
+  verdadeiro_falso: "Verdadeiro ou falso",
+  caca_palavras: "Caça-palavras",
+  memoria: "Memória",
+  selecione: "Selecione",
+  desembaralhe: "Desembaralhe",
+  termo: "Termo",
+};
+export const TIPOS_DE_FASE = Object.keys(ROTULO_DO_TIPO) as [FaseEntrada["tipo"], ...FaseEntrada["tipo"][]];
+const ROTULO_DO_PEDIDO: Record<FaseEntrada["tipo"] | "selecione_materiais", string> = { ...ROTULO_DO_TIPO, selecione_materiais: "Selecione com os materiais do serviço" };
+
+/**
+ * O plano do jogo que o admin escolhe antes de gerar: quantas fases (ao menos 3) e o minijogo de cada uma, na ordem;
+ * `null` deixa a Vitória escolher aquela, e `selecione_materiais` pede o Selecione montado com os materiais do serviço.
+ * Sem plano, ela decide tudo (de 3 a 10 fases, minijogos variados).
+ */
+export const PEDIDOS_DO_PLANO = [...TIPOS_DE_FASE, "selecione_materiais"] as const;
+export type PedidoDoPlano = (typeof PEDIDOS_DO_PLANO)[number];
+export type PlanoDoJogo = (PedidoDoPlano | null)[];
+
+export type PedidoDeRascunhoIA = { tipo: "gerar"; texto: string; plano?: PlanoDoJogo | null } | { tipo: "ajustar"; pedido?: string; fase?: number };
+
+/** O plano em texto para a IA: "Monte exatamente 7 fases, nesta ordem: 1. quiz; 2. à sua escolha; …". */
+function planoParaIA(plano: PlanoDoJogo): string {
+  const nome = (t: PedidoDoPlano) => (t === "selecione_materiais" ? 'selecione com "materiais" (os materiais do serviço)' : t);
+  const itens = plano.map((t, i) => `${i + 1}. ${t ? nome(t) : "à sua escolha (varie os tipos)"}`).join("; ");
+  return `Plano do jogo pedido pelo administrador (vale mais que "varie os tipos"): monte exatamente ${plano.length} fases, nesta ordem e destes tipos: ${itens}. Na linha "plano", use fases = ${plano.length}.`;
+}
 
 export interface ChamadaDeRascunhoIA {
   atividadeCodigo: string;
@@ -396,6 +510,8 @@ export interface ChamadaDeRascunhoIA {
     fasesAtuais: FaseEntrada[];
     /** Gasta uma rodada (tudo, menos a primeira geração do treinamento). */
     contaRodada: boolean;
+    /** Só na geração com plano: para conferir o que a IA devolveu contra o que o admin pediu. */
+    plano?: PlanoDoJogo | null;
   };
 }
 
@@ -416,6 +532,10 @@ export async function prepararRascunhoIA(deps: DepsDaIA, atividadeCodigo: string
   const materiais = await materiaisDoServico(deps, atividadeCodigo);
 
   if (entrada.tipo === "gerar") {
+    const plano = entrada.plano ?? null;
+    if (plano?.includes("selecione_materiais") && materiais.length === 0) {
+      throw invalido("plano_sem_materiais", "Este serviço não tem materiais no catálogo: tire do plano o Selecione com os materiais do serviço");
+    }
     if (!situacao.podeGerar) throw conflito("limite_ia", `${MOTIVO_LIMITE}: ${situacao.usaIa ? `as ${situacao.limiteRodadas} rodadas deste treinamento já foram usadas` : `${situacao.limiteTreinamentos} treinamentos já usaram a IA`}. Siga no editor.`);
     return {
       atividadeCodigo,
@@ -428,7 +548,7 @@ export async function prepararRascunhoIA(deps: DepsDaIA, atividadeCodigo: string
         tempoLimiteMs: TEMPO_LIMITE_MS,
         mensagens: [
           { papel: "sistema", texto: `${REGRAS}\n\n${FORMATO}`, cache: true },
-          { papel: "usuario", texto: `${blocoDoServico(servico.codigo, servico.descricao, materiais, entrada.texto)}\n\nMonte o rascunho completo.` },
+          { papel: "usuario", texto: `${blocoDoServico(servico.codigo, servico.descricao, materiais, entrada.texto)}\n\n${plano ? `${planoParaIA(plano)}\n\n` : ""}Monte o rascunho completo.` },
         ],
       },
       contexto: {
@@ -439,6 +559,7 @@ export async function prepararRascunhoIA(deps: DepsDaIA, atividadeCodigo: string
         explicacaoAtual: rascunhoDoEditor.explicacao,
         fasesAtuais: rascunhoDoEditor.fases,
         contaRodada: situacao.usaIa,
+        plano,
       },
     };
   }
@@ -522,6 +643,7 @@ export async function executarRascunhoIA(deps: DepsDaIA, chamada: ChamadaDeRascu
   const passos: PassoExplicacao[] = [];
   const fases: FaseEntrada[] = [];
   let resumo = "";
+  let avisoDoPlano = "";
   let descartados = 0;
   const estado: Omit<ProgressoDoRascunho, "mensagem"> = { passosProntos: 0, fasesProntas: 0, totalPassos: null, totalFases: null };
   const avisar = () => aoProgredir({ ...estado, mensagem: mensagemDoProgresso(estado, soUmaFase) });
@@ -545,7 +667,7 @@ export async function executarRascunhoIA(deps: DepsDaIA, chamada: ChamadaDeRascu
       estado.passosProntos = passos.length;
     } else if (tipo === "fase") {
       const lida = esquemaFaseIA.safeParse(objeto);
-      const fase = lida.success && fases.length < (soUmaFase ? 1 : 10) ? converterFase(lida.data, contexto.materiais, ctx) : null;
+      const fase = lida.success && fases.length < (soUmaFase ? 1 : TETO_DE_FASES) ? converterFase(lida.data, contexto.materiais, ctx) : null;
       if (fase) fases.push(fase);
       else descartados++;
       estado.fasesProntas = fases.length;
@@ -576,7 +698,10 @@ export async function executarRascunhoIA(deps: DepsDaIA, chamada: ChamadaDeRascu
   } else if (chamada.tipo === "gerar") {
     if (passos.length === 0 && fases.length === 0) throw respostaInvalida("A IA não devolveu nada no formato do editor. Tente de novo; nada foi gravado.");
     explicacao = passos;
-    novasFases = fases;
+    novasFases = contexto.plano ? conferirPlano(fases, contexto.plano) : fases;
+    if (contexto.plano && fases.length < contexto.plano.length) {
+      avisoDoPlano = ` O plano pedia ${contexto.plano.length} fases e saíram ${fases.length}: acrescente as que faltam no editor ou gere de novo.`;
+    }
   } else {
     if (passos.length === 0 && fases.length === 0) throw respostaInvalida("A IA não devolveu o rascunho ajustado no formato do editor. Tente de novo; nada foi gravado.");
     // Um ajuste nunca apaga uma parte inteira: se a IA devolveu só os passos (ou só as fases), a outra parte fica como estava.
@@ -602,6 +727,6 @@ export async function executarRascunhoIA(deps: DepsDaIA, chamada: ChamadaDeRascu
   const temPublicada = Boolean(await versaoPublicadaDoTreinamento(deps.db, contexto.treinamentoId));
   const rascunho = rascunhoParaEditor(contexto.treinamentoId, salvo, temPublicada);
   const situacao = await situacaoDaIA(deps, chamada.atividadeCodigo);
-  const resumoFinal = resumo || (soUmaFase ? `Refiz a fase ${chamada.fase! + 1}.` : `Montei ${explicacao.length} passo(s) de explicação e ${novasFases.length} fase(s).`);
+  const resumoFinal = (resumo || (soUmaFase ? `Refiz a fase ${chamada.fase! + 1}.` : `Montei ${explicacao.length} passo(s) de explicação e ${novasFases.length} fase(s).`)) + avisoDoPlano;
   return { rascunho, situacao, resumo: resumoFinal, descartados };
 }

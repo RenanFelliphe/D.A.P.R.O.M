@@ -137,7 +137,7 @@ export const REGRAS: Record<RegraCodigo, DescricaoDaRegra> = {
     grupo: "Treinamentos",
     quem: "O técnico, inclusive quem aguarda liberação.",
     quando: "Junto com o concluído: 1 ponto por fase cuja primeira resposta foi certa, no máximo 10.",
-    limite: "Um lançamento por treinamento (o jogo tem até 10 fases).",
+    limite: "Um lançamento por treinamento (contam até 10 fases certas).",
   },
   ciencia_no_prazo: {
     nome: "Ciência no prazo",

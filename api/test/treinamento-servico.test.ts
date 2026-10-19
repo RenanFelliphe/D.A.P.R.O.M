@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
-import { and, eq } from "drizzle-orm";
+import { readFileSync } from "node:fs";
+import { and, eq, sql } from "drizzle-orm";
 import {
   atividade,
   atividadeMaterial,
@@ -10,11 +11,13 @@ import {
   conquistaUsuario,
   material,
   treinamentoServico,
+  treinamentoServicoResposta,
   treinamentoServicoTentativa,
   treinamentoServicoVersao,
   usuario,
 } from "../src/db/schema";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
+import { letrasDaGrade, letrasDaPalavra } from "../../shared/treinamento-servico/jogos";
 
 /**
  * Testes dos treinamentos de serviço (seção 3 do `vitoria.md`): os 5 tipos de fase, o gabarito nunca exposto antes da
@@ -56,7 +59,7 @@ describe("Treinamentos de serviço", () => {
     { ordem: 1, texto: "Vamos praticar!", expressao: "feliz" },
   ];
 
-  /** Uma fase de cada tipo, com um gabarito conhecido; `materiaisCertos` (2+) são os itens certos de "separar os itens". */
+  /** Uma fase de cada tipo antigo, com um gabarito conhecido; `materiaisCertos` (2+) são os itens certos do Selecione com os materiais do serviço. */
   function fasesDosCincoTipos(materiaisCertos: string[]) {
     return [
       { tipo: "quiz", enunciado: "Qual EPI é obrigatório?", opcoes: ["Luva", "Chapéu", "Óculos escuro", "Nenhum"], correta: 0, explicacao: "A luva protege as mãos." },
@@ -71,7 +74,7 @@ describe("Treinamentos de serviço", () => {
         correta: 1,
         explicacao: "Sempre pare e ventile.",
       },
-      { tipo: "separar_itens", enunciado: "Toque nos itens deste serviço.", material_ids: materiaisCertos, quantidade_errados: 1, explicacao: "Só estes materiais são deste serviço." },
+      { tipo: "selecione", enunciado: "Toque nos itens deste serviço.", opcoes: [], materiais: { material_ids: materiaisCertos, quantidade_errados: 1 }, explicacao: "Só estes materiais são deste serviço." },
       {
         tipo: "ligar",
         pares: [
@@ -81,6 +84,49 @@ describe("Treinamentos de serviço", () => {
         explicacao: "Ligue o risco à ação certa.",
       },
       { tipo: "ordem", enunciado: "Coloque as etapas em ordem.", etapas: ["Isolar a área", "Vestir o EPI", "Iniciar o serviço"], explicacao: "Siga sempre essa ordem." },
+    ];
+  }
+
+  /** Os bancos de 10 palavras do Desembaralhe e do Termo (cada tentativa sorteia uma). */
+  const BANCO_DESEMBARALHE = ["Inspeção", "Bloqueio", "Capacete", "Aterramento", "Etiqueta", "Isolamento", "Disjuntor", "Sinalização", "Medição", "Trava"];
+  const BANCO_TERMO = ["Risco", "Calor", "Fusível", "Chave", "Luva", "Cabo", "Poste", "Fiação", "Tensão", "Terra"];
+
+  /** Uma fase de cada minijogo novo (verdadeiro ou falso, caça-palavras, memória, selecione, desembaralhe e Termo). */
+  function fasesDosJogosNovos() {
+    return [
+      { tipo: "verdadeiro_falso", afirmacao: "Antes da manutenção, o equipamento precisa estar desligado e bloqueado.", verdadeira: true, explicacao: "Sempre bloqueie antes." },
+      {
+        tipo: "caca_palavras",
+        enunciado: "Encontre os termos do serviço.",
+        modo: "pistas",
+        palavras: [
+          { palavra: "Bloqueio", pista: "Impede religar o equipamento" },
+          { palavra: "EPI", pista: "Equipamento de proteção individual" },
+          { palavra: "Inspeção", pista: "Olhar com atenção antes de começar" },
+        ],
+        explicacao: "São os termos do procedimento.",
+      },
+      {
+        tipo: "memoria",
+        pares: [
+          { termo: "Capacete", correspondente: "Protege a cabeça" },
+          { termo: "Luva", correspondente: "Protege as mãos" },
+        ],
+        explicacao: "Cada EPI protege uma parte do corpo.",
+      },
+      {
+        tipo: "selecione",
+        enunciado: "Selecione os EPIs desta atividade.",
+        opcoes: [
+          { texto: "Capacete", correta: true },
+          { texto: "Luva isolante", correta: true },
+          { texto: "Chinelo", correta: false },
+          { texto: "Boné", correta: false },
+        ],
+        explicacao: "Capacete e luva isolante.",
+      },
+      { tipo: "desembaralhe", palavras: BANCO_DESEMBARALHE.map((palavra) => ({ palavra, dica: `O que é ${palavra.length} letras` })), explicacao: "São palavras do serviço." },
+      { tipo: "termo", palavras: BANCO_TERMO.map((palavra) => ({ palavra, dica: "Do serviço" })), explicacao: "São palavras do serviço." },
     ];
   }
 
@@ -123,7 +169,16 @@ describe("Treinamentos de serviço", () => {
   /** A resposta certa de uma fase, calculada a partir do gabarito e do embaralhamento daquela tentativa. */
   function respostaCerta(ap: any, fase: any): unknown {
     if (fase.tipo === "quiz" || fase.tipo === "decisao") return { escolha: ap.ordem.indexOf(fase.correta) };
-    if (fase.tipo === "separar_itens") return { selecionados: ap.itens.filter((i: any) => fase.material_ids.includes(i.materialId)).map((i: any) => i.materialId) };
+    if (fase.tipo === "verdadeiro_falso") return { verdadeira: fase.verdadeira };
+    if (fase.tipo === "caca_palavras") return { selecoes: ap.posicoes };
+    if (fase.tipo === "memoria") return { jogadas: fase.pares.map((_: unknown, p: number) => ap.cartas.flatMap((c: any, i: number) => (c.par === p ? [i] : []))) };
+    if (fase.tipo === "selecione" && fase.materiais) return { marcadas: ap.itens.flatMap((item: any, i: number) => (fase.materiais.material_ids.includes(item.materialId) ? [i] : [])) };
+    if (fase.tipo === "selecione") return { marcadas: ap.ordem.flatMap((original: number, i: number) => (fase.opcoes[original].correta ? [i] : [])) };
+    if (fase.tipo === "desembaralhe") return { letras: ap.ordem.map((_: unknown, k: number) => ap.ordem.indexOf(k)) };
+    if (fase.tipo === "termo") {
+      const segredo = letrasDaGrade(fase.palavras[ap.sorteada].palavra);
+      return { palpites: ["Z".repeat(segredo.length), segredo.toLowerCase()] };
+    }
     if (fase.tipo === "ligar") {
       const n = fase.pares.length;
       return { pares: Array.from({ length: n }, (_, k) => ({ esquerda: ap.esquerdaOrdem.indexOf(k), direita: ap.direitaOrdem.indexOf(k) })) };
@@ -131,17 +186,30 @@ describe("Treinamentos de serviço", () => {
     const n = fase.etapas.length;
     return { sequencia: Array.from({ length: n }, (_, k) => ap.ordem.indexOf(k)) };
   }
-  /** Uma resposta plausível, mas errada (sempre existe porque cada fase tem mais de uma opção/posição). */
   /**
-   * Uma resposta sempre errada, qualquer que seja o embaralhamento daquela tentativa: em "ligar" e "pôr em ordem", aponta
-   * tudo para a mesma posição (nunca forma um casamento ou uma sequência válida), em vez de um padrão fixo (como inverter),
-   * que poderia coincidir com a resposta certa dependendo do sorteio.
+   * Uma resposta sempre errada, qualquer que seja o embaralhamento daquela tentativa: no "ligar", tudo na mesma posição (só o
+   * primeiro par conta, e nunca todos); no "pôr em ordem", a ordem mostrada (o embaralhamento nunca é a ordem certa).
    */
   function respostaErrada(ap: any, fase: any): unknown {
     if (fase.tipo === "quiz" || fase.tipo === "decisao") return { escolha: (ap.ordem.indexOf(fase.correta) + 1) % fase.opcoes.length };
-    if (fase.tipo === "separar_itens") return { selecionados: [] };
+    if (fase.tipo === "verdadeiro_falso") return { verdadeira: !fase.verdadeira };
+    if (fase.tipo === "caca_palavras") return { selecoes: [] };
+    if (fase.tipo === "memoria") {
+      // Erra mais vezes que o limite (um erro por par) virando uma carta do par 0 com uma do par 1, depois completa a mesa.
+      const certas = (respostaCerta(ap, fase) as { jogadas: [number, number][] }).jogadas;
+      const erro: [number, number] = [certas[0]![0], certas[1]![0]];
+      return { jogadas: [...Array(fase.pares.length + 1).fill(erro), ...certas] };
+    }
+    if (fase.tipo === "selecione") return { marcadas: [] };
+    if (fase.tipo === "termo") {
+      const n = letrasDaGrade(fase.palavras[ap.sorteada].palavra).length;
+      return { palpites: Array(n + 1).fill("Z".repeat(n)) };
+    }
+    // Na ordem em que as letras foram mostradas, que nunca formam a palavra.
+    if (fase.tipo === "desembaralhe") return { letras: ap.ordem.map((_: unknown, i: number) => i) };
     if (fase.tipo === "ligar") return { pares: Array.from({ length: fase.pares.length }, () => ({ esquerda: 0, direita: 0 })) };
-    return { sequencia: Array.from({ length: fase.etapas.length }, () => 0) };
+    // A ordem mostrada: o embaralhamento nunca deixa as etapas já na ordem certa.
+    return { sequencia: ap.ordem.map((_: unknown, i: number) => i) };
   }
 
   async function abrirTentativa(codigo: string, como: UsuarioDeTeste) {
@@ -201,7 +269,7 @@ describe("Treinamentos de serviço", () => {
     // Material inexistente no catálogo: 422.
     const comMaterialRuim = await amb.req("PUT", `/treinamentos/${codigo}/rascunho`, {
       como: admin,
-      json: { explicacao: EXPLICACAO, fases: [{ tipo: "separar_itens", enunciado: "X", material_ids: [randomUUID(), randomUUID()], quantidade_errados: 1, explicacao: "x" }] },
+      json: { explicacao: EXPLICACAO, fases: [{ tipo: "selecione", enunciado: "X", opcoes: [], materiais: { material_ids: [randomUUID(), randomUUID()], quantidade_errados: 1 }, explicacao: "x" }] },
     });
     assert.equal(comMaterialRuim.status, 422);
 
@@ -299,7 +367,7 @@ describe("Treinamentos de serviço", () => {
     const aberta = await abrirTentativa(codigo, tecnico);
     const { apresentacao, fases } = await apresentacaoEGabarito(aberta.tentativa_id);
 
-    // separar_itens: o pool tem os 2 certos e exatamente 1 errado, sorteado de outro serviço (não necessariamente
+    // Selecione com os materiais do serviço: o pool tem os 2 certos e exatamente 1 errado, sorteado de outro serviço (não necessariamente
     // o `errado` desta atividade: outros testes já cadastraram materiais em outros serviços, candidatos válidos também).
     const faseItens = apresentacao.fases[2];
     assert.equal(faseItens.itens.length, 3);
@@ -312,12 +380,268 @@ describe("Treinamentos de serviço", () => {
       const errada = await responder(aberta.tentativa_id, i, respostaErrada(apresentacao.fases[i], fases[i]), tecnico);
       assert.equal(errada.certa, false, `fase ${i} (${fases[i].tipo}) deveria estar errada`);
       assert.ok(errada.explicacao, `fase ${i} explica depois de responder`);
-      // A primeira resposta (errada) já venceu: responder de novo, agora certo, não muda o que pontua.
+      // A primeira resposta (errada) já venceu e fica travada: responder de novo, agora certo, devolve a correção gravada.
       const segundaChamada = await responder(aberta.tentativa_id, i, respostaCerta(apresentacao.fases[i], fases[i]), tecnico);
-      assert.equal(segundaChamada.certa, true, "a correção em si é sempre fiel ao gabarito");
+      assert.equal(segundaChamada.certa, false, "a resposta confirmada não muda");
+      assert.equal(segundaChamada.pontos, errada.pontos);
     }
     const resultado = await concluir(aberta.tentativa_id, tecnico);
     assert.equal(resultado.fases_certas, 0, "a resposta gravada foi a primeira (errada) de cada fase");
+  });
+
+  it("os minijogos novos: nada do gabarito antes da resposta, certo e errado em cada um", async () => {
+    const codigo = "TRE-MINIJOGOS";
+    await criarEPublicar(codigo, fasesDosJogosNovos());
+
+    const aberta = await abrirTentativa(codigo, tecnico);
+    assert.equal(aberta.fases.length, 6);
+    const [vf, caca, memoria, selecione, desembaralhe, termo] = aberta.fases;
+    const { apresentacao, fases } = await apresentacaoEGabarito(aberta.tentativa_id);
+    const doTermo = letrasDaGrade(BANCO_TERMO[apresentacao.fases[5].sorteada]!);
+    assert.equal(termo.letras, doTermo.length);
+    assert.equal(termo.tentativas, doTermo.length + 1, "letras + 1");
+    assert.equal(JSON.stringify(termo).toUpperCase().includes(doTermo), false, "a palavra não vai à vista");
+    assert.equal("verdadeira" in vf, false);
+    assert.equal(caca.modo, "pistas");
+    assert.ok(caca.palavras.every((p: any) => p.palavra === null && p.pista && p.letras > 0 && p.chave), "no modo de pistas a palavra não vai");
+    assert.ok(caca.grade.every((l: string) => l.length === caca.grade.length), "grade quadrada");
+    assert.equal(memoria.cartas.length, 4);
+    assert.ok(memoria.cartas.every((c: any) => !("par" in c)), "o índice do par no gabarito não vai");
+    assert.equal(memoria.limite_erros, 2);
+    assert.ok(selecione.opcoes.every((o: unknown) => typeof o === "string"), "sem a marca de certa");
+    const doDesembaralhe = letrasDaPalavra(BANCO_DESEMBARALHE[apresentacao.fases[4].sorteada]!);
+    assert.notEqual(desembaralhe.letras.join(""), doDesembaralhe.join(""), "as letras vêm embaralhadas");
+    assert.deepEqual([...desembaralhe.letras].sort(), [...doDesembaralhe].sort());
+    assert.match(desembaralhe.enunciado, /^O que é/, "a dica é a da palavra sorteada");
+    // Errado numa tentativa e certo noutra (a resposta confirmada fica travada na tentativa).
+    const outraParaAcertar = await abrirTentativa(codigo, tecnico);
+    const paraAcertar = await apresentacaoEGabarito(outraParaAcertar.tentativa_id);
+    for (let i = 0; i < fases.length; i++) {
+      const errada = await responder(aberta.tentativa_id, i, respostaErrada(apresentacao.fases[i], fases[i]), tecnico);
+      assert.equal(errada.certa, false, `fase ${i} (${fases[i].tipo}) deveria estar errada`);
+      const certa = await responder(outraParaAcertar.tentativa_id, i, respostaCerta(paraAcertar.apresentacao.fases[i], paraAcertar.fases[i]), tecnico);
+      assert.equal(certa.certa, true, `fase ${i} (${fases[i].tipo}) deveria estar certa`);
+      assert.equal(certa.acertos, certa.possiveis);
+      assert.equal(certa.pontos, 10, "sem tempo passado, o multiplicador é 1,0");
+    }
+
+    // O gabarito que volta depois da resposta.
+    const outra = await abrirTentativa(codigo, tecnico);
+    const daOutra = await apresentacaoEGabarito(outra.tentativa_id);
+    const gCaca = await responder(outra.tentativa_id, 1, { selecoes: [daOutra.apresentacao.fases[1].posicoes[0]] }, tecnico);
+    assert.equal(gCaca.certa, false, "achou só uma das três");
+    assert.deepEqual(
+      gCaca.gabarito.palavras.map((p: any) => p.achada),
+      [true, false, false],
+    );
+    const gDes = await responder(outra.tentativa_id, 4, respostaCerta(daOutra.apresentacao.fases[4], daOutra.fases[4]), tecnico);
+    assert.equal(gDes.gabarito.palavra, letrasDaPalavra(BANCO_DESEMBARALHE[daOutra.apresentacao.fases[4].sorteada]!).join(""));
+    const palpiteCurto = await amb.req("POST", `/treinamentos/tentativas/${outra.tentativa_id}/fases/5`, { como: tecnico, json: { palpites: ["RIS"] } });
+    assert.equal(palpiteCurto.status, 422);
+    const n = letrasDaGrade(BANCO_TERMO[daOutra.apresentacao.fases[5].sorteada]!).length;
+    const demais = await amb.req("POST", `/treinamentos/tentativas/${outra.tentativa_id}/fases/5`, { como: tecnico, json: { palpites: Array(n + 2).fill("Z".repeat(n)) } });
+    assert.equal(demais.status, 422, "mais palpites que letras + 1");
+    const jogadaImpossivel = await amb.req("POST", `/treinamentos/tentativas/${outra.tentativa_id}/fases/2`, { como: tecnico, json: { jogadas: [[0, 0]] } });
+    assert.equal(jogadaImpossivel.status, 422);
+  });
+
+  it("a cada tentativa, Termo e Desembaralhe sorteiam a palavra do banco e toda fase com opções vem numa ordem nova", async () => {
+    const codigo = "TRE-MINIJOGOS-SORTEIO";
+    const [quiz, , , ligar] = fasesDosCincoTipos([]);
+    await criarEPublicar(codigo, [...fasesDosJogosNovos(), { tipo: "ordem", enunciado: "Ordem", etapas: ["A", "B", "C"], explicacao: "x" }, quiz, ligar]);
+    const sorteadas = { termo: new Set<number>(), desembaralhe: new Set<number>() };
+    const grades = new Set<string>();
+    const ordensDoQuiz = new Set<string>();
+    for (let i = 0; i < 25; i++) {
+      const aberta = await abrirTentativa(codigo, tecnico);
+      const { apresentacao } = await apresentacaoEGabarito(aberta.tentativa_id);
+      sorteadas.desembaralhe.add(apresentacao.fases[4].sorteada);
+      sorteadas.termo.add(apresentacao.fases[5].sorteada);
+      grades.add(apresentacao.fases[1].linhas.join(""));
+      assert.notDeepEqual(apresentacao.fases[6].ordem, [0, 1, 2], "o pôr em ordem nunca começa já na ordem certa");
+      assert.notDeepEqual(apresentacao.fases[7].ordem, [0, 1, 2, 3], "o quiz nunca sai na ordem escrita");
+      assert.notDeepEqual(apresentacao.fases[3].ordem, [0, 1, 2, 3], "o selecione nunca sai na ordem escrita");
+      assert.notDeepEqual(apresentacao.fases[8].direitaOrdem, apresentacao.fases[8].esquerdaOrdem, "no ligar, os pares nunca ficam um em frente ao outro");
+      ordensDoQuiz.add(apresentacao.fases[7].ordem.join(""));
+    }
+    assert.ok(sorteadas.termo.size > 1, "o Termo sorteia palavras diferentes");
+    assert.ok(sorteadas.desembaralhe.size > 1, "o Desembaralhe sorteia palavras diferentes");
+    assert.ok(grades.size > 1, "a grade do caça-palavras muda a cada tentativa");
+    assert.ok(ordensDoQuiz.size > 1, "as opções do quiz mudam de ordem entre as tentativas");
+  });
+
+  it("o jogo não tem limite de fases: salva e publica com 12", async () => {
+    const publicado = await criarEPublicar("TRE-SEM-LIMITE", fasesSimples(12));
+    assert.ok(publicado);
+    const aberta = await abrirTentativa("TRE-SEM-LIMITE", tecnico);
+    assert.equal(aberta.total_fases, 12);
+  });
+
+  it("publicar exige as 10 palavras no Termo e no Desembaralhe", async () => {
+    const codigo = "TRE-MINIJOGOS-BANCO";
+    await novaAtividade(codigo);
+    await obterRascunho(codigo);
+    const nove = { tipo: "termo", palavras: BANCO_TERMO.slice(0, 9).map((palavra) => ({ palavra })), explicacao: "x" };
+    await salvarRascunho(codigo, EXPLICACAO, [...fasesSimples(3), nove]);
+    const recusada = await amb.req("POST", `/treinamentos/${codigo}/publicar`, { como: admin, json: { arquivo_id: await novaAssinatura() } });
+    assert.equal(recusada.status, 422);
+    assert.equal(recusada.corpo.erro.codigo, "palavras_insuficientes");
+  });
+
+  it("as regras dos minijogos novos recusam o rascunho incoerente", async () => {
+    const codigo = "TRE-MINIJOGOS-REGRAS";
+    await novaAtividade(codigo);
+    await obterRascunho(codigo);
+    const recusar = async (fase: unknown, codigoErro: string) => {
+      const r = await amb.req("PUT", `/treinamentos/${codigo}/rascunho`, { como: admin, json: { explicacao: EXPLICACAO, fases: [fase] } });
+      assert.equal(r.status, 422, codigoErro);
+      assert.equal(r.corpo.erro.codigo, codigoErro);
+    };
+    const selecione = (certas: boolean[]) => ({ tipo: "selecione", enunciado: "X", opcoes: certas.map((correta, i) => ({ texto: `Op ${i}`, correta })), explicacao: "x" });
+    await recusar(selecione([false, false, false]), "fase_selecione_certas");
+    await recusar(selecione([true, true, true]), "fase_selecione_sem_errada");
+    await recusar(selecione([...Array(9).fill(true), false]), "fase_selecione_certas");
+    const caca = (modo: string, palavras: unknown[]) => ({ tipo: "caca_palavras", enunciado: "X", modo, palavras, explicacao: "x" });
+    await recusar(caca("palavras", [{ palavra: "Inspeção" }, { palavra: "INSPECAO" }]), "fase_palavra_repetida");
+    await recusar(caca("pistas", [{ palavra: "Bloqueio", pista: "x" }, { palavra: "Epi" }]), "fase_sem_pista");
+    const espaco = await amb.req("PUT", `/treinamentos/${codigo}/rascunho`, { como: admin, json: { explicacao: EXPLICACAO, fases: [caca("palavras", [{ palavra: "Detector de gás" }, { palavra: "EPI" }])] } });
+    assert.equal(espaco.status, 422, "palavra com espaço não entra na grade");
+    await recusar({ tipo: "desembaralhe", palavras: [{ palavra: "AAA", dica: "x" }], explicacao: "x" }, "fase_palavra_invalida");
+    await recusar({ tipo: "termo", palavras: [{ palavra: "Risco" }, { palavra: "RISCO" }], explicacao: "x" }, "fase_palavra_repetida");
+    const longa = await amb.req("PUT", `/treinamentos/${codigo}/rascunho`, { como: admin, json: { explicacao: EXPLICACAO, fases: [{ tipo: "termo", palavras: [{ palavra: "Bloqueio" }], explicacao: "x" }] } });
+    assert.equal(longa.status, 422, "Termo com mais de 7 letras");
+  });
+
+  it("a migração 0033 converte o antigo Separar os itens no Selecione com os materiais do serviço", async () => {
+    const codigo = "TRE-MIGRACAO-SEPARAR";
+    const certo = await novoMaterial("Capacete (migração)");
+    const certo2 = await novoMaterial("Botina (migração)");
+    await criarEPublicar(codigo);
+    const aberta = await abrirTentativa(codigo, tecnico);
+    const [tentativa] = await amb.db.select().from(treinamentoServicoTentativa).where(eq(treinamentoServicoTentativa.id, aberta.tentativa_id));
+    const antiga = { tipo: "separar_itens", enunciado: "Toque nos itens.", material_ids: [certo.id, certo2.id], quantidade_errados: 1, explicacao: "Os dois.", ia: { origem: "x", impressao: "abc", pendencias: [], conferido: true } };
+    // Volta a versão e a tentativa ao formato antigo (a fase 1 vira "separar_itens") e roda a migração de novo.
+    const fasesAntigas = ((await apresentacaoEGabarito(aberta.tentativa_id)).fases as unknown[]).map((f, i) => (i === 1 ? antiga : f));
+    await amb.db.update(treinamentoServicoVersao).set({ fases: fasesAntigas }).where(eq(treinamentoServicoVersao.id, tentativa!.versaoId));
+    const itens = [
+      { materialId: certo2.id, descricao: certo2.descricao },
+      { materialId: randomUUID(), descricao: "Intruso" },
+      { materialId: certo.id, descricao: certo.descricao },
+    ];
+    const ap = tentativa!.apresentacao as { fases: unknown[] };
+    await amb.db
+      .update(treinamentoServicoTentativa)
+      .set({ apresentacao: { fases: ap.fases.map((a, i) => (i === 1 ? { tipo: "separar_itens", itens } : a)) } })
+      .where(eq(treinamentoServicoTentativa.id, aberta.tentativa_id));
+
+    const migracao = readFileSync(new URL("../db/migrations/0033_selecione_com_materiais.sql", import.meta.url), "utf8");
+    for (const comando of migracao.split("--> statement-breakpoint")) await amb.db.execute(sql.raw(comando));
+
+    const depois = await apresentacaoEGabarito(aberta.tentativa_id);
+    assert.deepEqual(depois.fases[1], {
+      tipo: "selecione",
+      enunciado: "Toque nos itens.",
+      opcoes: [],
+      materiais: { material_ids: [certo.id, certo2.id], quantidade_errados: 1 },
+      explicacao: "Os dois.",
+      ia: antiga.ia,
+    });
+    assert.equal(depois.fases[0].tipo, "quiz", "as outras fases não mudam");
+    assert.deepEqual(depois.apresentacao.fases[1], { tipo: "selecione", itens });
+    const certa = await responder(aberta.tentativa_id, 1, { marcadas: [0, 2] }, tecnico);
+    assert.equal(certa.certa, true, "a tentativa aberta antes da migração continua corrigindo");
+    assert.deepEqual(certa.gabarito.corretas, [0, 2]);
+  });
+
+  it("a nota: tempo por faixas, cronômetro que pausa e continua, acerto parcial ao finalizar e resposta travada", async () => {
+    const codigo = "TRE-NOTA";
+    const selecione = {
+      tipo: "selecione",
+      enunciado: "Marque os EPIs.",
+      opcoes: [
+        { texto: "Capacete", correta: true },
+        { texto: "Luva", correta: true },
+        { texto: "Chinelo", correta: false },
+        { texto: "Boné", correta: false },
+      ],
+      explicacao: "Capacete e luva.",
+    };
+    const ordem = { tipo: "ordem", enunciado: "Ordem", etapas: ["A", "B", "C"], explicacao: "x" };
+    await criarEPublicar(codigo, [fasesSimples(1)[0], selecione, ordem]);
+    const u = await amb.criarUsuario({ perfil: "tecnico" });
+    const passar = (segundos: number) => (amb.relogio.agora = new Date(amb.relogio.agora.getTime() + segundos * 1000));
+    const entrar = (id: string, fase: number) => amb.esperar(200, "POST", `/treinamentos/tentativas/${id}/fases/${fase}/entrar`, { como: u });
+    const progresso = (id: string, fase: number, resposta: unknown) => amb.esperar(204, "PUT", `/treinamentos/tentativas/${id}/fases/${fase}/progresso`, { como: u, json: { resposta } });
+
+    const aberta = await abrirTentativa(codigo, u);
+    const { apresentacao } = await apresentacaoEGabarito(aberta.tentativa_id);
+    // Fase 1 (quiz): 15 s e certa → 10 × 0,9 = 9.
+    await entrar(aberta.tentativa_id, 0);
+    passar(15);
+    const quiz = await responder(aberta.tentativa_id, 0, { escolha: apresentacao.fases[0].ordem.indexOf(0) }, u);
+    assert.deepEqual([quiz.certa, quiz.tempo_ms, quiz.multiplicador, quiz.pontos], [true, 15000, 0.9, 9]);
+    // Voltar e responder de novo, errado, não muda nada.
+    const deNovo = await responder(aberta.tentativa_id, 0, { escolha: (apresentacao.fases[0].ordem.indexOf(0) + 1) % 3 }, u);
+    assert.deepEqual([deNovo.certa, deNovo.pontos], [true, 9]);
+
+    // Fase 2 (selecione): marca 1 das 2 certas, avança sem confirmar e volta; o tempo soma as duas visitas (5 + 3 s).
+    await entrar(aberta.tentativa_id, 1);
+    passar(5);
+    await progresso(aberta.tentativa_id, 1, { marcadas: [apresentacao.fases[1].ordem.indexOf(0)] });
+    await entrar(aberta.tentativa_id, 2);
+    passar(25);
+    await entrar(aberta.tentativa_id, 1);
+    passar(3);
+    // Fase 3 (ordem) fica sem resposta nenhuma; finaliza.
+    const resultado = await concluir(aberta.tentativa_id, u);
+    assert.deepEqual(
+      resultado.fases.map((f: any) => [f.fase, f.acertos, f.possiveis, f.tempo_ms, f.pontos, f.confirmada]),
+      [
+        [0, 1, 1, 15000, 9, true],
+        [1, 1, 2, 8000, 5, false],
+        [2, 0, 1, 25000, 0, false],
+      ],
+    );
+    assert.equal(resultado.nota, Math.round((9 + 5 + 0) * 3 * 10), "a soma das fases × (3 fases × 10)");
+    assert.equal(resultado.nota_maxima, 900);
+    assert.equal(resultado.melhor_anterior, null);
+    assert.equal(resultado.fases_certas, 1);
+    assert.equal(resultado.pontos_ganhos, 6, "a gamificação segue 5 + 1 por fase certa");
+
+    // Jogar de novo sem avisar a entrada na fase não zera o tempo: os 70 s desde a abertura vão para a fase respondida.
+    const outra = await abrirTentativa(codigo, u);
+    const ap2 = (await apresentacaoEGabarito(outra.tentativa_id)).apresentacao;
+    passar(70);
+    const semEntrar = await responder(outra.tentativa_id, 0, { escolha: ap2.fases[0].ordem.indexOf(0) }, u);
+    assert.deepEqual([semEntrar.tempo_ms, semEntrar.multiplicador, semEntrar.pontos], [70000, 0.4, 4]);
+    const segunda = await concluir(outra.tentativa_id, u);
+    assert.equal(segunda.melhor_anterior, resultado.nota);
+    assert.equal(segunda.pontos_ganhos, 0, "refazer não pontua na gamificação");
+    assert.equal((await amb.req("POST", `/treinamentos/tentativas/${outra.tentativa_id}/fases/1/entrar`, { como: u })).status, 409, "a tentativa concluída não aceita mais nada");
+  });
+
+  it("a migração 0035 dá nota às tentativas de antes dela (fase certa = 10, sem tempo)", async () => {
+    const codigo = "TRE-MIGRACAO-NOTA";
+    await criarEPublicar(codigo, fasesSimples(4));
+    const u = await amb.criarUsuario({ perfil: "tecnico" });
+    await jogarTudo(codigo, u, [true, true, true, false]);
+    const [tentativa] = await amb.db.select().from(treinamentoServicoTentativa).where(eq(treinamentoServicoTentativa.usuarioId, u.id));
+    // Volta ao formato de antes: sem nota, e as respostas sem acertos nem pontos.
+    await amb.db.update(treinamentoServicoTentativa).set({ nota: null }).where(eq(treinamentoServicoTentativa.id, tentativa!.id));
+    await amb.db.update(treinamentoServicoResposta).set({ acertos: 0, possiveis: 1, pontos: 0 }).where(eq(treinamentoServicoResposta.tentativaId, tentativa!.id));
+
+    const migracao = readFileSync(new URL("../db/migrations/0035_nota_das_tentativas_antigas.sql", import.meta.url), "utf8");
+    for (const comando of migracao.split("--> statement-breakpoint")) await amb.db.execute(sql.raw(comando));
+
+    const [depois] = await amb.db.select().from(treinamentoServicoTentativa).where(eq(treinamentoServicoTentativa.id, tentativa!.id));
+    assert.equal(depois!.nota, 30 * 4 * 10, "3 fases certas × 10, × (4 fases × 10)");
+    const respostas = await amb.db.select().from(treinamentoServicoResposta).where(eq(treinamentoServicoResposta.tentativaId, tentativa!.id));
+    assert.deepEqual(respostas.map((r) => [r.acertos, r.pontos]).sort(), [
+      [0, 0],
+      [1, 10],
+      [1, 10],
+      [1, 10],
+    ]);
   });
 
   it("reportar problema: registra com a fase e sem exigir perfil de admin", async () => {
@@ -442,6 +766,71 @@ describe("Treinamentos de serviço", () => {
     const [c] = await amb.db.select().from(conquista).where(eq(conquista.titulo, "Nota máxima"));
     const obtida = await amb.db.select().from(conquistaUsuario).where(and(eq(conquistaUsuario.usuarioId, u.id), eq(conquistaUsuario.conquistaId, c!.id)));
     assert.equal(obtida.length, 1);
+  });
+
+  it("ranking do treinamento: a melhor nota de cada um, anônimos mascarados, pendente entra, recusado e admin não", async () => {
+    const codigo = "TRE-RANKING";
+    await criarEPublicar(codigo, fasesSimples(4));
+    const ana = await amb.criarUsuario({ perfil: "tecnico", nome: "Ana" });
+    const bia = await amb.criarUsuario({ perfil: "tecnico", nome: "Bia" });
+    const caio = await amb.criarUsuario({ perfil: "tecnico", nome: "Caio" });
+    const zeca = await amb.criarUsuario({ perfil: "tecnico", nome: "Zeca" });
+    const rui = await amb.criarUsuario({ perfil: "tecnico", nome: "Rui" });
+    await amb.db.update(usuario).set({ rankingAnonimo: true }).where(eq(usuario.id, caio.id));
+    await amb.db.update(usuario).set({ liberacao: "pendente" }).where(eq(usuario.id, zeca.id));
+
+    // Ninguém concluiu ainda.
+    const vazio = await amb.esperar(200, "GET", `/treinamentos/${codigo}/ranking`, { como: ana });
+    assert.equal(vazio.participantes, 0);
+    assert.deepEqual(vazio.linhas, []);
+    assert.equal(vazio.minha, null);
+
+    // Ana faz 2 de 4 e depois gabarita: no ranking vale a melhor nota (a gamificação, só a primeira conclusão).
+    await jogarTudo(codigo, ana, [true, true, false, false]);
+    await jogarTudo(codigo, ana, true);
+    await jogarTudo(codigo, bia, true);
+    await jogarTudo(codigo, caio, [true, true, true, false]);
+    await jogarTudo(codigo, zeca, true);
+    await jogarTudo(codigo, rui, true);
+    await amb.db.update(usuario).set({ liberacao: "recusado" }).where(eq(usuario.id, rui.id));
+    // Abrir sem concluir não entra no ranking.
+    await abrirTentativa(codigo, tecnico);
+
+    const visto = await amb.esperar(200, "GET", `/treinamentos/${codigo}/ranking`, { como: ana });
+    assert.equal(visto.participantes, 4, "Rui (recusado) e quem só abriu ficam de fora");
+    assert.deepEqual(
+      visto.linhas.map((l: any) => [l.posicao, l.nome, l.nota, l.fases_certas, l.aproveitamento]),
+      [
+        // 4 fases × 10 pontos = 40, × (4 × 10) = 1.600 (a nota máxima); no empate, o relógio de teste parado deixa a ordem pelo nome.
+        [1, "Ana", 1600, 4, 100],
+        [2, "Bia", 1600, 4, 100],
+        [3, "Zeca", 1600, 4, 100],
+        [4, "Participante anônimo", 1200, 3, 75],
+      ],
+    );
+    assert.equal(visto.linhas[0].nota_maxima, 1600);
+    assert.equal(visto.linhas[3].usuario_id, null, "o anônimo não mostra o id para os outros");
+    assert.equal(visto.minha.posicao, 1);
+    assert.equal(visto.minha.voce, true);
+    assert.equal(visto.linhas.filter((l: any) => l.voce).length, 1);
+
+    // O próprio anônimo se vê pelo nome; o limite corta as linhas, mas a própria linha vem sempre.
+    const doCaio = await amb.esperar(200, "GET", `/treinamentos/${codigo}/ranking?limite=2`, { como: caio });
+    assert.equal(doCaio.linhas.length, 2);
+    assert.equal(doCaio.participantes, 4);
+    assert.equal(doCaio.minha.nome, "Caio");
+    assert.equal(doCaio.minha.posicao, 4);
+
+    // Quem aguarda liberação vê o ranking; o admin vê os nomes e não aparece.
+    const doZeca = await amb.esperar(200, "GET", `/treinamentos/${codigo}/ranking`, { como: zeca });
+    assert.equal(doZeca.minha.posicao, 3);
+    const doAdmin = await amb.esperar(200, "GET", `/treinamentos/${codigo}/ranking`, { como: admin });
+    assert.equal(doAdmin.minha, null);
+    assert.equal(doAdmin.linhas[3].nome, "Caio");
+
+    assert.equal((await amb.req("GET", `/treinamentos/${codigo}/ranking?limite=0`, { como: ana })).status, 422);
+    await novaAtividade("TRE-RANKING-SEM-PUBLICAR");
+    assert.equal((await amb.req("GET", "/treinamentos/TRE-RANKING-SEM-PUBLICAR/ranking", { como: ana })).status, 404);
   });
 
   it("uma tabela nova de treinamento (sem versão publicada) devolve 404 ao abrir ou jogar", async () => {

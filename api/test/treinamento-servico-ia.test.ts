@@ -198,10 +198,12 @@ describe("Treinamentos de serviço — rascunho pela IA", () => {
     assert.equal(r.explicacao.length, 2);
     assert.deepEqual(
       r.fases.map((f: any) => f.tipo),
-      ["quiz", "decisao", "separar_itens", "ordem"],
+      ["quiz", "decisao", "selecione", "ordem"],
+      "o antigo separar_itens vira o Selecione com os materiais do serviço",
     );
     assert.equal(r.fases[0].correta, 0);
-    assert.deepEqual(r.fases[2].material_ids, [materiais.luva, materiais.chave]);
+    assert.deepEqual(r.fases[2].materiais, { material_ids: [materiais.luva, materiais.chave], quantidade_errados: 2 });
+    assert.deepEqual(r.fases[2].opcoes, []);
     assert.equal(r.fases[3].ia.origem, ORDEM_COM_ORIGEM_INVENTADA.origem);
     assert.deepEqual(
       r.pendencias.map((p: any) => `${p.parte}${p.indice}:${p.codigo}`),
@@ -363,5 +365,45 @@ describe("Treinamentos de serviço — rascunho pela IA", () => {
       assert.equal((await amb.req("POST", `/treinamentos/${codigo}/rascunho/${acao}`, { json: { texto: TEXTO } })).status, 401);
     }
     assert.equal(amb.ia.respostas.length, 0);
+  });
+
+  it("gera seguindo o plano do jogo: o pedido leva o plano, fase de outro tipo vira pendência e fase a menos vai no resumo", async () => {
+    const codigo = "IA-PLANO";
+    await novoServico(codigo);
+    const decisaoCerta = { ...DECISAO_SEM_CERTA, opcoes: DECISAO_SEM_CERTA.opcoes.map((o, i) => ({ ...o, certa: i === 1 })) };
+    amb.ia.respostas.push([linha({ item: "plano", passos: 1, fases: 2 }), linha(PASSO_LIMPO), linha(QUIZ_LIMPO), linha(decisaoCerta), linha({ item: "resumo", texto: "Montei 2 fases." })].join("\n"));
+    const { final, erro } = await chamarIA(codigo, "gerar", { texto: TEXTO, plano: ["quiz", "quiz", null] });
+    assert.equal(erro, undefined);
+
+    const tudo = amb.ia.chamadas.at(-1)!.mensagens.map((m) => m.texto).join("\n");
+    assert.match(tudo, /monte exatamente 3 fases, nesta ordem e destes tipos: 1\. quiz; 2\. quiz; 3\. à sua escolha/);
+
+    const r = final.rascunho;
+    assert.deepEqual(
+      r.fases.map((f: any) => f.tipo),
+      ["quiz", "decisao"],
+    );
+    assert.deepEqual(
+      r.pendencias.map((p: any) => `${p.parte}${p.indice}:${p.codigo}`),
+      ["fase1:fora_do_plano"],
+    );
+    assert.match(r.pendencias[0].mensagem, /pedia Quiz.*montou Decisão/);
+    assert.match(final.resumo, /O plano pedia 3 fases e saíram 2/);
+  });
+
+  it("o plano do jogo é conferido antes de chamar a IA", async () => {
+    const codigo = "IA-PLANO-RUIM";
+    await amb.db.insert(atividade).values({ codigo, descricao: "Sem materiais" });
+    const chamadas = amb.ia.chamadas.length;
+    const curto = await amb.req("POST", `/treinamentos/${codigo}/rascunho/gerar`, { como: admin, json: { texto: TEXTO, plano: ["quiz", "quiz"] } });
+    assert.equal(curto.status, 422, "menos de 3 fases");
+    const tipoInventado = await amb.req("POST", `/treinamentos/${codigo}/rascunho/gerar`, { como: admin, json: { texto: TEXTO, plano: ["quiz", "quiz", "bingo"] } });
+    assert.equal(tipoInventado.status, 422);
+    const semMateriais = await amb.req("POST", `/treinamentos/${codigo}/rascunho/gerar`, { como: admin, json: { texto: TEXTO, plano: ["quiz", "selecione_materiais", "termo"] } });
+    assert.equal(semMateriais.status, 422);
+    assert.equal(semMateriais.corpo.erro.codigo, "plano_sem_materiais");
+    const tipoAntigo = await amb.req("POST", `/treinamentos/${codigo}/rascunho/gerar`, { como: admin, json: { texto: TEXTO, plano: ["quiz", "separar_itens", "termo"] } });
+    assert.equal(tipoAntigo.status, 422, "separar_itens não existe mais");
+    assert.equal(amb.ia.chamadas.length, chamadas, "nada foi à IA");
   });
 });
