@@ -122,6 +122,7 @@ export function Vitoria() {
                     <View style={estilos.corpo}>
                       <View style={[estilos.bolha, dela ? estilos.bolhaDela : estilos.bolhaMinha]}>
                         {pensando ? <IndicadorPensando /> : <Text style={[estilos.bolhaTexto, !dela && { color: cores.branco }]}>{m.texto}</Text>}
+                        {m.fonte === "geral" && !chegando ? <Text style={estilos.fonte}>Informação geral, não é regra da empresa</Text> : null}
                         {m.acao && !chegando ? (
                           <Pressable accessibilityRole="button" onPress={() => irPara(m)} style={estilos.acao}>
                             <Text style={estilos.acaoTexto}>{m.acao.tipo === "destacar" ? "Mostrar na tela" : "Me leve lá"}</Text>
@@ -194,6 +195,7 @@ const estilos = StyleSheet.create({
   bolhaDela: { backgroundColor: cores.superficie, borderWidth: 1, borderColor: cores.linha, borderBottomLeftRadius: 4 },
   bolhaMinha: { backgroundColor: cores.marca, borderBottomRightRadius: 4 },
   bolhaTexto: { fontSize: 15, lineHeight: 21, color: cores.tinta },
+  fonte: { fontSize: 12, lineHeight: 16, fontStyle: "italic", color: cores.tinta4 },
   acao: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 36, alignSelf: "flex-start" },
   acaoTexto: { fontSize: 14, fontWeight: "700", color: cores.marca },
   erro: { fontSize: 13, color: cores.perigo },

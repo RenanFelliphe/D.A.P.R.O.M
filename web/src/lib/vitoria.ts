@@ -24,6 +24,8 @@ export interface MensagemVitoria {
   /** Só nas respostas da Vitória: a `api` devolve `padrao`, `alerta` ou `ops`, e a web transforma em figurinha (`reacaoDaExpressao`). */
   expressao?: ExpressaoVitoria;
   acao?: AcaoResolvida | null;
+  /** `geral` quando parte da resposta vem do conhecimento geral da IA e não do manual: a bolha ganha um selo avisando. */
+  fonte?: "manual" | "geral";
   /** A reação da Vitória a esta mensagem, como uma figurinha logo abaixo do balão (`shared/vitoria/reacoes.ts`). */
   figurinha?: FigurinhaDaMensagem;
   /** Saudação, agradecimento ou pedido para imitar uma emoção, respondidos pela web sem a `api`: não vão no histórico nem contam no limite da conversa. */

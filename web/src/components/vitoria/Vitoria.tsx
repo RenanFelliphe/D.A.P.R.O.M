@@ -40,6 +40,7 @@ const iniciarPausa = (letras = 0) =>
 interface RespostaFinalDaVitoria {
   acao: AcaoResolvida | null;
   expressao?: ExpressaoVitoria;
+  fonte?: "manual" | "geral";
   motivo?: "limite_conversa" | "limite_conta" | "limite_global" | "sem_ia";
   sugestoes?: SugestaoFixa[];
 }
@@ -199,7 +200,7 @@ export function Vitoria() {
           const final: RespostaFinalDaVitoria = JSON.parse(evento.data);
           const reacaoDaResposta = reacaoDaExpressao(final.expressao);
           const figurinha = reacaoDaResposta ? figurinhaDe(reacaoDaResposta, false) : undefined;
-          setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, expressao: final.expressao ?? "padrao", acao: final.acao, figurinha } : m)));
+          setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, expressao: final.expressao ?? "padrao", acao: final.acao, fonte: final.fonte, figurinha } : m)));
         }
       }
     } catch {
@@ -314,6 +315,7 @@ export function Vitoria() {
                           {chegando && <span className="vt-cursor" aria-hidden="true" />}
                         </p>
                       )}
+                      {m.fonte === "geral" && !chegando && <span className="vt-fonte">Informação geral, não é regra da empresa</span>}
                       {m.acao && !chegando && (
                         <button type="button" className="vt-acao" onClick={() => irPara(m.acao!)}>
                           {m.acao.tipo === "destacar" ? "Mostrar na tela" : "Me leve lá"}

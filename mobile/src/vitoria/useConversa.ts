@@ -142,7 +142,7 @@ export function useConversa({ aberto, tela }: { aberto: boolean; tela: TelaAtual
         } else if (evento.event === "final") {
           const final: RespostaFinalDaVitoria = JSON.parse(evento.data);
           const reacao = reacaoDaExpressao(final.expressao);
-          setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, expressao: final.expressao ?? "padrao", acao: final.acao, figurinha: reacao ? figurinhaDe(reacao, false) : undefined } : m)));
+          setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, expressao: final.expressao ?? "padrao", acao: final.acao, fonte: final.fonte, figurinha: reacao ? figurinhaDe(reacao, false) : undefined } : m)));
         }
       }
     } catch {

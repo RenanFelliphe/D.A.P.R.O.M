@@ -20,6 +20,8 @@ export interface MensagemVitoria {
   /** Só nas respostas da Vitória: a `api` devolve `padrao`, `alerta` ou `ops`, e o app transforma em figurinha (`reacaoDaExpressao`). */
   expressao?: string;
   acao?: AcaoResolvida | null;
+  /** `geral` quando parte da resposta vem do conhecimento geral da IA e não do manual: a bolha ganha um selo avisando. */
+  fonte?: "manual" | "geral";
   figurinha?: FigurinhaDaMensagem;
   /** Saudação, agradecimento ou pedido para imitar uma emoção, respondidos pelo app sem a `api`: não vão no histórico nem contam no limite. */
   local?: boolean;
@@ -29,6 +31,7 @@ export interface MensagemVitoria {
 export interface RespostaFinalDaVitoria {
   acao: AcaoResolvida | null;
   expressao?: string;
+  fonte?: "manual" | "geral";
   motivo?: "limite_conversa" | "limite_conta" | "limite_global" | "sem_ia";
   sugestoes?: SugestaoFixa[];
 }
