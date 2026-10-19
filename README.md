@@ -80,7 +80,7 @@ A arquitetura abaixo é a direção registrada na especificação; **não está 
 | Persistência e serviços gerenciados | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso mediado pela API |
 | Implantação | Coolify e Docker | Deploy das aplicações do monorepo |
 
-O monorepo tem as pastas `api`, `web` e `mobile`; `api` e `web` já têm Dockerfile e sobem juntos pelo `docker-compose.yml`, e o do `mobile` (que gera o APK) virá com o app. A leitura do SAP e o registro de funcionários são simulados na própria `api`, com dados fictícios, para mostrar o fluxo final funcionando dentro da empresa. A planilha e o PDF da OS continuam sendo alternativas de leitura.
+O monorepo tem as pastas `api`, `web` e `mobile`; `api` e `web` já têm Dockerfile e sobem juntos pelo `docker-compose.yml`, e o `mobile` tem o Dockerfile que **gera o APK** (não é publicado; ver [mobile/README.md](./mobile/README.md#gerar-o-apk)). A leitura do SAP e o registro de funcionários são simulados na própria `api`, com dados fictícios, para mostrar o fluxo final funcionando dentro da empresa. A planilha e o PDF da OS continuam sendo alternativas de leitura.
 
 A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramento deve poder ser exportado para baixa manual. MFA/SSO corporativo e associação de dispositivos também permanecem como decisões a validar antes de uma implantação real.
 
@@ -104,7 +104,7 @@ cp .env.example .env
 docker compose up --build   # api em http://localhost:3333 (GET /saude), web em http://localhost:3000
 ```
 
-A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta, e os simuladores do SAP e do registro de funcionários já vêm ligados (as telas deles ficam em `/simulador`, só para o admin). Detalhes e a lista de rotas em [api/README.md](./api/README.md). O `mobile` não entra no compose: é gerado como APK.
+A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta, e os simuladores do SAP e do registro de funcionários já vêm ligados (as telas deles ficam em `/simulador`, só para o admin). Detalhes e a lista de rotas em [api/README.md](./api/README.md). O `mobile` não entra no compose: o APK sai do `mobile/Dockerfile` (`pnpm apk` na pasta `mobile`, com o Docker), ver [mobile/README.md](./mobile/README.md#gerar-o-apk).
 
 ## Estrutura do repositório
 
@@ -116,7 +116,7 @@ A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta
 ├── docker-compose.yml          # Sobe api e web no desenvolvimento
 ├── .env.example                # Variáveis da api para o compose
 ├── web/                        # Telas do painel e do técnico em Next.js + React + TypeScript, com Dockerfile
-├── mobile/                     # Aplicativo de campo (ainda não iniciado)
+├── mobile/                     # Aplicativo de campo (Expo, Android), com o Dockerfile que gera o APK
 └── base/
     ├── .design/
     │   ├── especificacao.md    # Escopo, regras, contratos e decisões técnicas

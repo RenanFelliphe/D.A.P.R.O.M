@@ -103,7 +103,7 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale 
 
 | Área | Situação |
 |---|---|
-| Plataforma | **Pronta.** Monorepo, Dockerfiles da `api` e da `web`, `docker-compose`, migrações aplicadas na subida, 6 buckets privados, tarefas em segundo plano com novas tentativas e modo local sem Supabase (`pnpm dev:local`) |
+| Plataforma | **Pronta.** Monorepo, Dockerfiles da `api` e da `web` (e o do `mobile`, que gera o APK), `docker-compose`, migrações aplicadas na subida, 6 buckets privados, tarefas em segundo plano com novas tentativas e modo local sem Supabase (`pnpm dev:local`) |
 | Acesso e usuários | **Pronta.** Login pelo e-mail institucional, senha provisória trocada no primeiro acesso, redefinição pelo admin, cadastro pelo supervisor com liberação ou recusa pelo admin, assinatura no perfil e trilha de auditoria que só cresce |
 | Campo de treino | **Pronto.** API fictícia em memória por usuário, tutorial Direcionado (18 passos) ou modo Livre; a `api` real só guarda o estado |
 | Entrada de OS | **Pronta com o simulador** (agora com tabela no banco e tela própria), com a planilha e com o PDF que tem texto. O PDF digitalizado de OS já concluídas no papel entra pela Importação (feito em 19/10/2026: OCR, IA no manuscrito e conferência); a câmera segue só protótipo |
@@ -118,7 +118,7 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale 
 | Ciclo das preventivas | **Pronta.** Contagem até o próximo ciclo por plano e item, com alertas de ciclo próximo e vencido; não cria OS |
 | Gamificação | **Pronta.** Pontos por tarefa, temporadas trimestrais, ranking, patentes de pessoa e de equipe, conquistas e anonimato |
 | Eventos e sincronização | **Pronta na `api`.** Envio idempotente, snapshot da equipe (`POST /sync/pull`) e tolerância à fila offline. Hoje só a web usa, e só online |
-| App Android e modo offline | **Não iniciados.** A pasta [`mobile/`](mobile/) só tem o README |
+| App Android e modo offline | **Em andamento.** As pendências 1 a 8 estão prontas em 19/10/2026 (esqueleto Expo, login, lista e detalhe das OS, APR e execução, perfil com a assinatura, avisos, ausências, gamificação e Vitória, online; a cópia da equipe e a fila em SQLite, com a APR, a execução e o encerramento sem sinal; e o login sem sinal, o aviso de pendentes e o Sair recusado com fila; o envio da fila com o app fechado, a cada 15 minutos no mínimo; o Dockerfile que gera o APK assinado, `pnpm apk`; a conquista de sincronização offline, só na `api`; [README do mobile](mobile/README.md)); falta ver tudo num aparelho. Plano em [mobile.md](funcionalidades/mobile.md) |
 | Treinamentos de serviço | **Prontos** em 16/10/2026 ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)); o rascunho pela IA entrou em 17/10/2026 ([vitoria.md](funcionalidades/vitoria.md), seção 3.9) |
 | Vitória (assistente) e módulo de IA | **Prontos** em 16/10/2026, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)). Provedor por `IA_PROVEDOR` (Claude ou Gemini); o Gemini gratuito, da demonstração, entrou em 17/10/2026 e teve a primeira chamada real conferida no mesmo dia. A bateria de 53 perguntas (`pnpm vitoria:bateria`) foi montada no mesmo dia e falta rodar inteira |
 
@@ -133,7 +133,7 @@ A seção "Sucesso" pede o caminho ler OS → APR → executar → PDF "no app A
 | Parte do critério | Situação |
 |---|---|
 | No navegador, online | **Atende.** Funciona de ponta a ponta, e a OS encerrada aparece no painel na hora |
-| No app Android, online | **Não atende.** O app não existe. A web abre no navegador do celular, mas não substitui o app |
+| No app Android, online | **Atende no código** (19/10/2026): ler OS → APR → executar → PDF roda no app. Falta ver num aparelho ou emulador |
 | Num Android em modo avião | **Não atende.** Nenhum cliente tem fila local nem login sem sinal |
 
 ### 2.2 Lista "Funcionalidades essenciais" do DesignDoc

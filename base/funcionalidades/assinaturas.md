@@ -2,7 +2,7 @@
 
 > A assinatura deixa de ser um item opcional do perfil e passa a ser a primeira coisa que a pessoa faz depois de liberada. As ações importantes do sistema passam a ser validadas por ela, em vez de um simples botão de confirmar.
 >
-> **Situação:** implementado em 17/10/2026 na `api` e na `web`. O app `mobile` ainda não existe e vai herdar as mesmas regras (o bloqueio e as cópias da assinatura são da `api`).
+> **Situação:** implementado em 17/10/2026 na `api` e na `web`. O app `mobile` herda as mesmas regras (o bloqueio e as cópias da assinatura são da `api`): desde 19/10/2026 a assinatura é desenhada com o dedo no cadastro do primeiro acesso, no perfil e nas janelas de ação (etapa 7 de [mobile.md](../../funcionalidades/mobile.md)).
 >
 > Fontes: o pedido de 17/10/2026; o que já existia em [ausencia.md](ausencia.md) (atos assinados com a assinatura do perfil); o código em [`assinatura.ts`](../api/src/dominio/assinatura.ts), [`autenticacao.ts`](../api/src/http/autenticacao.ts) e [`JanelaDeAssinatura.tsx`](../web/src/components/ausencia/JanelaDeAssinatura.tsx).
 

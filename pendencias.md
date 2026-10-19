@@ -11,8 +11,8 @@ A seção "Sucesso" da especificação pede o caminho **ler OS → APR → execu
 | Onde | Situação |
 |---|---|
 | No navegador, online | **Atende** |
-| No app Android, online | **Não atende:** o app não existe |
-| Num Android em modo avião, chegando ao painel quando o sinal volta | **Não atende:** não há fila local nem login sem sinal |
+| No app Android, online | **Atende no código** (pendências 1 a 3, 19/10/2026): o app lê as OS, faz a APR, executa, encerra e abre o PDF, e tem a assinatura, o perfil, os avisos, a gamificação e a Vitória. **Falta ver num aparelho ou emulador** |
+| Num Android em modo avião, chegando ao painel quando o sinal volta | **Atende em parte no código** (pendências 4 e 5, 19/10/2026): o app abre e entra sem sinal (7 dias desde a última confirmação do servidor), e a APR, a execução e o encerramento sem sinal ficam numa fila em SQLite, com o aviso "Sem conexão — N registros pendentes", e sobem quando o sinal volta. **Falta** ver num aparelho: o envio com o app fechado (pendência 6) está no código, a cada 15 minutos no mínimo, e o APK que o Dockerfile gera (pendência 7) ainda não foi montado nem instalado |
 
 O MVP está completo quando as três linhas atenderem e os itens 🔴 da tabela abaixo estiverem feitos.
 
@@ -23,15 +23,15 @@ O MVP está completo quando as três linhas atenderem e os itens 🔴 da tabela 
 
 | # | Pendência | Tipo | Prioridade | Depende de | Situação |
 |---|---|---|---|---|---|
-| 0 | Commitar as correções da Reunião 3 | código | 🔴 | — | [ ] |
-| 1 | App Android: esqueleto, login e lista/detalhe das OS | código | 🔴 | 0 | [ ] |
-| 2 | App Android: APR e execução online | código | 🔴 | 1 | [ ] |
-| 3 | App Android: perfil, assinatura, avisos e gamificação | código | 🔴 | 1 | [ ] |
-| 4 | Modo offline: cópia da equipe e fila em SQLite | código | 🔴 | 2 | [ ] |
-| 5 | Modo offline: login sem sinal e aviso de pendentes | código | 🔴 | 4 | [ ] |
-| 6 | Modo offline: envio em segundo plano | código | 🔴 | 4 | [ ] |
-| 7 | Dockerfile que gera o APK | código | 🔴 | 1 | [ ] |
-| 8 | Conquista de sincronização offline (gamificação) | código | 🟡 | 4 | [ ] |
+| 0 | Commitar as correções da Reunião 3 | código | 🔴 | — | [x] 19/10/2026 |
+| 1 | App Android: esqueleto, login e lista/detalhe das OS | código | 🔴 | 0 | [x] 19/10/2026 |
+| 2 | App Android: APR e execução online | código | 🔴 | 1 | [x] 19/10/2026 |
+| 3 | App Android: perfil, assinatura, avisos e gamificação | código | 🔴 | 1 | [x] 19/10/2026 |
+| 4 | Modo offline: cópia da equipe e fila em SQLite | código | 🔴 | 2 | [x] 19/10/2026 |
+| 5 | Modo offline: login sem sinal e aviso de pendentes | código | 🔴 | 4 | [x] 19/10/2026 |
+| 6 | Modo offline: envio em segundo plano | código | 🔴 | 4 | [x] 19/10/2026 |
+| 7 | Dockerfile que gera o APK | código | 🔴 | 1 | [x] 19/10/2026 |
+| 8 | Conquista de sincronização offline (gamificação) | código | 🟡 | 4 | [x] 19/10/2026 |
 | 9 | Digitalização: pergunta antes da importação | código | 🟢 | — | [x] 19/10/2026 |
 | 10 | Digitalização: PDF digitalizado em lote (OCR + IA) | código | 🟢 | 9 | [x] 19/10/2026 |
 | 11 | Digitalização: foto de folhas avulsas | código | 🟢 | 10 | [ ] |
@@ -56,7 +56,7 @@ O MVP está completo quando as três linhas atenderem e os itens 🔴 da tabela 
 
 ### 0. Commitar as correções da Reunião 3
 
-- **Situação:** 177 arquivos alterados ou novos estão fora do git, entre eles a migração `0032_execucao_em_dois_passos_e_assinaturas` (já aplicada no banco de desenvolvimento, que é o Supabase real), a assinatura da APR por participante, o encerramento em dois passos, os motivos de parada, a localização e o relatório da execução.
+- **Feito.** As correções da Reunião 3 foram commitadas por assunto (`api`, `web` e documentação), com a migração `0032_execucao_em_dois_passos_e_assinaturas`; o que sobrava no disco (a digitalização por PDF, itens 9 e 10, e a migração `0036`) foi commitado em 19/10/2026, com os testes e o `tsc` da `api` e da `web` rodados antes.
 - **Por que primeiro:** o app é construído sobre esse contrato. Perder ou misturar esse trabalho com o do app custa caro, e a migração já aplicada não pode ser regerada.
 - **Como:** commits separados por assunto (`api`, `web`, documentação), com os testes da `api` rodados antes.
 
@@ -75,6 +75,7 @@ A referência das telas é a `web` em `/app/*`. As regras que o app herda da Reu
 - Projeto Expo em `mobile/`, Android, TypeScript.
 - Login pelo e-mail institucional, troca da senha provisória e a assinatura obrigatória depois da liberação (`403 assinatura_pendente`).
 - Lista das OS da equipe (`GET /os`) e detalhe (`GET /os/{id}`), com a reserva ("Reservada para você"), a devolução e os materiais recomendados.
+- **Feito em 19/10/2026** (etapas 1 a 6, 8 e 9 do plano; o registro está na seção 6 de [funcionalidades/mobile.md](funcionalidades/mobile.md) e o uso, no [README do mobile](mobile/README.md)). Fica provisório: os botões de APR e de execução levam a uma tela "em breve", e a assinatura é cadastrada pela web (a etapa 7 é da pendência 3). **Falta ver as telas rodando num aparelho ou emulador** (`pnpm android` no `mobile`): a validação foi por código (`tsc`, ESLint, 41 testes, o pacote do Metro, o manifesto e a `api` local em memória), sem aparelho.
 
 ### 2. APR e execução online
 
@@ -83,6 +84,7 @@ A referência das telas é a `web` em `/app/*`. As regras que o app herda da Reu
 - **Execução:** iniciar, pausar e suspender com motivo, interromper por risco (motivo, foto e assinatura), cancelar por engano, encerrar em dois passos (`execucao_encerrada` e, depois, `encerramento_assinado` com o checklist de inspeção).
 - **Localização** nos cinco momentos, sem bloquear o serviço quando não houver GPS.
 - **Câmera nativa**, com a foto comprimida a ~1600 px e qualidade 70% (questão 16), e envio por `PUT /arquivos/{id}` antes do evento.
+- **Feito em 19/10/2026** (etapas 10 a 15 do plano; o registro está na seção 6 de [funcionalidades/mobile.md](funcionalidades/mobile.md) e o uso, no [README do mobile](mobile/README.md)). A APR (modelo, participantes e riscos; checklist; validação; evidência dos reprovados; assinatura e recusa de cada participante) e a execução (iniciar, pausar, suspender, interromper, cancelar por engano, a esquecida de outro dia e o encerramento em dois passos com o checklist de inspeção) rodam online, com a câmera e a galeria, o PDF e a localização. As regras puras da execução foram para `shared/api/` (a web reexporta). **Validado sem aparelho:** `tsc` e ESLint do `mobile` e da `web`, 79 testes, o pacote do Metro, o manifesto, `expo-doctor` e `pnpm conferir:campo` contra a `api` local (o fluxo inteiro, com duas contas). **Falta ver as telas rodando num aparelho ou emulador** (layout, teclado, câmera, seletor de PDF e GPS) e, para a assinatura desenhada no aparelho, a pendência 3.
 
 ### 3. Perfil, assinatura, avisos e gamificação
 
@@ -92,6 +94,7 @@ A referência das telas é a `web` em `/app/*`. As regras que o app herda da Reu
 - A Vitória no app.
 - O indicador "Online", que saiu da web e ficou para o app.
 - Quais telas de gestão entram no app fica para depois da demo (questão 55).
+- **Feito em 19/10/2026** (etapas 7, 16 e 17 do plano; o registro está na seção 6 de [funcionalidades/mobile.md](funcionalidades/mobile.md) e o uso, no [README do mobile](mobile/README.md)). A assinatura desenhada com o dedo (cadastro no primeiro acesso, "Refazer" no perfil e no lugar do aviso "cadastre pela web" das janelas de ação); o perfil com o histórico das OS encerradas, as preferências de e-mail, o anonimato no ranking e a troca de senha; os avisos (o sino), com o contador na aba; as ausências (pedir, acompanhar, confirmar, fim antecipado e retorno); a aba Pontos (pontuação com extrato, ranking de pessoas e de equipes, conquistas) com a janela "Parabéns!"; e a Vitória (botão flutuante, sugestões fixas, respostas locais, mensagem à `api`, figurinhas e "Me leve lá"). O aviso, o período da ausência e o histórico foram para `shared/api/` (a web importa de lá). **Validado sem aparelho:** `tsc` e ESLint do `mobile` e da `web`, 141 testes, o pacote do Metro, `expo-doctor` e `pnpm conferir:perfil` contra a `api` local. **Falta ver as telas rodando num aparelho ou emulador** (o desenho com o dedo e o PNG que ele gera, o WebP animado das figurinhas, o teclado do chat).
 
 ### 4. Modo offline: cópia da equipe e fila
 
@@ -100,25 +103,30 @@ A referência das telas é a `web` em `/app/*`. As regras que o app herda da Reu
 - Sincronização automática ao abrir o app e ao voltar o sinal, e o botão "Sincronizar".
 - O snapshot nunca apaga do aparelho uma OS com evento local pendente.
 - APR offline com `assinatura_presencial: true` no aparelho do responsável.
+- **Feito em 19/10/2026** (parte das etapas 18 e 19 do plano; o registro está na seção 6 de [funcionalidades/mobile.md](funcionalidades/mobile.md) e o uso, no [README do mobile](mobile/README.md)). O banco SQLite do aparelho (`expo-sqlite`) guarda a cópia da equipe (`POST /sync/pull`) e a fila de eventos e de arquivos; **toda escrita de campo grava na fila antes de enviar** (com sinal, o envio é em seguida e a tela se comporta como antes; sem sinal, o registro fica guardado e a tela segue). As telas leem da cópia local quando não há sinal ou quando ainda há registro esperando, e uma projeção aplica as ações pendentes sobre a cópia (a OS vai a "em execução", a APR aparece "aguardando validação"…). A APR sem sinal é registrada como concluída, assinada pelos presentes no aparelho do responsável. A fila sobe em ordem (arquivos primeiro), o confirmado sai, o adiado espera sem travar as outras OS, o recusado fica guardado na lista "Registros recusados", e o snapshot nunca apaga uma OS com evento pendente. A sincronização roda ao abrir o app, quando o sinal volta, ao voltar para a frente, de minuto em minuto enquanto houver pendência e no botão "Sincronizar" do perfil. **Na `api`:** a decisão D1 (a execução feita sem sinal com uma APR que o servidor bloqueou é aplicada e vira alerta ao supervisor, em vez de se perder) e a equipe no snapshot. **Validado sem aparelho:** `tsc` e ESLint do `mobile` e da `web`, `tsc` da `api`, 191 testes do `mobile` (50 novos, num SQLite de verdade), os testes da `api`, `expo-doctor` e o pacote do Metro, e `pnpm conferir:offline` contra a `api` local (a leitura local igual à da `api`; a APR, a execução e o encerramento sem sinal; a subida ao voltar o sinal; o evento adiado; a APR bloqueada ao chegar; o recusado). **Falta ver num aparelho ou emulador** (o banco abrindo, a câmera sem sinal, o NetInfo mudando de estado no modo avião). **Não entrou (pendências 5 e 6):** abrir o app e entrar sem sinal, o "Sem conexão — N registros pendentes" no cabeçalho, o Sair recusado com fila e o envio com o app fechado.
 
 ### 5. Login sem sinal e aviso de pendentes
 
 - Hash salgado da senha guardado no aparelho, válido por até 7 dias desde o último login online.
 - "Sem conexão — N registros pendentes" e "Sincronizado hh:mm".
 - Logout recusado enquanto houver fila.
+- **Feito em 19/10/2026** (parte das etapas 18 e 19 do plano; o registro está na seção 6 de [funcionalidades/mobile.md](funcionalidades/mobile.md) e o uso, no [README do mobile](mobile/README.md)). **Login com sinal:** o app guarda no `expo-secure-store` o hash salgado da senha (PBKDF2-SHA256, 30 mil iterações, `@noble/hashes` em JavaScript puro, sem módulo nativo; nunca a senha) e, no SQLite, o último `GET /me`. **Sem sinal:** com a sessão aberta, o app abre pelo último `GET /me` guardado; sem sessão (depois do Sair), o login confere a senha com o hash e abre em "modo local" (sem token, pela cópia da equipe); quando o sinal volta, o app refaz o login sozinho com a senha digitada (só na memória) e a fila sobe. **A janela de 7 dias conta desde a última confirmação da conta pelo servidor** (um login ou um `GET /me` com sinal), não só desde o login: quem usa o app todo dia não deve perder o acesso sem sinal no 8º dia, e o limite existe para cercar o tempo que um desativado ainda abre o app. Passado isso, "Conecte-se para entrar". A senha trocada no app vale na hora; a trocada na web, só depois do próximo login com sinal; a conta que o servidor recusa (desativada, senha redefinida) é esquecida. **Aviso e Sair:** a faixa "Sem conexão — N registros pendentes" no alto de toda tela de campo e o "Sincronizado hh:mm" no indicador do cabeçalho; o Sair é recusado com registro na fila (a janela oferece "Sincronizar agora"). **Validado sem aparelho:** `tsc` e ESLint do `mobile`, 227 testes (36 novos), `expo-doctor` (20/20), o pacote Android do Metro (resolve o `@noble/hashes`) e `pnpm conferir:sem-sinal` contra a `api` local. **Falta ver num aparelho** (o tempo da derivação no Hermes não foi medido: no Node, 160 ms; a conta é assíncrona para a tela não congelar) **e a pendência 6** (envio com o app fechado).
 
 ### 6. Envio em segundo plano (item 18 da Reunião 3)
 
 - Com o app aberto, a fila sai assim que o sinal volta.
 - Com o app fechado, sai no próximo intervalo que o Android libera (por volta de 15 minutos).
+- **Feito em 19/10/2026** (parte da etapa 19 do plano; o registro está na seção 6 de [funcionalidades/mobile.md](funcionalidades/mobile.md) e o uso, no [README do mobile](mobile/README.md)). A tarefa `synqos-envio-em-segundo-plano` (`expo-background-task`, que usa o WorkManager do Android) acorda o app **a cada 15 minutos, no mínimo, e só com rede ligada**, e sobe a fila com o app fechado: quem a roda é o mesmo sincronizador do app aberto (os arquivos antes dos eventos, o confirmado sai, o adiado espera), seguido da cópia nova da equipe. Como com o app fechado nada existe na memória, a tarefa descobre sozinha o que precisa: **há sessão** (os tokens no `expo-secure-store`; sem eles, nada a enviar) e **quem é a pessoa** (o último `GET /me` guardado no SQLite). Só roda para o técnico de equipe com registro na fila; com a fila vazia não gasta rede, e com o app na frente deixa a fila para a tela (não concorre com ela). O que não sobe (sem sinal, servidor fora do ar) fica na fila, e o Android repete no próximo intervalo; a tarefa é registrada quando a conta fica pronta, **uma vez só** (registrar de novo reinicia a contagem do intervalo) e retirada quando a pessoa sai. O perfil mostra **"Enviado com o app fechado às hh:mm (N registros)"** (ou "Tentativa com o app fechado…"), para o técnico e quem testa verem que a tarefa rodou. A tarefa precisa estar definida na abertura do bundle, por isso o app ganhou uma entrada própria, `mobile/index.ts` (a tarefa primeiro, depois o Expo Router). **Validado sem aparelho:** `tsc` e ESLint do `mobile`, 237 testes (10 novos, num SQLite de verdade, com o sincronizador de verdade), `expo-doctor` (20/20) e o pacote Android do Metro (com a tarefa dentro). **Falta ver num aparelho** (o Android de fato acordando o app fechado, o que depende também da economia de bateria do fabricante, que pode adiar ou barrar a tarefa; um aparelho com a otimização de bateria ligada pode passar de 15 minutos).
 
 ### 7. Dockerfile que gera o APK
 
 - Exigido pela Decisão-chave 1 da especificação ("cada uma com Dockerfile") e pelo padrão do DesignDoc.
+- **Feito em 19/10/2026** (parte da etapa 20 do plano; o registro está na seção 6 de [funcionalidades/mobile.md](funcionalidades/mobile.md) e o uso, na seção "Gerar o APK" do [README do mobile](mobile/README.md)). O `mobile/Dockerfile` (contexto na raiz do repositório) tem o JDK 17, o Android SDK e o NDK nas versões que o React Native pede, o `expo prebuild` e o Gradle, e entrega **um arquivo, `synq-os.apk`, assinado e conferido com o `apksigner`**, num estágio `saida` (`docker build --target saida --output type=local,dest=./apk`; `pnpm apk`, na pasta `mobile`, monta o comando). **O endereço da `api` é obrigatório e fica gravado no APK** (`--build-arg EXPO_PUBLIC_API_URL`); `http://` só com `APP_PERMITIR_HTTP=true`. **A chave de assinatura entra por segredo do BuildKit** (`--secret id=chave` e `id=chave_senha`), nunca no repositório nem na imagem; sem ela, o build usa uma chave descartável de demonstração (com aviso), e quem atualiza o app nos aparelhos precisa da **mesma chave** e de um `--versao` maior. Um plugin do Expo (`plugins/assinatura-android.js`) liga a chave ao Gradle. **Validado sem Docker (não há nesta máquina):** `tsc` e ESLint do `mobile`, 245 testes (8 novos), `pnpm apk --simular` e o `expo prebuild` real com o plugin (o `build.gradle` gerado conferido). **Falta rodar o `docker build` inteiro** (o download do SDK, o Gradle, o R8 do release e o `apksigner` não foram executados) **e instalar o APK num aparelho:** quem tiver Docker deve fazê-lo antes da demo, e ajustar o `Dockerfile` se algum passo falhar. **Fica para a etapa 20:** a conquista offline (pendência 8) e o roteiro da demo.
 
 ### 8. Conquista de sincronização offline
 
 - A gamificação prevê a conquista, mas ela não existe na carga (`api/src/db/seed/gamificacao-dados.ts`). Precisa que o evento da fila seja reconhecido como vindo dela, o que a regra dos 60 s já faz na `api`.
+- **Feito em 19/10/2026** (seção 14 de [gameficacao.md](base/funcionalidades/gameficacao.md); parte da etapa 20 de [mobile.md](funcionalidades/mobile.md)). Só na `api`; nenhuma tela mudou. A coluna `evento_campo.offline` (migração `0037_sincronizacao_offline`) guarda o que a `api` reconheceu como vindo da fila (atraso maior que 60 s), e o critério novo `sincronizacoes_offline` conta **OS distintas** com evento assim aplicado. A conquista "Sem sinal, sem problema" (1 OS) entra pela mesma migração, **com 0 ponto**: a regra 2.2 diz que sincronizar não pontua (o admin pode dar pontos a ela no cadastro); a migração também marca os eventos antigos e dá o troféu a quem já trabalhou sem sinal. A conferência roda ao aplicar cada evento da fila, e o aviso "Conquista desbloqueada" sai como o das demais. **Validado:** `tsc` e os 924 testes da `api` (5 novos, num Postgres embutido com as migrações) e `pnpm db:test`. **Falta ver no app:** o aparelho de verdade mandando a fila (o app já envia os eventos pelo mesmo `POST /eventos`, sem mudança). **A migração `0037` só chega ao banco compartilhado quando a `api` sobe com ela.**
 
 ## 3. Digitalização de OS antigas (extra)
 
