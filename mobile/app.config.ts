@@ -6,6 +6,8 @@ import type { ExpoConfig } from "expo/config";
  */
 const permitirHttp = process.env.APP_PERMITIR_HTTP === "true";
 
+/** `APP_VERSION_CODE` (inteiro, o Dockerfile do APK repassa): cada APK novo precisa de um número maior para o Android aceitá-lo por cima do instalado. */
+const versionCode = Number.parseInt(process.env.APP_VERSION_CODE ?? "", 10) || 1;
 
 const config: ExpoConfig = {
   name: "SYNQ OS",
@@ -17,7 +19,7 @@ const config: ExpoConfig = {
   icon: "./assets/icone.png",
   android: {
     package: "br.synqos.app",
-    versionCode: 1,
+    versionCode,
     adaptiveIcon: { foregroundImage: "./assets/icone-adaptivo.png", backgroundColor: "#FFFFFF" },
     // Câmera (fotos da APR, da interrupção e do encerramento) e localização (os cinco momentos da execução).
     permissions: ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "ACCESS_NETWORK_STATE"],
@@ -32,6 +34,8 @@ const config: ExpoConfig = {
     ["expo-location", { locationWhenInUsePermission: "O SYNQ OS registra a sua localização ao iniciar, pausar, suspender, interromper e encerrar a execução, para constar no relatório da OS." }],
     "expo-document-picker",
     ["expo-build-properties", { android: { usesCleartextTraffic: permitirHttp } }],
+    // Assina o release com a chave que o Dockerfile entrega por variável de ambiente (sem ela, nada muda).
+    "./plugins/assinatura-android.js",
   ],
 };
 

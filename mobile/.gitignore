@@ -8,3 +8,5 @@ expo-env.d.ts
 *.apk
 *.aab
 *.keystore
+# Saída do build do APK (Dockerfile do mobile).
+/apk
