@@ -4,15 +4,19 @@ import { Hono } from "hono";
 import { digitalizacao } from "../db/schema";
 import type { Deps } from "../deps";
 import { BUCKET_DAS_FOLHAS, caminhoDaFolha, caminhoDoOriginal, situacaoDaOs, type LeituraDaDigitalizacao } from "../dominio/digitalizacao";
+import { modelosComItens } from "../dominio/digitalizacao-apr";
 import { esquemaRegistro, registrarDigitalizacao } from "../dominio/digitalizacao-registro";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { ErroApi, conflito, invalido, naoEncontrado } from "../http/erros";
 import { responder } from "../http/resposta";
 import { lerCorpo, lerId } from "../http/validacao";
 import { enfileirarTarefa } from "../servicos/fila";
+import { ehFotoAceita, MAX_FOTOS_POR_ENVIO, montarPdfDeFotos } from "../servicos/pdf-folhas";
 
 /** O PDF digitalizado cresce com a resolução do scanner (a folha de 600 dpi passa de 1 MB): o limite é maior que o da importação. */
 const LIMITE_DO_PDF = 30 * 1024 * 1024;
+/** Uma foto de celular tem de 2 a 8 MB; a da câmera do navegador já chega reduzida. */
+const LIMITE_DA_FOTO = 15 * 1024 * 1024;
 
 type Linha = typeof digitalizacao.$inferSelect;
 
@@ -47,23 +51,48 @@ export function rotasDigitalizacoes(deps: Deps, { autenticar, exigirPerfil }: Au
   const r = new Hono<Ambiente>();
   const admin = [autenticar(), exigirPerfil("admin")] as const;
 
+  /**
+   * Entrada: o PDF escaneado (campo `arquivo`) ou as fotos de folhas avulsas tiradas na câmera (campo `fotos`, repetido, uma por
+   * folha e na ordem). As fotos viram um PDF, e dali em diante o caminho é o mesmo.
+   */
   r.post("/digitalizacoes", ...admin, async (c) => {
     const eu = c.get("usuario");
-    const form = await c.req.parseBody().catch(() => null);
-    const arquivo = form?.arquivo;
-    if (!(arquivo instanceof File)) throw invalido("validacao", 'arquivo: envie o PDF digitalizado no campo multipart "arquivo"');
-    if (arquivo.size === 0) throw invalido("arquivo_vazio", "Arquivo vazio");
-    if (arquivo.size > LIMITE_DO_PDF) throw new ErroApi(413, "arquivo_grande", `Arquivo maior que ${LIMITE_DO_PDF / 1024 / 1024} MB`);
-    const bytes = new Uint8Array(await arquivo.arrayBuffer());
-    // O PDF começa por "%PDF-" (alguns geradores põem bytes antes, dentro do primeiro 1 KB).
-    if (!Buffer.from(bytes.subarray(0, 1024)).toString("latin1").includes("%PDF-")) throw invalido("pdf_invalido", "O arquivo não é um PDF");
+    const form = await c.req.parseBody({ all: true }).catch(() => null);
+    const arquivos = (campo: string) => [form?.[campo]].flat().filter((v): v is File => v instanceof File);
+    const [arquivo] = arquivos("arquivo");
+    const fotos = arquivos("fotos");
+    if (arquivo && fotos.length > 0) throw invalido("validacao", 'envie o PDF (campo "arquivo") ou as fotos (campo "fotos"), não os dois');
+    if (!arquivo && fotos.length === 0) throw invalido("validacao", 'arquivo: envie o PDF digitalizado no campo multipart "arquivo" ou as fotos das folhas no campo "fotos"');
+
+    let bytes: Uint8Array;
+    let nome: string;
+    if (arquivo) {
+      if (arquivo.size === 0) throw invalido("arquivo_vazio", "Arquivo vazio");
+      if (arquivo.size > LIMITE_DO_PDF) throw new ErroApi(413, "arquivo_grande", `Arquivo maior que ${LIMITE_DO_PDF / 1024 / 1024} MB`);
+      bytes = new Uint8Array(await arquivo.arrayBuffer());
+      // O PDF começa por "%PDF-" (alguns geradores põem bytes antes, dentro do primeiro 1 KB).
+      if (!Buffer.from(bytes.subarray(0, 1024)).toString("latin1").includes("%PDF-")) throw invalido("pdf_invalido", "O arquivo não é um PDF");
+      nome = arquivo.name.slice(0, 200) || "digitalizacao.pdf";
+    } else {
+      if (fotos.length > MAX_FOTOS_POR_ENVIO) throw invalido("fotos_demais", `No máximo ${MAX_FOTOS_POR_ENVIO} fotos por envio: para mais folhas, escaneie e envie o PDF`);
+      const lidas: Uint8Array[] = [];
+      for (const foto of fotos) {
+        if (foto.size === 0) throw invalido("arquivo_vazio", "Uma das fotos está vazia");
+        if (foto.size > LIMITE_DA_FOTO) throw new ErroApi(413, "arquivo_grande", `Uma das fotos passa de ${LIMITE_DA_FOTO / 1024 / 1024} MB`);
+        const conteudo = new Uint8Array(await foto.arrayBuffer());
+        if (!ehFotoAceita(conteudo)) throw invalido("foto_invalida", "Envie as fotos em JPEG ou PNG");
+        lidas.push(conteudo);
+      }
+      bytes = await montarPdfDeFotos(lidas, "Fotos das folhas da OS");
+      nome = `Fotos de ${lidas.length === 1 ? "1 folha" : `${lidas.length} folhas`}.pdf`;
+    }
 
     const id = randomUUID();
     const caminho = caminhoDoOriginal(id);
     await deps.armazenamento.gravar(BUCKET_DAS_FOLHAS, caminho, bytes, "application/pdf");
     try {
       await deps.db.transaction(async (tx) => {
-        await tx.insert(digitalizacao).values({ id, usuarioId: eu.id, nomeArquivo: arquivo.name.slice(0, 200) || "digitalizacao.pdf", arquivo: caminho });
+        await tx.insert(digitalizacao).values({ id, usuarioId: eu.id, nomeArquivo: nome, arquivo: caminho });
         await enfileirarTarefa(tx, "digitalizacao", id, deps.agora());
       });
     } catch (erro) {
@@ -79,6 +108,12 @@ export function rotasDigitalizacoes(deps: Deps, { autenticar, exigirPerfil }: Au
     const linhas = await deps.db.select().from(digitalizacao).where(ne(digitalizacao.estado, "registrada")).orderBy(desc(digitalizacao.criadaEm)).limit(20);
     return responder(c, { digitalizacoes: await Promise.all(linhas.map((l) => apresentar(deps, l, false))) });
   });
+
+  /**
+   * Os modelos de APR com os itens, para a conferência da APR em papel escolher o modelo e marcar a resposta de cada item. É do admin,
+   * que também vê o que é eliminatório (aqui, `resposta_bloqueante`): o aviso de que a resposta bloquearia uma APR nova.
+   */
+  r.get("/digitalizacoes/modelos-apr", ...admin, async (c) => responder(c, { modelos: await modelosComItens(deps.db) }));
 
   r.get("/digitalizacoes/:id", ...admin, async (c) => {
     const [l] = await deps.db.select().from(digitalizacao).where(eq(digitalizacao.id, lerId(c)));

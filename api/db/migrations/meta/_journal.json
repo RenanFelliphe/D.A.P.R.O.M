@@ -267,6 +267,13 @@
       "when": 1792400145785,
       "tag": "0037_sincronizacao_offline",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792414499618,
+      "tag": "0038_apr_em_papel_da_digitalizacao",
+      "breakpoints": true
     }
   ]
 }

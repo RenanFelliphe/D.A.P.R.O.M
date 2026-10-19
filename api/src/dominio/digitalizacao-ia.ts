@@ -55,7 +55,8 @@ export const ESQUEMA_DO_MANUSCRITO = {
   required: ["inicio", "fim", "pessoas", "texto", "avisos"],
 } as const;
 
-const instante = z.union([z.string(), z.null()]).transform((v, ctx) => {
+/** Data e hora lidas pela IA (`AAAA-MM-DDTHH:MM`): o que não é uma data e hora que existe vira nulo, nunca um palpite. */
+export const instante = z.union([z.string(), z.null()]).transform((v, ctx) => {
   if (v === null) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(v.trim());
   if (!m) return null;
@@ -82,7 +83,7 @@ const esquemaManuscrito = z.object({
 });
 
 /** O JSON da resposta, mesmo que a IA o tenha cercado com ```json … ```. */
-function extrairJson(resposta: string): unknown {
+export function extrairJson(resposta: string): unknown {
   const limpo = resposta.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   const comeco = limpo.indexOf("{");
   const fim = limpo.lastIndexOf("}");

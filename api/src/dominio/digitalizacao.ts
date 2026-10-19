@@ -6,6 +6,8 @@ import { ErroApi } from "../http/erros";
 import type { FolhaLidaPorOcr } from "../servicos/ocr";
 import { abrirFolhas } from "../servicos/pdf-imagem";
 import { IAIndisponivel, RespostaIAInvalida, type ImagemDeMensagem } from "../servicos/ia";
+import type { AprLida, EstadoDaIa } from "./digitalizacao-apr";
+import { lerAprs, separarFolhasDaApr } from "./digitalizacao-apr-leitura";
 import { lerManuscritoComIa, MANUSCRITO_VAZIO, MAX_IMAGENS_POR_OS, recortarFolha, type ManuscritoLido } from "./digitalizacao-ia";
 import { lerOrdensDoPdf, normalizar, numeroDaFolha, OPERACOES, type OsDoPdf } from "./importacao-pdf";
 
@@ -38,6 +40,8 @@ export interface OsDigitalizada extends OsDoPdf {
   /** As folhas que trazem o cabeçalho da OS; as demais folhas dela (sem número, como a APR) nunca vão à IA. */
   folhas_da_os: number[];
   manuscrito: ManuscritoLido & { lido_por: "ia" | "nenhum" };
+  /** A APR em papel que veio junto com a folha da OS (as folhas com o título "Análise Preliminar de Risco"); `null` quando não veio. */
+  apr: AprLida | null;
   estados: Partial<Record<CampoConferido, EstadoDoCampo>>;
   /** O que a conferência achou e a pessoa deve olhar (em português). */
   avisos: string[];
@@ -222,7 +226,9 @@ export async function processarDigitalizacao(deps: Deps, id: string, aoAndar?: (
 
     // 2. As OS: o mesmo leitor do PDF do SAP, agora sobre o texto do OCR.
     const paginas = [...lidas.values()];
-    const lido = lerOrdensDoPdf(paginas);
+    // As folhas da APR em papel saem antes: o rótulo e o número escrito à mão delas não podem se misturar com a leitura das OS.
+    const { grupos: gruposDaApr, restantes } = separarFolhasDaApr(paginas);
+    const lido = lerOrdensDoPdf(restantes);
     if (lido.ordens.length === 0) {
       throw new ErroApi(
         422,
@@ -231,36 +237,39 @@ export async function processarDigitalizacao(deps: Deps, id: string, aoAndar?: (
       );
     }
     const confianca = paginas.reduce((t, p) => t + p.confianca, 0) / paginas.length;
-    const numeradas = new Set(paginas.filter((p) => numeroDaFolha(p) !== null).map((p) => p.numero));
+    const numeradas = new Set(restantes.filter((p) => numeroDaFolha(p) !== null).map((p) => p.numero));
     const ordens: OsDigitalizada[] = lido.ordens.map((o) => ({
       ...o,
       chave: o.ordem.numero_ordem,
       folhas_da_os: o.paginas.filter((p) => numeradas.has(p)),
       manuscrito: { ...MANUSCRITO_VAZIO, lido_por: "nenhum" },
+      apr: null,
       estados: {},
       avisos: [],
     }));
 
     // 3. O manuscrito, pela IA de visão, uma OS por vez. Sem IA (ou a IA cai no meio), as demais seguem sem ela.
-    let usouIa = false;
-    let semIa: string | null = deps.ia.disponivel() ? null : "A IA não está configurada: o escrito à mão é digitado na conferência.";
+    const ia: EstadoDaIa = { usou: false, motivo: deps.ia.disponivel() ? null : "A IA não está configurada: o escrito à mão é digitado na conferência." };
+    const lerJpeg = async (n: number) => {
+      const bytes = await deps.armazenamento.ler(BUCKET_DAS_FOLHAS, caminhoDaFolha(id, n));
+      if (!bytes) throw new Error(`folha ${n} sumiu`);
+      return bytes;
+    };
     await andamento(deps.db, id, { etapa: "ia" }, deps.agora());
     for (const o of ordens) {
-      if (semIa) break;
+      if (ia.motivo) break;
       try {
-        const imagens = await imagensParaIa(o, lidas, async (n) => {
-          const bytes = await deps.armazenamento.ler(BUCKET_DAS_FOLHAS, caminhoDaFolha(id, n));
-          if (!bytes) throw new Error(`folha ${n} sumiu`);
-          return bytes;
-        });
-        o.manuscrito = { ...(await lerManuscritoComIa(deps.ia, imagens)), lido_por: "ia" };
-        usouIa = true;
+        o.manuscrito = { ...(await lerManuscritoComIa(deps.ia, await imagensParaIa(o, lidas, lerJpeg))), lido_por: "ia" };
+        ia.usou = true;
       } catch (erro) {
-        if (erro instanceof IAIndisponivel) semIa = "A IA de leitura está indisponível agora: o escrito à mão é digitado na conferência.";
+        if (erro instanceof IAIndisponivel) ia.motivo = "A IA de leitura está indisponível agora: o escrito à mão é digitado na conferência.";
         else if (erro instanceof RespostaIAInvalida) o.avisos.push("A IA não conseguiu ler o escrito à mão desta OS: digite-o na conferência.");
         else throw erro;
       }
     }
+
+    // 3b. A APR em papel que veio junto: o modelo sai do título impresso e a IA lê o cabeçalho, as pessoas e a marca de cada item.
+    await lerAprs(deps, ordens, gruposDaApr, lidas, lerJpeg, ia);
 
     // 4. As conferências.
     await andamento(deps.db, id, { etapa: "conferindo" }, deps.agora());
@@ -275,10 +284,10 @@ export async function processarDigitalizacao(deps: Deps, id: string, aoAndar?: (
       paginas: folhas.total,
       paginas_sem_ordem: lido.paginasSemOrdem,
       confianca_media: Math.round(confianca),
-      ia: { usada: usouIa, motivo: usouIa ? null : semIa },
+      ia: { usada: ia.usou, motivo: ia.usou ? null : ia.motivo },
       ordens,
     };
-    await andamento(deps.db, id, { estado: "lida", leitura, usouIa, erro: null }, deps.agora());
+    await andamento(deps.db, id, { estado: "lida", leitura, usouIa: ia.usou, erro: null }, deps.agora());
   } catch (erro) {
     await falhar(erro);
   } finally {

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { boolean, check, index, integer, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
+import { modeloApr } from "./modelos-apr";
 import { importacao, os } from "./sap";
 import { usuario } from "./usuarios";
 
@@ -86,4 +87,41 @@ export const osDigitalizacao = pgTable(
     check("os_digitalizacao_pessoas_check", sql`${t.numeroPessoas} is null or ${t.numeroPessoas} >= 1`),
     index("os_digitalizacao_lote_idx").on(t.digitalizacaoId),
   ],
+).enableRLS();
+
+/**
+ * A APR em papel que veio junto com a folha da OS digitalizada (a APR antiga). Fica à parte da tabela `apr`: não é uma APR do
+ * sistema, não vale como APR do dia, não ampara execução, não pontua e não bloqueia nada (a OS já foi feita). Guarda o que a folha
+ * diz, conferido pelo admin: o modelo, a data e a hora, o serviço, quem participou e a resposta de cada item. As assinaturas e as
+ * rubricas ficam só nas imagens das folhas (`os.pdf_path`).
+ */
+export const osDigitalizacaoApr = pgTable(
+  "os_digitalizacao_apr",
+  {
+    osId: uuid()
+      .primaryKey()
+      .references(() => os.id),
+    digitalizacaoId: uuid()
+      .notNull()
+      .references(() => digitalizacao.id),
+    /** As folhas do PDF digitalizado que são a APR (a partir de 1); também estão em `os_digitalizacao.paginas`. */
+    paginas: jsonb().notNull(),
+    /** A versão do modelo a que a folha corresponde, escolhida na conferência. */
+    modeloAprId: uuid()
+      .notNull()
+      .references(() => modeloApr.id),
+    /** Data e hora escritas à mão na APR. */
+    dataHora: instante(),
+    servico: text(),
+    /** `[{ nome, matricula, funcao, usuario_id }]`; quem não tem conta (ou já saiu) fica só com nome e matrícula. */
+    participantes: jsonb().notNull(),
+    /** `[{ item_id, resposta }]`, só dos itens que a folha traz marcados (`sim`, `nao` ou `na`). */
+    respostas: jsonb().notNull(),
+    manuscritoFonte: text({ enum: MANUSCRITO_FONTES }).notNull().default("nenhuma"),
+    registradaPor: uuid()
+      .notNull()
+      .references(() => usuario.id),
+    registradaEm: instante().notNull().defaultNow(),
+  },
+  (t) => [check("os_digitalizacao_apr_fonte_check", emLista(t.manuscritoFonte, MANUSCRITO_FONTES)), index("os_digitalizacao_apr_modelo_idx").on(t.modeloAprId)],
 ).enableRLS();

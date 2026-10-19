@@ -2,7 +2,9 @@
  * Gera um PDF "escaneado" de exemplo (só imagem, como o que sai do scanner) com duas OS fictícias já "executadas no papel", para
  * experimentar a Digitalização de OS antigas (Importação, "Já foi concluída no papel"). As folhas são as mesmas do
  * `pnpm pdf:exemplo`, desenhadas como imagem, com o escrito à mão simulado numa fonte manuscrita (caneta azul): o início e o
- * fim reais e o número de pessoas na linha da operação, a descrição da atividade e uma rubrica.
+ * fim reais e o número de pessoas na linha da operação, a descrição da atividade e uma rubrica. A primeira OS vem com a folha da
+ * APR em papel (modelo APR 04, perguntas de verificação): o título impresso, a data, o serviço e duas pessoas escritos à mão, e o
+ * "✓" na coluna SIM de cada pergunta (uma delas marcada em NÃO).
  *
  *   pnpm pdf:digitalizado                 -> grava ./folhas-digitalizadas-exemplo.pdf
  *   pnpm pdf:digitalizado -- saida.pdf    -> grava no caminho dado
@@ -11,7 +13,7 @@
  * para a leitura com IA (só dados fictícios). A fonte manuscrita é a do sistema (Segoe Script ou Ink Free no Windows); sem ela, o
  * texto sai numa fonte comum e a IA lê do mesmo jeito.
  */
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { montarPdfDasFolhas } from "../src/servicos/pdf-folhas";
@@ -63,6 +65,91 @@ async function yDaOperacao(pdf: Uint8Array, folha: number): Promise<number> {
   return altura - (item.transform as number[])[5]! + 26;
 }
 
+/** A folha da APR em papel (A4, 200 dpi): o formulário impresso do modelo APR 04 e o que a equipe escreveu à mão. */
+async function folhaDaApr(numeroDaOs: string): Promise<Uint8Array> {
+  const modelos = JSON.parse(await readFile(resolve(import.meta.dirname, "../src/db/seed/modelos-apr.json"), "utf8")).modelos as { codigo: string; titulo: string; itens: { secao: string; ordem: number; texto: string }[] }[];
+  const modelo = modelos.find((m) => m.codigo === "APR 04");
+  if (!modelo) throw new Error("o modelo APR 04 não está na carga inicial");
+  const perguntas = modelo.itens.filter((i) => i.secao === "verificacao").slice(0, 14);
+  const px = 1654 / LARGURA_PT;
+  const canvas = createCanvas(1654, Math.round(841.89 * px));
+  const c = canvas.getContext("2d");
+  c.fillStyle = "#ffffff";
+  c.fillRect(0, 0, canvas.width, canvas.height);
+  c.textBaseline = "alphabetic";
+  c.fillStyle = "#111111";
+  c.strokeStyle = "#111111";
+  c.lineWidth = 2;
+  const impresso = (texto: string, x: number, y: number, tamanho: number, negrito = false) => {
+    c.font = `${negrito ? "bold " : ""}${Math.round(tamanho * px)}px Arial, Helvetica, sans-serif`;
+    c.fillText(texto, x * px, y * px);
+  };
+  impresso(`ANÁLISE PRELIMINAR DE RISCO — ${modelo.codigo}`, M, 52, 13, true);
+  impresso(modelo.titulo, M, 70, 10, true);
+  impresso("Versão 01", M, 86, 9);
+  // Cabeçalho: número da OS, data e hora, serviço.
+  impresso("OS nº:", M, 118, 9, true);
+  impresso("Data:", M + 150, 118, 9, true);
+  impresso("Hora:", M + 270, 118, 9, true);
+  impresso("Serviço:", M, 140, 9, true);
+  for (const y of [122, 144]) {
+    c.beginPath();
+    c.moveTo(M * px, y * px);
+    c.lineTo((595.28 - M) * px, y * px);
+    c.stroke();
+  }
+  // Tabela de pessoas.
+  impresso("Supervisor da Atividade", M, 172, 9, true);
+  impresso("Nome", M, 190, 8, true);
+  impresso("Matrícula", M + 300, 190, 8, true);
+  for (const y of [196, 220, 244]) {
+    c.beginPath();
+    c.moveTo(M * px, y * px);
+    c.lineTo((595.28 - M) * px, y * px);
+    c.stroke();
+  }
+  impresso("Executante", M, 262, 9, true);
+  // As perguntas, com as colunas SIM, NÃO e N/A.
+  const colunas = [430, 475, 520];
+  impresso("Verificação", M, 292, 9, true);
+  ["SIM", "NÃO", "N/A"].forEach((r, i) => impresso(r, colunas[i]!, 292, 8, true));
+  perguntas.forEach((p, i) => {
+    const y = 316 + i * 34;
+    impresso(`${p.ordem}. ${p.texto.length > 74 ? `${p.texto.slice(0, 71)}...` : p.texto}`, M, y, 7.5);
+    c.beginPath();
+    c.moveTo(M * px, (y + 8) * px);
+    c.lineTo((595.28 - M) * px, (y + 8) * px);
+    c.stroke();
+  });
+  // O que foi escrito à mão: o cabeçalho, as pessoas e a marca de cada pergunta (a 3ª em NÃO, para a conferência avisar).
+  c.fillStyle = CANETA;
+  c.strokeStyle = CANETA;
+  c.lineWidth = 3;
+  const mao = (texto: string, x: number, y: number, tamanho: number) => {
+    c.font = `${Math.round(tamanho * px)}px ${FONTE}`;
+    c.fillText(texto, x * px, y * px);
+  };
+  mao(numeroDaOs, M + 40, 118, 10);
+  mao("13/10/26", M + 185, 118, 10);
+  mao("08:40", M + 305, 118, 10);
+  mao("Inspecao da estacao de regulagem", M + 50, 140, 10);
+  mao("Carlos Souza", M + 4, 214, 10);
+  mao("7001", M + 305, 214, 10);
+  mao("Marina Lopes", M + 4, 238, 10);
+  mao("7002", M + 305, 238, 10);
+  perguntas.forEach((_, i) => {
+    const coluna = i === 2 ? 1 : 0;
+    const x = (colunas[coluna]! + 6) * px;
+    const y = (316 + i * 34 - 2) * px;
+    c.beginPath();
+    c.moveTo(x, y - 6 * px);
+    c.lineTo(x + 4 * px, y);
+    c.lineTo(x + 12 * px, y - 14 * px);
+    c.stroke();
+  });
+  return canvas.toBuffer("image/jpeg", 80);
+}
+
 const pdfOriginal = await gerarPdfDeOs(OS.map((o) => o.ordem));
 const folhas = await abrirFolhas(pdfOriginal);
 const jpegs: Uint8Array[] = [];
@@ -98,10 +185,12 @@ try {
       c.stroke();
     }
     jpegs.push(canvas.toBuffer("image/jpeg", 80));
+    // A APR em papel vem logo depois da folha de execução da primeira OS, sem o cabeçalho da OS (como o formulário grampeado).
+    if (n === 2) jpegs.push(await folhaDaApr(OS[0]!.ordem.numero));
   }
 } finally {
   await folhas.fechar();
 }
 
 await writeFile(destino, await montarPdfDasFolhas(jpegs, "Folhas digitalizadas (exemplo fictício)"));
-console.log(`PDF digitalizado de exemplo gravado em ${destino} (${OS.length} OS fictícias: ${OS.map((o) => o.ordem.numero).join(", ")}).`);
+console.log(`PDF digitalizado de exemplo gravado em ${destino} (${OS.length} OS fictícias: ${OS.map((o) => o.ordem.numero).join(", ")}; a primeira com a folha da APR em papel, APR 04).`);

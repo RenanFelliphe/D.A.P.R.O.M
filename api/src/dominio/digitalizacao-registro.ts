@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { digitalizacao, importacao, os } from "../db/schema";
+import { APR_FUNCOES, APR_RESPOSTAS, digitalizacao, importacao, itemModeloApr, modeloApr, os, usuario } from "../db/schema";
 import type { Deps } from "../deps";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
 import { montarPdfDasFolhas } from "../servicos/pdf-folhas";
 import { registrarAuditoria, type Ator } from "./auditoria";
-import { BUCKET_DAS_FOLHAS, caminhoDaFolha, type LeituraDaDigitalizacao } from "./digitalizacao";
-import { processarOrdens, type DadosDoHistorico } from "./importacao-ordens";
+import { BUCKET_DAS_FOLHAS, caminhoDaFolha, type LeituraDaDigitalizacao, type OsDigitalizada } from "./digitalizacao";
+import { processarOrdens, type DadosDaAprEmPapel, type DadosDoHistorico } from "./importacao-ordens";
 
 /**
  * Digitalização de OS antigas, o registro: a pessoa conferiu a leitura (`digitalizacao-leitura`) e manda cada OS com os campos
@@ -28,6 +28,24 @@ const instanteLocal = z
 /** O horário de São Paulo é fixo em UTC-3 (sem horário de verão desde 2019), como em `inicioDoDia`. */
 const emSaoPaulo = (v: string) => new Date(`${v}:00-03:00`);
 
+/** A APR em papel como a pessoa a conferiu: o modelo escolhido, o que a folha diz e a resposta de cada item marcado. */
+const esquemaApr = z.object({
+  modelo_id: z.uuid(),
+  data_hora: instanteLocal.nullable(),
+  servico: z.string().trim().max(500).nullable(),
+  participantes: z
+    .array(
+      z.object({
+        nome: z.string().trim().min(1, "toda pessoa da APR precisa de nome").max(200),
+        matricula: z.string().trim().max(30).nullable(),
+        funcao: z.enum(APR_FUNCOES),
+      }),
+    )
+    .max(20),
+  respostas: z.array(z.object({ item_id: z.uuid(), resposta: z.enum(APR_RESPOSTAS) })).max(300),
+});
+export type AprConferida = z.infer<typeof esquemaApr>;
+
 export const esquemaRegistro = z.object({
   ordens: z
     .array(
@@ -41,12 +59,67 @@ export const esquemaRegistro = z.object({
           numero_pessoas: z.number().int().min(1).max(50).nullable(),
           texto: z.string().trim().max(4000).nullable(),
         }),
+        /** A APR em papel desta OS; sem ela (ou `null`), só a OS é registrada e a folha da APR fica nas imagens do PDF. */
+        apr: esquemaApr.nullish(),
       }),
     )
     .min(1, "escolha ao menos uma OS")
     .max(60, "no máximo 60 OS por PDF"),
 });
 export type CorpoDoRegistro = z.infer<typeof esquemaRegistro>;
+
+/** Os pares `[nome, matrícula, função]`, as respostas por item e o resto da APR, numa forma que só muda se a pessoa mudar algo. */
+function assinaturaDaApr(a: { modelo_id: string | null; data_hora: string | null; servico: string | null; participantes: { nome: string | null; matricula: string | null; funcao: string }[]; respostas: { item_id: string; resposta: string }[] }) {
+  return JSON.stringify([
+    a.modelo_id,
+    a.data_hora || null,
+    a.servico || null,
+    a.participantes.map((p) => [p.nome || null, p.matricula || null, p.funcao]),
+    [...a.respostas].sort((x, y) => x.item_id.localeCompare(y.item_id)).map((r) => [r.item_id, r.resposta]),
+  ]);
+}
+
+/**
+ * Confere a APR em papel que a pessoa mandou com a OS e a deixa pronta para gravar. Só vale se a leitura achou a folha da APR nesta
+ * OS; o modelo tem de estar publicado e as respostas têm de ser de itens dele. Quem tem conta no sistema fica ligado a ela.
+ */
+async function prepararApr(deps: Deps, numero: string, lida: OsDigitalizada, apr: AprConferida | null | undefined): Promise<DadosDaAprEmPapel | null> {
+  if (!apr) return null;
+  const lidaApr = lida.apr ?? null;
+  if (!lidaApr) throw invalido("apr_fora_da_leitura", `OS ${numero}: a leitura não achou folha de APR nesta OS`);
+  const [modelo] = await deps.db.select({ id: modeloApr.id }).from(modeloApr).where(and(eq(modeloApr.id, apr.modelo_id), isNotNull(modeloApr.publicadoEm)));
+  if (!modelo) throw invalido("modelo_apr_invalido", `OS ${numero}: o modelo da APR não existe ou não está publicado`);
+  const itens = new Set((await deps.db.select({ id: itemModeloApr.id }).from(itemModeloApr).where(eq(itemModeloApr.modeloAprId, modelo.id))).map((i) => i.id));
+  const vistos = new Set<string>();
+  for (const r of apr.respostas) {
+    if (!itens.has(r.item_id)) throw invalido("apr_resposta_invalida", `OS ${numero}: uma resposta da APR é de um item que não é do modelo escolhido`);
+    if (vistos.has(r.item_id)) throw invalido("apr_resposta_invalida", `OS ${numero}: o mesmo item da APR veio respondido duas vezes`);
+    vistos.add(r.item_id);
+  }
+  if (apr.participantes.filter((p) => p.funcao === "responsavel").length > 1) {
+    throw invalido("apr_participantes_invalidos", `OS ${numero}: a APR só tem um Supervisor da Atividade`);
+  }
+  const participantes: DadosDaAprEmPapel["participantes"] = [];
+  for (const p of apr.participantes) {
+    const matricula = p.matricula || null;
+    const [conta] = matricula ? await deps.db.select({ id: usuario.id }).from(usuario).where(eq(usuario.matricula, matricula)) : [];
+    participantes.push({ nome: p.nome, matricula, funcao: p.funcao, usuario_id: conta?.id ?? null });
+  }
+  const vazia = !apr.data_hora && !apr.servico && participantes.length === 0 && apr.respostas.length === 0;
+  const igualAoLido =
+    lidaApr.lido_por === "ia" &&
+    assinaturaDaApr({ ...apr, participantes: apr.participantes }) ===
+      assinaturaDaApr({ modelo_id: lidaApr.modelo?.id ?? null, data_hora: lidaApr.data_hora, servico: lidaApr.servico, participantes: lidaApr.participantes, respostas: lidaApr.respostas });
+  return {
+    paginas: lidaApr.paginas,
+    modeloAprId: modelo.id,
+    dataHora: apr.data_hora ? emSaoPaulo(apr.data_hora) : null,
+    servico: apr.servico || null,
+    participantes,
+    respostas: apr.respostas,
+    fonte: vazia ? "nenhuma" : igualAoLido ? "ia" : "manual",
+  };
+}
 
 export async function registrarDigitalizacao(deps: Deps, eu: Ator & { id: string }, id: string, corpo: CorpoDoRegistro) {
   const [lote] = await deps.db.select().from(digitalizacao).where(eq(digitalizacao.id, id));
@@ -112,6 +185,8 @@ export async function registrarDigitalizacao(deps: Deps, eu: Ator & { id: string
         numeroPessoas: e.execucao.numero_pessoas,
         textoManuscrito: e.execucao.texto || null,
         fonte: vazio ? "nenhuma" : igualAoLido ? "ia" : "manual",
+        // A APR só acompanha a OS que a folha encerra (a que o sistema já encerrou não é tocada e nem guarda a APR).
+        apr: !existente || existente.status === "liberada" ? await prepararApr(deps, numero, lida, e.apr) : null,
       });
       entradas.push({ ordem: { ...e.ordem, numero_ordem: numero } });
     }

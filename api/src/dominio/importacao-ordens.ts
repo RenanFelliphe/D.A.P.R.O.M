@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { atividade, equipe, execucao, localInstalacao, os, osDigitalizacao, reprogramacao, alerta, type MANUSCRITO_FONTES } from "../db/schema";
+import { atividade, equipe, execucao, localInstalacao, os, osDigitalizacao, osDigitalizacaoApr, reprogramacao, alerta, type APR_RESPOSTAS, type MANUSCRITO_FONTES } from "../db/schema";
 import { codigoPostgres } from "../http/erros";
 import { criarAlertas } from "./alertas";
 import { chaveDoPlano, garantirPlano, lerIntervalo } from "./preventivas";
@@ -47,6 +47,18 @@ export interface PlanoSemIntervalo {
  * O que a Digitalização acrescenta a uma OS antiga (`origem = 'digitalizacao'`): o id e o PDF das folhas, que o registro já
  * preparou, e o que a folha diz da execução. A OS entra encerrada, de histórico: sem `execucao`, sem APR, sem pontos.
  */
+export interface DadosDaAprEmPapel {
+  /** As folhas do PDF digitalizado que são a APR. */
+  paginas: number[];
+  modeloAprId: string;
+  dataHora: Date | null;
+  servico: string | null;
+  /** `[{ nome, matricula, funcao, usuario_id }]`. */
+  participantes: { nome: string; matricula: string | null; funcao: "responsavel" | "executor"; usuario_id: string | null }[];
+  respostas: { item_id: string; resposta: (typeof APR_RESPOSTAS)[number] }[];
+  fonte: (typeof MANUSCRITO_FONTES)[number];
+}
+
 export interface DadosDoHistorico {
   osId: string;
   digitalizacaoId: string;
@@ -59,6 +71,8 @@ export interface DadosDoHistorico {
   numeroPessoas: number | null;
   textoManuscrito: string | null;
   fonte: (typeof MANUSCRITO_FONTES)[number];
+  /** A APR em papel conferida, quando a OS veio com ela e a pessoa a registrou. */
+  apr: DadosDaAprEmPapel | null;
 }
 
 export interface ResultadoProcessamento {
@@ -388,6 +402,21 @@ async function guardarHistorico(db: Db, ctx: Contexto, h: DadosDoHistorico) {
     registradaPor: h.usuarioId,
     registradaEm: ctx.agora,
   });
+  if (h.apr) {
+    await db.insert(osDigitalizacaoApr).values({
+      osId: h.osId,
+      digitalizacaoId: h.digitalizacaoId,
+      paginas: h.apr.paginas,
+      modeloAprId: h.apr.modeloAprId,
+      dataHora: h.apr.dataHora,
+      servico: h.apr.servico,
+      participantes: h.apr.participantes,
+      respostas: h.apr.respostas,
+      manuscritoFonte: h.apr.fonte,
+      registradaPor: h.usuarioId,
+      registradaEm: ctx.agora,
+    });
+  }
 }
 
 /**

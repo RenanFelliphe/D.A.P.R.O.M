@@ -252,7 +252,7 @@ export interface SobreAVitoria {
     treinamentosPublicados: number;
     /**
      * OS antigas que a Digitalização registrou como encerradas, de histórico (seção 10): uma linha de `os_digitalizacao` para
-     * cada uma. As APRs antigas ainda não entram (pendência 12).
+     * cada uma. A APR em papel que veio junto fica em `os_digitalizacao_apr` e não conta à parte.
      */
     digitalizadas: number;
   };

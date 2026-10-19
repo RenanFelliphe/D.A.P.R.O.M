@@ -18,6 +18,7 @@ import {
   modeloApr,
   os,
   osDigitalizacao,
+  osDigitalizacaoApr,
   reprogramacao,
   riscoModeloApr,
   usuario,
@@ -533,6 +534,7 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
           .innerJoin(usuario, eq(usuario.id, osDigitalizacao.registradaPor))
           .where(eq(osDigitalizacao.osId, osId))
       : [];
+  const aprEmPapel = emPapel ? await aprEmPapelDaOs(db, osId) : null;
 
   const linhaDoTempo = montarLinhaDoTempo({
     reservasDesfeitas,
@@ -560,7 +562,7 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
         : null,
       pdfPronto: o.pdfPath !== null,
       /** A execução em papel das OS digitalizadas (origem `digitalizacao`, ou uma OS liberada que a folha encerrou); `null` nas demais. */
-      emPapel: emPapel ?? null,
+      emPapel: emPapel ? { ...emPapel, apr: aprEmPapel } : null,
       execucaoAbertaHaHoras: abertas.get(osId) ?? null,
       atrasada: estaAtrasada(o, diaNoFuso(agora)),
       eventosComRelogioSuspeito: suspeitos?.n ?? 0,
@@ -702,4 +704,46 @@ export async function darCiencia(db: Db, eu: UsuarioAutenticado, osId: string, a
     const ganhos = eu.perfil === "tecnico" ? await pontuarCiencia({ tx: tx as unknown as Db, agora }, osId, eu.id, agora) : [];
     return { cienciaEm: agora, status, ...ganhosDe(ganhos, eu.id) };
   });
+}
+
+/**
+ * A APR em papel que a Digitalização registrou junto com a folha da OS: o modelo, o que a folha diz e a resposta de cada item
+ * marcado, na ordem do formulário. Não diz o que é eliminatório (só o admin sabe): mostra a marca como está no papel.
+ */
+async function aprEmPapelDaOs(db: Db, osId: string) {
+  const [a] = await db
+    .select({
+      modeloCodigo: modeloApr.codigo,
+      modeloVersao: modeloApr.versao,
+      modeloTitulo: modeloApr.titulo,
+      dataHora: osDigitalizacaoApr.dataHora,
+      servico: osDigitalizacaoApr.servico,
+      participantes: osDigitalizacaoApr.participantes,
+      respostas: osDigitalizacaoApr.respostas,
+      folhas: sql<number>`jsonb_array_length(${osDigitalizacaoApr.paginas})::int`,
+      fonte: osDigitalizacaoApr.manuscritoFonte,
+    })
+    .from(osDigitalizacaoApr)
+    .innerJoin(modeloApr, eq(modeloApr.id, osDigitalizacaoApr.modeloAprId))
+    .where(eq(osDigitalizacaoApr.osId, osId));
+  if (!a) return null;
+  const respostas = a.respostas as { item_id: string; resposta: "sim" | "nao" | "na" }[];
+  const itens = respostas.length
+    ? await db
+        .select({ id: itemModeloApr.id, ordem: itemModeloApr.ordem, secao: itemModeloApr.secao, texto: itemModeloApr.texto, risco: riscoModeloApr.nome })
+        .from(itemModeloApr)
+        .leftJoin(riscoModeloApr, eq(riscoModeloApr.id, itemModeloApr.riscoId))
+        .where(inArray(itemModeloApr.id, respostas.map((r) => r.item_id)))
+        .orderBy(asc(itemModeloApr.ordem))
+    : [];
+  const resposta = new Map(respostas.map((r) => [r.item_id, r.resposta]));
+  return {
+    modelo: { codigo: a.modeloCodigo, versao: a.modeloVersao, titulo: a.modeloTitulo },
+    dataHora: a.dataHora,
+    servico: a.servico,
+    participantes: a.participantes as { nome: string; matricula: string | null; funcao: "responsavel" | "executor"; usuario_id: string | null }[],
+    respostas: itens.map((i) => ({ ordem: i.ordem, secao: i.secao, risco: i.risco, texto: i.texto, resposta: resposta.get(i.id)! })),
+    folhas: a.folhas,
+    fonte: a.fonte,
+  };
 }
