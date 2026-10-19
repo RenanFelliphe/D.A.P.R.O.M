@@ -4,16 +4,9 @@
  * esgotado) o serviço NÃO é bloqueado: o evento segue sem coordenadas e a `api` registra "sem localização".
  */
 
-export interface Posicao {
-  latitude: number;
-  longitude: number;
-}
+import { TEMPO_MAXIMO_DA_POSICAO_MS as TEMPO_MAXIMO_MS, arredondarPosicao, type Posicao } from "./localizacao";
 
-/** O aviso de privacidade (LGPD) que as telas mostram junto dos botões que registram a localização. */
-export const AVISO_DE_LOCALIZACAO =
-  "A sua localização é registrada ao iniciar, pausar, suspender, interromper e encerrar a execução, para constar no relatório da OS. Sem permissão de localização, o serviço segue normalmente, marcado como “sem localização”.";
-
-const TEMPO_MAXIMO_MS = 8000;
+export { AVISO_DE_LOCALIZACAO, comPosicao, linkDoMapa, type Posicao } from "./localizacao";
 
 /** Pede a posição atual ao navegador; devolve `null` quando não há (nunca lança). */
 export function obterPosicao(): Promise<Posicao | null> {
@@ -23,7 +16,7 @@ export function obterPosicao(): Promise<Posicao | null> {
     navigator.geolocation.getCurrentPosition(
       (p) => {
         clearTimeout(limite);
-        resolver({ latitude: Number(p.coords.latitude.toFixed(6)), longitude: Number(p.coords.longitude.toFixed(6)) });
+        resolver(arredondarPosicao({ latitude: p.coords.latitude, longitude: p.coords.longitude }));
       },
       () => {
         clearTimeout(limite);
@@ -34,8 +27,3 @@ export function obterPosicao(): Promise<Posicao | null> {
   });
 }
 
-/** Os campos `latitude`/`longitude` do payload de um evento (`{}` quando não há posição). */
-export const comPosicao = (p: Posicao | null): { latitude?: number; longitude?: number } => (p ? { latitude: p.latitude, longitude: p.longitude } : {});
-
-/** Link do ponto no mapa (abre o Google Maps). */
-export const linkDoMapa = (p: Posicao): string => `https://www.google.com/maps?q=${p.latitude},${p.longitude}`;

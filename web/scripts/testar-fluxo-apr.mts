@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- script de teste: as respostas da api são lidas como vêm */
 // Fluxo do técnico até a APR, ponta a ponta contra a api local (sem navegador): injeta as OS de teste no SAP simulado e as lê, monta o
-// rascunho com as mesmas funções que a tela usa (`src/lib/apr.ts`), valida a APR (`POST /aprs/avaliar`: a bloqueada já fica
+// rascunho com as mesmas funções que a tela usa (`shared/api/apr.ts`), valida a APR (`POST /aprs/avaliar`: a bloqueada já fica
 // registrada), envia `apr_concluida` (a aprovada inteira; da bloqueada, a evidência) e confere resultado, status da OS e o
 // alerta ao supervisor. O técnico não recebe o que é eliminatório: o script usa o modelo do admin só para escolher que
 // respostas dar.
@@ -22,7 +22,7 @@ import {
   resumoDe,
   type ModeloCompleto,
   type RascunhoApr,
-} from "../src/lib/apr";
+} from "../../shared/api/apr";
 
 const API = process.env.API_URL ?? "http://localhost:3333";
 const SAP_TOKEN = process.env.SAP_API_TOKEN ?? "token-de-desenvolvimento";

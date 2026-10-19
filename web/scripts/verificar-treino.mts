@@ -2,15 +2,15 @@
 // Percorre o Campo de treino (a API fictícia, sem servidor e sem navegador) do mesmo modo que as telas de campo:
 // lista as OS, abre a OS guiada, faz a APR aprovada, inicia e encerra a execução (com foto e PDF); depois abre a OS do
 // bloqueio, responde uma pergunta do jeito que reprova e confere o impedimento. Por fim, o catálogo de serviço. O modelo que o técnico recebe não diz o que é eliminatório:
-// só `POST /aprs/avaliar` revela os itens reprovados. Usa as funções puras da tela (`src/lib/apr.ts`) para montar o evento.
+// só `POST /aprs/avaliar` revela os itens reprovados. Usa as funções puras da tela (`shared/api/apr.ts`) para montar o evento.
 //
 //   cd api && node --import tsx ../web/scripts/verificar-treino.mts
 import assert from "node:assert/strict";
-import { adicionarFoto, doModeloCompleto, montarAvaliacao, montarPayload, novoRascunho, observar, perguntasDe, responder, type ModeloCompleto, type RascunhoApr } from "../src/lib/apr";
+import { adicionarFoto, doModeloCompleto, montarAvaliacao, montarPayload, novoRascunho, observar, perguntasDe, responder, type ModeloCompleto, type RascunhoApr } from "../../shared/api/apr";
 import { arquivoDoTreino, responderTreino } from "../src/treino/api-ficticia";
 import { reiniciarTreino } from "../src/treino/armazem";
 import { COLEGAS_TREINO, COLEGA_SEM_ASSINATURA, MODELO_BLOQUEIO, MODELO_GUIADO, OS_BLOQUEIO, OS_GUIADA, idTreino } from "../src/treino/ids";
-import type { Usuario } from "../src/lib/tipos";
+import type { Usuario } from "../../shared/api/tipos";
 
 const eu: Usuario = {
   id: "11111111-2222-4333-8444-555555555555",

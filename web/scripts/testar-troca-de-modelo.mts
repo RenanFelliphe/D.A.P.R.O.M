@@ -1,5 +1,5 @@
 // Troca do modelo no meio da APR (sem servidor e sem navegador): monta rascunhos com os 8 modelos reais da carga inicial
-// (`api/src/db/seed/modelos-apr.json`) e confere, com as funções puras da tela (`src/lib/apr.ts`), que as perguntas iguais
+// (`api/src/db/seed/modelos-apr.json`) e confere, com as funções puras da tela (`shared/api/apr.ts`), que as perguntas iguais
 // guardam a resposta, as diferentes ficam em branco, o "NA" só passa para onde é aceito e os riscos de mesmo nome continuam
 // marcados.
 //
@@ -16,7 +16,7 @@ import {
   type ItemDoModelo,
   type ModeloDoRascunho,
   type RascunhoApr,
-} from "../src/lib/apr";
+} from "../../shared/api/apr";
 
 interface ModeloDoSeed {
   codigo: string;

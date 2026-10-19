@@ -2,20 +2,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { data, duracao } from "@/lib/formatar";
 import { urlDoPdf } from "@/lib/rotas";
+import type { ExecucaoDoHistorico } from "../../../../../shared/api/os-app";
 
-/** Linha de `GET /me/historico`. */
-export interface ExecucaoDoHistorico {
-  id: string;
-  os_id: string;
-  numero_ordem: string | null;
-  titulo: string;
-  local_codigo: string;
-  inicio: string;
-  fim: string;
-  tempo_liquido_min: number | null;
-  pausa_min: number | null;
-  pdf_pronto: boolean;
-}
+/** Linha de `GET /me/historico`, em `shared/api/os-app.ts` (o app `mobile` usa o mesmo tipo). */
+export type { ExecucaoDoHistorico };
 
 /** Linha do histórico de OS encerradas pelo técnico, com o link do PDF (a `api` o gera na hora se ainda estiver pendente). */
 export function LinhaHistorico({ execucao }: { execucao: ExecucaoDoHistorico }) {

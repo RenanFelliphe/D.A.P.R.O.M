@@ -3,6 +3,7 @@
 import { useFormContext } from "react-hook-form";
 import type { z } from "zod";
 import type { OpcaoDeMotivo } from "@/components/app/execucao/motivos";
+import { faltaNoMotivo } from "@/lib/execucao-motivos";
 import { Field, ligarAoErro } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
 
@@ -19,12 +20,8 @@ export interface ValoresDoMotivo {
 export const regraDoMotivo =
   (opcoes: OpcaoDeMotivo[], deQue: string) =>
   (valores: ValoresDoMotivo, ctx: z.RefinementCtx) => {
-    if (!valores.motivo) {
-      ctx.addIssue({ code: "custom", path: ["motivo"], message: `Escolha o motivo ${deQue}.` });
-      return;
-    }
-    const opcao = opcoes.find((o) => o.valor === valores.motivo);
-    if (opcao?.complemento && !opcao.complemento.opcional && !valores.complemento.trim()) ctx.addIssue({ code: "custom", path: ["complemento"], message: opcao.complemento.faltou });
+    const falta = faltaNoMotivo(opcoes, deQue, valores);
+    if (falta) ctx.addIssue({ code: "custom", path: [falta.campo], message: falta.mensagem });
   };
 
 interface CamposDoMotivoProps {
@@ -79,9 +76,4 @@ export function CamposDoMotivo({ opcoes, deQue, desabilitado }: CamposDoMotivoPr
   );
 }
 
-/** O complemento só vai no evento quando o motivo escolhido o abre; o opcional (lesão, enfermidade) só vai se foi escrito. */
-export function complementoDoMotivo(opcoes: OpcaoDeMotivo[], valores: ValoresDoMotivo): { complemento?: string } {
-  const campo = opcoes.find((o) => o.valor === valores.motivo)?.complemento;
-  const texto = valores.complemento.trim();
-  return campo && (!campo.opcional || texto) ? { complemento: texto } : {};
-}
+export { complementoDoMotivo } from "@/lib/execucao-motivos";

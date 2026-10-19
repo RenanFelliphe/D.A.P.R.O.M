@@ -1,6 +1,6 @@
 "use client";
 
-import type { RespostaComPontos } from "./gamificacao";
+import { interpretarRespostaDoEvento, montarEnvioDoEvento, type EventoDeCampo, type RespostaEventos } from "./eventos";
 import { novoUuid } from "./uuid";
 
 /**
@@ -147,45 +147,8 @@ export async function urlDoArquivo(id: string): Promise<string> {
   return (await chamar<{ url: string }>("GET", `/arquivos/${id}/url`)).url;
 }
 
-export interface EventoDeCampo {
-  /** Gerado no cliente; reenviar o mesmo id não tem efeito. */
-  id?: string;
-  tipo:
-    | "apr_concluida"
-    | "apr_assinada"
-    | "apr_recusada"
-    | "execucao_iniciada"
-    | "pausa_iniciada"
-    | "pausa_encerrada"
-    | "execucao_encerrada"
-    | "encerramento_assinado"
-    | "execucao_interrompida"
-    | "execucao_suspensa"
-    | "execucao_cancelada";
-  os_id?: string | null;
-  payload: Record<string, unknown>;
-  ocorrido_em?: string;
-}
-
-export interface RespostaEventos extends RespostaComPontos {
-  confirmados: string[];
-  alertas: string[];
-  aprs: { id: string; resultado: "aprovada" | "bloqueada" }[];
-  os: { id: string; status: string }[];
-  rejeitados: { id: string; codigo: string; mensagem: string }[];
-  pendentes: { id: string; codigo: string; mensagem: string }[];
-}
-
-/** O evento foi recusado (`rejeitado`) ou ainda não pode ser aplicado (`pendente`); `message` é o texto para o usuário. */
-export class ErroDeEvento extends Error {
-  constructor(
-    public readonly situacao: "rejeitado" | "pendente",
-    public readonly codigo: string,
-    mensagem: string,
-  ) {
-    super(mensagem);
-  }
-}
+/** O formato do evento, a resposta da `api` e a leitura dela vivem em `shared/api/eventos.ts` (o app usa o mesmo código). */
+export { ErroDeEvento, type EventoDeCampo, type RespostaEventos } from "./eventos";
 
 /**
  * Envia UM evento de campo (`POST /eventos`) e devolve a resposta da `api` (`aprs`, `os`, `alertas`). Se o evento não foi
@@ -193,13 +156,6 @@ export class ErroDeEvento extends Error {
  * item(ns)"…). Fotos e assinaturas precisam ter subido antes com `enviarArquivo`.
  */
 export async function enviarEvento(evento: EventoDeCampo): Promise<RespostaEventos & { id: string }> {
-  const id = evento.id ?? novoId();
-  const resposta = await chamar<RespostaEventos>("POST", "/eventos", {
-    eventos: [{ id, tipo: evento.tipo, os_id: evento.os_id ?? null, payload: evento.payload, ocorrido_em: evento.ocorrido_em ?? new Date().toISOString() }],
-  });
-  const recusa = resposta.rejeitados.find((r) => r.id === id);
-  if (recusa) throw new ErroDeEvento("rejeitado", recusa.codigo, recusa.mensagem);
-  const espera = resposta.pendentes.find((r) => r.id === id);
-  if (espera) throw new ErroDeEvento("pendente", espera.codigo, espera.mensagem);
-  return { ...resposta, id };
+  const { id, corpo } = montarEnvioDoEvento(evento);
+  return interpretarRespostaDoEvento(await chamar<RespostaEventos>("POST", "/eventos", corpo), id);
 }

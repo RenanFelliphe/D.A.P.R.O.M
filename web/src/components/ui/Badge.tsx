@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cx } from "@/lib/cx";
+import type { TomDoSelo } from "@/lib/tipos";
 
 const tons = {
   lib: "b-lib",
@@ -11,9 +12,9 @@ const tons = {
   crit: "b-crit",
   dark: "b-dark",
   brand: "b-brand",
-} as const;
+} as const satisfies Record<TomDoSelo, string>;
 
-export type BadgeTone = keyof typeof tons;
+export type BadgeTone = TomDoSelo;
 
 interface BadgeProps {
   tone?: BadgeTone;

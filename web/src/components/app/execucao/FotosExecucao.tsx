@@ -7,37 +7,9 @@ import { MensagemDeErro, Req } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { hora } from "@/lib/formatar";
 import { novoId } from "@/lib/cliente-api";
+import type { FotoDaExecucao, PdfDaExecucao } from "@/lib/evidencias";
 
-/** Foto já enviada (`PUT /arquivos/{id}`), pronta para virar uma evidência do evento. */
-export interface FotoDaExecucao {
-  /** Id da evidência. */
-  id: string;
-  arquivoId: string;
-  previa: string;
-  capturadaEm: string;
-  latitude?: number;
-  longitude?: number;
-}
-
-/** Evidência no formato do payload dos eventos de execução. */
-export const comoEvidencia = (f: FotoDaExecucao) => ({
-  id: f.id,
-  arquivo_id: f.arquivoId,
-  capturada_em: f.capturadaEm,
-  ...(f.latitude !== undefined && f.longitude !== undefined ? { latitude: f.latitude, longitude: f.longitude } : {}),
-});
-
-/** PDF já enviado (`PUT /arquivos/{id}` com `tipo=pdf`), pronto para virar uma evidência do evento: um laudo, um relatório. */
-export interface PdfDaExecucao {
-  /** Id da evidência. */
-  id: string;
-  arquivoId: string;
-  nome: string;
-  capturadaEm: string;
-}
-
-/** PDF no formato do payload dos eventos de execução. */
-export const pdfComoEvidencia = (d: PdfDaExecucao) => ({ id: d.id, arquivo_id: d.arquivoId, tipo: "pdf" as const, nome: d.nome, capturada_em: d.capturadaEm });
+export { comoEvidencia, pdfComoEvidencia, type FotoDaExecucao, type PdfDaExecucao } from "@/lib/evidencias";
 
 /** Posição do aparelho, se o usuário permitir; segue sem ela se negado, indisponível ou demorada. */
 function posicaoAtual(): Promise<{ latitude: number; longitude: number } | null> {
