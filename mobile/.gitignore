@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+dist/
+# Projetos nativos: gerados por `expo prebuild` (Continuous Native Generation), nunca editados à mão.
+/android
+/ios
+expo-env.d.ts
+*.apk
+*.aab
+*.keystore
