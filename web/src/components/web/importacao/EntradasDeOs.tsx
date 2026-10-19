@@ -101,8 +101,8 @@ function Cartao({ tom, icone, titulo, canal, selos, descricao, detalhes, acao, a
  * agora"), Importação (planilha .xlsx exportada do SAP, ou o PDF da OS impresso pelo SAP, que é lido e conferido campo a
  * campo antes de registrar; antes de escolher o arquivo, a tela pergunta se a OS é para liberar no sistema ou se já foi
  * concluída no papel, e nesse caso o PDF escaneado segue pela Digitalização: leitura em segundo plano e conferência com as
- * folhas ao lado) e Digitalização (câmera, ainda sem leitura), que só o administrador vê. O resultado da importação, a
- * conferência do PDF ou a da digitalização aparece logo abaixo.
+ * folhas ao lado) e Digitalização (câmera: 1 ou 2 folhas avulsas fotografadas, que seguem o mesmo caminho do PDF escaneado), que
+ * só o administrador vê. O resultado da importação, a conferência do PDF ou a da digitalização aparece logo abaixo.
  */
 export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmin }: EntradasDeOsProps) {
   const roteador = useRouter();
@@ -347,7 +347,7 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
             icone="camera"
             titulo="Digitalização"
             canal="Câmera"
-            descricao="Abre a câmera para digitalizar uma OS em papel e trazê-la para o sistema."
+            descricao="Fotografe 1 ou 2 folhas avulsas de uma OS já concluída no papel: a leitura é a mesma do PDF escaneado e a OS entra encerrada, só como histórico."
             detalhes={
               <>
                 <span>
@@ -356,7 +356,11 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
                 </span>
                 <span>
                   <Icon name="file" size={13} />
-                  Enquadre a folha inteira, com boa luz
+                  Uma foto por folha, com a folha inteira e boa luz
+                </span>
+                <span>
+                  <Icon name="eye" size={13} />
+                  O sistema avisa na hora se a foto está escura ou tremida
                 </span>
               </>
             }
@@ -431,7 +435,16 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
       )}
 
       {pergunta && <PerguntaDaImportacao arquivo={pergunta.arquivo} aoEscolher={escolherCaminho} aoFechar={() => setPergunta(null)} />}
-      {cameraAberta && <JanelaCamera aoFechar={() => setCameraAberta(false)} />}
+      {cameraAberta && (
+        <JanelaCamera
+          aoFechar={() => setCameraAberta(false)}
+          aoEnviada={(id) => {
+            setCameraAberta(false);
+            mostrar({ tipo: "digitalizando", id });
+            setVersaoDaLista((v) => v + 1);
+          }}
+        />
+      )}
     </div>
   );
 }

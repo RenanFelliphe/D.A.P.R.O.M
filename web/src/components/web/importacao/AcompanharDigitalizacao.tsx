@@ -20,13 +20,17 @@ function passosDaLeitura(d: Digitalizacao): Passo[] {
   const posicao = ORDEM_DAS_ETAPAS.indexOf(d.etapa);
   const estado = (i: number): Passo["estado"] => (posicao > i ? "feito" : "proximo");
   return [
-    { titulo: "PDF recebido", detalhe: "O arquivo está guardado; as folhas são desenhadas uma a uma.", estado: "feito" },
+    { titulo: "Arquivo recebido", detalhe: "O PDF (ou as fotos, já juntadas num PDF) está guardado; as folhas são desenhadas uma a uma.", estado: "feito" },
     {
       titulo: "Leitura do texto impresso",
       detalhe: d.paginas > 0 ? `O OCR do sistema lê o que foi impresso pelo SAP: folha ${Math.min(d.paginas_lidas + (d.etapa === "ocr" ? 1 : 0), d.paginas)} de ${d.paginas}.` : "O OCR do sistema lê o que foi impresso pelo SAP.",
       estado: estado(1),
     },
-    { titulo: "Leitura do que foi escrito à mão", detalhe: "A IA lê só o manuscrito (início e fim reais, pessoas e descrição), nunca assinaturas nem nomes.", estado: estado(2) },
+    {
+      titulo: "Leitura do que foi escrito à mão",
+      detalhe: "A IA lê só o manuscrito: na OS, o início e o fim reais, as pessoas e a descrição; na APR, a data, o serviço, quem participou e a marca de cada item. Nunca assinaturas nem rubricas.",
+      estado: estado(2),
+    },
     { titulo: "Conferência com o SAP e os cadastros", detalhe: "O sistema compara o que foi lido com os cadastros e aponta o que não bate.", estado: estado(3) },
   ];
 }

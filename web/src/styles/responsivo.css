@@ -388,10 +388,6 @@
   .entradas {
     grid-auto-flow: row
   }
-
-  .camera-resultado {
-    grid-template-columns: minmax(0, 1fr)
-  }
 }
 
 @media (max-width: 767px) {

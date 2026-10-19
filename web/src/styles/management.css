@@ -464,6 +464,114 @@
   background: var(--surface2)
 }
 
+/* A APR em papel na conferência: quem participou e a marca de cada item */
+.apr-papel {
+  margin-top: 4px
+}
+
+.apr-pessoa {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  gap: 8px;
+  align-items: center
+}
+
+.apr-pessoa-estado {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px
+}
+
+.apr-itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 480px;
+  overflow-y: auto;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--surface)
+}
+
+.apr-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 14px;
+  padding: 8px 12px;
+  font-size: 14px
+}
+
+.apr-item+.apr-item {
+  border-top: 1px solid var(--line)
+}
+
+.apr-item[data-bloqueia] {
+  background: var(--blq-bg)
+}
+
+.apr-item-texto {
+  flex: 1 1 320px;
+  min-width: 0
+}
+
+.apr-ops {
+  display: inline-flex;
+  gap: 4px
+}
+
+.apr-op {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap
+}
+
+.apr-op input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none
+}
+
+.apr-op[data-marcada] {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+  color: var(--brand-ink)
+}
+
+.apr-op:has(input:focus-visible) {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px
+}
+
+.apr-op:has(input:disabled) {
+  cursor: default;
+  opacity: .7
+}
+
+@media (max-width: 640px) {
+  .apr-pessoa {
+    grid-template-columns: minmax(0, 1fr) auto
+  }
+
+  .apr-pessoa .select,
+  .apr-pessoa .mono {
+    grid-column: 1 / -1
+  }
+}
+
 .lista-aberta {
   list-style: none;
   margin: 0;
@@ -705,20 +813,54 @@
   font-size: 13.5px
 }
 
-.camera-resultado {
+/* As folhas já fotografadas, antes de mandar ler */
+.camera-folhas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 12px
 }
 
-.camera-foto {
+.camera-folha {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--surface)
+}
+
+.camera-folha[data-aviso] {
+  border-color: var(--al-bd);
+  background: var(--al-bg)
+}
+
+.camera-folha a {
+  display: block
+}
+
+.camera-folha img {
   display: block;
   width: 100%;
-  max-height: 52dvh;
+  aspect-ratio: 3 / 4;
   object-fit: contain;
-  border-radius: 10px;
+  border-radius: 6px;
   background: #0E151C
+}
+
+.camera-folha-aviso {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  color: var(--al)
+}
+
+.camera-folha-aviso svg {
+  flex: none;
+  margin-top: 2px
 }
 
 /* Painel de entrada: seletor de período, gráfico de colunas e divisão por origem */

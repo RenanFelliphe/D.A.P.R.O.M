@@ -32,6 +32,58 @@ export interface ManuscritoLido {
   lido_por: "ia" | "nenhum";
 }
 
+export type FuncaoNaApr = "responsavel" | "executor";
+export type RespostaDaApr = "sim" | "nao" | "na";
+
+/** Uma pessoa da tabela de participantes da APR em papel, como foi lida e conferida com o cadastro e o registro de funcionários. */
+export interface ParticipanteLido {
+  nome: string | null;
+  matricula: string | null;
+  funcao: FuncaoNaApr;
+  /** A matrícula é de uma conta do sistema; quem não tem conta (ou já saiu) fica só com nome e matrícula. */
+  usuario_id: string | null;
+  estado: EstadoDoCampo;
+  aviso: string | null;
+}
+
+/** A APR em papel que veio junto com a folha da OS (as folhas com o título "Análise Preliminar de Risco"). */
+export interface AprLida {
+  /** As folhas do PDF que são a APR (a partir de 1). */
+  paginas: number[];
+  lido_por: "ia" | "nenhum";
+  /** O modelo achado pelo código impresso no título; `null` quando nada o identificou. */
+  modelo: { id: string; codigo: string; versao: number; titulo: string } | null;
+  /** O número da OS escrito à mão na APR. */
+  numero_os: string | null;
+  /** `AAAA-MM-DDTHH:MM`, o formato do `datetime-local`. */
+  data_hora: string | null;
+  servico: string | null;
+  participantes: ParticipanteLido[];
+  respostas: { item_id: string; resposta: RespostaDaApr }[];
+  avisos: string[];
+}
+
+/** Um item de um modelo de APR (`GET /digitalizacoes/modelos-apr`); a resposta bloqueante só o admin vê, e é a desta tela. */
+export interface ItemDoModeloApr {
+  id: string;
+  ordem: number;
+  secao: "verificacao" | "medida_preventiva";
+  risco: string | null;
+  texto: string;
+  resposta_bloqueante: "sim" | "nao" | null;
+  permite_na: boolean;
+}
+
+export interface ModeloDaAprParaConferencia {
+  id: string;
+  codigo: string;
+  versao: number;
+  titulo: string;
+  /** O modelo foi excluído: não vale para APR nova, mas a folha antiga pode ser dele. */
+  arquivado: boolean;
+  itens: ItemDoModeloApr[];
+}
+
 export interface OsDigitalizadaLida {
   /** O número da ordem como foi lido: identifica a OS mesmo que a pessoa corrija o número. */
   chave: string;
@@ -43,6 +95,8 @@ export interface OsDigitalizadaLida {
   faltando: CampoObrigatorioDoPdf[];
   observacoes: string[];
   manuscrito: ManuscritoLido;
+  /** A APR em papel da OS; `null` (ou ausente, nas leituras de antes da APR) quando a leitura não achou folha de APR. */
+  apr?: AprLida | null;
   estados: Partial<Record<CampoDaConferencia, EstadoDoCampo>>;
   avisos: string[];
   /** O que o sistema sabe da OS agora. */
@@ -90,11 +144,24 @@ export interface ResultadoDaDigitalizacao {
   registradas: { numero_ordem: string; os_id: string }[];
 }
 
+/** A APR em papel como a pessoa a conferiu (`POST /digitalizacoes/{id}/registro`). */
+export interface AprConferidaParaRegistro {
+  modelo_id: string;
+  data_hora: string | null;
+  servico: string | null;
+  participantes: { nome: string; matricula: string | null; funcao: FuncaoNaApr }[];
+  respostas: { item_id: string; resposta: RespostaDaApr }[];
+}
+
 /** O que a conferência manda de cada OS (`POST /digitalizacoes/{id}/registro`). */
 export interface OsConferidaParaRegistro {
   chave: string;
   ordem: OrdemDoPdf;
   execucao: { inicio: string | null; fim: string | null; numero_pessoas: number | null; texto: string | null };
+  /** `null`: só a OS é registrada; a folha da APR fica nas imagens do PDF da OS. */
+  apr: AprConferidaParaRegistro | null;
 }
 
 export const LIMITE_DO_PDF_DIGITALIZADO_MB = 30;
+/** O mesmo limite da `api`: a câmera é para folhas avulsas; para mais, escaneia-se e envia-se o PDF. */
+export const MAX_FOTOS_POR_ENVIO = 8;

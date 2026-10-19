@@ -1,18 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState, type ReactNode } from "react";
-import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { useEffect, useId, useState } from "react";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Req } from "@/components/ui/Field";
-import { Icon, type IconName } from "@/components/ui/Icon";
+import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { Panel } from "@/components/web/Panel";
 import { chamar, ErroCliente } from "@/lib/cliente-api";
 import { rotas } from "@/lib/rotas";
 import { rotuloDoStatus } from "@/lib/tipos";
+import { Campo } from "./CampoDaConferencia";
+import { aprInicial, aprParaRegistro, ConferenciaDaApr, pendenciasDaApr, type EdicaoDaApr } from "./ConferenciaDaApr";
 import type { CampoObrigatorioDoPdf, OrdemDoPdf } from "./tipos";
-import type { CampoDaConferencia, EstadoDoCampo, LeituraDigitalizada, OsConferidaParaRegistro, OsDigitalizadaLida, ResultadoDaDigitalizacao } from "./tipos-digitalizacao";
+import type { CampoDaConferencia, LeituraDigitalizada, ModeloDaAprParaConferencia, OsConferidaParaRegistro, OsDigitalizadaLida, ResultadoDaDigitalizacao } from "./tipos-digitalizacao";
 
 const NOME_DO_CAMPO: Record<CampoObrigatorioDoPdf, string> = {
   tipo_ordem: "tipo",
@@ -22,14 +23,7 @@ const NOME_DO_CAMPO: Record<CampoObrigatorioDoPdf, string> = {
   data_inicio_prog: "início programado",
 };
 
-const ESTADO: Record<EstadoDoCampo, { rotulo: string; tom: BadgeTone; icone: IconName }> = {
-  confere: { rotulo: "Confere", tom: "enc", icone: "check" },
-  duvidoso: { rotulo: "Confira", tom: "al", icone: "eye" },
-  invalido: { rotulo: "Inválido", tom: "blq", icone: "octagon" },
-  faltando: { rotulo: "Faltando", tom: "neu", icone: "pencil" },
-};
-
-/** O que o admin edita de uma OS: a OS lida, o que a folha diz da execução (como o formulário o guarda) e as duas confirmações. */
+/** O que o admin edita de uma OS: a OS lida, o que a folha diz da execução (como o formulário o guarda), a APR em papel e as confirmações. */
 interface Edicao {
   ordem: OrdemDoPdf;
   inicio: string;
@@ -39,6 +33,8 @@ interface Edicao {
   marcada: boolean;
   /** Conferiu o número da ordem e o que está escrito à mão com a folha. */
   conferida: boolean;
+  /** A APR em papel que veio junto com a folha da OS; `null` quando a leitura não achou folha de APR. */
+  apr: EdicaoDaApr | null;
 }
 
 const limpo = (v: string) => (v.trim() === "" ? null : v);
@@ -55,11 +51,12 @@ function inicial(o: OsDigitalizadaLida): Edicao {
     texto: o.manuscrito.texto ?? "",
     marcada: !foraDoRegistro(o),
     conferida: false,
+    apr: aprInicial(o.apr),
   };
 }
 
 /** O que ainda impede a OS de ser registrada. */
-function pendencias(e: Edicao): string[] {
+function pendencias(e: Edicao, modelos: ModeloDaAprParaConferencia[] | null): string[] {
   const o = e.ordem;
   const vazio = (v: string | null) => !v?.trim();
   const faltam = (Object.keys(NOME_DO_CAMPO) as CampoObrigatorioDoPdf[]).filter((c) => (c === "local_instalacao" ? vazio(o.local_instalacao.codigo) : vazio(o[c])));
@@ -69,6 +66,7 @@ function pendencias(e: Edicao): string[] {
   if (e.inicio && e.fim && e.fim < e.inicio) lista.push("O fim real é anterior ao início real");
   if (e.pessoas && (!Number.isInteger(Number(e.pessoas)) || Number(e.pessoas) < 1)) lista.push("O número de pessoas precisa ser um inteiro a partir de 1");
   if (!e.conferida) lista.push("Confirme que conferiu o número da ordem e o escrito à mão com a folha");
+  lista.push(...pendenciasDaApr(e.apr, modelos));
   return lista;
 }
 
@@ -76,49 +74,19 @@ function pendencias(e: Edicao): string[] {
 const folhas = (paginas: number[]) =>
   paginas.length === 1 ? `folha ${paginas[0]}` : paginas.every((p, i) => i === 0 || p === paginas[i - 1]! + 1) ? `folhas ${paginas[0]} a ${paginas.at(-1)}` : `folhas ${paginas.join(", ")}`;
 
-interface CampoProps {
-  id: string;
-  rotulo: string;
-  estado?: EstadoDoCampo;
-  obrigatorio?: boolean;
-  dica?: string;
-  largo?: boolean;
-  children: ReactNode;
-}
-
-/** Um campo da conferência: o rótulo, o estado que o sistema deu à leitura e a dica. */
-function Campo({ id, rotulo, estado, obrigatorio, dica, largo, children }: CampoProps) {
-  const e = estado ? ESTADO[estado] : null;
-  return (
-    <div className="field" data-faltou={estado === "faltando" || estado === "invalido" || undefined} style={largo ? { gridColumn: "1 / -1" } : undefined}>
-      <label htmlFor={id} className="row between g8" style={{ alignItems: "baseline" }}>
-        <span>
-          {rotulo}
-          {obrigatorio && <Req> · obrigatório</Req>}
-        </span>
-        {e && (
-          <Badge tone={e.tom}>
-            <Icon name={e.icone} size={13} />
-            {e.rotulo}
-          </Badge>
-        )}
-      </label>
-      {children}
-      {dica && <span className="small">{dica}</span>}
-    </div>
-  );
-}
-
 interface CartaoDaOsProps {
   digitalizacaoId: string;
   lida: OsDigitalizadaLida;
   edicao: Edicao;
   podeCadastrarEquipe: boolean;
+  /** Os modelos de APR com os itens (só carregam se alguma OS trouxe APR); `null` enquanto carregam. */
+  modelos: ModeloDaAprParaConferencia[] | null;
+  erroDosModelos: string | null;
   aoMudar: (edicao: Edicao) => void;
 }
 
-/** Uma OS da digitalização para conferir: as folhas dela ao lado, o impresso, o escrito à mão e as duas confirmações. */
-function CartaoDaOs({ digitalizacaoId, lida, edicao, podeCadastrarEquipe, aoMudar }: CartaoDaOsProps) {
+/** Uma OS da digitalização para conferir: as folhas dela ao lado, o impresso, o escrito à mão, a APR em papel e as confirmações. */
+function CartaoDaOs({ digitalizacaoId, lida, edicao, podeCadastrarEquipe, modelos, erroDosModelos, aoMudar }: CartaoDaOsProps) {
   const base = useId();
   const id = (campo: string) => `${base}-${campo}`;
   const { ordem, marcada } = edicao;
@@ -131,7 +99,7 @@ function CartaoDaOs({ digitalizacaoId, lida, edicao, podeCadastrarEquipe, aoMuda
   const fora = foraDoRegistro(lida);
   const centroMudou = (ordem.centro_trabalho ?? "") !== (lida.ordem.centro_trabalho ?? "");
   const semEquipe = !existente && !equipe && !centroMudou;
-  const problemas = marcada ? pendencias(edicao) : [];
+  const problemas = marcada ? pendencias(edicao, modelos) : [];
   const avisos = [...lida.observacoes, ...lida.avisos];
   const folhasDaOs = lida.paginas;
 
@@ -204,7 +172,10 @@ function CartaoDaOs({ digitalizacaoId, lida, edicao, podeCadastrarEquipe, aoMuda
             <a key={n} href={`/api/digitalizacoes/${digitalizacaoId}/folhas/${n}`} target="_blank" rel="noreferrer" title={`Abrir a folha ${n} em tamanho real`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/api/digitalizacoes/${digitalizacaoId}/folhas/${n}`} alt={`Folha ${n} do PDF digitalizado`} loading="lazy" />
-              <span className="small">Folha {n}</span>
+              <span className="small">
+                Folha {n}
+                {lida.apr?.paginas.includes(n) && " · APR"}
+              </span>
             </a>
           ))}
         </div>
@@ -329,6 +300,10 @@ function CartaoDaOs({ digitalizacaoId, lida, edicao, podeCadastrarEquipe, aoMuda
         </label>
       </div>
 
+      {lida.apr && edicao.apr && (
+        <ConferenciaDaApr lida={lida.apr} modelos={modelos} erroDosModelos={erroDosModelos} edicao={edicao.apr} ativa={marcada} aoMudar={(apr) => aoMudar({ ...edicao, apr })} />
+      )}
+
       {problemas.length > 0 && (
         <span className="entrada-retorno erro" role="alert">
           {problemas.join(". ")}.
@@ -359,9 +334,24 @@ export function ConferenciaDigitalizacao({ id, nome, leitura, podeCadastrarEquip
   const [edicoes, setEdicoes] = useState<Edicao[]>(() => leitura.ordens.map(inicial));
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // Os modelos de APR (com os itens) só se pedem se alguma OS trouxe folha de APR.
+  const [modelos, setModelos] = useState<ModeloDaAprParaConferencia[] | null>(null);
+  const [erroDosModelos, setErroDosModelos] = useState<string | null>(null);
+  const temApr = leitura.ordens.some((o) => o.apr);
+
+  useEffect(() => {
+    if (!temApr) return;
+    let ativo = true;
+    chamar<{ modelos: ModeloDaAprParaConferencia[] }>("GET", "/digitalizacoes/modelos-apr")
+      .then((r) => ativo && setModelos(r.modelos))
+      .catch((e) => ativo && setErroDosModelos(e instanceof ErroCliente ? e.message : "Servidor indisponível. Recarregue a conferência."));
+    return () => {
+      ativo = false;
+    };
+  }, [temApr]);
 
   const escolhidas = edicoes.map((e, i) => ({ e, lida: leitura.ordens[i]! })).filter(({ e }) => e.marcada);
-  const bloqueadas = escolhidas.filter(({ e }) => pendencias(e).length > 0).length;
+  const bloqueadas = escolhidas.filter(({ e }) => pendencias(e, modelos).length > 0).length;
 
   async function registrar() {
     setErro(null);
@@ -371,6 +361,7 @@ export function ConferenciaDigitalizacao({ id, nome, leitura, podeCadastrarEquip
         chave: lida.chave,
         ordem: { ...e.ordem, numero_ordem: e.ordem.numero_ordem.trim() },
         execucao: { inicio: limpo(e.inicio), fim: limpo(e.fim), numero_pessoas: e.pessoas ? Number(e.pessoas) : null, texto: limpo(e.texto) },
+        apr: e.apr?.incluir && modelos ? aprParaRegistro(e.apr, modelos) : null,
       }));
       aoRegistrar(await chamar<ResultadoDaDigitalizacao>("POST", `/digitalizacoes/${id}/registro`, { ordens }));
     } catch (e) {
@@ -425,6 +416,8 @@ export function ConferenciaDigitalizacao({ id, nome, leitura, podeCadastrarEquip
           lida={lida}
           edicao={edicoes[i]!}
           podeCadastrarEquipe={podeCadastrarEquipe}
+          modelos={modelos}
+          erroDosModelos={erroDosModelos}
           aoMudar={(nova) => setEdicoes((atuais) => atuais.map((e, j) => (j === i ? nova : e)))}
         />
       ))}

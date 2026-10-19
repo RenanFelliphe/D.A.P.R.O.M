@@ -16,6 +16,18 @@ export interface LocalDaOs {
   critico: boolean;
 }
 
+/** A APR em papel que a Digitalização registrou junto com a folha da OS: não é uma APR do sistema (não vale como APR do dia nem pontua). */
+export interface AprEmPapel {
+  modelo: { codigo: string; versao: number; titulo: string };
+  data_hora: string | null;
+  servico: string | null;
+  participantes: { nome: string; matricula: string | null; funcao: "responsavel" | "executor"; usuario_id: string | null }[];
+  /** Só os itens que a folha traz marcados, na ordem do formulário. */
+  respostas: { ordem: number; secao: "verificacao" | "medida_preventiva"; risco: string | null; texto: string; resposta: "sim" | "nao" | "na" }[];
+  folhas: number;
+  fonte: "ia" | "manual" | "nenhuma";
+}
+
 /** O que a folha em papel diz da execução de uma OS digitalizada (início e fim reais escritos à mão, pessoas e descrição). */
 export interface ExecucaoEmPapel {
   inicio_real: string | null;
@@ -27,6 +39,8 @@ export interface ExecucaoEmPapel {
   folhas: number;
   registrada_em: string;
   registrada_por_nome: string;
+  /** A APR em papel que veio junto; `null` quando a folha não trazia ou a pessoa não a registrou. */
+  apr: AprEmPapel | null;
 }
 
 /** A OS no detalhe: a linha inteira do banco mais o local, a equipe e os campos derivados. */
