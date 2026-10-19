@@ -634,12 +634,13 @@ describe("Integração SAP: diagnóstico da entrada de OS e sincronização", ()
     const r = await resumo("7d");
     assert.deepEqual([r.periodo, r.agrupamento, r.de, r.ate], ["7d", "dia", "2026-10-08", "2026-10-14"]);
     assert.equal(r.serie.length, 7);
-    assert.deepEqual(r.serie.at(-1), { inicio: "2026-10-14", fim: "2026-10-15", api: 3, planilha: 0, leituras: 1, falhas: 0 });
-    assert.deepEqual(r.serie.find((p: any) => p.inicio === "2026-10-12"), { inicio: "2026-10-12", fim: "2026-10-13", api: 0, planilha: 5, leituras: 0, falhas: 0 });
-    assert.deepEqual(r.serie.find((p: any) => p.inicio === "2026-10-10"), { inicio: "2026-10-10", fim: "2026-10-11", api: 0, planilha: 0, leituras: 1, falhas: 1 });
+    assert.deepEqual(r.serie.at(-1), { inicio: "2026-10-14", fim: "2026-10-15", api: 3, planilha: 0, digitalizacao: 0, leituras: 1, falhas: 0 });
+    assert.deepEqual(r.serie.find((p: any) => p.inicio === "2026-10-12"), { inicio: "2026-10-12", fim: "2026-10-13", api: 0, planilha: 5, digitalizacao: 0, leituras: 0, falhas: 0 });
+    assert.deepEqual(r.serie.find((p: any) => p.inicio === "2026-10-10"), { inicio: "2026-10-10", fim: "2026-10-11", api: 0, planilha: 0, digitalizacao: 0, leituras: 1, falhas: 1 });
     assert.deepEqual(r.totais, { criadas: 8, atualizadas: 2, ignoradas: 4 });
     assert.deepEqual(r.por_origem.api, { criadas: 3, atualizadas: 2, ignoradas: 1, leituras: 2, leituras_com_erro: 1 });
     assert.deepEqual(r.por_origem.planilha, { criadas: 5, atualizadas: 0, ignoradas: 3, arquivos: 1, arquivos_com_erro: 0 });
+    assert.deepEqual(r.por_origem.digitalizacao, { criadas: 0, atualizadas: 0, ignoradas: 0, arquivos: 0, arquivos_com_erro: 0 });
     assert.deepEqual(r.anterior, { criadas: 4, atualizadas: 0, ignoradas: 0 });
   });
 

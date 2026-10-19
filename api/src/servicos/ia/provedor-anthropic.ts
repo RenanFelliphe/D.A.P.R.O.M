@@ -8,6 +8,15 @@ function blocoDeConteudo(bloco: BlocoDeMensagem) {
   return { type: "text" as const, text: bloco.texto, ...(bloco.cache ? { cache_control: { type: "ephemeral" as const } } : {}) };
 }
 
+/** O conteúdo de uma mensagem: as imagens antes do texto (a IA lê melhor a pergunta depois de ver a folha). */
+function conteudoDaMensagem(bloco: BlocoDeMensagem) {
+  const imagens = (bloco.imagens ?? []).map((i) => ({
+    type: "image" as const,
+    source: { type: "base64" as const, media_type: i.tipoMime, data: Buffer.from(i.dados).toString("base64") },
+  }));
+  return [...imagens, blocoDeConteudo(bloco)];
+}
+
 /**
  * Implementação real do módulo de IA: `fetch` nativo contra a API de mensagens da Anthropic (sem lib HTTP extra,
  * mesmo padrão de `sap-http.ts`/`rh-http.ts`), com streaming SSE do próprio protocolo da Anthropic e `cache_control`
@@ -30,7 +39,7 @@ export class ProvedorIAAnthropic implements ProvedorIA {
     const system = pedido.mensagens.filter((m) => m.papel === "sistema").map(blocoDeConteudo);
     const messages = pedido.mensagens
       .filter((m) => m.papel !== "sistema")
-      .map((m) => ({ role: m.papel === "usuario" ? "user" : "assistant", content: [blocoDeConteudo(m)] }));
+      .map((m) => ({ role: m.papel === "usuario" ? "user" : "assistant", content: conteudoDaMensagem(m) }));
     return {
       model: this.modelos[pedido.modelo],
       max_tokens: pedido.maxTokens ?? this.maxTokensPadrao,

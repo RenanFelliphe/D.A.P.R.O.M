@@ -16,10 +16,11 @@ export const OS_TIPOS = ["corretiva", "preventiva"] as const;
 export const OS_STATUS = ["liberada", "pendente", "em_execucao", "encerrando", "aguardando_supervisor", "encerrada", "cancelada", "devolvida"] as const;
 /**
  * A OS entra pela leitura do SAP (API), pela planilha exportada do SAP ou pelo PDF da OS impressa pelo SAP; só a de apoio
- * nasce no sistema, ligada à OS que ela destrava.
+ * nasce no sistema, ligada à OS que ela destrava. A `digitalizacao` é a OS antiga, já executada no papel, que o admin traz
+ * como encerrada, de histórico (`os_digitalizacao`).
  */
-export const OS_ORIGENS = ["sap", "planilha", "pdf", "apoio"] as const;
-export const IMPORTACAO_ORIGENS = ["api", "planilha", "pdf"] as const;
+export const OS_ORIGENS = ["sap", "planilha", "pdf", "apoio", "digitalizacao"] as const;
+export const IMPORTACAO_ORIGENS = ["api", "planilha", "pdf", "digitalizacao"] as const;
 
 export type OsStatus = (typeof OS_STATUS)[number];
 

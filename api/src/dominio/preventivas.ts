@@ -8,6 +8,7 @@ import {
   execucao,
   localInstalacao,
   os,
+  osDigitalizacao,
   planoPreventiva,
   type CicloBase,
   type IntervaloUnidade,
@@ -318,7 +319,7 @@ export function calcularCiclo(p: LinhaDoPlano, osDoPlano: OsDoCiclo[], hoje: str
 }
 
 /** Dia (São Paulo) do encerramento da OS: a execução encerrada mais recente dela. */
-const encerradaEm = sql<string | null>`(select to_char(max(${execucao.fim}) at time zone ${FUSO}, 'YYYY-MM-DD') from ${execucao} where ${execucao.osId} = ${os.id} and ${execucao.resultado} = 'encerrada')`;
+const encerradaEm = sql<string | null>`coalesce((select to_char(max(${execucao.fim}) at time zone ${FUSO}, 'YYYY-MM-DD') from ${execucao} where ${execucao.osId} = ${os.id} and ${execucao.resultado} = 'encerrada'), (select to_char(coalesce(${osDigitalizacao.fimReal}, ${osDigitalizacao.inicioReal}) at time zone ${FUSO}, 'YYYY-MM-DD') from ${osDigitalizacao} where ${osDigitalizacao.osId} = ${os.id}), case when ${os.origem} = 'digitalizacao' then ${os.dataInicioProg}::text end)`;
 
 /** As OS preventivas (sem as canceladas e as devolvidas) dos planos, agrupadas pela chave plano + item, das mais recentes às mais antigas. */
 async function osDosPlanos(db: Db, planos: LinhaDoPlano[]): Promise<Map<string, OsDoCiclo[]>> {

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { resolverAcao, type AcaoBruta, type AcaoResolvida, DESTINOS } from "../../../shared/vitoria/destinos";
 import { sugestoesDaTela, type SugestaoFixa } from "../../../shared/vitoria/sugestoes";
 import type { Db } from "../db/conexao";
-import { alerta, treinamentoServicoVersao, vitoriaEstatistica, vitoriaPerguntaSemResposta, vitoriaUso, type Perfil } from "../db/schema";
+import { alerta, osDigitalizacao, treinamentoServicoVersao, vitoriaEstatistica, vitoriaPerguntaSemResposta, vitoriaUso, type Perfil } from "../db/schema";
 import { avisarAdmins } from "./alertas";
 import type { Deps } from "../deps";
 import type { ExpressaoVitoria } from "./treinamento-servico-esquema";
@@ -12,7 +12,7 @@ import { naoEncontrado } from "../http/erros";
 import { IAIndisponivel, type BlocoDeMensagem, type PedidoDeTexto } from "../servicos/ia";
 import { blocoDeDatas } from "./vitoria-datas";
 import { buscarNoManual, manualDoPerfil } from "./vitoria-manual";
-import { diaDe, inicioDoDia } from "./tempo";
+import { diaDe, inicioDoDia, somarDias } from "./tempo";
 
 /**
  * O assistente de ajuda (`vitoria.md`, seção 2), níveis 1 a 3: responde pelo manual do perfil, oferece "Me leve lá" e
@@ -251,8 +251,8 @@ export interface SobreAVitoria {
     treinamentosCriados: number;
     treinamentosPublicados: number;
     /**
-     * OS e APR antigas digitalizadas pela leitura da IA (seção 10). A digitalização ainda não foi implementada e nenhuma OS
-     * tem essa origem (`OS_ORIGENS`), então o número de verdade é zero; passa a contar quando ela existir.
+     * OS antigas que a Digitalização registrou como encerradas, de histórico (seção 10): uma linha de `os_digitalizacao` para
+     * cada uma. As APRs antigas ainda não entram (pendência 12).
      */
     digitalizadas: number;
   };
@@ -279,13 +279,14 @@ async function estatisticasDaVitoria(db: Db): Promise<SobreAVitoria["estatistica
     })
     .from(v)
     .where(eq(v.geradoComIa, true));
+  const [digitalizadas] = await db.select({ total: sql<number>`count(*)::int` }).from(osDigitalizacao);
   const { respostasComIa, tempoIaMs, ...resto } = t!;
   return {
     ...resto,
     tempoMedioMs: respostasComIa > 0 ? Math.round(Number(tempoIaMs) / respostasComIa) : null,
     treinamentosCriados: treinos?.criados ?? 0,
     treinamentosPublicados: treinos?.publicados ?? 0,
-    digitalizadas: 0,
+    digitalizadas: digitalizadas?.total ?? 0,
   };
 }
 
@@ -303,6 +304,135 @@ export async function sobreAVitoria(deps: Pick<Deps, "db" | "ia" | "config" | "a
     limites: { porConversa: config.vitoria.limitePorConversa, porContaDia: config.vitoria.limitePorContaDia },
     mensagensHoje: await usoDoDia(db, usuarioId, diaDe(agora())),
     estatisticas: await estatisticasDaVitoria(db),
+  };
+}
+
+// ---- Diagnóstico (admin) -------------------------------------------------------------------------------------------
+
+/** O resultado da última chamada à IA feita por esta api; fica na memória do processo (zera ao reiniciar) e só serve ao diagnóstico. */
+let ultimaChamadaIA: { em: Date; ok: boolean; erro?: string } | null = null;
+
+export type EstadoDaVitoria = "ativa" | "sem_chave" | "limite_do_dia" | "fornecedor_com_problema";
+
+export interface DiagnosticoDaVitoria {
+  estado: EstadoDaVitoria;
+  /** Resumo de uma linha do estado, já em português. */
+  titulo: string;
+  /** Por que está assim, em linguagem simples. */
+  porque: string;
+  /** Quando volta ao normal (texto pronto), ou `null` quando está ativa. */
+  volta: string | null;
+  provedor: "anthropic" | "gemini";
+  modelo: string;
+  uso: {
+    dia: string;
+    usadas: number;
+    limite: number;
+    restantes: number;
+    percentual: number;
+    /** Respostas por hora, em média desde 0h; `null` com pouco uso para estimar. */
+    ritmoPorHora: number | null;
+    /** Em quantas horas o limite do dia acaba, no ritmo de hoje; `null` sem estimativa ou se já acabou. */
+    esgotaEmHoras: number | null;
+    /** A hora estimada (ISO) em que o limite acaba, se acabar antes da meia-noite. */
+    esgotaPorVolta: string | null;
+  };
+  limites: { porConversa: number; porContaDia: number };
+  ultimaChamada: { em: string; ok: boolean; erro: string | null } | null;
+  hoje: { respondidas: number; naoSei: number; comIa: number; semIa: number };
+}
+
+const MINUTO_MS = 60_000;
+
+/** Quando a cota diária do Gemini renova: meia-noite do Pacífico (4h de Brasília no horário de verão americano, 5h fora dele). */
+function proximaRenovacaoDoGemini(agora: Date): Date {
+  const formatar = (opcoes: Intl.DateTimeFormatOptions) => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "America/Los_Angeles", hourCycle: "h23", ...opcoes }).format(agora));
+  const minutosAteMeiaNoite = (24 - formatar({ hour: "2-digit" })) * 60 - formatar({ minute: "2-digit" });
+  return new Date(agora.getTime() + minutosAteMeiaNoite * MINUTO_MS);
+}
+
+const horaBr = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }).format(d);
+
+/**
+ * O diagnóstico da Vitória para o admin: se a IA está ativa, por que não está, quando volta e quanto falta para o limite do
+ * dia acabar. Só lê (contadores de `vitoria_uso` e `vitoria_estatistica` e a última chamada em memória); nunca chama a IA.
+ */
+export async function diagnosticoDaVitoria(deps: Pick<Deps, "db" | "ia" | "config" | "agora">): Promise<DiagnosticoDaVitoria> {
+  const { db, ia, config } = deps;
+  const agora = deps.agora();
+  const dia = diaDe(agora);
+  const limite = config.vitoria.limiteGlobalDia;
+  const usadas = await usoGlobalDoDia(db, dia);
+  const [est] = await db.select().from(vitoriaEstatistica).where(eq(vitoriaEstatistica.dia, dia));
+
+  const horasDecorridas = Math.max((agora.getTime() - inicioDoDia(dia).getTime()) / 3_600_000, 1 / 60);
+  const ritmoPorHora = usadas >= 5 ? usadas / horasDecorridas : null;
+  const restantes = Math.max(limite - usadas, 0);
+  const meiaNoite = inicioDoDia(somarDias(dia, 1));
+  const esgotaEmHoras = ritmoPorHora && restantes > 0 ? restantes / ritmoPorHora : null;
+  const esgota = esgotaEmHoras === null ? null : new Date(agora.getTime() + esgotaEmHoras * 3_600_000);
+
+  const falhou = ultimaChamadaIA && !ultimaChamadaIA.ok ? ultimaChamadaIA : null;
+  const nomeDoProvedor = config.ia.provedor === "gemini" ? "Gemini" : "Claude";
+  let estado: EstadoDaVitoria;
+  let titulo: string;
+  let porque: string;
+  let volta: string | null = null;
+
+  if (!ia.disponivel()) {
+    estado = "sem_chave";
+    titulo = "Desligada: sem chave de IA";
+    porque = `Não há chave configurada para o ${nomeDoProvedor} (${config.ia.provedor === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY"}), então ela responde só pelas sugestões fixas e pela busca no manual.`;
+    volta = "Quando a chave for configurada na api e ela reiniciar.";
+  } else if (usadas >= limite) {
+    estado = "limite_do_dia";
+    titulo = "Sem IA: o limite do dia acabou";
+    porque = `O projeto já usou as ${limite} respostas com IA permitidas por dia (VITORIA_LIMITE_GLOBAL_DIA). Até lá ela responde pelo manual.`;
+    volta = `À meia-noite (${horaBr(meiaNoite)} de Brasília), quando o contador do dia zera.`;
+  } else if (falhou) {
+    const cota = /\b429\b|quota|RESOURCE_EXHAUSTED|rate.?limit/i.test(falhou.erro ?? "");
+    estado = "fornecedor_com_problema";
+    titulo = cota ? "Sem IA: a cota do fornecedor acabou" : "Sem IA: o fornecedor falhou";
+    porque = cota
+      ? `O ${nomeDoProvedor} recusou a última pergunta por cota ou excesso de pedidos (ainda havia ${restantes} respostas do limite da Vitória). Ela responde pelo manual.`
+      : `A última chamada à IA falhou: ${falhou.erro}. Ela responde pelo manual até uma chamada dar certo.`;
+    volta =
+      cota && config.ia.provedor === "gemini"
+        ? `A cota diária do Gemini renova à meia-noite do Pacífico (${horaBr(proximaRenovacaoDoGemini(agora))} de Brasília); a próxima pergunta já testa se voltou.`
+        : "Sozinha: a cada pergunta nova ela tenta a IA de novo e volta assim que o fornecedor responder.";
+  } else {
+    estado = "ativa";
+    titulo = "Ativa, respondendo com IA";
+    porque = ultimaChamadaIA
+      ? `A última chamada à IA deu certo às ${horaBr(ultimaChamadaIA.em)}.`
+      : "Nenhuma pergunta foi feita desde que a api subiu; a chave está configurada e o limite do dia ainda tem folga.";
+  }
+
+  return {
+    estado,
+    titulo,
+    porque,
+    volta,
+    provedor: config.ia.provedor,
+    modelo: config.ia.modelos.vitoria,
+    uso: {
+      dia,
+      usadas,
+      limite,
+      restantes,
+      percentual: Math.min(100, Math.round((usadas / limite) * 100)),
+      ritmoPorHora: ritmoPorHora === null ? null : Math.round(ritmoPorHora * 10) / 10,
+      esgotaEmHoras: esgotaEmHoras === null ? null : Math.round(esgotaEmHoras * 10) / 10,
+      esgotaPorVolta: esgota && esgota < meiaNoite ? esgota.toISOString() : null,
+    },
+    limites: { porConversa: config.vitoria.limitePorConversa, porContaDia: config.vitoria.limitePorContaDia },
+    ultimaChamada: ultimaChamadaIA ? { em: ultimaChamadaIA.em.toISOString(), ok: ultimaChamadaIA.ok, erro: ultimaChamadaIA.erro ?? null } : null,
+    hoje: {
+      respondidas: est?.respondidas ?? 0,
+      naoSei: est?.naoSei ?? 0,
+      comIa: est?.respostasComIa ?? 0,
+      semIa: Math.max((est?.respondidas ?? 0) + (est?.naoSei ?? 0) - (est?.respostasComIa ?? 0), 0),
+    },
   };
 }
 
@@ -358,7 +488,9 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
   const inicio = performance.now();
   try {
     bruto = await ia.conversar(montarPedido(pedido.perfil, pedido.tela, pedido.contexto, pedido.historico, pedido.mensagem, dia));
+    ultimaChamadaIA = { em: agora(), ok: true };
   } catch (erro) {
+    ultimaChamadaIA = { em: agora(), ok: false, erro: erro instanceof Error ? erro.message.slice(0, 300) : "erro desconhecido" };
     // Rede fora do ar, chave inválida, HTTP ruim ou qualquer outra falha do fornecedor: cai no fallback, nunca num 500
     // (a resposta da rota já pode estar em streaming, sem mais como virar um erro HTTP).
     if (erro instanceof IAIndisponivel) console.warn(`Vitória: IA indisponível, respondendo sem IA (${erro.message})`);

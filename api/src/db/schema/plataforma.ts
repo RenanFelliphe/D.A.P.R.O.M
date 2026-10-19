@@ -2,10 +2,10 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 
-export const TAREFA_TIPOS = ["pdf_os", "email_alerta", "email_resumo", "leitura_sap", "leitura_rh", "conferencia_rh"] as const;
+export const TAREFA_TIPOS = ["pdf_os", "email_alerta", "email_resumo", "leitura_sap", "leitura_rh", "conferencia_rh", "digitalizacao"] as const;
 export const TAREFA_ESTADOS = ["pendente", "em_andamento", "concluida", "falhou"] as const;
 
-/** Tarefas em segundo plano: geração de PDF, e-mail dos avisos e o resumo diário, leitura do SAP e as conferências com o registro de funcionários. */
+/** Tarefas em segundo plano: geração de PDF, e-mail dos avisos e o resumo diário, leitura do SAP, as conferências com o registro de funcionários e a leitura das folhas digitalizadas. */
 export const tarefa = pgTable(
   "tarefa",
   {

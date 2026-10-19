@@ -64,6 +64,32 @@ describe("Módulo de IA genérico", () => {
     }
   });
 
+  it("ProvedorIAAnthropic manda as imagens como blocos base64 antes do texto", async () => {
+    let corpo: any;
+    const buscar = (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      corpo = JSON.parse(String(init?.body));
+      return new Response(JSON.stringify({ content: [{ type: "text", text: "{}" }] }), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch;
+    const modelos = { vitoria: "v", rascunho: "r", digitalizacao: "d" };
+    await new ProvedorIAAnthropic("chave", modelos, 1024, buscar).conversar({
+      modelo: "digitalizacao",
+      mensagens: [
+        { papel: "sistema", texto: "Leia a folha." },
+        { papel: "usuario", texto: "Leia.", imagens: [{ tipoMime: "image/jpeg", dados: new Uint8Array([1, 2, 3]) }] },
+      ],
+    });
+    assert.equal(corpo.model, "d");
+    assert.deepEqual(corpo.messages, [
+      {
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: Buffer.from([1, 2, 3]).toString("base64") } },
+          { type: "text", text: "Leia." },
+        ],
+      },
+    ]);
+  });
+
   it("ProvedorIAIndisponivel nunca fica disponível e sempre lança IAIndisponivel", async () => {
     const provedor = new ProvedorIAIndisponivel();
     assert.equal(provedor.disponivel(), false);

@@ -29,17 +29,24 @@ export class ProvedorIAGemini implements ProvedorIA {
 
   private corpo(pedido: PedidoDeTexto) {
     const sistema = pedido.mensagens.filter((m) => m.papel === "sistema" && m.texto);
-    const conversa = pedido.mensagens.filter((m) => m.papel !== "sistema" && m.texto);
+    const conversa = pedido.mensagens.filter((m) => m.papel !== "sistema" && (m.texto || m.imagens?.length));
     // O Gemini quer a conversa começando pelo usuário, e a janela do histórico pode começar numa fala da assistente.
     const inicio = conversa.findIndex((m) => m.papel === "usuario");
     const contents = (inicio === -1 ? [] : conversa.slice(inicio)).map((m) => ({
       role: m.papel === "usuario" ? "user" : "model",
-      parts: [{ text: m.texto }],
+      parts: [
+        ...(m.imagens ?? []).map((i) => ({ inlineData: { mimeType: i.tipoMime, data: Buffer.from(i.dados).toString("base64") } })),
+        ...(m.texto ? [{ text: m.texto }] : []),
+      ],
     }));
     return {
       ...(sistema.length > 0 ? { systemInstruction: { parts: sistema.map((m) => ({ text: m.texto })) } } : {}),
       contents,
-      generationConfig: { maxOutputTokens: (pedido.maxTokens ?? this.maxTokensPadrao) + MARGEM_DE_PENSAMENTO },
+      generationConfig: {
+        maxOutputTokens: (pedido.maxTokens ?? this.maxTokensPadrao) + MARGEM_DE_PENSAMENTO,
+        // O esquema só liga a saída em JSON: o formato exato vai na instrução e quem chama confere a resposta.
+        ...(pedido.schemaDeSaida ? { responseMimeType: "application/json" } : {}),
+      },
     };
   }
 

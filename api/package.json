@@ -21,10 +21,13 @@
     "treinamento:conferir-ia": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/conferir-rascunho-ia.ts",
     "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts",
     "pdf:exemplo": "tsx scripts/gerar-pdf-os.ts",
+    "pdf:digitalizado": "tsx scripts/gerar-pdf-digitalizado.ts",
     "email:testar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/testar-email.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",
+    "@napi-rs/canvas": "1.0.11",
+    "@tesseract.js-data/por": "1.0.0",
     "drizzle-orm": "^0.45.4",
     "exceljs": "^4.4.0",
     "hono": "^4.13.13",
@@ -33,6 +36,7 @@
     "pdfjs-dist": "6.3.289",
     "pdfkit": "^0.20.2",
     "pg": "^8.23.1",
+    "tesseract.js": "7.0.0",
     "tsx": "^4.23.15",
     "zod": "^4.6.5"
   },

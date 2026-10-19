@@ -32,6 +32,7 @@ import { DOMINIO_DEMO, emailDoNome } from "./dominio/usuarios";
 import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
 import { criarProvedorIA } from "./servicos/ia";
+import { MotorOcrTesseract } from "./servicos/ocr";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
@@ -92,6 +93,7 @@ async function main() {
     sap: new ClienteSapHttp(config.sapApiUrl, TOKEN_SAP),
     rh: new ClienteRhHttp(config.rhApiUrl, TOKEN_RH),
     ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),
+    ocr: new MotorOcrTesseract(),
     agora: () => new Date(),
   };
 

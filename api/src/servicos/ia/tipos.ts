@@ -6,9 +6,17 @@
 
 export type PapelDeMensagem = "sistema" | "usuario" | "assistente";
 
+/** Uma imagem anexada a uma mensagem (a folha digitalizada que a IA de visão lê). */
+export interface ImagemDeMensagem {
+  tipoMime: "image/jpeg" | "image/png";
+  dados: Uint8Array;
+}
+
 export interface BlocoDeMensagem {
   papel: PapelDeMensagem;
   texto: string;
+  /** Imagens que acompanham o texto, na ordem; só as mensagens do usuário as levam. */
+  imagens?: ImagemDeMensagem[];
   /** Marca o bloco para o prompt caching da Anthropic (`cache_control`); provedores sem cache ignoram. */
   cache?: boolean;
 }
@@ -20,8 +28,10 @@ export interface PedidoDeTexto {
   modelo: ModeloLogico;
   mensagens: BlocoDeMensagem[];
   /**
-   * JSON Schema da saída esperada; uso futuro (digitalização). O rascunho de treinamento não usa: pede linhas JSON pela
-   * instrução, para mostrar o progresso a cada item que chega pelo streaming (`treinamento-servico-ia.ts`).
+   * JSON Schema da saída esperada. A digitalização usa: no Gemini liga a saída em JSON da própria API (`responseMimeType`);
+   * na Anthropic o formato vai só na instrução. Em qualquer provedor quem chama confere a resposta (Zod): o esquema não a
+   * garante. O rascunho de treinamento não usa: pede linhas JSON pela instrução, para mostrar o progresso a cada item que
+   * chega pelo streaming (`treinamento-servico-ia.ts`).
    */
   schemaDeSaida?: Record<string, unknown>;
   /** Sobrepõe o limite padrão de tokens de resposta da configuração, quando o chamador precisar de outro valor. */

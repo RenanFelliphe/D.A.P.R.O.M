@@ -14,7 +14,7 @@ export interface PaginaDeTexto {
   linhas: string[];
 }
 
-interface Pedaco {
+export interface Pedaco {
   texto: string;
   x: number;
   y: number;
@@ -28,7 +28,18 @@ const VAO_DE_CELULA = 1.2;
 const VAO_DE_PALAVRA = 0.12;
 export const LIMITE_DE_PAGINAS = 60;
 
-function linhasDaPagina(pedacos: Pedaco[]): string[] {
+/** Uma linha montada: o texto e onde ela está (o `y` do primeiro pedaço e a altura da letra, na unidade dos pedaços). */
+export interface LinhaMontada {
+  texto: string;
+  y: number;
+  altura: number;
+}
+
+/**
+ * Agrupa pedaços de texto em linhas, de cima para baixo. É o mesmo agrupamento para o texto do PDF e para as palavras do OCR
+ * (`ocr.ts`): `y` cresce para cima, como no PDF.
+ */
+export function montarLinhas(pedacos: Pedaco[]): LinhaMontada[] {
   // De cima para baixo (no PDF o y cresce para cima) e da esquerda para a direita.
   const ordenados = pedacos.filter((p) => p.texto.trim() !== "").sort((a, b) => b.y - a.y || a.x - b.x);
   const linhas: Pedaco[][] = [];
@@ -40,6 +51,7 @@ function linhasDaPagina(pedacos: Pedaco[]): string[] {
     else linhas.push([p]);
   }
   return linhas.map((linha) => {
+    const { y, altura: alturaDaLinha } = linha[0]!;
     linha.sort((a, b) => a.x - b.x);
     let texto = "";
     let fim = Number.NEGATIVE_INFINITY;
@@ -53,9 +65,12 @@ function linhasDaPagina(pedacos: Pedaco[]): string[] {
       texto += p.texto;
       fim = Math.max(fim, p.x + p.largura);
     }
-    return texto.replace(/[  ]+/g, " ").replace(/ *\t */g, "\t").trim();
+    const limpo = texto.replace(/[  ]+/g, " ").replace(/ *\t */g, "\t").trim();
+    return { texto: limpo, y, altura: alturaDaLinha };
   });
 }
+
+const linhasDaPagina = (pedacos: Pedaco[]): string[] => montarLinhas(pedacos).map((l) => l.texto);
 
 /** Lê o texto de cada página. Arquivo que não é PDF (ou está protegido por senha): `422`. */
 export async function lerTextoDoPdf(bytes: Uint8Array): Promise<PaginaDeTexto[]> {

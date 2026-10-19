@@ -15,6 +15,7 @@ import { rotasImpedimento } from "./rotas/impedimento";
 import { rotasMe } from "./rotas/me";
 import { rotasModelosApr } from "./rotas/modelos-apr";
 import { rotasPainel } from "./rotas/painel";
+import { rotasDigitalizacoes } from "./rotas/digitalizacoes";
 import { rotasPdf } from "./rotas/pdf";
 import { rotasPreventivas } from "./rotas/preventivas";
 import { rotasRh } from "./rotas/rh";
@@ -48,6 +49,7 @@ export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa 
   app.route("/", rotasBusca(deps, auth));
   app.route("/", rotasArquivos(deps, auth));
   app.route("/", rotasSap(deps, auth));
+  app.route("/", rotasDigitalizacoes(deps, auth));
   app.route("/", rotasModelosApr(deps, auth));
   app.route("/", rotasCatalogo(deps, auth));
   app.route("/", rotasEventos(deps, auth));

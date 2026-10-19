@@ -253,6 +253,13 @@
       "when": 1792375843452,
       "tag": "0035_nota_das_tentativas_antigas",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792383074050,
+      "tag": "0036_digitalizacao_de_os_antigas",
+      "breakpoints": true
     }
   ]
 }

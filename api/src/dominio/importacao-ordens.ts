@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { atividade, equipe, execucao, localInstalacao, os, reprogramacao, alerta } from "../db/schema";
+import { atividade, equipe, execucao, localInstalacao, os, osDigitalizacao, reprogramacao, alerta, type MANUSCRITO_FONTES } from "../db/schema";
 import { codigoPostgres } from "../http/erros";
 import { criarAlertas } from "./alertas";
 import { chaveDoPlano, garantirPlano, lerIntervalo } from "./preventivas";
@@ -43,7 +43,27 @@ export interface PlanoSemIntervalo {
   numeroOrdem: string;
 }
 
+/**
+ * O que a Digitalização acrescenta a uma OS antiga (`origem = 'digitalizacao'`): o id e o PDF das folhas, que o registro já
+ * preparou, e o que a folha diz da execução. A OS entra encerrada, de histórico: sem `execucao`, sem APR, sem pontos.
+ */
+export interface DadosDoHistorico {
+  osId: string;
+  digitalizacaoId: string;
+  usuarioId: string;
+  /** Caminho do PDF das folhas desta OS no bucket `pdfs`. */
+  pdfPath: string;
+  paginas: number[];
+  inicioReal: Date | null;
+  fimReal: Date | null;
+  numeroPessoas: number | null;
+  textoManuscrito: string | null;
+  fonte: (typeof MANUSCRITO_FONTES)[number];
+}
+
 export interface ResultadoProcessamento {
+  /** As OS que a Digitalização encerrou (criadas ou já existentes), com o id de cada uma. */
+  registradas: { numero_ordem: string; osId: string }[];
   criadas: number;
   atualizadas: number;
   ignoradas: DetalheIgnorada[];
@@ -154,7 +174,7 @@ class Ignorada extends Error {
 }
 
 /** De onde vêm as ordens: a leitura da API do SAP, a planilha exportada ou o PDF da OS impressa. */
-export type OrigemDasOrdens = "sap" | "planilha" | "pdf";
+export type OrigemDasOrdens = "sap" | "planilha" | "pdf" | "digitalizacao";
 
 interface Contexto {
   agora: Date;
@@ -163,6 +183,8 @@ interface Contexto {
   locais: Map<string, string>;
   /** Códigos de atividade que já se sabe existirem (ou que esta importação cadastrou). */
   atividades: Set<string>;
+  /** Só na Digitalização: o que registrar de cada OS, pelo número da ordem. */
+  historico: Map<string, DadosDoHistorico>;
 }
 
 const textoSimples = (v: unknown): string | null => {
@@ -225,7 +247,7 @@ interface PlanoTocado {
   chave: { plano: string; item: string | null };
   titulo: string;
 }
-type Resultado = { tipo: "criada" | "atualizada" } & { plano?: PlanoTocado; intervaloInvalido?: boolean };
+type Resultado = { tipo: "criada" | "atualizada" } & { plano?: PlanoTocado; intervaloInvalido?: boolean; osId?: string };
 
 /**
  * O plano da OS preventiva (criado na primeira OS dele) e, se a ordem trouxe, o intervalo entre ciclos. Um intervalo que não
@@ -316,7 +338,7 @@ async function atualizarOrdem(db: Db, ctx: Contexto, existente: typeof os.$infer
   return { tipo: "atualizada", ...(await planoDaOrdem(db, ctx, existente.tipo, plano, item, ordem.titulo, bruto)) };
 }
 
-async function criarOrdem(db: Db, ctx: Contexto, bruto: unknown): Promise<Resultado> {
+async function criarOrdem(db: Db, ctx: Contexto, bruto: unknown, extras: Partial<typeof os.$inferInsert> = {}): Promise<Resultado> {
   const ordem = validar(bruto);
   const equipeId = await equipeDoCentro(db, ctx, ordem.centro_trabalho);
   if (!equipeId) throw new Ignorada(MOTIVO_SEM_EQUIPE, ordem.centro_trabalho);
@@ -346,15 +368,56 @@ async function criarOrdem(db: Db, ctx: Contexto, bruto: unknown): Promise<Result
     statusSap: ordem.status_sap ?? null,
     solicitante: ordem.solicitante ?? null,
     origem: ctx.origem,
+    ...extras,
   });
   const plano = await planoDaOrdem(db, ctx, TIPOS_DA_ORDEM[ordem.tipo_ordem], ordem.plano_manutencao ?? null, ordem.item_manutencao ?? null, ordem.titulo, bruto);
   return { tipo: "criada", ...plano };
+}
+
+/** O histórico da folha em papel: guardado junto com a OS, no mesmo ponto de salvamento. */
+async function guardarHistorico(db: Db, ctx: Contexto, h: DadosDoHistorico) {
+  await db.insert(osDigitalizacao).values({
+    osId: h.osId,
+    digitalizacaoId: h.digitalizacaoId,
+    paginas: h.paginas,
+    inicioReal: h.inicioReal,
+    fimReal: h.fimReal,
+    numeroPessoas: h.numeroPessoas,
+    textoManuscrito: h.textoManuscrito,
+    manuscritoFonte: h.fonte,
+    registradaPor: h.usuarioId,
+    registradaEm: ctx.agora,
+  });
+}
+
+/**
+ * Digitalização: a OS da folha já foi executada no papel, então entra `encerrada`, como histórico, e já "exportada" (o SAP a
+ * baixou no papel: ela não entra na planilha de baixa). Uma OS que já existe só é encerrada se ainda está `liberada` e sem
+ * execução; qualquer outra situação é da operação do sistema e a folha é recusada. O status do SAP impresso não importa.
+ */
+async function registrarDigitalizada(db: Db, ctx: Contexto, numero: string, bruto: unknown): Promise<Resultado> {
+  const h = ctx.historico.get(numero);
+  if (!h) throw new Ignorada("Folha sem os dados do histórico");
+  const [existente] = await db.select().from(os).where(eq(os.numeroOrdem, numero));
+  if (existente) {
+    if (existente.status !== "liberada") throw new Ignorada(`A OS já está no sistema com o status "${existente.status}": a folha em papel não foi registrada`);
+    const [comExecucao] = await db.select({ id: execucao.id }).from(execucao).where(eq(execucao.osId, existente.id)).limit(1);
+    if (comExecucao) throw new Ignorada("A OS já tem execução no sistema: a folha em papel não foi registrada");
+    await db.update(os).set({ status: "encerrada", exportadaSapEm: ctx.agora, pdfPath: h.pdfPath, pdfEm: ctx.agora }).where(eq(os.id, existente.id));
+    await guardarHistorico(db, ctx, { ...h, osId: existente.id });
+    return { tipo: "atualizada", osId: existente.id };
+  }
+  const criada = await criarOrdem(db, ctx, bruto, { id: h.osId, status: "encerrada", exportadaSapEm: ctx.agora, pdfPath: h.pdfPath, pdfEm: ctx.agora });
+  await guardarHistorico(db, ctx, h);
+  return { ...criada, osId: h.osId };
 }
 
 async function processarUma(db: Db, ctx: Contexto, bruto: unknown): Promise<Resultado> {
   if (!bruto || typeof bruto !== "object") throw new Ignorada("Ordem inválida: formato inesperado");
   const numero = textoSimples((bruto as Record<string, unknown>).numero_ordem);
   if (!numero) throw new Ignorada(MOTIVO_SEM_NUMERO);
+
+  if (ctx.origem === "digitalizacao") return registrarDigitalizada(db, ctx, numero, bruto);
 
   const statusSap = textoSimples((bruto as Record<string, unknown>).status_sap);
   const [existente] = await db.select().from(os).where(eq(os.numeroOrdem, numero));
@@ -379,10 +442,10 @@ class Desfeita extends Error {
 export async function processarOrdens(
   db: Db,
   entradas: EntradaOrdem[],
-  opcoes: { origem: OrigemDasOrdens; agora: Date },
+  opcoes: { origem: OrigemDasOrdens; agora: Date; historico?: Map<string, DadosDoHistorico> },
 ): Promise<ResultadoProcessamento> {
-  const ctx: Contexto = { agora: opcoes.agora, origem: opcoes.origem, equipes: new Map(), locais: new Map(), atividades: new Set() };
-  const resultado: ResultadoProcessamento = { criadas: 0, atualizadas: 0, ignoradas: [], avisos: [], planos: [], planosSemIntervalo: [] };
+  const ctx: Contexto = { agora: opcoes.agora, origem: opcoes.origem, equipes: new Map(), locais: new Map(), atividades: new Set(), historico: opcoes.historico ?? new Map() };
+  const resultado: ResultadoProcessamento = { registradas: [], criadas: 0, atualizadas: 0, ignoradas: [], avisos: [], planos: [], planosSemIntervalo: [] };
   const semIntervalo = new Map<string, PlanoSemIntervalo>();
 
   for (const [indice, entrada] of entradas.entries()) {
@@ -401,6 +464,7 @@ export async function processarOrdens(
           throw erro;
         }
       });
+      if (r.osId) resultado.registradas.push({ numero_ordem: numero!, osId: r.osId });
       if (r.tipo === "criada") resultado.criadas++;
       else resultado.atualizadas++;
       if (r.intervaloInvalido) resultado.avisos.push({ ...identificacao(), numero_ordem: numero!, motivo: AVISO_INTERVALO_INVALIDO });

@@ -5,6 +5,7 @@ import { enfileirarTarefa } from "./fila";
 import { alertarFalhaDoPdf, manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
 import { agendarResumosDiarios, manipularEmailResumo } from "./email-resumo";
 import { manipularLeituraSap } from "./leitura-sap";
+import { processarDigitalizacao } from "../dominio/digitalizacao";
 import { fecharTemporadasVencidas } from "../dominio/fechamento-temporada";
 import { conferirAusencias } from "../dominio/ausencia";
 import { atualizarSupervisaoDasEquipes } from "../dominio/representacao";
@@ -21,7 +22,18 @@ const MANIPULADORES: Record<string, Manipulador> = {
   leitura_sap: manipularLeituraSap,
   leitura_rh: manipularLeituraRh,
   conferencia_rh: manipularConferenciaRh,
+  digitalizacao: manipularDigitalizacao,
 };
+
+/**
+ * Tarefa `digitalizacao`: `referenciaId` é a `digitalizacao` que o admin enviou. A leitura de um PDF grande leva minutos, então a
+ * tarefa renova a própria reserva a cada folha (senão `recuperarTarefasPresas` a devolveria à fila no meio da leitura). Falha de
+ * leitura não repete a tarefa: vira `digitalizacao.estado = falhou`, que a tela mostra (ler de novo gastaria a IA outra vez).
+ */
+async function manipularDigitalizacao(deps: Deps, t: { id: string; referenciaId: string | null }): Promise<void> {
+  if (!t.referenciaId) return;
+  await processarDigitalizacao(deps, t.referenciaId, () => deps.db.update(tarefa).set({ proximaEm: deps.agora() }).where(eq(tarefa.id, t.id)).then(() => undefined));
+}
 
 /**
  * O que fazer quando a tarefa esgota as tentativas e fica em `falhou`: avisar quem precisa saber (o PDF da OS que não saiu, a

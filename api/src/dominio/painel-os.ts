@@ -17,6 +17,7 @@ import {
   localInstalacao,
   modeloApr,
   os,
+  osDigitalizacao,
   reprogramacao,
   riscoModeloApr,
   usuario,
@@ -514,6 +515,25 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
     reservasDesfeitasPorAusencia(db, osId),
   ]);
 
+  // A OS que a Digitalização trouxe como encerrada: o que a folha em papel diz da execução (não há `execucao`).
+  const [emPapel] =
+    o.origem === "digitalizacao" || o.status === "encerrada"
+      ? await db
+          .select({
+            inicioReal: osDigitalizacao.inicioReal,
+            fimReal: osDigitalizacao.fimReal,
+            numeroPessoas: osDigitalizacao.numeroPessoas,
+            textoManuscrito: osDigitalizacao.textoManuscrito,
+            fonte: osDigitalizacao.manuscritoFonte,
+            folhas: sql<number>`jsonb_array_length(${osDigitalizacao.paginas})::int`,
+            registradaEm: osDigitalizacao.registradaEm,
+            registradaPorNome: usuario.nome,
+          })
+          .from(osDigitalizacao)
+          .innerJoin(usuario, eq(usuario.id, osDigitalizacao.registradaPor))
+          .where(eq(osDigitalizacao.osId, osId))
+      : [];
+
   const linhaDoTempo = montarLinhaDoTempo({
     reservasDesfeitas,
     aprs,
@@ -539,6 +559,8 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
         ? { em: o.devolvidaEm, porNome: devolvidaPorNome, justificativa: o.justificativaDevolucao, exportadaEm: o.devolucaoExportadaEm }
         : null,
       pdfPronto: o.pdfPath !== null,
+      /** A execução em papel das OS digitalizadas (origem `digitalizacao`, ou uma OS liberada que a folha encerrou); `null` nas demais. */
+      emPapel: emPapel ?? null,
       execucaoAbertaHaHoras: abertas.get(osId) ?? null,
       atrasada: estaAtrasada(o, diaNoFuso(agora)),
       eventosComRelogioSuspeito: suspeitos?.n ?? 0,

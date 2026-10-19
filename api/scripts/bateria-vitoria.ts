@@ -132,7 +132,7 @@ const admin = daCategoria("admin", [
   { nome: "Liberar acesso", pergunta: "Como libero o acesso de um técnico novo?", esperado: "levar a Equipes e usuários", conferir: levaA("usuarios") },
   { nome: "Importar planilha", pergunta: "Onde eu importo uma planilha de OS?", esperado: "levar à Importação", conferir: levaA("importacao") },
   { nome: "Auditoria", pergunta: "Onde vejo quem alterou um modelo de APR?", esperado: "levar à auditoria", conferir: levaA("auditoria") },
-  { nome: "Perguntas sem resposta", pergunta: "Onde vejo as perguntas que você não soube responder?", esperado: "levar a Perguntas à Vitória", conferir: levaA("vitoria_sem_resposta") },
+  { nome: "Perguntas sem resposta", pergunta: "Onde vejo as perguntas que você não soube responder?", esperado: "levar à tela Vitória", conferir: levaA("vitoria_sem_resposta") },
   {
     nome: "Rascunho do treinamento",
     tela: "treinamento_servico_editor",

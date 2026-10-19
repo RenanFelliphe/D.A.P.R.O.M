@@ -85,6 +85,35 @@ describe("ProvedorIAGemini", () => {
     assert.equal(proprio - padrao, 200 - 1000);
   });
 
+  it("manda as imagens como inlineData antes do texto e liga a saída em JSON quando há esquema", async () => {
+    const { buscar, chamadas } = buscaFalsa([json(candidato("{}"))]);
+    await new ProvedorIAGemini("chave", MODELOS, 1024, buscar).conversar({
+      modelo: "digitalizacao",
+      mensagens: [
+        { papel: "sistema", texto: "Leia a folha." },
+        { papel: "usuario", texto: "O que está escrito à mão?", imagens: [{ tipoMime: "image/jpeg", dados: new Uint8Array([1, 2, 3]) }, { tipoMime: "image/png", dados: new Uint8Array([4]) }] },
+      ],
+      schemaDeSaida: { type: "object" },
+    });
+    assert.deepEqual(chamadas[0]!.corpo.contents, [
+      {
+        role: "user",
+        parts: [
+          { inlineData: { mimeType: "image/jpeg", data: Buffer.from([1, 2, 3]).toString("base64") } },
+          { inlineData: { mimeType: "image/png", data: Buffer.from([4]).toString("base64") } },
+          { text: "O que está escrito à mão?" },
+        ],
+      },
+    ]);
+    assert.equal(chamadas[0]!.corpo.generationConfig.responseMimeType, "application/json");
+  });
+
+  it("sem esquema de saída, não força JSON", async () => {
+    const { buscar, chamadas } = buscaFalsa([json(candidato("oi"))]);
+    await new ProvedorIAGemini("chave", MODELOS, 1024, buscar).conversar(PEDIDO);
+    assert.equal(chamadas[0]!.corpo.generationConfig.responseMimeType, undefined);
+  });
+
   it("usa o modelo do uso lógico pedido", async () => {
     const { buscar, chamadas } = buscaFalsa([json(candidato("ok"))]);
     await new ProvedorIAGemini("chave", MODELOS, 1024, buscar).conversar({ ...PEDIDO, modelo: "rascunho" });

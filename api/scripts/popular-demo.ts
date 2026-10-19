@@ -15,6 +15,7 @@ import { ArmazenamentoSupabase } from "../src/servicos/armazenamento";
 import { AuthSupabase } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
 import { criarProvedorIA } from "../src/servicos/ia";
+import { OcrEmMemoria } from "../src/servicos/ocr-memoria";
 import { ClienteRhHttp } from "../src/servicos/rh-http";
 import { ClienteSapHttp } from "../src/servicos/sap-http";
 
@@ -30,6 +31,8 @@ try {
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
     ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),
+    // A demonstração não lê folhas digitalizadas: o OCR de verdade só é aberto na api.
+    ocr: new OcrEmMemoria(),
     agora: () => new Date(),
   });
   if (resultado.jaPopulado) {

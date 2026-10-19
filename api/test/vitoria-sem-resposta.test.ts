@@ -54,3 +54,22 @@ describe("Vitória — perguntas sem resposta", () => {
     assert.equal(r.status, 404);
   });
 });
+
+describe("Vitória — diagnóstico", () => {
+  let amb: Ambiente;
+  before(async () => {
+    amb = await criarAmbiente();
+  });
+  after(() => amb.fechar());
+
+  it("só o admin lê; mostra o uso do dia contra o limite", async () => {
+    const tecnico = await amb.criarUsuario({ perfil: "tecnico", nome: "Técnico" });
+    const admin = await amb.criarUsuario({ perfil: "admin", nome: "Admin" });
+    assert.equal((await amb.req("GET", "/vitoria/diagnostico", { como: tecnico })).status, 403);
+
+    const d = await amb.esperar(200, "GET", "/vitoria/diagnostico", { como: admin });
+    assert.ok(["ativa", "sem_chave", "limite_do_dia", "fornecedor_com_problema"].includes(d.estado));
+    assert.equal(d.uso.restantes, d.uso.limite - d.uso.usadas);
+    assert.ok(d.uso.percentual >= 0 && d.uso.percentual <= 100);
+  });
+});

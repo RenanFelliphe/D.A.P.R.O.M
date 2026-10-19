@@ -86,10 +86,11 @@ export async function resumoDasImportacoes(db: Db, periodo: Periodo, agora: Date
     .from(importacao)
     .where(sql`${noPeriodo(primeira.inicio)} and ${importacao.ignoradas} > 0`);
 
-  // `api`/`planilha`: OS registradas por método; `leituras`/`falhas`: leituras da API e as que terminaram com erro. O
-  // método "Importação (arquivo)" leva a chave `planilha` e soma os dois arquivos aceitos: a planilha e o PDF da OS.
-  const serie = faixas.map((f) => ({ inicio: f.inicio, fim: f.fim, api: 0, planilha: 0, leituras: 0, falhas: 0 }));
-  const porOrigem = { api: zeradas(), planilha: zeradas() };
+  // `api`/`planilha`/`digitalizacao`: OS registradas por método; `leituras`/`falhas`: leituras da API e as que terminaram com erro.
+  // O método "Importação (arquivo)" leva a chave `planilha` e soma os dois arquivos aceitos: a planilha e o PDF da OS. A
+  // Digitalização (OS antigas, já executadas no papel) é o terceiro método e não se mistura com os outros dois.
+  const serie = faixas.map((f) => ({ inicio: f.inicio, fim: f.fim, api: 0, planilha: 0, digitalizacao: 0, leituras: 0, falhas: 0 }));
+  const porOrigem = { api: zeradas(), planilha: zeradas(), digitalizacao: zeradas() };
   const doAnterior = zeradas();
   for (const { dia: d, origem, ...contagens } of linhas) {
     if (d < primeira.inicio) {
@@ -98,7 +99,7 @@ export async function resumoDasImportacoes(db: Db, periodo: Periodo, agora: Date
     }
     const ponto = serie.find((f) => d >= f.inicio && d < f.fim);
     if (!ponto) continue;
-    const metodo = origem === "api" ? "api" : "planilha";
+    const metodo = origem === "api" ? "api" : origem === "digitalizacao" ? "digitalizacao" : "planilha";
     ponto[metodo] += contagens.criadas;
     if (metodo === "api") {
       ponto.leituras += contagens.registros;
@@ -109,6 +110,7 @@ export async function resumoDasImportacoes(db: Db, periodo: Periodo, agora: Date
   const total = zeradas();
   somarEm(total, porOrigem.api);
   somarEm(total, porOrigem.planilha);
+  somarEm(total, porOrigem.digitalizacao);
 
   return {
     periodo,
@@ -120,6 +122,7 @@ export async function resumoDasImportacoes(db: Db, periodo: Periodo, agora: Date
     porOrigem: {
       api: { ...resultado(porOrigem.api), leituras: porOrigem.api.registros, leiturasComErro: porOrigem.api.comErro },
       planilha: { ...resultado(porOrigem.planilha), arquivos: porOrigem.planilha.registros, arquivosComErro: porOrigem.planilha.comErro },
+      digitalizacao: { ...resultado(porOrigem.digitalizacao), arquivos: porOrigem.digitalizacao.registros, arquivosComErro: porOrigem.digitalizacao.comErro },
     },
     serie,
     motivosIgnoradas: contarMotivos(comIgnoradas.map((l) => l.detalhe)),

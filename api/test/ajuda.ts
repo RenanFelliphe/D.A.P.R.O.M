@@ -20,6 +20,7 @@ import { ArmazenamentoEmMemoria } from "../src/servicos/armazenamento";
 import { AuthEmMemoria } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
 import { ProvedorIAEmMemoria } from "../src/servicos/ia";
+import { OcrEmMemoria } from "../src/servicos/ocr-memoria";
 import { RegistroIndisponivel, type ClienteRh, type FuncionarioRh } from "../src/servicos/rh";
 import type { ClienteSap, OrdemSap } from "../src/servicos/sap";
 
@@ -122,7 +123,8 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   const sap = new SapEmMemoria();
   const rh = new RhEmMemoria();
   const ia = new ProvedorIAEmMemoria();
-  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, ia, agora: () => relogio.agora };
+  const ocr = new OcrEmMemoria();
+  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, ia, ocr, agora: () => relogio.agora };
   // O aviso que o simulador do RH manda ao SYNQ OS: fica anotado em `avisosRh` e, com `rhSimulador.encaminhar`, chega de verdade em `POST /rh/avisos`.
   const avisosRh: string[][] = [];
   const rhSimulador = { encaminhar: false };
@@ -225,7 +227,7 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   /** A imagem da assinatura que está no perfil agora: é a que cada ato assinado copia para si. */
   const assinaturaDe = async (usuario: UsuarioDeTeste) => (await sql<{ assinatura_path: string | null }>("select assinatura_path from usuario where id = $1", [usuario.id]))[0]!.assinatura_path;
 
-  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, cadastrarAssinatura, assinaturaDe, sql, fechar: () => cliente.close() };
+  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, ocr, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, cadastrarAssinatura, assinaturaDe, sql, fechar: () => cliente.close() };
 }
 
 export type Ambiente = Awaited<ReturnType<typeof criarAmbiente>>;

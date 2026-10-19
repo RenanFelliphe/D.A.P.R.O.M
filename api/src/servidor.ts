@@ -11,6 +11,7 @@ import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
 import { EmailSemServidor, EmailSmtp } from "./servicos/email";
 import { criarProvedorIA } from "./servicos/ia";
+import { MotorOcrTesseract } from "./servicos/ocr";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
 import { iniciarTarefas } from "./servicos/tarefas";
@@ -62,6 +63,7 @@ async function main() {
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
     ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),
+    ocr: new MotorOcrTesseract(),
     agora: () => new Date(),
   };
   if (config.ia.ligada) console.log(`IA ligada: ${config.ia.provedor} (Vitória: ${config.ia.modelos.vitoria})`);

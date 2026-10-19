@@ -157,7 +157,7 @@ function normalizarAlinhado(texto: string): string {
   return saida;
 }
 
-const normalizar = (texto: string) => normalizarAlinhado(texto).replace(/\s+/g, " ").trim();
+export const normalizar = (texto: string) => normalizarAlinhado(texto).replace(/\s+/g, " ").trim();
 
 /** Valor recortado: o texto até a próxima célula (tabulação); se o valor só começa depois do vão, a célula seguinte. */
 function limparValor(bruto: string): string {
@@ -184,7 +184,7 @@ const LINHAS_DO_CABECALHO = 8;
 const temRotulo = (linha: string) => rotulosDaLinha().test(normalizarAlinhado(linha));
 
 /** Número da ordem no cabeçalho da folha: o primeiro número de 6 a 12 dígitos depois de "Ordem de Manutenção". */
-function numeroDaFolha(pagina: PaginaDeTexto): string | null {
+export function numeroDaFolha(pagina: PaginaDeTexto): string | null {
   const topo = pagina.linhas.slice(0, LINHAS_DO_CABECALHO);
   const texto = topo.join("\n");
   const cabecalho = /ordem de manutencao[\s\S]{0,240}?(?<![\d/.,:-])(\d{6,12})(?![\d/.,])/.exec(normalizarAlinhado(texto));
@@ -192,6 +192,12 @@ function numeroDaFolha(pagina: PaginaDeTexto): string | null {
   for (const linha of topo) {
     const par = paresDaLinha(linha).find(([campo, valor]) => campo === "numero_ordem" && /^\d{6,12}$/.test(valor));
     if (par) return par[1];
+  }
+  // A folha lida por OCR (`ocr.ts`) desmonta o cabeçalho ("Ordem de" numa linha, "Manutenção" noutra): vale então o primeiro
+  // número de 6 a 12 dígitos que ocupa uma célula inteira nas linhas do topo (uma data ou uma hora tem `/` ou `:`).
+  for (const linha of topo) {
+    const solto = /(?:^|\t)(\d{6,12})(?=\t|\s|$)/.exec(linha);
+    if (solto) return solto[1]!;
   }
   return null;
 }
@@ -220,7 +226,8 @@ function tipoDaOrdem(tipoOrdem: string | undefined, tipoAtividade: string | unde
 const LIMITE_DA_DESCRICAO = 4000;
 /** Onde o texto longo termina: a folha de execução, que o técnico preenche à mão. */
 const FIM_DO_TEXTO = /^(descricao da atividade|atesto que|executante|observacoes gerais)/;
-const OPERACOES = /texto breve( da)? operacao/;
+/** A linha de títulos da tabela de operações; abaixo dela ficam as linhas que o técnico preenche à mão. */
+export const OPERACOES = /texto breve( da)? operacao/;
 
 /**
  * As linhas de uma OS (de todas as folhas dela), sem o cabeçalho que se repete em cada folha: tudo até a última linha do

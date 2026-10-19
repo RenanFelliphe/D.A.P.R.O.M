@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
-import { listarPerguntasSemResposta, marcarPerguntaTratada, registrarEventoDaVitoria, responderVitoria, sobreAVitoria } from "../dominio/vitoria";
+import { diagnosticoDaVitoria, listarPerguntasSemResposta, marcarPerguntaTratada, registrarEventoDaVitoria, responderVitoria, sobreAVitoria } from "../dominio/vitoria";
 import type { Deps } from "../deps";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { emSnakeCase, responder } from "../http/resposta";
@@ -79,6 +79,9 @@ export function rotasVitoria(deps: Deps, { autenticar, exigirPerfil }: Autentica
     await registrarEventoDaVitoria(deps.db, deps.agora(), tipo);
     return c.body(null, 204);
   });
+
+  /** O diagnóstico da IA da Vitória (ativa ou não, por quê, quando volta e quanto falta do limite do dia); só o admin. */
+  r.get("/vitoria/diagnostico", autenticar(), soAdmin, async (c) => responder(c, await diagnosticoDaVitoria(deps)));
 
   r.get("/vitoria/sem-resposta", autenticar(), soAdmin, async (c) => {
     const filtros = lerConsulta(c, esquemaPaginacao.extend({ tratada: booleanoDaConsulta }));

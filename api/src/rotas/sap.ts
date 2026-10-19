@@ -81,7 +81,7 @@ function conferirTamanho(arquivo: File) {
 
 /**
  * Lê as OS do PDF da Ordem de Manutenção impressa pelo SAP. Recusa (`422`) o que não é PDF, o PDF sem texto (uma folha
- * digitalizada, que só a Digitalização vai ler) e o PDF sem nenhuma ordem reconhecível.
+ * digitalizada: é da Digitalização, `POST /digitalizacoes`) e o PDF sem nenhuma ordem reconhecível.
  */
 async function lerPdfDaOs(bytes: Uint8Array) {
   // O PDF começa por "%PDF-" (alguns geradores põem bytes antes, dentro do primeiro 1 KB).
@@ -90,7 +90,7 @@ async function lerPdfDaOs(bytes: Uint8Array) {
   if (paginas.every((p) => p.linhas.length === 0)) {
     throw invalido(
       "pdf_sem_texto",
-      "O PDF não tem texto: é uma folha digitalizada (imagem). Envie o PDF gerado pelo SAP; a leitura de folhas digitalizadas ainda não está disponível.",
+      "O PDF não tem texto: é uma folha digitalizada (imagem). Para trazer OS já concluídas no papel, escolha \"Já foi concluída no papel\" ao importar; para liberar uma OS no sistema, envie o PDF gerado pelo SAP.",
     );
   }
   const leitura = lerOrdensDoPdf(paginas);
