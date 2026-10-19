@@ -540,7 +540,7 @@ Decidido em 14/10/2026 e **implementado em 16/10/2026** (ver [treinamentos-de-se
 | Tarefa | Quem ganha | Pontos | Quando conta | Limite |
 |---|---|---|---|---|
 | Treinamento de serviço concluído | o técnico, inclusive quem aguarda liberação | 5 | ao terminar a explicação e o jogo pela primeira vez | uma por treinamento |
-| Fases certas no treinamento | o técnico, inclusive quem aguarda liberação | 1 por fase | junto com o concluído; conta a primeira resposta dada a cada fase | um lançamento por treinamento (o jogo tem até 10 fases) |
+| Fases certas no treinamento | o técnico, inclusive quem aguarda liberação | 1 por fase | junto com o concluído; conta a primeira resposta dada a cada fase | um lançamento por treinamento (contam até 10 fases certas, mesmo que o jogo tenha mais) |
 
 - **Valem as regras do jogo.** Só o servidor corrige, e o gabarito não chega ao aparelho antes da resposta (regra 3). Errar não tira ponto, refazer não pontua e uma versão nova do treinamento não pontua de novo quem já concluiu.
 - **No máximo 15 pontos por treinamento,** metade de uma OS: conhecimento vale, mas trabalho em campo vale mais. O total é limitado pelo número de treinamentos publicados.
@@ -550,3 +550,4 @@ Decidido em 14/10/2026 e **implementado em 16/10/2026** (ver [treinamentos-de-se
   - Especialista: 10 treinamentos concluídos, 50 pontos. A ideia era "todos os serviços da equipe", mas o sistema não liga serviços a equipes.
   - Nota máxima: 1 treinamento gabaritado, 25 pontos.
 - **Entram por uma migração nova;** a `0016` e a `0017` não mudam.
+- **Ranking por treinamento (18/10/2026):** cada treinamento tem o seu ranking, mostrado no resultado do jogo, na capa e no "Ver ranking" do cartão. Primeiro era pela nota da primeira conclusão; no mesmo dia passou a ser pela **melhor nota** de cada pessoa, com a nota nova do treinamento (acertos × tempo × fases), discutida antes: ela é **só do treinamento** e não entra na gamificação geral, que continua com 5 pelo concluído e 1 por fase certa, só na primeira conclusão (seção 12 do [treinamentos-de-servico.md](treinamentos-de-servico.md)). Ao contrário do ranking geral, quem aguarda liberação aparece, porque treina e pontua; o anonimato é o mesmo. Detalhes na seção 9 do [treinamentos-de-servico.md](treinamentos-de-servico.md).

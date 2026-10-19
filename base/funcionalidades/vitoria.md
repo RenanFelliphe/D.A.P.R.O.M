@@ -535,20 +535,27 @@ Com o perfil admin, vale o manual do admin: os testes de data e de provocação 
 
 ### 3.3 Parte 2: o jogo
 
-De 3 a 10 fases, na ordem definida pelo admin, de tipos de uma lista fechada:
+Ao menos 3 fases (sem máximo desde 18/10/2026; antes, até 10), na ordem definida pelo admin, de tipos de uma lista fechada:
 
 | Tipo | Como funciona | Certa quando | Limites |
 |---|---|---|---|
 | Quiz | escolher uma opção | acertou a opção | 3 ou 4 opções |
 | Decisão | uma situação; cada opção mostra a consequência | escolheu a atitude segura | 3 ou 4 opções |
-| Separar os itens | tocar nos itens certos, misturados a itens de outros serviços | marcou todos os certos e nenhum errado | os itens vêm do catálogo; o servidor sorteia os de outros serviços |
 | Ligar | tocar num item da esquerda e no par da direita | acertou todos os pares | até 5 pares |
 | Pôr em ordem | tocar nas etapas na sequência | acertou a sequência inteira | até 6 etapas |
+| Verdadeiro ou falso | uma afirmação e duas cartas | escolheu a certa | uma afirmação |
+| Caça-palavras | achar as palavras na grade (só horizontal ou vertical) | achou todas | 2 a 5 palavras de 3 a 12 letras |
+| Memória | virar duas cartas por vez e formar os pares | formou todos, errando até uma vez por par | 2 a 5 pares |
+| Selecione | marcar todas as opções certas | marcou só as certas | 3 a 12 opções escritas (até 8 certas) ou, com os materiais do serviço, os materiais certos do catálogo misturados a itens de outros serviços sorteados a cada partida |
+| Desembaralhe | pôr as letras de uma palavra na ordem | formou a palavra | 3 a 14 letras |
+| Termo | descobrir a palavra secreta pelas cores das letras | acertou dentro das tentativas | 4 a 7 letras; tentativas = letras + 1 |
 
-- **Cada fase vale tudo ou nada.**
+Os 6 últimos entraram em 18/10/2026, e no mesmo dia o "Separar os itens" virou o Selecione com os materiais do serviço, o jogo perdeu o limite de fases (ao menos 3) e ganhou o "1 de cada": [treinamentos-de-servico.md](treinamentos-de-servico.md), seções 10 e 11.
+
+- **Cada fase vale até 10 pontos pelos acertos,** proporcionais às respostas certas possíveis, vezes o multiplicador do tempo (desde 18/10/2026; antes, tudo ou nada): seção 12 do [treinamentos-de-servico.md](treinamentos-de-servico.md).
 - **Tudo é por toque, sem arrastar,** para funcionar no celular.
 - **As opções, os itens e os pares são embaralhados** a cada tentativa.
-- **Depois de cada fase, a Vitória comenta:** diz se acertou (`feliz` ou `ops`) e mostra a resposta certa e a explicação. O jogo segue sem repetir a fase.
+- **Depois de cada fase, a Vitória comenta:** diz se acertou (`feliz` ou `ops`) e mostra a resposta certa e a explicação. A resposta confirmada fica travada; dá para voltar e avançar entre as fases, mesmo sem responder.
 - **Em cada fase, o botão "Reportar problema"** manda ao admin um aviso com texto livre ("esta resposta parece errada").
 
 ### 3.4 Fluxo do técnico
@@ -701,6 +708,8 @@ O desenho é o da seção 3.6. Aqui está o que foi feito, as decisões que o de
 
 #### 3.9.7 Web
 
+> **Atualizado em 18/10/2026:** as telas foram refeitas. O painel deixou de existir: a geração tem uma tela própria (Criar › Gerar com a Vitória, com orientação e exemplo), e as pendências, a origem e o chat ficam na aba Revisão. Ver a seção 8 do [treinamentos-de-servico.md](treinamentos-de-servico.md). O texto abaixo descreve a versão de 17/10.
+
 - **O painel "Rascunho com a Vitória (IA)",** no topo do editor: o texto do procedimento (até 20.000 caracteres), "Gerar rascunho com a Vitória", os contadores (treinamentos com IA ou rodadas deste treinamento) e o chat de ajustes. Sem a IA configurada, o painel some (seção 1.1).
 - **Gerar com o rascunho já preenchido** pede confirmação: "Substituir e gerar".
 - **O progresso:** a mensagem ("Montando a fase 3 de 5…"), uma barra quando a IA já disse quantos itens vêm, o tempo corrido e o aviso de que dá para sair da tela, porque a geração continua no servidor e é gravada.
@@ -780,8 +789,8 @@ Proposta de 14/10/2026. Todas foram implementadas: as da Vitória e as dos trein
 |---|---|
 | Todas as telas do portal | botão flutuante e painel da Vitória, na casca |
 | Catálogo › Serviços | o cartão ganha "Treinar" (técnico) ou a situação do treinamento (admin) |
-| Editor do serviço (admin) | aba Treinamento: editor, rascunho com a Vitória, chat de ajustes, pendências, pré-visualizar, publicar com assinatura, versões e problemas reportados |
-| Treinar (nova) | `/app/catalogo/servicos/{codigo}/treinar`: abertura, Parte 1, Parte 2 e resultado |
+| Treinamento do serviço (admin) | `/app/catalogo/servicos/{codigo}/treinamento`: visão geral, Criar (com a Vitória ou à mão), Gerar, abas Explicação, Fases do jogo, Revisão, Versões e Problemas, e Publicar com assinatura (refeitas em 18/10/2026, seção 8 do [treinamentos-de-servico.md](treinamentos-de-servico.md)) |
+| Treinar (nova) | `/app/catalogo/servicos/{codigo}/treinar`: a capa do treinamento; o jogo (abertura, Parte 1, Parte 2 e resultado) abre numa janela, também direto do cartão do catálogo e da tela de espera |
 | Aguardando liberação | bloco com os treinamentos, ao lado do Campo de treino |
 | Perfil da Vitória (nova) | `/app/perfil/vitoria`, aberto pelo cabeçalho do chat (seção 2.8.7) |
 | Perguntas sem resposta (nova, admin) | lista para melhorar o manual; no menu como "Perguntas à Vitória", com o selo das não tratadas |

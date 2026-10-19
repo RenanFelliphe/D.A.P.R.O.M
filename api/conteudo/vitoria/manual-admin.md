@@ -59,21 +59,39 @@
 
 ## Treinamentos de serviço
 
-- A aba Treinamento do serviço reúne o editor (explicação em passos e fases do jogo), a pré-visualização, a
-  publicação (com termo e assinatura) e os problemas reportados pelos técnicos. [treinamento_servico_editor]
-- "Gerar rascunho com a Vitória", no topo do editor, monta a explicação e as fases a partir do texto do procedimento que
-  você colar (ferramentas, passos e normas), usando só esse texto e os materiais do serviço no catálogo. Leva de 1 a 2
-  minutos, e o rascunho é gravado mesmo se você sair da tela. Sem a IA configurada, o botão não aparece e o editor manual
-  continua igual. [treinamento_servico_editor]
-- Cada passo e cada fase feitos pela Vitória mostram o trecho do texto de onde saíram. Quando a conferência acha um
-  problema (trecho que não está no texto, número que não aparece no texto, fase sem opção certa ou com mais de uma,
-  material fora da lista do serviço), o item fica com uma pendência: edite o item ou toque em "Confirmar como está".
+- No cartão do serviço, "Abrir treinamento" (ou "Criar treinamento", quando ainda não há) leva ao treinamento: a visão
+  geral mostra o caminho até publicar (conteúdo, validação, teste e publicação) e as abas Explicação, Fases do jogo,
+  Revisão, Versões e Problemas.
+  [treinamento_servico_editor]
+- Na aba Fases do jogo, "Adicionar fase" mostra os 10 minijogos (quiz, decisão, ligar, pôr em ordem, verdadeiro ou
+  falso, caça-palavras, memória, selecione, desembaralhe e termo), cada um com uma frase do que é o jogo e a sua cor, que
+  também aparece no jogo. "1 de cada" acrescenta uma fase de cada minijogo, em ordem aleatória. O jogo não tem limite de
+  fases; para publicar, são ao menos 3. [treinamento_servico_editor]
+- No Selecione, a caixa "Montar com os materiais do serviço" troca as opções escritas pelos materiais do catálogo: você
+  marca os certos, e o sistema mistura itens de outros serviços, sorteados a cada partida. [treinamento_servico_editor]
+- Ao criar, você escolhe entre "Gerar com a Vitória" (para validar depois) e "Criar manualmente". Gerar monta a explicação
+  e as fases a partir do texto do procedimento que você colar (o que o serviço usa, os passos na ordem, os cuidados e os
+  números), usando só esse texto e os materiais do serviço no catálogo. A tela mostra como escrever o texto e um exemplo.
+  Leva alguns minutos, e o rascunho é gravado mesmo se você sair da tela; quando termina, a Revisão abre sozinha. Sem a IA
+  configurada, a opção fica desativada e o editor manual continua igual. [treinamento_servico_editor]
+- Logo abaixo do texto do procedimento, em "Fases do jogo", você escolhe quantas fases (ao menos 3) e o minijogo de cada
+  uma, ou deixa "A Vitória escolhe"; "Todas como" preenche todas de uma vez, e "1 de cada" monta uma fase de cada
+  minijogo em ordem aleatória. Também dá para pedir o Selecione com os materiais do serviço. Fase que vier de outro tipo fica para
+  conferir na Revisão. [treinamento_servico_editor]
+- O Desembaralhe e o Termo guardam 10 palavras cada (publicar exige as 10): a cada partida o jogo sorteia uma, e as
+  opções de todas as fases mudam de ordem. [treinamento_servico_editor]
+- Na Revisão, cada passo e cada fase feitos pela Vitória mostram o trecho do texto de onde saíram. Quando a conferência
+  acha um problema (trecho que não está no texto, número que não aparece no texto, fase sem opção certa ou com mais de
+  uma, material fora da lista do serviço), o item fica com uma pendência: edite o item ou toque em "Confirmar como está".
   Com pendência, o treinamento não é publicado.
-- Depois de gerar, dá para pedir ajustes no chat do editor ("encurte a explicação", "faça uma fase sobre aterramento") ou
-  tocar em "Regerar esta fase com a Vitória". Na demonstração, poucos treinamentos podem usar a IA e cada um tem poucas
-  rodadas; esgotado o limite, os botões ficam desativados com "Limite da demonstração atingido".
-- Publicar uma versão exige revisar e assinar; quem publica responde pelo conteúdo, mesmo o que veio da Vitória. Editar
-  depois cria um rascunho novo a partir da versão publicada, sem apagar a versão publicada anterior.
+- Na Revisão também dá para pedir ajustes à Vitória ("encurte a explicação", "faça uma fase sobre aterramento") ou tocar
+  em "Regerar com a Vitória" numa fase. Na demonstração, poucos treinamentos podem usar a IA e cada um tem poucas rodadas;
+  esgotado o limite, os botões ficam desativados com "Limite da demonstração atingido".
+- "Testar o jogo" abre o treinamento numa janela, do jeito que o técnico joga, sem pontuar.
+- Publicar exige o conteúdo completo, sem pendências, o termo de revisão e a assinatura do seu perfil; quem publica
+  responde pelo conteúdo, mesmo o que veio da Vitória. Editar depois cria um rascunho novo a partir da versão publicada,
+  sem apagar a versão publicada anterior.
+- Na aba Problemas ficam os avisos que os técnicos mandaram pelas fases; depois de corrigir, marque como tratado.
 
 ## Dashboards
 

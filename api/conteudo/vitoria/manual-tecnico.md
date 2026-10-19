@@ -112,14 +112,31 @@
 ## Catálogo de serviços
 
 - O catálogo lista os serviços da empresa com os materiais recomendados para cada um. [catalogo_servicos]
-- Um serviço com treinamento publicado mostra o botão "Treinar" no próprio cartão; quem já concluiu vê um selo.
+- No cartão do serviço, "Ver materiais" mostra a lista do que ele leva para o campo, e "Jogar treinamento" abre o
+  treinamento (com o cartãozinho da Vitória à vista); cada botão só aparece quando existe. Quem já concluiu vê o selo
+  com as fases certas.
 
 ## Treinamento de serviço
 
-- O treinamento de um serviço tem duas partes: a Vitória explicando o procedimento e, depois, um jogo curto (quiz,
-  decisão, separar os itens, ligar ou pôr em ordem). [treinar_servico]
+- O treinamento abre numa janela por cima da tela e tem duas partes: a Vitória explicando o procedimento, passo a passo,
+  e, depois, o jogo, com fases de vários minijogos: quiz, decisão, ligar, pôr em ordem, verdadeiro ou falso,
+  caça-palavras, memória, selecione, desembaralhe e termo. A barra do topo mostra em que parte você está.
+  [treinar_servico]
+- Cada fase vale até 10 pontos pelos acertos, e quanto mais rápido, mais vale (até 10 segundos, o valor cheio; o tempo
+  aparece ao lado do tipo da fase). A nota é a soma das fases vezes o número de fases vezes 10.
+- Dá para voltar e avançar entre as fases, mesmo sem responder; a resposta confirmada não muda. Finalizar com fase
+  pendente pede confirmação: o que você já fez nela conta, o resto vale zero.
+- No cartão do serviço, "Ver ranking" mostra quem já concluiu aquele treinamento, pela melhor nota de cada um. Jogar de
+  novo pode melhorar a sua nota no ranking, mas os pontos da gamificação valem só na primeira conclusão.
+- Sair no meio pede confirmação, e o jogo recomeça do início quando você voltar.
+- O jogo tem som (o alto-falante no topo desliga) e, no computador, atalhos: 1 a 4 escolhem a opção, Enter confirma e
+  segue, e as setas trocam o passo da explicação. No celular, dá para deslizar o dedo para trocar o passo.
 - A nota e os pontos ganhos só valem na primeira vez que você conclui cada treinamento; refazer ajuda a revisar, mas
   não muda a pontuação.
+- Ao concluir, o resultado mostra a sua nota e o ranking daquele treinamento: quem já concluiu, ordenado pelas
+  fases certas de primeira, com a sua posição em destaque. No ranking também vale a primeira conclusão; jogar de novo
+  não muda a sua posição. A capa do treinamento mostra o mesmo ranking, e quem está anônimo na gamificação também
+  aparece como "Participante anônimo" aqui.
 - Encontrou algo que parece errado numa fase? O botão "Reportar problema" manda um aviso direto para quem administra
   o sistema.
 
