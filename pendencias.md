@@ -32,8 +32,8 @@ O MVP está completo quando as três linhas atenderem e os itens 🔴 da tabela 
 | 6 | Modo offline: envio em segundo plano | código | 🔴 | 4 | [ ] |
 | 7 | Dockerfile que gera o APK | código | 🔴 | 1 | [ ] |
 | 8 | Conquista de sincronização offline (gamificação) | código | 🟡 | 4 | [ ] |
-| 9 | Digitalização: pergunta antes da importação | código | 🟢 | — | [ ] |
-| 10 | Digitalização: PDF digitalizado em lote (OCR + IA) | código | 🟢 | 9 | [ ] |
+| 9 | Digitalização: pergunta antes da importação | código | 🟢 | — | [x] 19/10/2026 |
+| 10 | Digitalização: PDF digitalizado em lote (OCR + IA) | código | 🟢 | 9 | [x] 19/10/2026 |
 | 11 | Digitalização: foto de folhas avulsas | código | 🟢 | 10 | [ ] |
 | 12 | Digitalização: APRs antigas | código | 🟢 | 10 | [ ] |
 | 13 | Validação (React Hook Form e Zod) nos demais formulários | código | 🟡 | — | [ ] |
@@ -124,20 +124,22 @@ A referência das telas é a `web` em `/app/*`. As regras que o app herda da Reu
 
 A especificação deixa o escaneamento para depois do MVP, mas ele é prioridade no DesignDoc e foi redesenhado na Reunião 3 (item 15 do [resumo](base/reunioes/correcoes-reuniao-3-resumo.md)). O desenho anterior está na seção 10 do [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas).
 
-**Hoje:** a câmera da tela de importação abre e captura, mas nada é lido nem enviado; o PDF só com imagem é recusado (`pdf_sem_texto`); das APRs antigas não há nada.
+**Hoje (19/10/2026):** os itens 9 e 10 estão feitos (detalhes em [vitoria.md, seção 10](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A câmera da tela de importação ainda só abre e captura, sem ler nem enviar (item 11); das APRs antigas não há nada (item 12).
 
-### 9. Pergunta antes da importação
+### 9. Pergunta antes da importação — feito em 19/10/2026
 
 - Antes de abrir o seletor de arquivos, a tela pergunta se a OS **já foi concluída no papel** ou se é **para liberar no sistema**, com uma explicação curta de cada caminho.
 - **Para liberar:** o PDF padrão, como hoje.
+- **Feito:** a janela `PerguntaDaImportacao` abre ao clicar no cartão Importação ou ao soltar um arquivo sobre ele; só depois da escolha o seletor de arquivos abre (o de "papel" aceita só PDF). O PDF sem texto enviado pelo caminho "para liberar" é recusado com a mensagem que aponta para o caminho do papel.
 
-### 10. PDF digitalizado em lote
+### 10. PDF digitalizado em lote — feito em 19/10/2026
 
 - O OCR local lê o que consegue; a IA de visão entra só nos recortes que o OCR não lê (a parte escrita à mão), já que a folha do SAP tem formato fixo.
 - Assinaturas e rubricas ficam como imagem, sem transcrição.
 - A OS entra **encerrada, como histórico**, e o admin confere o que foi lido antes de registrar (pode reaproveitar a conferência do PDF de hoje).
 - O modelo de IA e os demais pontos em aberto da seção 10 do [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) precisam ser fechados antes; o primeiro passo é testar a leitura com folhas fictícias.
 - **Descartado:** treinar um modelo próprio (LGPD e falta de folhas transcritas).
+- **Feito:** tarefa em segundo plano `digitalizacao` (PDF → folhas → OCR Tesseract local → IA de visão só no manuscrito → conferências), leitura guardada, tela de conferência com as folhas ao lado e registro das OS como `encerrada` de histórico (`os.origem = digitalizacao`, `os_digitalizacao`, PDF das folhas). **Fora (itens 11 e 12):** foto de folhas avulsas pela câmera e a APR antiga. **Em aberto:** o modelo de IA (testar com `pnpm pdf:digitalizado` e o Gemini; o Claude segue como destino com dados reais) e a escolha do limite de folhas por OS enviadas à IA.
 
 ### 11. Foto de folhas avulsas
 

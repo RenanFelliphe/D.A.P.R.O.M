@@ -106,7 +106,7 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente. Isso vale 
 | Plataforma | **Pronta.** Monorepo, Dockerfiles da `api` e da `web`, `docker-compose`, migrações aplicadas na subida, 6 buckets privados, tarefas em segundo plano com novas tentativas e modo local sem Supabase (`pnpm dev:local`) |
 | Acesso e usuários | **Pronta.** Login pelo e-mail institucional, senha provisória trocada no primeiro acesso, redefinição pelo admin, cadastro pelo supervisor com liberação ou recusa pelo admin, assinatura no perfil e trilha de auditoria que só cresce |
 | Campo de treino | **Pronto.** API fictícia em memória por usuário, tutorial Direcionado (18 passos) ou modo Livre; a `api` real só guarda o estado |
-| Entrada de OS | **Pronta com o simulador** (agora com tabela no banco e tela própria), com a planilha e com o PDF que tem texto. A digitalização pela câmera é só protótipo |
+| Entrada de OS | **Pronta com o simulador** (agora com tabela no banco e tela própria), com a planilha e com o PDF que tem texto. O PDF digitalizado de OS já concluídas no papel entra pela Importação (feito em 19/10/2026: OCR, IA no manuscrito e conferência); a câmera segue só protótipo |
 | Registro de funcionários | **Pronto com o simulador.** Cadastro só de quem está no registro, desligamento em tempo real (aviso e leitura diária), selos na tela de usuários e a tela do simulador |
 | Modelos de APR | **Pronta.** 8 modelos na carga inicial, versões imutáveis, editor, orientação de cada modelo para a escolha do técnico, arquivamento e restauração. O critério de bloqueio da carga é provisório até a Segurança do Trabalho validar |
 | Catálogo de serviço | **Pronta.** Materiais, ferramentas e EPIs recomendados por serviço, com quantidade |
@@ -215,7 +215,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 | Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | **Pronto** |
 | Gamificação | Time, na Reunião 2 | **Pronta** |
 | Chatbot de consulta | Iago, na Reunião 2 | **Virou a Vitória e os treinamentos de serviço** ([vitoria.md](funcionalidades/vitoria.md)). Os dois estão prontos: os treinamentos, com o rascunho pela IA ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)), e a Vitória assistente, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)) |
-| Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Decidida com leitura por IA, não iniciada** ([vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A Digitalização da tela de importação só abre a câmera |
+| Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **PDF digitalizado em lote feito em 19/10/2026 (OCR local + IA no manuscrito + conferência); foto avulsa pela câmera e APR antiga não iniciadas** ([vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A Digitalização da tela de importação só abre a câmera |
 | API de funcionários para cadastro rápido | DesignDoc (extras) | **Pronta com o simulador.** Registro de funcionários simulado, com tela própria; cadastro só de quem está nele e desligamento em tempo real ([apifuncionarios.md](apifuncionarios.md)) |
 | Tela do simulador do SAP | Time, em 14/10/2026 | **Pronta** ([apiSAP.md](apiSAP.md)) |
 | Atribuição individual e devolução de OS | Time, em 15/10/2026 | **Pronta** (seção 6) |

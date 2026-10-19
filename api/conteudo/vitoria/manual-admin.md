@@ -120,9 +120,15 @@
 
 - Quando a Vitória não sabe responder algo, a pergunta fica registrada sem identificar quem perguntou: só o texto, a
   tela, o perfil e a data. [vitoria_sem_resposta]
-- A lista fica no menu "Perguntas à Vitória", com um selo que conta as que ainda não foram tratadas. Depois de melhorar o
+- A lista fica no menu "Vitória", abaixo do diagnóstico da IA, com um selo que conta as que ainda não foram tratadas. Depois de melhorar o
   manual com a resposta, marque a pergunta como tratada. [vitoria_sem_resposta]
 - Depois de melhorar o manual com essa resposta, marque a pergunta como tratada na mesma tela.
+
+## Diagnóstico da Vitória
+
+- A tela "Vitória", no menu, mostra se a IA dela está ativa, por que não está (sem chave, limite do dia ou problema do
+  fornecedor), quando volta e quanto falta para o limite de respostas com IA do dia acabar, num controle deslizante.
+  [vitoria_sem_resposta]
 
 ## Sobre a Vitória
 
