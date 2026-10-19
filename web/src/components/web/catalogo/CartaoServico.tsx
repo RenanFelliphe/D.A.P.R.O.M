@@ -1,78 +1,93 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { AbaTreinamento } from "@/components/web/treinamento-servico/AbaTreinamento";
+import { BotaoVerRanking } from "@/components/web/treinamento-servico/BotaoVerRanking";
+import { BotaoTreinar } from "@/components/web/treinamento-servico/jogo/BotaoTreinar";
+import { TreinamentoNoCartao } from "@/components/web/treinamento-servico/TreinamentoNoCartao";
 import type { ServicoDoCatalogo } from "@/lib/catalogo";
+import { rotas } from "@/lib/rotas";
 import type { TreinamentoResumo } from "@/lib/treinamento-servico";
 import { EditorDoServico } from "./EditorDoServico";
 import { ListaDoServico } from "./ListaDoServico";
 
-type Aba = "materiais" | "treinamento";
-
-/** Um serviço do catálogo: o código e a descrição da atividade, a lista do que o serviço leva para o campo (o admin edita aqui mesmo) e o treinamento de serviço. */
+/**
+ * Um serviço do catálogo: o código, a descrição e, só quando existem, "Ver materiais" (a lista do que o serviço leva para o
+ * campo, que abre no próprio cartão), "Jogar treinamento" (o jogo numa janela) e "Ver ranking" (o ranking dele, também numa janela). Com treinamento publicado, o cartãozinho da
+ * Vitória fica à vista. O admin edita a lista aqui mesmo e, em vez de jogar, abre o treinamento no editor (ou o cria).
+ */
 export function CartaoServico({ servico, podeEditar, treinamento = null }: { servico: ServicoDoCatalogo; podeEditar: boolean; treinamento?: TreinamentoResumo | null }) {
+  const idLista = useId();
   const [editando, setEditando] = useState(false);
-  const [aba, setAba] = useState<Aba>("materiais");
+  const [verMateriais, setVerMateriais] = useState(false);
   const total = servico.materiais.length;
+  const temMateriais = total > 0;
+  const temAcoes = temMateriais || Boolean(treinamento) || podeEditar;
 
   return (
-    <section className="panel" aria-label={`Serviço ${servico.codigo}`} style={{ gap: 10 }}>
-      <div className="row between" style={{ alignItems: "flex-start", gap: 12 }}>
-        <div className="stack g4" style={{ minWidth: 0 }}>
-          <span className="mono small" style={{ color: "var(--ink3)", overflowWrap: "anywhere" }}>
+    <section className="panel cartao-servico" aria-label={`Serviço ${servico.codigo}`}>
+      <div className="cartao-servico-cab">
+        <div className="cartao-servico-titulo">
+          <span className="mono small cartao-servico-codigo">
             {servico.codigo}
             {servico.provisorio && (
-              <>
-                {" "}
-                <Badge tone="al" style={{ padding: "0 7px", fontSize: 11 }}>
-                  Provisório
-                </Badge>
-              </>
+              <Badge tone="al" style={{ padding: "0 7px", fontSize: 11 }}>
+                Provisório
+              </Badge>
             )}
           </span>
-          <h2 style={{ fontSize: 15.5, fontWeight: 600, overflowWrap: "anywhere" }}>{servico.descricao}</h2>
-          <span className="small" style={{ color: "var(--ink4)" }}>
-            {total === 0 ? "Nenhum item" : total === 1 ? "1 item" : `${total} itens`}
-          </span>
+          <h2>{servico.descricao}</h2>
+          <span className="small">{total === 0 ? "Nenhum material na lista" : total === 1 ? "1 item na lista" : `${total} itens na lista`}</span>
         </div>
-        {aba === "materiais" && podeEditar && !editando && (
-          <Button variant="line" sm style={{ height: 32, flex: "none" }} onClick={() => setEditando(true)}>
-            <Icon name="list" size={13} />
+        {podeEditar && !editando && (
+          <Button variant="line" sm className="cartao-servico-editar" onClick={() => setEditando(true)}>
+            <Icon name="pencil" size={13} />
             Editar lista
           </Button>
         )}
       </div>
 
-      <div className="row g6" role="tablist" aria-label={`Abas do serviço ${servico.codigo}`}>
-        {(["materiais", "treinamento"] as const).map((a) => (
-          <button
-            key={a}
-            type="button"
-            role="tab"
-            aria-selected={aba === a}
-            className={`btn btn-sm ${aba === a ? "btn-line" : "btn-ghost"}`}
-            onClick={() => setAba(a)}
-          >
-            {a === "materiais" ? "Materiais" : "Treinamento"}
-          </button>
-        ))}
-      </div>
+      {treinamento && <TreinamentoNoCartao treinamento={treinamento} admin={podeEditar} />}
 
-      {aba === "materiais" ? (
-        editando ? (
-          <EditorDoServico servico={servico} aoFechar={() => setEditando(false)} />
-        ) : total === 0 ? (
-          <p className="muted" style={{ fontSize: 13.5 }}>
-            O catálogo ainda não lista materiais para este serviço.
-          </p>
-        ) : (
-          <ListaDoServico materiais={servico.materiais} />
-        )
+      {editando ? (
+        <EditorDoServico servico={servico} aoFechar={() => setEditando(false)} />
       ) : (
-        <AbaTreinamento codigo={servico.codigo} podeEditar={podeEditar} treinamento={treinamento} />
+        temAcoes && (
+          <>
+            <div className="cartao-servico-acoes">
+              {temMateriais && (
+                <Button variant="line" sm aria-expanded={verMateriais} aria-controls={idLista} onClick={() => setVerMateriais((v) => !v)}>
+                  <Icon name="box" size={13} />
+                  {verMateriais ? "Ocultar materiais" : "Ver materiais"}
+                  <Icon name="down" size={13} className="cartao-servico-seta" />
+                </Button>
+              )}
+              {treinamento &&
+                (podeEditar ? (
+                  <LinkButton variant="p" sm href={rotas.app.treinamentoServico(servico.codigo)}>
+                    <Icon name="pencil" size={13} />
+                    Abrir treinamento
+                  </LinkButton>
+                ) : (
+                  <BotaoTreinar codigo={servico.codigo} jaConcluiu={treinamento.concluido} rotulo="Jogar treinamento" sm />
+                ))}
+              {treinamento && <BotaoVerRanking codigo={servico.codigo} descricao={servico.descricao} sm />}
+              {!treinamento && podeEditar && (
+                <LinkButton variant="ghost" sm href={rotas.app.treinamentoServico(servico.codigo)}>
+                  <Icon name="plus" size={13} />
+                  Criar treinamento
+                </LinkButton>
+              )}
+            </div>
+            {temMateriais && verMateriais && (
+              <div id={idLista} className="cartao-servico-lista">
+                <ListaDoServico materiais={servico.materiais} />
+              </div>
+            )}
+          </>
+        )
       )}
     </section>
   );

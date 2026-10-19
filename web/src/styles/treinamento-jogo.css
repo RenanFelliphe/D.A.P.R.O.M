@@ -1,0 +1,2295 @@
+/*
+ * A janela do jogo dos treinamentos de serviço (`JanelaDoJogo`): o placar no topo, as telas (capa, explicação, a passagem
+ * para o jogo, as fases e o resultado) e os efeitos (contagem, abertura da fase, estrelinhas, estrelas, confete). As peças
+ * comuns (a Vitória falando, chips) ficam em `treinamento-servico.css`, assim como as animações básicas (`ts-subir`,
+ * `ts-pop`, `ts-tremer`...). No celular, e também no celular deitado, a janela ocupa a tela inteira.
+ */
+
+.ts-jogo {
+  --jg-topo: linear-gradient(120deg, #0B3A4C 0%, #0F5C78 52%, #1A8BAA 100%);
+  --jg-certo: #2E8A4C;
+  --jg-certo-escuro: #1E6236;
+  --jg-erro: #A3241B;
+  --jg-erro-escuro: #771A13;
+  --jg-ouro: #F5B301;
+  --jg-fogo: linear-gradient(135deg, #FF8A3D, #F2542D);
+  width: min(920px, calc(100vw - 32px));
+  height: min(760px, calc(100dvh - 32px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 22px;
+  background: #F5F9FB;
+  color: var(--ink);
+  box-shadow: 0 30px 80px rgba(8, 20, 28, .45);
+}
+
+.ts-jogo[open] {
+  display: flex;
+  flex-direction: column;
+  animation: ts-janela-entrar .4s cubic-bezier(.2, .9, .3, 1.1);
+}
+
+.ts-jogo::backdrop {
+  background: rgba(8, 20, 28, .7);
+  backdrop-filter: blur(4px);
+}
+
+/* ===== O topo: cabeçalho e placar ===== */
+
+.ts-jogo-topo {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: var(--jg-topo);
+  color: #fff;
+}
+
+.ts-jogo-topo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 92% -30%, rgba(255, 255, 255, .2), transparent 42%),
+    radial-gradient(circle at 8% 140%, rgba(27, 175, 122, .35), transparent 45%);
+  pointer-events: none;
+}
+
+.ts-jogo-cab {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 10px 18px;
+}
+
+.ts-jogo-avatar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, .7);
+}
+
+.ts-jogo-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ts-jogo-cab-texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ts-jogo-cab-rotulo {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .75);
+}
+
+.ts-jogo-cab h2 {
+  overflow: hidden;
+  font-size: 16.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ts-placar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.ts-placar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .16);
+  font-size: 13.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ts-placar-item .i {
+  color: #FFD45C;
+}
+
+.ts-placar-valor {
+  display: inline-block;
+  animation: ts-pop .35s ease-out;
+}
+
+.ts-placar-fogo {
+  border-color: transparent;
+  background: var(--jg-fogo);
+  animation:
+    ts-pop .4s ease-out,
+    ts-fogo-brilho 1.6s .4s ease-in-out infinite;
+}
+
+.ts-placar-fogo .i {
+  color: #FFF3C4;
+}
+
+.ts-jogo-botao {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.ts-jogo-botao:hover {
+  background: rgba(255, 255, 255, .24);
+}
+
+.ts-jogo-botao[aria-pressed="false"] {
+  color: rgba(255, 255, 255, .7);
+}
+
+.ts-jogo-botao:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* A trilha: a Parte 1 em segmentos (um por passo) e a Parte 2 com um ponto por fase. */
+.ts-trilha {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 16px;
+  padding: 0 18px 14px;
+}
+
+.ts-trilha-parte {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ts-trilha-rotulo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .7);
+}
+
+.ts-trilha-rotulo .i {
+  color: #7CE0A8;
+}
+
+.ts-trilha-ativa .ts-trilha-rotulo {
+  color: #fff;
+}
+
+.ts-trilha-num {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .2);
+  font-size: 11px;
+}
+
+.ts-trilha-ativa .ts-trilha-num {
+  background: #fff;
+  color: var(--brand);
+}
+
+.ts-trilha-passos,
+.ts-trilha-fases {
+  display: flex;
+  gap: 4px;
+  height: 6px;
+}
+
+.ts-trilha-passos i,
+.ts-trilha-fases i {
+  flex: 1;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .22);
+  transition: background .3s, box-shadow .3s;
+}
+
+.ts-trilha-passos i[data-estado="feito"] {
+  background: rgba(255, 255, 255, .85);
+}
+
+.ts-trilha-passos i[data-estado="atual"] {
+  background: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, .9);
+}
+
+.ts-trilha-fases i[data-estado="certa"] {
+  background: #4ADE80;
+}
+
+.ts-trilha-fases i[data-estado="errada"] {
+  background: #FF6B5E;
+}
+
+.ts-trilha-fases i[data-estado="atual"] {
+  background: #fff;
+  animation: ts-respirar 1.4s ease-in-out infinite;
+}
+
+/* ===== Corpo e rodapé de cada tela ===== */
+
+.ts-tela {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ts-jogo-corpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 0;
+  padding: 22px 28px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: radial-gradient(900px 320px at 50% -140px, rgba(15, 92, 120, .09), transparent 70%);
+  animation: ts-tela-entrar .38s cubic-bezier(.2, .8, .3, 1) both;
+}
+
+.ts-jogo-corpo > :not(.ts-confetes):not(.ts-intervalo-raios) {
+  width: 100%;
+  max-width: 760px;
+}
+
+.ts-jogo-rodape {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line2);
+  background: #fff;
+}
+
+.ts-rodape-espaco {
+  flex: 1;
+}
+
+.ts-rodape-aviso {
+  flex-basis: 100%;
+  order: -1;
+}
+
+/* O botão principal com "degrau", como um botão de jogo: afunda ao tocar. */
+.ts-botao-principal {
+  min-width: 180px;
+  box-shadow: 0 4px 0 var(--brand-ink);
+  transition: transform .1s, box-shadow .1s, background .15s;
+}
+
+.ts-botao-principal:active:not([disabled]) {
+  box-shadow: 0 1px 0 var(--brand-ink);
+  transform: translateY(3px);
+}
+
+.ts-botao-principal[disabled] {
+  box-shadow: none;
+}
+
+.ts-botao-chamativo,
+.ts-botao-confirmar[data-pronto] {
+  animation: ts-pulso-botao 1.8s ease-in-out infinite;
+}
+
+.ts-dica-teclado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink4);
+  font-size: 12px;
+}
+
+.ts-dica-teclado kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--line3);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--ink2);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.ts-so-toque {
+  display: none;
+}
+
+/* Em tela de toque não há teclado: troca a dica pela do dedo. */
+@media (hover: none) {
+  .ts-dica-teclado:not(.ts-dica-navegar),
+  .ts-so-mouse {
+    display: none;
+  }
+
+  .ts-so-toque {
+    display: inline;
+  }
+}
+
+/* Confirmação de sair no meio do treinamento: por cima de tudo, dentro da janela. */
+.ts-sair {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 20, 28, .5);
+  animation: ts-fade .2s ease-out;
+}
+
+.ts-sair-caixa {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+  padding: 22px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
+  animation: ts-pop .3s cubic-bezier(.2, .9, .3, 1.2);
+}
+
+.ts-sair-caixa h3 {
+  font-size: 18px;
+}
+
+/* ===== Capa ===== */
+
+.ts-capa-faixa {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 160px;
+  padding: 22px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: linear-gradient(130deg, #0B3A4C, #0F5C78 50%, #1BAF7A 135%);
+  box-shadow: 0 12px 30px rgba(15, 92, 120, .25);
+  color: #fff;
+  animation: ts-subir .45s both;
+}
+
+.ts-capa-faixa-imagem {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ts-capa-faixa-foto::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(0deg, rgba(8, 30, 40, .88), rgba(8, 30, 40, .15) 75%);
+}
+
+.ts-capa-faixa-brilho {
+  position: absolute;
+  inset: -40% -10%;
+  z-index: 1;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .18) 50%, transparent 60%);
+  pointer-events: none;
+  animation: ts-varrer-brilho 3.6s ease-in-out 1s infinite;
+}
+
+.ts-capa-faixa-conteudo {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ts-capa-etiqueta {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .82);
+}
+
+.ts-capa-titulo {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.ts-chip-claro {
+  border: 1px solid rgba(255, 255, 255, .25);
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+}
+
+.ts-capa-etapas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-capa-etapas li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line2);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(23, 33, 43, .05);
+  font-size: 13.5px;
+  animation: ts-subir .4s both;
+  animation-delay: calc(var(--i, 0) * 90ms + 200ms);
+}
+
+/* Também usado na capa da página `/treinar`. */
+.ts-capa-etapa-icone {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--brand-bg);
+  color: var(--brand);
+}
+
+.ts-capa-etapa-icone b {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11px;
+}
+
+/* ===== Parte 1: a explicação ===== */
+
+.ts-parte {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.ts-parte-contagem {
+  color: var(--ink4);
+}
+
+.ts-explicacao {
+  justify-content: safe center;
+  touch-action: pan-y;
+}
+
+.ts-explicacao-palco {
+  position: relative;
+}
+
+/* O número do passo, enorme e clarinho, atrás da Vitória. */
+.ts-explicacao-numero {
+  position: absolute;
+  top: -34px;
+  right: 4px;
+  z-index: 0;
+  color: rgba(15, 92, 120, .08);
+  font-size: 130px;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  animation: ts-pop .5s ease-out both;
+}
+
+.ts-cena-explicacao {
+  position: relative;
+  z-index: 1;
+}
+
+.ts-cena-explicacao .ts-balao {
+  box-shadow: 0 10px 28px rgba(15, 92, 120, .12);
+}
+
+.ts-balao-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--jg-ouro);
+  color: #3D2B00;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.ts-vitoria-falando {
+  animation:
+    ts-falar .32s ease-in-out 0s 6 alternate,
+    ts-flutuar 3.2s ease-in-out 1.9s infinite;
+}
+
+.ts-explicacao-imagem {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line2);
+  border-radius: 16px;
+  background: #fff;
+  animation: ts-subir .45s .15s both;
+}
+
+.ts-explicacao-imagem img {
+  display: block;
+  max-width: 100%;
+  max-height: 280px;
+  object-fit: contain;
+}
+
+.ts-dica-navegar {
+  justify-content: center;
+}
+
+.ts-pontinhos {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+}
+
+.ts-pontinho {
+  box-sizing: content-box;
+  width: 8px;
+  height: 8px;
+  padding: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--line);
+  background-clip: content-box;
+  cursor: pointer;
+  transition: width .25s, background-color .25s;
+}
+
+.ts-pontinho[data-estado="visto"] {
+  background-color: var(--brand-bd);
+}
+
+.ts-pontinho[data-estado="atual"] {
+  width: 22px;
+  background-color: var(--brand);
+}
+
+.ts-pontinho[disabled] {
+  cursor: default;
+}
+
+/* ===== A passagem para o jogo ===== */
+
+.ts-intervalo {
+  position: relative;
+  justify-content: safe center;
+  text-align: center;
+}
+
+.ts-intervalo > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Os raios girando atrás de "Agora é a sua vez!". Recortados no próprio corpo, para não criar rolagem. */
+.ts-intervalo-raios {
+  position: absolute !important;
+  inset: 0;
+  z-index: 0 !important;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ts-intervalo-raios::before {
+  content: "";
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  width: 1100px;
+  height: 1100px;
+  margin: -550px 0 0 -550px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(15, 92, 120, .07) 0 9deg, transparent 9deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 0, transparent 60%);
+  mask: radial-gradient(circle, #000 0, transparent 60%);
+  animation: ts-girar 50s linear infinite;
+}
+
+.ts-intervalo .ts-parte {
+  justify-content: center;
+}
+
+.ts-intervalo-titulo {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--brand-ink);
+  animation: ts-pop .55s cubic-bezier(.2, .9, .3, 1.5) both;
+}
+
+.ts-intervalo > .ts-cena {
+  max-width: 540px;
+}
+
+.ts-intervalo-tipos {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-intervalo-tipos li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(23, 33, 43, .06);
+  color: var(--ink2);
+  font-size: 13px;
+  font-weight: 600;
+  animation: ts-subir .4s both;
+  animation-delay: calc(var(--i, 0) * 70ms + 300ms);
+}
+
+.ts-intervalo-tipos .i {
+  color: var(--brand);
+}
+
+/* ===== Contagem "3, 2, 1, Valendo!" ===== */
+
+.ts-contagem-regressiva {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(15, 92, 120, .94), rgba(8, 30, 40, .97));
+  color: #fff;
+  animation: ts-fade .2s ease-out;
+}
+
+.ts-contagem-regressiva span {
+  grid-area: 1 / 1;
+  font-size: 128px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 8px 30px rgba(0, 0, 0, .35);
+  opacity: 0;
+  animation: ts-conta .6s calc(var(--i) * .6s) both;
+}
+
+.ts-contagem-regressiva .ts-valendo {
+  color: #FFD45C;
+  font-size: 68px;
+  animation-duration: .7s;
+}
+
+/* ===== Parte 2: as fases ===== */
+
+/* A abertura de cada fase: "Fase 3 · Decisão" passa pela tela (um toque pula). */
+.ts-abertura-fase {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  cursor: pointer;
+  animation: ts-abertura-fundo 1.15s ease both;
+}
+
+.ts-abertura-fase-cartao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 38px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, var(--brand), #1A8BAA);
+  box-shadow: 0 20px 50px rgba(15, 92, 120, .35);
+  color: #fff;
+  text-align: center;
+  animation: ts-abertura-cartao 1.15s cubic-bezier(.2, .9, .3, 1.2) both;
+}
+
+.ts-abertura-fase-num {
+  font-size: 36px;
+  font-weight: 900;
+}
+
+.ts-abertura-fase-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ts-fase-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ts-fase-num {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.ts-fase-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ts-cena-instrucao .ts-balao {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ts-reportar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink4);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.ts-reportar:hover,
+.ts-reportar[aria-expanded="true"] {
+  background: var(--blq-bg);
+  color: var(--blq);
+}
+
+.ts-reportado {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  color: var(--enc);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ts-reportar-caixa {
+  display: flex;
+  flex-basis: 100%;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  animation: ts-abrir .25s ease-out both;
+}
+
+.ts-reportar-caixa .ts-contador {
+  margin-left: auto;
+}
+
+.ts-pergunta {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* Quiz e decisão: blocos coloridos, um por opção, com a letra (A a D) */
+.ts-cor-0 { --cor: #2A78D6; --cor-fundo: #E6F0FC; }
+.ts-cor-1 { --cor: #E8682F; --cor-fundo: #FDEDE4; }
+.ts-cor-2 { --cor: #16A06D; --cor-fundo: #E2F6EE; }
+.ts-cor-3 { --cor: #8B5CF6; --cor-fundo: #F0EAFE; }
+
+.ts-opcoes {
+  display: grid;
+  gap: 12px;
+}
+
+.ts-opcoes-blocos {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ts-opcao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 0 var(--line);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s, transform .12s, opacity .2s;
+  animation: ts-subir .35s both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.ts-opcao:hover:not([disabled]) {
+  border-color: var(--cor);
+  box-shadow: 0 6px 0 var(--cor);
+  transform: translateY(-2px);
+}
+
+.ts-opcao:active:not([disabled]) {
+  box-shadow: 0 1px 0 var(--cor);
+  transform: translateY(3px);
+}
+
+.ts-opcao[disabled] {
+  cursor: default;
+}
+
+.ts-opcao-marca {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--cor);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  transition: background .15s, transform .15s;
+}
+
+.ts-opcao-texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ts-opcao[data-estado="marcada"] {
+  border-color: var(--cor);
+  background: var(--cor-fundo);
+  box-shadow: 0 4px 0 var(--cor), 0 0 0 4px var(--cor-fundo);
+}
+
+.ts-opcao[data-estado="marcada"] .ts-opcao-marca {
+  transform: scale(1.08) rotate(-4deg);
+}
+
+.ts-opcao[data-estado="certa"] {
+  border-color: var(--jg-certo);
+  background: var(--enc-bg);
+  box-shadow: 0 4px 0 var(--jg-certo);
+  animation: ts-acerto .5s ease-out;
+}
+
+.ts-opcao[data-estado="certa"] .ts-opcao-marca {
+  background: var(--jg-certo);
+}
+
+.ts-opcao[data-estado="errada"] {
+  border-color: var(--jg-erro);
+  background: var(--blq-bg);
+  box-shadow: 0 4px 0 var(--jg-erro);
+  animation: ts-tremer .45s ease-in-out;
+}
+
+.ts-opcao[data-estado="errada"] .ts-opcao-marca {
+  background: var(--jg-erro);
+}
+
+.ts-opcao[data-estado="apagada"] {
+  opacity: .45;
+  filter: grayscale(.6);
+  animation: none;
+}
+
+.ts-consequencia {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .8);
+  color: var(--ink2);
+  font-size: 13px;
+  font-weight: 500;
+  animation: ts-abrir .3s ease-out both;
+}
+
+/* O contador de marcadas (selecione e caça-palavras) */
+.ts-contador-marcados {
+  flex: none;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  animation: ts-pop .3s ease-out;
+}
+
+/* Cartões de toque (as etapas do pôr em ordem) */
+.ts-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 0 var(--line);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s, opacity .2s, transform .12s;
+  animation: ts-subir .3s both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+.ts-item:hover:not([disabled]) {
+  border-color: var(--brand-bd);
+  transform: translateY(-2px);
+}
+
+.ts-item:active:not([disabled]) {
+  box-shadow: 0 1px 0 var(--line);
+  transform: translateY(2px);
+}
+
+.ts-item[disabled] {
+  cursor: default;
+}
+
+.ts-item[data-estado="marcada"] {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+  box-shadow: 0 3px 0 var(--brand);
+}
+
+.ts-item[data-estado="certa"] {
+  border-color: var(--jg-certo);
+  background: var(--enc-bg);
+  box-shadow: 0 3px 0 var(--jg-certo);
+  animation: ts-acerto .5s ease-out;
+}
+
+.ts-item[data-estado="errada"] {
+  border-color: var(--jg-erro);
+  background: var(--blq-bg);
+  box-shadow: 0 3px 0 var(--jg-erro);
+  animation: ts-tremer .45s ease-in-out;
+}
+
+.ts-item[data-estado="faltou"] {
+  border-style: dashed;
+  border-color: var(--jg-certo);
+  box-shadow: none;
+  animation: none;
+}
+
+.ts-item[data-estado="apagada"] {
+  opacity: .45;
+  animation: none;
+}
+
+.ts-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--ink3);
+  font-size: 12.5px;
+}
+
+.ts-legenda span::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+
+.ts-legenda [data-estado="certa"]::before {
+  background: var(--jg-certo);
+}
+
+.ts-legenda [data-estado="errada"]::before {
+  background: var(--jg-erro);
+}
+
+.ts-legenda [data-estado="faltou"]::before {
+  border: 2px dashed var(--jg-certo);
+}
+
+/* Ligar: as duas colunas, as curvas coloridas entre os pares e o número do par dos dois lados */
+.ts-ligar-dica {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--brand-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.ts-ligar {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 64px;
+}
+
+.ts-ligar-linhas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.ts-ligar-linha {
+  fill: none;
+  stroke: var(--par);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .14));
+  animation: ts-desenhar .45s ease-out forwards;
+}
+
+.ts-ligar-coluna {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ts-ligar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 0 var(--line);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+  animation: ts-subir .3s both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+.ts-ligar-item > span:not(.ts-par-marca) {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Do lado direito o número do par vem antes do texto, de frente para o da esquerda. */
+.ts-ligar-direita {
+  justify-content: flex-start;
+}
+
+.ts-ligar-item:hover:not([disabled]) {
+  border-color: var(--brand-bd);
+}
+
+.ts-ligar-item[disabled] {
+  cursor: default;
+}
+
+.ts-ligar-item[data-estado="marcada"] {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+  box-shadow: 0 3px 0 var(--brand), 0 0 0 4px rgba(15, 92, 120, .12);
+}
+
+/* O ponto na borda do item escolhido, de onde a linha vai sair. */
+.ts-ligar-item[data-estado="marcada"]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 0 4px rgba(15, 92, 120, .2);
+  animation: ts-respirar 1s ease-in-out infinite;
+}
+
+.ts-ligar-item[data-estado="alvo"] {
+  border-style: dashed;
+  border-color: var(--brand-bd);
+  animation: ts-respirar 1.6s ease-in-out infinite;
+}
+
+.ts-ligar-item[data-estado="ligada"] {
+  border-color: var(--par);
+  background: color-mix(in srgb, var(--par) 9%, #fff);
+  box-shadow: 0 3px 0 var(--par);
+}
+
+.ts-par-0 { --par: #2A78D6; }
+.ts-par-1 { --par: #EB6834; }
+.ts-par-2 { --par: #1BAF7A; }
+.ts-par-3 { --par: #8B5CF6; }
+.ts-par-4 { --par: #D9467A; }
+
+.ts-par-marca {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--par);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  animation: ts-pop .3s ease-out;
+}
+
+/* Correção em lista (ligar e o resultado) */
+.ts-correcao {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-correcao li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--blq-bd);
+  border-radius: 12px;
+  background: var(--blq-bg);
+  animation: ts-subir .3s both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+.ts-correcao li[data-estado="certa"] {
+  border-color: var(--ts-certo-bd);
+  background: var(--enc-bg);
+}
+
+.ts-correcao-marca {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--jg-erro, var(--blq));
+  color: #fff;
+}
+
+[data-estado="certa"] > .ts-correcao-marca {
+  background: var(--jg-certo, #2E8A4C);
+}
+
+.ts-correcao-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.ts-correcao-seta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink2);
+}
+
+.ts-correcao-certo {
+  display: block;
+  color: var(--enc);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+/* Pôr em ordem: as vagas numeradas e as etapas soltas */
+.ts-ordem-vagas {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-ordem-vagas li {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  animation: ts-subir .3s both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+.ts-vaga-num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  border-radius: 12px;
+  background: var(--chip);
+  color: var(--ink3);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.ts-ordem-vagas li[data-estado="marcada"] .ts-vaga-num {
+  background: var(--brand);
+  color: #fff;
+}
+
+.ts-ordem-vagas li[data-estado="certa"] .ts-vaga-num {
+  background: var(--jg-certo);
+  color: #fff;
+}
+
+.ts-ordem-vagas li[data-estado="errada"] .ts-vaga-num {
+  background: var(--jg-erro);
+  color: #fff;
+}
+
+.ts-vaga-texto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 2px solid var(--brand-bd);
+  border-radius: 12px;
+  background: var(--brand-bg);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  animation: ts-pop .25s ease-out;
+}
+
+.ts-vaga-texto[disabled] {
+  cursor: default;
+}
+
+.ts-ordem-vagas li[data-estado="certa"] .ts-vaga-texto {
+  border-color: var(--ts-certo-bd);
+  background: var(--enc-bg);
+}
+
+.ts-ordem-vagas li[data-estado="errada"] .ts-vaga-texto {
+  border-color: var(--blq-bd);
+  background: var(--blq-bg);
+}
+
+.ts-vaga-vazia {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  color: var(--ink4);
+  font-size: 13px;
+}
+
+/* A próxima vaga a preencher pisca de leve. */
+.ts-ordem-vagas li[data-proxima] .ts-vaga-vazia {
+  border-color: var(--brand-bd);
+  background: var(--tint);
+  color: var(--brand);
+  animation: ts-respirar 1.6s ease-in-out infinite;
+}
+
+.ts-ordem-pool {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.ts-ordem-mais {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+}
+
+/* ===== O retorno de cada fase: o painel que sobe do rodapé ===== */
+
+.ts-retorno {
+  position: relative;
+  display: grid;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 4px solid var(--jg-certo);
+  background: #E3F5E9;
+  animation: ts-subir-painel .42s cubic-bezier(.2, .9, .3, 1.15) both;
+}
+
+.ts-retorno:not([data-certa]) {
+  border-top-color: var(--jg-erro);
+  background: #FDE8E5;
+  animation:
+    ts-subir-painel .42s cubic-bezier(.2, .9, .3, 1.15) both,
+    ts-tremer .45s .4s ease-in-out;
+}
+
+.ts-retorno > .ts-rodape-aviso {
+  grid-column: 1 / -1;
+}
+
+.ts-retorno-vitoria {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 88px;
+  height: 88px;
+}
+
+.ts-retorno-vitoria .vt-figurinha,
+.ts-retorno-vitoria .vt-figurinha img {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.ts-retorno-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.ts-retorno-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--jg-certo-escuro);
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.ts-retorno:not([data-certa]) .ts-retorno-titulo {
+  color: var(--jg-erro);
+}
+
+.ts-retorno-marca {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--jg-certo);
+  color: #fff;
+  animation: ts-pop .4s .1s both;
+}
+
+.ts-retorno:not([data-certa]) .ts-retorno-marca {
+  background: var(--jg-erro);
+}
+
+.ts-retorno-sequencia {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--jg-fogo);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  animation: ts-pop .4s .25s both;
+}
+
+.ts-retorno-texto p {
+  color: #1F3D29;
+  font-size: 14.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ts-retorno:not([data-certa]) .ts-retorno-texto p {
+  color: #5A1510;
+}
+
+.ts-retorno-botao,
+.ts-retorno-botao:hover {
+  background: var(--jg-certo);
+  box-shadow: 0 4px 0 var(--jg-certo-escuro);
+}
+
+.ts-retorno-botao:active:not([disabled]) {
+  box-shadow: 0 1px 0 var(--jg-certo-escuro);
+}
+
+.ts-retorno:not([data-certa]) .ts-retorno-botao {
+  background: var(--jg-erro);
+  box-shadow: 0 4px 0 var(--jg-erro-escuro);
+}
+
+/* As estrelinhas do acerto, estourando em volta da Vitória. */
+.ts-explosao {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.ts-explosao i {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 12px;
+  height: 12px;
+  background: #F5B301;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  opacity: 0;
+  animation: ts-faisca .85s ease-out .05s forwards;
+}
+
+.ts-explosao i:nth-child(3n) {
+  background: #4ADE80;
+}
+
+.ts-explosao i:nth-child(3n + 1) {
+  background: #2A78D6;
+}
+
+/* ===== Resultado ===== */
+
+.ts-resultado {
+  position: relative;
+  overflow-x: hidden;
+  text-align: center;
+  background: radial-gradient(640px 320px at 50% -40px, rgba(245, 179, 1, .16), transparent 70%);
+}
+
+.ts-resultado[data-estrelas="3"] {
+  background: radial-gradient(700px 360px at 50% -40px, rgba(245, 179, 1, .3), transparent 70%);
+}
+
+.ts-resultado > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ts-estrelas {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ts-estrela {
+  display: grid;
+  place-items: center;
+  color: var(--line);
+}
+
+.ts-estrela .i {
+  font-size: 56px;
+}
+
+.ts-estrela:nth-child(2) .i {
+  font-size: 74px;
+}
+
+.ts-estrela[data-acesa] {
+  color: var(--jg-ouro);
+  filter: drop-shadow(0 4px 10px rgba(245, 179, 1, .5));
+  animation: ts-estrela .55s cubic-bezier(.2, .9, .3, 1.5) both;
+  animation-delay: calc(.5s + var(--i) * .45s);
+}
+
+.ts-resultado-titulo {
+  background: linear-gradient(90deg, var(--brand-ink), var(--brand), #1A8BAA);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 30px;
+  font-weight: 900;
+  animation: ts-pop .5s .2s cubic-bezier(.2, .9, .3, 1.4) both;
+}
+
+.ts-resultado-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.ts-resultado-topo .ts-cena {
+  flex: 1 1 260px;
+  max-width: 400px;
+}
+
+.ts-anel {
+  position: relative;
+  flex: none;
+  width: 140px;
+  height: 140px;
+}
+
+.ts-anel svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ts-anel-fundo {
+  fill: none;
+  stroke: var(--line2);
+  stroke-width: 12;
+}
+
+.ts-anel-valor {
+  fill: none;
+  stroke: var(--brand);
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-dashoffset: var(--resto);
+  animation: ts-anel 1.2s .3s cubic-bezier(.3, .8, .3, 1) both;
+}
+
+.ts-anel[data-cheio] .ts-anel-valor {
+  stroke: var(--jg-certo);
+}
+
+.ts-anel-texto {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.ts-anel-texto strong {
+  font-size: 30px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.ts-anel-texto small {
+  color: var(--ink4);
+  font-size: 11.5px;
+}
+
+.ts-resultado-pontos {
+  align-self: center;
+  width: auto !important;
+  animation: ts-pop .5s .9s both;
+}
+
+.ts-resultado-nota {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ink3);
+  font-size: 13px;
+}
+
+.ts-resultado-fases {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  list-style: none;
+}
+
+.ts-resultado-fases li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--blq-bd);
+  border-radius: 12px;
+  background: var(--blq-bg);
+  font-size: 13px;
+  font-weight: 700;
+  animation: ts-subir .3s both;
+  animation-delay: calc(var(--i, 0) * 60ms + 900ms);
+}
+
+.ts-resultado-fases li[data-estado="certa"] {
+  border-color: var(--ts-certo-bd);
+  background: var(--enc-bg);
+}
+
+.ts-resultado-tipo {
+  display: inline-flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 4px;
+  padding-left: 30px;
+  color: var(--ink3);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Confete: também na comemoração da publicação, no editor. */
+.ts-confetes {
+  position: absolute;
+  inset: 0;
+  z-index: 0 !important;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ts-confetes i {
+  position: absolute;
+  top: -14px;
+  left: var(--x, calc(var(--i) * 3.8%));
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--c, var(--brand));
+  opacity: 0;
+  animation: ts-confete 2.8s ease-in forwards;
+  animation-delay: calc(var(--i) * 45ms);
+}
+
+.ts-confetes i:nth-child(5n + 1) { --c: #2A78D6; }
+.ts-confetes i:nth-child(5n + 2) { --c: #EB6834; }
+.ts-confetes i:nth-child(5n + 3) { --c: #1BAF7A; }
+.ts-confetes i:nth-child(5n + 4) { --c: #F2C230; }
+.ts-confetes i:nth-child(5n) { --c: #D9467A; }
+
+.ts-confetes i:nth-child(3n) {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+/* ===== Animações do jogo ===== */
+
+@keyframes ts-subir-painel {
+  from {
+    opacity: .4;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ts-pulso-botao {
+  0%,
+  100% {
+    box-shadow: 0 4px 0 var(--brand-ink), 0 0 0 0 rgba(15, 92, 120, .45);
+  }
+  50% {
+    box-shadow: 0 4px 0 var(--brand-ink), 0 0 0 10px rgba(15, 92, 120, 0);
+  }
+}
+
+@keyframes ts-fogo-brilho {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 138, 61, .55);
+  }
+  50% {
+    box-shadow: 0 0 14px 2px rgba(255, 138, 61, .7);
+  }
+}
+
+@keyframes ts-falar {
+  from {
+    transform: translateY(0) rotate(0);
+  }
+  to {
+    transform: translateY(-4px) rotate(-2deg) scale(1.02);
+  }
+}
+
+@keyframes ts-varrer-brilho {
+  0% {
+    transform: translateX(-60%);
+  }
+  60%,
+  100% {
+    transform: translateX(60%);
+  }
+}
+
+@keyframes ts-conta {
+  0% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(.6);
+  }
+}
+
+@keyframes ts-abertura-fundo {
+  0% {
+    background: rgba(245, 249, 251, 0);
+  }
+  15%,
+  75% {
+    opacity: 1;
+    background: rgba(245, 249, 251, .9);
+  }
+  100% {
+    opacity: 0;
+    background: rgba(245, 249, 251, .9);
+  }
+}
+
+@keyframes ts-abertura-cartao {
+  0% {
+    opacity: 0;
+    transform: translateX(-70px) scale(.8) rotate(-4deg);
+  }
+  22%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(70px) scale(.9);
+  }
+}
+
+@keyframes ts-desenhar {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ts-faisca {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--a)) translateY(0) scale(.4);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1.15);
+  }
+}
+
+@keyframes ts-estrela {
+  0% {
+    color: var(--line);
+    filter: none;
+    transform: scale(.6);
+  }
+  55% {
+    transform: scale(1.3) rotate(10deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* ===== Tamanhos de tela ===== */
+
+/* Tablet: a janela ainda flutua, mas com menos respiro. */
+@media (max-width: 1023px) {
+  .ts-jogo-corpo {
+    padding: 20px 22px 22px;
+  }
+}
+
+/* Celular: a janela ocupa a tela inteira. */
+@media (max-width: 640px) {
+  .ts-jogo {
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .ts-jogo-cab {
+    gap: 8px;
+    padding: 10px 10px 8px 14px;
+  }
+
+  .ts-jogo-avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .ts-jogo-cab h2 {
+    font-size: 15px;
+  }
+
+  .ts-jogo-botao {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .ts-placar-item {
+    height: 30px;
+    padding: 0 9px;
+    font-size: 13px;
+  }
+
+  .ts-trilha {
+    gap: 12px;
+    padding: 0 14px 10px;
+  }
+
+  .ts-trilha-rotulo {
+    font-size: 10.5px;
+  }
+
+  .ts-jogo-corpo {
+    gap: 14px;
+    padding: 16px 16px 20px;
+  }
+
+  .ts-jogo-rodape {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .ts-jogo-rodape .btn {
+    height: 46px;
+    padding: 0 14px;
+  }
+
+  .ts-botao-principal {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ts-capa-faixa {
+    min-height: 130px;
+    padding: 18px;
+  }
+
+  .ts-capa-titulo {
+    font-size: 21px;
+  }
+
+  .ts-capa-etapas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ts-capa-etapas li {
+    padding: 12px;
+  }
+
+  .ts-fala {
+    font-size: 15.5px;
+  }
+
+  .ts-explicacao-numero {
+    top: -20px;
+    font-size: 90px;
+  }
+
+  .ts-intervalo-titulo,
+  .ts-resultado-titulo {
+    font-size: 24px;
+  }
+
+  .ts-contagem-regressiva span {
+    font-size: 104px;
+  }
+
+  .ts-contagem-regressiva .ts-valendo {
+    font-size: 52px;
+  }
+
+  .ts-abertura-fase-cartao {
+    padding: 20px 26px;
+  }
+
+  .ts-abertura-fase-num {
+    font-size: 30px;
+  }
+
+  .ts-pergunta {
+    font-size: 17px;
+  }
+
+  .ts-opcoes-blocos {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ts-opcao {
+    min-height: 56px;
+    padding: 10px 12px;
+    font-size: 14.5px;
+  }
+
+  .ts-opcao-marca {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  .ts-ligar {
+    column-gap: 34px;
+  }
+
+  .ts-ligar-coluna {
+    gap: 8px;
+  }
+
+  .ts-ligar-item {
+    min-height: 50px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .ts-par-marca {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+
+  .ts-retorno {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px 12px;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .ts-retorno-vitoria {
+    width: 64px;
+    height: 64px;
+  }
+
+  .ts-retorno-titulo {
+    font-size: 17px;
+  }
+
+  .ts-retorno-texto {
+    max-height: 26vh;
+  }
+
+  .ts-retorno-texto p {
+    font-size: 14px;
+  }
+
+  .ts-retorno-botao {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .ts-estrela .i {
+    font-size: 44px;
+  }
+
+  .ts-estrela:nth-child(2) .i {
+    font-size: 58px;
+  }
+
+  .ts-anel {
+    width: 124px;
+    height: 124px;
+  }
+
+  .ts-resultado-topo {
+    gap: 16px;
+  }
+}
+
+/* Celular estreito: a dica do "ligar" e os pontinhos cedem espaço aos botões. */
+@media (max-width: 479px) {
+  .ts-pontinhos {
+    display: none;
+  }
+
+  .ts-placar-item {
+    padding: 0 8px;
+  }
+
+  .ts-ligar {
+    column-gap: 26px;
+  }
+
+  .ts-ligar-item[data-estado="marcada"]::after {
+    right: -7px;
+    width: 12px;
+    height: 12px;
+    margin-top: -6px;
+  }
+
+  .ts-resultado-fases {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+ * Celular deitado (pouca altura): a janela ocupa a tela inteira e tudo encolhe na vertical, para sobrar espaço para a fase.
+ * Sem isto, o topo, a trilha e o rodapé comiam quase toda a altura.
+ */
+@media (max-height: 560px) {
+  .ts-jogo {
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .ts-jogo-cab {
+    padding: 6px 10px 4px 14px;
+  }
+
+  .ts-jogo-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .ts-jogo-cab-rotulo {
+    display: none;
+  }
+
+  .ts-jogo-cab h2 {
+    font-size: 14.5px;
+  }
+
+  .ts-jogo-botao {
+    width: 34px;
+    height: 34px;
+  }
+
+  .ts-placar-item {
+    height: 28px;
+  }
+
+  .ts-trilha {
+    padding: 0 14px 8px;
+  }
+
+  .ts-trilha-rotulo {
+    display: none;
+  }
+
+  .ts-jogo-corpo {
+    gap: 10px;
+    padding: 12px 18px 14px;
+  }
+
+  .ts-jogo-rodape {
+    padding: 8px 12px;
+  }
+
+  .ts-jogo-rodape .btn {
+    height: 40px;
+  }
+
+  .ts-cena {
+    --ts-vitoria-max: 64px;
+  }
+
+  .ts-cena-empilhada {
+    --ts-vitoria-max: 80px;
+  }
+
+  .ts-cena-instrucao {
+    display: none;
+  }
+
+  .ts-capa-faixa {
+    min-height: 0;
+    padding: 14px 18px;
+  }
+
+  .ts-explicacao-numero,
+  .ts-dica-navegar {
+    display: none;
+  }
+
+  .ts-intervalo-titulo,
+  .ts-resultado-titulo {
+    font-size: 22px;
+  }
+
+  .ts-retorno {
+    padding: 8px 14px;
+  }
+
+  .ts-retorno-vitoria {
+    width: 52px;
+    height: 52px;
+  }
+
+  .ts-retorno-texto {
+    max-height: 34vh;
+  }
+
+  .ts-contagem-regressiva span {
+    font-size: 84px;
+  }
+
+  .ts-estrela .i {
+    font-size: 36px;
+  }
+
+  .ts-estrela:nth-child(2) .i {
+    font-size: 46px;
+  }
+
+  .ts-anel {
+    width: 104px;
+    height: 104px;
+  }
+}
+
+/* Com "reduzir movimento": nada se mexe; as linhas do "ligar" e as estrelas já aparecem no lugar. */
+@media (prefers-reduced-motion: reduce) {
+  .ts-ligar-linha {
+    stroke-dashoffset: 0;
+  }
+
+  .ts-explosao,
+  .ts-intervalo-raios,
+  .ts-capa-faixa-brilho {
+    display: none;
+  }
+}

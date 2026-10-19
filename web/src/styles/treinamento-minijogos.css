@@ -1,0 +1,1532 @@
+/*
+ * Treinamentos de serviço: a identidade de cada tipo de fase e os cinco minijogos (verdadeiro ou falso, caça-palavras,
+ * memória, selecione e desembaralhe). Cada tipo tem a sua cor (`data-jogo`), que pinta o selo do tipo, a abertura da
+ * fase, o fundo da tela e os ícones no editor; os minijogos (e o Termo) têm, além disso, o seu próprio jeito de mostrar as peças
+ * (cartas, papel quadriculado, mesa, prancheta, peças de letra). A janela do jogo e as peças comuns ficam em
+ * `treinamento-jogo.css`.
+ */
+
+/* ===== Identidade de cada tipo ===== */
+
+[data-jogo="quiz"] { --jogo: #0F5C78; --jogo-2: #1A8BAA; --jogo-claro: #E3F1F6; }
+[data-jogo="decisao"] { --jogo: #C2410C; --jogo-2: #F08C3A; --jogo-claro: #FDEBE1; }
+[data-jogo="ligar"] { --jogo: #2563EB; --jogo-2: #5B8DF6; --jogo-claro: #E5EDFD; }
+[data-jogo="ordem"] { --jogo: #4338CA; --jogo-2: #6D63E0; --jogo-claro: #E9E8FB; }
+[data-jogo="verdadeiro_falso"] { --jogo: #BE123C; --jogo-2: #F43F5E; --jogo-claro: #FDE7EC; }
+[data-jogo="caca_palavras"] { --jogo: #4D7C0F; --jogo-2: #84CC16; --jogo-claro: #EEF6DF; }
+[data-jogo="memoria"] { --jogo: #7E22CE; --jogo-2: #A855F7; --jogo-claro: #F3E8FD; }
+[data-jogo="selecione"] { --jogo: #047857; --jogo-2: #10B981; --jogo-claro: #E0F5EC; }
+[data-jogo="desembaralhe"] { --jogo: #A16207; --jogo-2: #EAB308; --jogo-claro: #FDF3D6; }
+[data-jogo="termo"] { --jogo: #1F2937; --jogo-2: #4B5563; --jogo-claro: #E5E7EB; }
+
+/* O selo do tipo no topo da fase, o fundo e o contador ficam na cor do tipo. */
+.ts-tela-fase[data-jogo] .ts-fase-tipo {
+  background: linear-gradient(135deg, var(--jogo), var(--jogo-2));
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--jogo) 30%, transparent);
+}
+
+.ts-tela-fase[data-jogo] .ts-fase-num {
+  color: var(--jogo);
+}
+
+.ts-tela-fase[data-jogo] .ts-jogo-corpo {
+  background:
+    radial-gradient(900px 300px at 50% -140px, color-mix(in srgb, var(--jogo) 14%, transparent), transparent 70%),
+    linear-gradient(transparent 60%, color-mix(in srgb, var(--jogo-claro) 45%, transparent));
+}
+
+.ts-tela-fase[data-jogo] .ts-contador-marcados {
+  background: var(--jogo);
+}
+
+.ts-abertura-fase[data-jogo] .ts-abertura-fase-cartao {
+  background: linear-gradient(135deg, var(--jogo), var(--jogo-2));
+  box-shadow: 0 20px 50px color-mix(in srgb, var(--jogo) 40%, transparent);
+}
+
+.ts-intervalo-tipos li[data-jogo] {
+  border-color: color-mix(in srgb, var(--jogo) 30%, var(--line2));
+}
+
+.ts-intervalo-tipos li[data-jogo] .i {
+  color: var(--jogo);
+}
+
+.ts-resultado-tipo[data-jogo] .i {
+  color: var(--jogo);
+}
+
+/* No editor: o ícone do tipo na lista, no resumo e na escolha do tipo. */
+.ts-tipo-icone[data-jogo] {
+  background: var(--jogo-claro);
+  color: var(--jogo);
+}
+
+.ts-tipo-cartao[data-jogo] {
+  border-top: 4px solid var(--jogo);
+}
+
+.ts-tipo-cartao[data-jogo]:hover {
+  border-color: var(--jogo);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--jogo) 18%, transparent);
+}
+
+/* A frase curta de cada minijogo: na cor dele, embaixo do nome. */
+.ts-tipo-frase {
+  color: var(--jogo, var(--brand));
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ts-abertura-fase-frase {
+  max-width: 280px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  opacity: .92;
+}
+
+/* ===== Gerar com a Vitória: o texto e, logo abaixo, as fases do jogo ===== */
+
+.ts-gerar-coluna {
+  display: flex;
+  grid-area: form;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.ts-gerar-coluna .ts-gerar-form {
+  position: static;
+}
+
+.ts-plano {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ts-plano-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+}
+
+.ts-plano-todas {
+  flex: 1 1 200px;
+}
+
+.ts-plano-fases {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-plano-fases li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface2);
+  animation: ts-subir .25s both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+.ts-plano-fase {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ts-plano-fase .ts-tipo-frase {
+  font-size: 12px;
+}
+
+.ts-plano-fases .ts-tipo-icone:not([data-jogo]) {
+  background: var(--brand-bg);
+  color: var(--brand);
+}
+
+/* ===== Editor dos minijogos ===== */
+
+/* "Montar com os materiais do serviço", no Selecione */
+.ts-ed-caixa {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+
+.ts-ed-caixa input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--brand);
+}
+
+.ts-ed-caixa[data-marcada] {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+}
+
+.ts-ed-caixa-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ts-plano-um-de-cada {
+  align-self: flex-end;
+  height: 40px;
+}
+
+.ts-ed-escolhas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 8px;
+}
+
+.ts-ed-escolha {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line2);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+
+.ts-ed-escolha:hover {
+  border-color: var(--brand);
+}
+
+.ts-ed-escolha:has(input:focus-visible) {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.ts-ed-escolha[data-marcada] {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+}
+
+.ts-ed-escolha[data-valor="true"][data-marcada] {
+  border-color: var(--ts-certo);
+  background: #F4FAF6;
+}
+
+.ts-ed-escolha[data-valor="false"][data-marcada] {
+  border-color: #BE123C;
+  background: #FDF1F3;
+}
+
+.ts-ed-escolha-icone {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--ink3);
+}
+
+.ts-ed-escolha[data-marcada] .ts-ed-escolha-icone {
+  background: var(--brand);
+  color: #fff;
+}
+
+.ts-ed-escolha[data-valor="true"][data-marcada] .ts-ed-escolha-icone {
+  background: var(--ts-certo);
+}
+
+.ts-ed-escolha[data-valor="false"][data-marcada] .ts-ed-escolha-icone {
+  background: #BE123C;
+}
+
+.ts-ed-escolha-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ts-ed-palavra-campo {
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+
+.ts-ed-na-grade {
+  flex: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: #EEF6DF;
+  color: #3F6212;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.ts-ed-banco-progresso {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line2);
+}
+
+.ts-ed-banco-progresso i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ts-certo);
+  transition: width .25s;
+}
+
+
+
+/* ===== Verdadeiro ou falso: a afirmação numa placa e duas cartas grandes ===== */
+
+.ts-vf-afirmacao {
+  position: relative;
+  margin: 4px 0 0;
+  padding: 22px 22px 22px 54px;
+  border: 2px solid color-mix(in srgb, var(--jogo) 22%, var(--line));
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 6px 0 color-mix(in srgb, var(--jogo) 18%, var(--line));
+  animation: ts-subir .35s both;
+}
+
+.ts-vf-afirmacao p {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.ts-vf-aspas {
+  position: absolute;
+  top: 2px;
+  left: 14px;
+  color: var(--jogo);
+  font-family: Georgia, serif;
+  font-size: 64px;
+  font-weight: 900;
+  line-height: 1;
+  opacity: .5;
+}
+
+.ts-vf-cartas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ts-vf-carta {
+  --cor: #15803D;
+  --cor-claro: #DCFCE7;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 170px;
+  padding: 18px 12px;
+  border: 3px solid var(--cor);
+  border-radius: 22px;
+  background: linear-gradient(160deg, #fff 30%, var(--cor-claro));
+  box-shadow: 0 7px 0 var(--cor);
+  color: var(--cor);
+  cursor: pointer;
+  transition: transform .14s, box-shadow .14s, opacity .2s, filter .2s;
+  animation: ts-vf-entrar .45s cubic-bezier(.2, .9, .3, 1.2) both;
+  animation-delay: calc(var(--i, 0) * 110ms + 80ms);
+}
+
+.ts-vf-carta[data-valor="f"] {
+  --cor: #BE123C;
+  --cor-claro: #FFE4E8;
+}
+
+.ts-vf-carta strong {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+
+.ts-vf-selo {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--cor);
+  box-shadow: 0 0 0 6px var(--cor-claro);
+  color: #fff;
+  transition: transform .2s;
+}
+
+.ts-vf-selo .i {
+  width: 30px;
+  height: 30px;
+  stroke-width: 3;
+}
+
+.ts-vf-tecla {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  opacity: .55;
+}
+
+.ts-vf-carta:hover:not([disabled]) {
+  box-shadow: 0 10px 0 var(--cor);
+  transform: translateY(-3px) rotate(-1deg);
+}
+
+.ts-vf-carta[data-valor="f"]:hover:not([disabled]) {
+  transform: translateY(-3px) rotate(1deg);
+}
+
+.ts-vf-carta:hover:not([disabled]) .ts-vf-selo {
+  transform: scale(1.08);
+}
+
+.ts-vf-carta:active:not([disabled]) {
+  box-shadow: 0 2px 0 var(--cor);
+  transform: translateY(5px);
+}
+
+.ts-vf-carta[disabled] {
+  cursor: default;
+}
+
+.ts-vf-carta[data-estado="marcada"] {
+  background: var(--cor-claro);
+  box-shadow: 0 7px 0 var(--cor), 0 0 0 6px color-mix(in srgb, var(--cor) 22%, transparent);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.ts-vf-carta[data-estado="marcada"] .ts-vf-selo {
+  animation: ts-pop .35s ease-out;
+}
+
+.ts-vf-carta[data-estado="certa"] {
+  box-shadow: 0 7px 0 var(--cor), 0 0 0 6px color-mix(in srgb, var(--jg-certo) 35%, transparent);
+  animation: ts-acerto .5s ease-out;
+}
+
+.ts-vf-carta[data-estado="certa"]::after,
+.ts-vf-carta[data-estado="errada"]::after {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  padding: 3px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  transform: translateX(-50%);
+  animation: ts-pop .35s ease-out both;
+}
+
+.ts-vf-carta[data-estado="certa"]::after {
+  content: "Resposta certa";
+  background: var(--jg-certo);
+}
+
+.ts-vf-carta[data-estado="errada"] {
+  filter: saturate(.7);
+  animation: ts-tremer .45s ease-in-out;
+}
+
+.ts-vf-carta[data-estado="errada"]::after {
+  content: "Sua escolha";
+  background: var(--jg-erro);
+}
+
+.ts-vf-carta[data-estado="apagada"] {
+  opacity: .4;
+  filter: grayscale(.7);
+}
+
+@keyframes ts-vf-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(26px) rotateY(80deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===== Caça-palavras: papel quadriculado e a lista das palavras ===== */
+
+.ts-caca {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 230px);
+  align-items: start;
+  gap: 16px;
+}
+
+.ts-caca-papel {
+  padding: 12px;
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, rgba(77, 124, 15, .07) 1px, transparent 1px) 0 0 / 14px 14px,
+    linear-gradient(rgba(77, 124, 15, .07) 1px, transparent 1px) 0 0 / 14px 14px,
+    #FBFDF5;
+  box-shadow: inset 0 0 0 2px #D9EBB8, 0 6px 0 #C7DFA0;
+  animation: ts-subir .35s both;
+}
+
+.ts-caca-grade {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.ts-caca-linha {
+  display: grid;
+  grid-template-columns: repeat(var(--lado), minmax(0, 1fr));
+  gap: 3px;
+}
+
+.ts-caca-celula {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 1px 0 #DDE7CC;
+  color: #1F2A12;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: clamp(12px, 2.6vw, 18px);
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .12s, color .12s, transform .12s;
+}
+
+.ts-caca-celula:hover:not([disabled]) {
+  background: var(--jogo-claro);
+}
+
+.ts-caca-celula[disabled] {
+  cursor: default;
+}
+
+.ts-caca-celula[data-previa] {
+  background: color-mix(in srgb, var(--jogo-2) 30%, #fff);
+}
+
+.ts-caca-celula[data-inicio] {
+  background: var(--jogo);
+  color: #fff;
+  transform: scale(1.12);
+  animation: ts-pulso-celula 1s ease-in-out infinite;
+}
+
+.ts-caca-celula[data-achada] {
+  background: var(--par, var(--jogo));
+  color: #fff;
+  animation: ts-pop .35s ease-out;
+}
+
+.ts-caca-celula[data-faltou] {
+  background: #fff;
+  box-shadow: inset 0 0 0 2px var(--jg-erro);
+  color: var(--jg-erro);
+}
+
+.ts-caca-celula[data-falha] {
+  background: var(--blq-bg);
+  color: var(--jg-erro);
+  animation: ts-tremer .4s ease-in-out;
+}
+
+.ts-caca-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-caca-lista li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  animation: ts-subir .35s both;
+  animation-delay: calc(var(--i, 0) * 60ms + 120ms);
+  transition: border-color .2s, background .2s;
+}
+
+.ts-caca-marca {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--surface2, #EEF2F5);
+  color: var(--ink3);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ts-caca-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ts-caca-palavra,
+.ts-caca-tracos {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.ts-caca-tracos {
+  color: var(--ink4);
+  letter-spacing: .12em;
+}
+
+.ts-caca-pista {
+  color: var(--ink3);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.ts-caca-lista li[data-estado="certa"] {
+  border-color: var(--par);
+  background: color-mix(in srgb, var(--par) 10%, #fff);
+}
+
+.ts-caca-lista li[data-estado="certa"] .ts-caca-marca {
+  background: var(--par);
+  color: #fff;
+}
+
+.ts-caca-lista li[data-estado="certa"] .ts-caca-palavra {
+  text-decoration: line-through;
+  text-decoration-color: var(--par);
+  text-decoration-thickness: 2px;
+}
+
+.ts-caca-lista li[data-estado="faltou"] {
+  border-color: var(--jg-erro);
+  border-style: dashed;
+}
+
+.ts-caca-lista li[data-estado="faltou"] .ts-caca-marca {
+  background: var(--jg-erro);
+  color: #fff;
+}
+
+.ts-caca-dica {
+  color: var(--jogo);
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: center;
+}
+
+@keyframes ts-pulso-celula {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--jogo) 30%, transparent);
+  }
+}
+
+/* ===== Memória: cartas que viram ===== */
+
+.ts-memoria-placar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ts-memoria-placar span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--jogo-claro);
+  color: var(--jogo);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ts-memoria-placar span[data-alerta] {
+  background: var(--blq-bg);
+  color: var(--jg-erro);
+}
+
+.ts-memoria-mesa {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, .12), transparent 40%),
+    linear-gradient(145deg, #4C1D95, #6D28D9);
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, .25), 0 6px 0 #3B1577;
+  perspective: 900px;
+}
+
+.ts-memoria-mesa[data-cartas="4"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.ts-memoria-mesa[data-cartas="6"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ts-memoria-mesa[data-cartas="10"] {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ts-memoria-carta {
+  min-width: 0;
+  aspect-ratio: 3 / 4;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  animation: ts-subir .35s both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+.ts-memoria-carta[disabled] {
+  cursor: default;
+}
+
+.ts-memoria-giro {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform .45s cubic-bezier(.3, .9, .3, 1.1);
+  transform-style: preserve-3d;
+}
+
+.ts-memoria-carta[data-aberta] .ts-memoria-giro {
+  transform: rotateY(180deg);
+}
+
+.ts-memoria-verso,
+.ts-memoria-frente {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  backface-visibility: hidden;
+}
+
+.ts-memoria-verso {
+  border: 3px solid #fff;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .12) 0 6px, transparent 6px 12px),
+    linear-gradient(145deg, #A855F7, #7E22CE);
+  box-shadow: 0 4px 0 #3B1577;
+  color: #fff;
+  transition: transform .15s;
+}
+
+.ts-memoria-verso .i {
+  width: 30px;
+  height: 30px;
+  opacity: .85;
+}
+
+.ts-memoria-carta:hover:not([disabled]):not([data-aberta]) .ts-memoria-verso {
+  transform: translateY(-3px);
+}
+
+.ts-memoria-frente {
+  padding: 8px;
+  border: 3px solid var(--par, var(--jogo-2));
+  background: #fff;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--par, var(--jogo-2)) 70%, #000);
+  color: var(--ink);
+  font-size: clamp(11.5px, 1.9vw, 14px);
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+  transform: rotateY(180deg);
+}
+
+/* O termo em destaque; o correspondente, em itálico: dá para ver qual lado do par cada carta é. */
+.ts-memoria-carta[data-lado="0"] .ts-memoria-frente {
+  font-size: clamp(12.5px, 2.1vw, 15.5px);
+  font-weight: 900;
+}
+
+.ts-memoria-carta[data-lado="1"] .ts-memoria-frente {
+  background: #FAF5FF;
+  font-style: italic;
+}
+
+.ts-memoria-carta[data-estado="virada"] .ts-memoria-frente {
+  border-color: #F5B301;
+}
+
+.ts-memoria-carta[data-estado="errada"] .ts-memoria-frente {
+  border-color: var(--jg-erro);
+  animation: ts-tremer .45s ease-in-out .3s;
+}
+
+.ts-memoria-carta[data-estado="formada"] .ts-memoria-frente {
+  background: color-mix(in srgb, var(--par, var(--jogo-2)) 12%, #fff);
+  animation: ts-acerto .5s ease-out .2s;
+}
+
+.ts-memoria-nota {
+  color: var(--ink3);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ===== Selecione: uma prancheta com caixas de marcar ===== */
+
+.ts-sel-prancheta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 28px 18px 18px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 0 0 2px #B7E4CF, 0 8px 0 #9AD3B9;
+  animation: ts-subir .35s both;
+}
+
+.ts-sel-presilha {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  width: 110px;
+  height: 26px;
+  border-radius: 8px 8px 12px 12px;
+  background: linear-gradient(180deg, #9CA3AF, #6B7280);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .2);
+  transform: translateX(-50%);
+}
+
+.ts-sel-presilha::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 34px;
+  height: 8px;
+  border-radius: 6px;
+  background: #F5F9FB;
+  transform: translateX(-50%);
+}
+
+.ts-sel-opcoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+}
+
+.ts-sel-opcao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, transform .12s;
+  animation: ts-subir .35s both;
+  animation-delay: calc(var(--i, 0) * 50ms + 100ms);
+}
+
+.ts-sel-opcao:hover:not([disabled]) {
+  border-color: var(--jogo-2);
+  transform: translateX(3px);
+}
+
+.ts-sel-opcao[disabled] {
+  cursor: default;
+}
+
+.ts-sel-caixa {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid #9CA3AF;
+  border-radius: 8px;
+  background: #fff;
+  color: #fff;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+
+.ts-sel-caixa .i {
+  stroke-width: 3.5;
+}
+
+.ts-sel-texto {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ts-sel-opcao[data-estado="marcada"] {
+  border-color: var(--jogo);
+  background: var(--jogo-claro);
+}
+
+.ts-sel-opcao[data-estado="marcada"] .ts-sel-caixa {
+  border-color: var(--jogo);
+  background: var(--jogo);
+  transform: rotate(-6deg) scale(1.08);
+}
+
+.ts-sel-opcao[data-estado="certa"] {
+  border-color: var(--jg-certo);
+  background: var(--enc-bg);
+}
+
+.ts-sel-opcao[data-estado="certa"] .ts-sel-caixa {
+  border-color: var(--jg-certo);
+  background: var(--jg-certo);
+}
+
+.ts-sel-opcao[data-estado="errada"] {
+  border-color: var(--jg-erro);
+  background: var(--blq-bg);
+  animation: ts-tremer .45s ease-in-out;
+}
+
+.ts-sel-opcao[data-estado="errada"] .ts-sel-caixa {
+  border-color: var(--jg-erro);
+  background: var(--jg-erro);
+}
+
+.ts-sel-opcao[data-estado="faltou"] {
+  border-style: dashed;
+  border-color: var(--jg-certo);
+}
+
+.ts-sel-opcao[data-estado="faltou"] .ts-sel-caixa {
+  border-style: dashed;
+  border-color: var(--jg-certo);
+  color: var(--jg-certo);
+}
+
+.ts-sel-opcao[data-estado="apagada"] {
+  opacity: .45;
+}
+
+/* ===== Desembaralhe: peças de letra e as casas da palavra ===== */
+
+.ts-des-dica {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--jogo-claro);
+  color: #422006;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+  animation: ts-subir .35s both;
+}
+
+.ts-des-dica-rotulo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--jogo);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ts-des-vagas {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ts-des-vagas li {
+  display: grid;
+  flex: 0 1 52px;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 52 / 60;
+  border-bottom: 4px solid color-mix(in srgb, var(--jogo) 45%, var(--line));
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .7);
+}
+
+.ts-des-vagas li[data-proxima] {
+  border-bottom-color: var(--jogo);
+  animation: ts-pulso-vaga 1.1s ease-in-out infinite;
+}
+
+.ts-des-vagas li[data-estado="certa"] .ts-des-peca {
+  background: linear-gradient(180deg, #DCFCE7, #86EFAC);
+  box-shadow: 0 3px 0 var(--jg-certo);
+  color: var(--jg-certo-escuro);
+}
+
+.ts-des-vagas li[data-estado="errada"] .ts-des-peca {
+  background: linear-gradient(180deg, #FFE4E6, #FDA4AF);
+  box-shadow: 0 3px 0 var(--jg-erro);
+  color: var(--jg-erro-escuro);
+  animation: ts-tremer .45s ease-in-out;
+}
+
+.ts-des-monte {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--jogo-claro) 60%, #fff);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--jogo-2) 35%, transparent);
+}
+
+.ts-des-peca {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 54px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #FEF3C7, #FBD786);
+  box-shadow: 0 4px 0 #C99A2E, 0 6px 10px rgba(161, 98, 7, .2);
+  color: #5B3A06;
+  font-size: 24px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .12s, opacity .2s;
+  animation: ts-des-cair .4s cubic-bezier(.2, .9, .3, 1.3) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+.ts-des-monte .ts-des-peca:nth-child(odd) {
+  rotate: -3deg;
+}
+
+.ts-des-monte .ts-des-peca:nth-child(3n) {
+  rotate: 4deg;
+}
+
+.ts-des-peca:hover:not([disabled]) {
+  transform: translateY(-3px);
+}
+
+.ts-des-peca:active:not([disabled]) {
+  box-shadow: 0 1px 0 #C99A2E;
+  transform: translateY(3px);
+}
+
+.ts-des-peca[data-usada] {
+  opacity: .18;
+  box-shadow: none;
+  cursor: default;
+}
+
+.ts-des-peca-posta {
+  width: 100%;
+  height: 100%;
+  font-size: clamp(16px, 4vw, 24px);
+  rotate: none;
+  animation: ts-pop .25s ease-out;
+}
+
+.ts-des-certa {
+  color: var(--ink2);
+  font-size: 15px;
+  text-align: center;
+}
+
+.ts-des-certa strong {
+  color: var(--jg-certo-escuro);
+  letter-spacing: .08em;
+}
+
+.ts-des-acoes {
+  justify-content: center;
+}
+
+@keyframes ts-des-cair {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) rotate(-12deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ts-pulso-vaga {
+  50% {
+    background: var(--jogo-claro);
+  }
+}
+
+
+/* ===== Termo: o tabuleiro de casas, que viram uma a uma, e o teclado na tela ===== */
+
+.ts-termo-dica {
+  background: #EEF0F3;
+  color: var(--ink);
+}
+
+.ts-termo-placar {
+  display: flex;
+  justify-content: center;
+}
+
+.ts-termo-placar span {
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--jogo-claro);
+  color: var(--jogo);
+  font-size: 13px;
+  font-weight: 800;
+  animation: ts-pop .3s ease-out;
+}
+
+.ts-termo-placar [data-estado="certa"] {
+  background: var(--enc-bg);
+  color: var(--jg-certo-escuro);
+}
+
+.ts-termo-placar [data-estado="errada"] {
+  background: var(--blq-bg);
+  color: var(--jg-erro-escuro);
+}
+
+.ts-termo-tabuleiro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 14px;
+  border-radius: 18px;
+  background: linear-gradient(160deg, #1F2937, #111827);
+  box-shadow: 0 6px 0 #030712;
+}
+
+.ts-termo-linha {
+  display: grid;
+  grid-template-columns: repeat(var(--letras), minmax(0, 52px));
+  gap: 6px;
+  width: min(100%, calc(var(--letras) * 58px));
+}
+
+.ts-termo-linha[data-curto] {
+  animation: ts-tremer .4s ease-in-out;
+}
+
+.ts-termo-casa {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 2px solid #374151;
+  border-radius: 8px;
+  background: #1F2937;
+  color: #fff;
+  font-size: clamp(18px, 5vw, 26px);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ts-termo-linha[data-atual] .ts-termo-casa {
+  border-color: #6B7280;
+}
+
+.ts-termo-casa[data-cheia] {
+  border-color: #9CA3AF;
+  animation: ts-pop .15s ease-out;
+}
+
+.ts-termo-casa[data-cor] {
+  border-color: transparent;
+  animation: ts-termo-virar .5s ease-in-out both;
+  animation-delay: calc(var(--k, 0) * 110ms);
+}
+
+.ts-termo-casa[data-cor="certa"] {
+  background: #16A34A;
+}
+
+.ts-termo-casa[data-cor="presente"] {
+  background: #EAB308;
+  color: #1F2937;
+}
+
+.ts-termo-casa[data-cor="ausente"] {
+  background: #4B5563;
+  color: #D1D5DB;
+}
+
+.ts-termo-teclado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.ts-termo-fileira {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.ts-termo-tecla {
+  display: grid;
+  flex: 1 1 0;
+  place-items: center;
+  min-width: 0;
+  max-width: 44px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: #D1D5DB;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .2s, transform .1s;
+}
+
+.ts-termo-tecla-larga {
+  flex: 1.6 1 0;
+  max-width: 70px;
+  font-size: 12px;
+}
+
+.ts-termo-tecla:active:not([disabled]) {
+  transform: translateY(2px);
+}
+
+.ts-termo-tecla[disabled] {
+  cursor: default;
+  opacity: .7;
+}
+
+.ts-termo-tecla[data-cor="certa"] {
+  background: #16A34A;
+  color: #fff;
+}
+
+.ts-termo-tecla[data-cor="presente"] {
+  background: #EAB308;
+}
+
+.ts-termo-tecla[data-cor="ausente"] {
+  background: #6B7280;
+  color: #E5E7EB;
+}
+
+
+
+
+@keyframes ts-termo-virar {
+  0% {
+    background: #1F2937;
+    transform: rotateX(0);
+  }
+
+  49% {
+    background: #1F2937;
+    transform: rotateX(90deg);
+  }
+
+  51% {
+    transform: rotateX(90deg);
+  }
+
+  100% {
+    transform: rotateX(0);
+  }
+}
+
+/* ===== A nota: cronômetro, pontos da fase, navegação e resultado ===== */
+
+/* O cronômetro da fase, ao lado do tipo: verde no 1,0× e esquentando conforme o multiplicador cai. */
+.ts-cronometro {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #E7F7EC;
+  color: #1E6236;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  transition: background .3s, color .3s;
+}
+
+.ts-cronometro[data-multiplicador="9"],
+.ts-cronometro[data-multiplicador="8"] {
+  background: #FEF6DC;
+  color: #8A5A00;
+}
+
+.ts-cronometro[data-multiplicador="7"],
+.ts-cronometro[data-multiplicador="6"] {
+  background: #FDEBDD;
+  color: #A3470F;
+}
+
+.ts-cronometro[data-multiplicador="5"],
+.ts-cronometro[data-multiplicador="4"] {
+  background: var(--blq-bg);
+  color: var(--jg-erro);
+}
+
+.ts-cronometro-mult {
+  padding-left: 5px;
+  border-left: 1px solid currentColor;
+  opacity: .85;
+}
+
+.ts-retorno-pontos {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink2);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.ts-retorno-pontos .i {
+  color: var(--jg-ouro);
+}
+
+.ts-retorno-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A trilha: fase com parte dos acertos e fase com resposta em andamento (ainda sem confirmar). */
+.ts-trilha-fases i[data-estado="parcial"] {
+  background: #FBBF24;
+}
+
+.ts-trilha-fases i[data-estado="andamento"] {
+  background: rgba(255, 255, 255, .55);
+}
+
+/* O resultado: a nota no anel (números de até 5 dígitos), a conta e cada fase com os pontos. */
+.ts-anel-nota .ts-anel-texto strong {
+  font-size: 24px;
+}
+
+.ts-resultado-conta {
+  color: var(--ink3);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.ts-resultado-recorde {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #FEF6DC;
+  color: #8A5A00;
+  font-size: 13px;
+  font-weight: 800;
+  animation: ts-pop .4s ease-out both;
+}
+
+.ts-resultado-fases li[data-estado="parcial"] {
+  border-color: #F5D589;
+  background: #FEF8E6;
+}
+
+[data-estado="parcial"] > .ts-correcao-marca {
+  background: #D99A06;
+}
+
+.ts-resultado-pontos-fase {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.ts-resultado-detalhe {
+  margin-left: 4px;
+  color: var(--ink4);
+  font-weight: 500;
+}
+
+/* ===== Telas estreitas ===== */
+
+@media (max-width: 640px) {
+  .ts-retorno-acoes {
+    grid-column: 1 / -1;
+  }
+
+  .ts-retorno-acoes .ts-retorno-botao {
+    flex: 1;
+    width: auto;
+  }
+
+  .ts-caca {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ts-caca-papel {
+    padding: 8px;
+  }
+
+  .ts-caca-grade,
+  .ts-caca-linha {
+    gap: 2px;
+  }
+
+  .ts-caca-lista {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr));
+  }
+
+  .ts-vf-carta {
+    min-height: 140px;
+  }
+
+  .ts-vf-afirmacao {
+    padding: 18px 16px 18px 44px;
+  }
+
+  .ts-vf-afirmacao p {
+    font-size: 17px;
+  }
+
+  .ts-memoria-mesa {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .ts-memoria-mesa[data-cartas="8"],
+  .ts-memoria-mesa[data-cartas="10"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ts-des-peca {
+    width: 42px;
+    height: 48px;
+    font-size: 21px;
+  }
+
+  .ts-des-monte {
+    gap: 8px;
+    padding: 12px;
+  }
+}
+
+@media (max-width: 379px) {
+  .ts-vf-cartas {
+    gap: 10px;
+  }
+
+  .ts-vf-selo {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ts-memoria-giro {
+    transition: none;
+  }
+
+  .ts-caca-celula[data-inicio],
+  .ts-des-vagas li[data-proxima],
+  .ts-termo-casa[data-cor] {
+    animation: none;
+  }
+}

@@ -297,7 +297,7 @@ export function caminhoDoAviso(a: ReferenciasDoAviso): string {
     case "treinamento_publicado":
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinar` : "/app/catalogo/servicos";
     case "treinamento_problema":
-      return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento` : "/app/catalogo/servicos";
+      return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento/problemas` : "/app/catalogo/servicos";
     case "falha_importacao":
       return "/web/os/importacao";
     case "pdf_os_falhou":

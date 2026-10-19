@@ -6,6 +6,10 @@
  * (ficam em `app`); o que muda por perfil é a estrutura da página, não o link. Em `web` ficam só as telas de gestão
  * (APR, auditoria, alertas, importação).
  */
+
+/** As telas do treinamento de serviço do admin, além da visão geral (`rotas.app.treinamentoServico`). */
+export type TelaDoTreinamento = "criar" | "gerar" | "explicacao" | "fases" | "revisao" | "publicar" | "versoes" | "problemas";
+
 export const rotas = {
   app: {
     entrar: "/app/entrar",
@@ -55,9 +59,12 @@ export const rotas = {
      */
     catalogo: "/app/catalogo/servicos",
     catalogoMateriais: "/app/catalogo/materiais",
-    /** Editor do treinamento de serviço (admin): explicação, fases, pré-visualizar, publicar, versões e reportes. */
-    treinamentoServico: (codigo: string) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinamento`,
-    /** Jogar o treinamento de serviço (técnico, inclusive pendente). */
+    /**
+     * Treinamento de serviço do admin. Sem `tela`, a visão geral (o caminho até publicar); as abas `explicacao`, `fases`,
+     * `revisao`, `versoes` e `problemas`; e as telas de fluxo `criar` (com a Vitória ou à mão), `gerar` (rascunho pela IA) e `publicar`.
+     */
+    treinamentoServico: (codigo: string, tela?: TelaDoTreinamento) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinamento${tela ? `/${tela}` : ""}`,
+    /** A capa do treinamento de serviço (técnico, inclusive pendente); o jogo abre numa janela por cima. */
     treinarServico: (codigo: string) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinar`,
     /**
      * Seção Gamificação, a mesma para todos os perfis (só o admin edita pontos, patentes e conquistas): Minha pontuação (técnico),

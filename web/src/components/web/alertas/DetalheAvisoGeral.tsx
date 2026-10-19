@@ -46,7 +46,7 @@ function atalhoDoAviso(a: Alerta, usuario: Usuario): { rotulo: string; href: str
     case "vitoria_sem_ia":
       return { rotulo: "Abrir o perfil da Vitória", href: rotas.app.perfilDaVitoria };
     case "treinamento_problema":
-      return a.treinamento_codigo && ehAdmin(usuario) ? { rotulo: "Abrir o treinamento", href: rotas.app.treinamentoServico(a.treinamento_codigo) } : null;
+      return a.treinamento_codigo && ehAdmin(usuario) ? { rotulo: "Ver os problemas reportados", href: rotas.app.treinamentoServico(a.treinamento_codigo, "problemas") } : null;
     case "treinamento_publicado":
       return a.treinamento_codigo ? { rotulo: "Jogar o treinamento", href: rotas.app.treinarServico(a.treinamento_codigo) } : null;
     default:

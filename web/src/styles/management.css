@@ -1577,6 +1577,92 @@ details.excluidos > summary {
   align-items: start
 }
 
+/* O cartão é um contêiner: o editor da lista se ajusta à largura do cartão (a coluna da grade), não à da janela. */
+.cartao-servico {
+  container-type: inline-size;
+  gap: 12px
+}
+
+.cartao-servico-cab {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px
+}
+
+.cartao-servico-titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0
+}
+
+.cartao-servico-codigo {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink3);
+  overflow-wrap: anywhere
+}
+
+.cartao-servico-titulo h2 {
+  font-size: 15.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere
+}
+
+.cartao-servico-titulo .small {
+  color: var(--ink4)
+}
+
+.cartao-servico-editar {
+  flex: none;
+  height: 34px
+}
+
+/* "Ver materiais", "Jogar treinamento" e "Ver ranking" lado a lado, dividindo a largura; um só ocupa a linha toda. */
+.cartao-servico-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px
+}
+
+.cartao-servico-acoes > .btn {
+  flex: 1 1 150px
+}
+
+.cartao-servico-seta {
+  transition: transform .2s
+}
+
+[aria-expanded="true"] > .cartao-servico-seta {
+  transform: rotate(180deg)
+}
+
+.cartao-servico-lista {
+  padding-top: 4px;
+  border-top: 1px solid var(--line2);
+  animation: ts-abrir .25s ease-out
+}
+
+@container (max-width: 520px) {
+  .editor-material {
+    grid-template-columns: minmax(0, 1fr) 96px
+  }
+
+  .editor-material > .em-obs,
+  .editor-material > .em-acoes {
+    grid-column: 1 / -1
+  }
+}
+
+@media (max-width: 479px) {
+  .cartao-servico-cab {
+    flex-wrap: wrap
+  }
+}
+
 .editor-material {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr) auto;

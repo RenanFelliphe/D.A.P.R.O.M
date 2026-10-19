@@ -100,13 +100,15 @@ export const SUGESTOES_POR_TELA: Record<string, SugestaoFixa[]> = {
   treinamento_servico_editor: [
     {
       pergunta: "Como a Vitória monta o rascunho?",
-      resposta: "Cole o texto do procedimento e toque em \"Gerar rascunho com a Vitória\". Ela usa só esse texto e os materiais do serviço; você revisa, corrige e assina.",
+      resposta:
+        "Ao criar o treinamento, escolha \"Gerar com a Vitória\" e cole o texto do procedimento. Ela usa só esse texto e os materiais do serviço; depois você valida cada item na aba Revisão, testa e assina.",
     },
     {
       pergunta: "O que é uma pendência?",
-      resposta: "Um ponto que a conferência achou num item feito pela Vitória, como um número que não está no texto. Edite o item ou confirme-o como está: com pendência, não publica.",
+      resposta:
+        "Um ponto que a conferência achou num item feito pela Vitória, como um número que não está no texto. Na aba Revisão, edite o item ou toque em \"Confirmar como está\": com pendência, não publica.",
     },
-    { pergunta: "Como publico um treinamento?", resposta: "Com as pendências resolvidas, toque em \"Publicar\": você aceita o termo e assina." },
+    { pergunta: "Como publico um treinamento?", resposta: "Com o conteúdo completo e sem pendências, abra Publicar: confira os requisitos, leia o termo e assine com a assinatura do seu perfil." },
   ],
   vitoria_perfil: [
     { pergunta: "Quem é você?", resposta: "Sou a Vitória, a assistente do SYNQ OS. Tiro dúvidas de uso do sistema pelo manual, levo você à tela certa e mostro onde fica cada botão." },

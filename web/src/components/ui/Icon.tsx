@@ -245,6 +245,113 @@ const formas = {
       <line x1="3" y1="18" x2="21" y2="18" />
     </>
   ),
+  up: <polyline points="18 15 12 9 6 15" />,
+  link: (
+    <>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </>
+  ),
+  pencil: (
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </>
+  ),
+  trash: (
+    <>
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    </>
+  ),
+  sparkle: (
+    <>
+      <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z" />
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z" />
+    </>
+  ),
+  flag: (
+    <>
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <line x1="4" y1="22" x2="4" y2="15" />
+    </>
+  ),
+  eye: (
+    <>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  som: (
+    <>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+    </>
+  ),
+  mudo: (
+    <>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </>
+  ),
+  fogo: <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z" />,
+  /* Os minijogos do treinamento de serviço */
+  vf: (
+    <>
+      <rect x="2" y="6" width="9" height="12" rx="2" />
+      <polyline points="4.3 12.2 6 13.9 8.8 10.4" />
+      <rect x="13" y="6" width="9" height="12" rx="2" />
+      <line x1="15.6" y1="10" x2="19.4" y2="14" />
+      <line x1="19.4" y1="10" x2="15.6" y2="14" />
+    </>
+  ),
+  caca: (
+    <>
+      <rect x="2.5" y="2.5" width="13" height="13" rx="2" />
+      <line x1="2.5" y1="9" x2="15.5" y2="9" />
+      <line x1="9" y1="2.5" x2="9" y2="15.5" />
+      <circle cx="16.5" cy="16.5" r="3.5" />
+      <line x1="19" y1="19" x2="21.5" y2="21.5" />
+    </>
+  ),
+  cartas: (
+    <>
+      <rect x="2" y="6" width="12" height="15" rx="2" />
+      <path d="M9 3h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-2" />
+      <path d="M6.3 11.4a1.8 1.8 0 1 1 2.5 1.7c-.5.2-.8.6-.8 1.1v.4" />
+      <line x1="8" y1="17" x2="8.01" y2="17" />
+    </>
+  ),
+  checks: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <polyline points="4.6 6.6 6 8 8.4 5" />
+      <line x1="13" y1="6.5" x2="21" y2="6.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <polyline points="4.6 17.6 6 19 8.4 16" />
+      <line x1="13" y1="17.5" x2="21" y2="17.5" />
+    </>
+  ),
+  termo: (
+    <>
+      <rect x="2" y="8" width="6" height="8" rx="1.5" />
+      <rect x="9" y="8" width="6" height="8" rx="1.5" />
+      <rect x="16" y="8" width="6" height="8" rx="1.5" />
+      <line x1="4" y1="19.5" x2="20" y2="19.5" />
+    </>
+  ),
+  embaralhar: (
+    <>
+      <polyline points="16 3 21 3 21 8" />
+      <line x1="4" y1="20" x2="21" y2="3" />
+      <polyline points="21 16 21 21 16 21" />
+      <line x1="15" y1="15" x2="21" y2="21" />
+      <line x1="4" y1="4" x2="9" y2="9" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof formas;
