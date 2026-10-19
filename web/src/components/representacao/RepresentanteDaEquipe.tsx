@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useMemo } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
+import { Field, ligarAoErro } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
-import { chamar, ErroCliente } from "@/lib/cliente-api";
+import { ErroDeEnvio, useFormulario } from "@/components/ui/useFormulario";
+import { chamar } from "@/lib/cliente-api";
 import { MOTIVO_DA_REPRESENTACAO, REGRA_DO_REPRESENTANTE, desdeDaRepresentacao, type RepresentacaoDaEquipe } from "@/lib/representacao";
 import { rotas } from "@/lib/rotas";
 import { iniciaisDe } from "@/lib/tipos";
@@ -34,23 +37,13 @@ interface RepresentanteDaEquipeProps {
 export function RepresentanteDaEquipe({ equipeId, representante, representacao, candidatos, podeDesignar }: RepresentanteDaEquipeProps) {
   const router = useRouter();
   const idDoCampo = useId();
-  const [escolhido, setEscolhido] = useState(representante?.id ?? candidatos[0]?.id ?? "");
-  const [enviando, setEnviando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const mudou = escolhido !== "" && escolhido !== representante?.id;
-
-  async function designar() {
-    setEnviando(true);
-    setErro(null);
-    try {
-      await chamar("PUT", `/equipes/${equipeId}/representante`, { usuario_id: escolhido });
-      router.refresh();
-    } catch (e) {
-      setErro(e instanceof ErroCliente ? e.message : "Não foi possível designar o representante");
-    } finally {
-      setEnviando(false);
-    }
-  }
+  const atualId = representante?.id;
+  const esquema = useMemo(
+    () => z.object({ escolhido: z.string().min(1, "Escolha o técnico.").refine((v) => v !== atualId, "Este já é o representante. Escolha outro técnico.") }),
+    [atualId],
+  );
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquema, { escolhido: atualId ?? candidatos[0]?.id ?? "" });
+  const erro = form.formState.errors.escolhido?.message;
 
   return (
     <section className="panel" aria-labelledby="representante-da-equipe" id="representante">
@@ -76,12 +69,19 @@ export function RepresentanteDaEquipe({ equipeId, representante, representacao, 
         <p className="small muted">{REGRA_DO_REPRESENTANTE}</p>
       )}
       {podeDesignar && candidatos.length > 0 && (
-        <div className="stack g8" style={{ marginTop: 8 }}>
-          <label htmlFor={idDoCampo} className="small" style={{ fontWeight: 600 }}>
-            Designar outro representante
-          </label>
+        <form
+          ref={ref}
+          noValidate
+          className="stack g8"
+          style={{ marginTop: 8 }}
+          onSubmit={enviar(async (v) => {
+            await chamar("PUT", `/equipes/${equipeId}/representante`, { usuario_id: v.escolhido });
+            router.refresh();
+          })}
+        >
+          <Field label="Designar outro representante" htmlFor={idDoCampo} labelStyle={{ fontSize: 12, fontWeight: 600 }} erro={erro}>
           <div className="row g8 wrap">
-            <select id={idDoCampo} className="select" value={escolhido} onChange={(e) => setEscolhido(e.target.value)} disabled={enviando} style={{ flex: 1, minWidth: 180 }}>
+            <select className="select" disabled={enviando} style={{ flex: 1, minWidth: 180 }} {...form.register("escolhido")} {...ligarAoErro(idDoCampo, erro)}>
               {candidatos.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.nome}
@@ -89,16 +89,13 @@ export function RepresentanteDaEquipe({ equipeId, representante, representacao, 
                 </option>
               ))}
             </select>
-            <Button variant="line" sm onClick={designar} disabled={!mudou || enviando}>
+            <Button variant="line" sm type="submit" aria-busy={enviando} disabled={enviando}>
               {enviando ? "Designando…" : "Designar"}
             </Button>
           </div>
-          {erro && (
-            <Notice tone="blq" icon="alert" style={{ fontSize: 14 }}>
-              {erro}
-            </Notice>
-          )}
-        </div>
+          </Field>
+          <ErroDeEnvio mensagem={erroEnvio} />
+        </form>
       )}
     </section>
   );

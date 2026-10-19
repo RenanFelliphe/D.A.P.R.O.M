@@ -53,7 +53,17 @@ export function useFormulario<T extends FieldValues>(esquema: z.ZodType<T>, valo
       },
     );
 
-  return { form, ref, enviar, enviando, erroEnvio, limparErroEnvio: () => setErroEnvio(null) };
+  /**
+   * Valida sem enviar, para quem faz o envio por outro caminho (a `JanelaDeAssinatura` chama antes de assinar): a mensagem aparece
+   * junto de cada campo e o foco vai para o primeiro. Devolve se o formulário está válido.
+   */
+  const validar = async () => {
+    const valido = await form.trigger();
+    if (!valido) requestAnimationFrame(() => focarPrimeiroErro(ref.current));
+    return valido;
+  };
+
+  return { form, ref, enviar, validar, enviando, erroEnvio, limparErroEnvio: () => setErroEnvio(null) };
 }
 
 /**

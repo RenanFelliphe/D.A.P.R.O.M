@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useId, useMemo } from "react";
-import { Field, Req } from "@/components/ui/Field";
+import { useFormContext, useWatch } from "react-hook-form";
+import { z } from "zod";
+import { Field, ligarAoErro, Req } from "@/components/ui/Field";
 
 /** O limite que a `api` aceita para a imagem de uma patente ou conquista. */
 export const LIMITE_DA_IMAGEM = 5 * 1024 * 1024;
@@ -45,8 +47,8 @@ interface CampoImagemProps {
   urlAtual?: string | null;
   obrigatoria?: boolean;
   desabilitado?: boolean;
-  /** Mensagem de recusa da imagem escolhida. */
-  erro: string | null;
+  /** O que impede o envio: a recusa da imagem escolhida ou a falta dela. Aparece logo abaixo do campo, em vermelho. */
+  erro?: string | null;
   aoRecusar: (mensagem: string | null) => void;
 }
 
@@ -77,6 +79,7 @@ export function CampoImagem({ rotulo = "Imagem", arquivo, aoEscolher, urlAtual, 
         </>
       }
       htmlFor={id}
+      erro={erro ?? undefined}
     >
       <div className="campo-imagem">
         {mostrada ? (
@@ -85,14 +88,44 @@ export function CampoImagem({ rotulo = "Imagem", arquivo, aoEscolher, urlAtual, 
         ) : (
           <span className="campo-imagem-vazia" aria-hidden />
         )}
-        <input id={id} type="file" accept={TIPOS_ACEITOS.join(",")} disabled={desabilitado} onChange={(e) => void escolher(e.target.files?.[0] ?? null)} />
+        <input {...ligarAoErro(id, erro ?? undefined)} type="file" accept={TIPOS_ACEITOS.join(",")} disabled={desabilitado} onChange={(e) => void escolher(e.target.files?.[0] ?? null)} />
       </div>
       <span className="small muted">PNG, JPEG ou WebP, até 5 MB, quadrada (512 × 512 é o recomendado).</span>
-      {erro && (
-        <span role="alert" className="small" style={{ color: "var(--blq)" }}>
-          {erro}
-        </span>
-      )}
     </Field>
+  );
+}
+
+/** O valor de uma imagem no formulário: o arquivo escolhido, ou `null` enquanto não há (ou se foi recusado). */
+export const arquivoDeImagem = z.custom<File | null>((v) => v === null || v instanceof File);
+
+/**
+ * Regra do esquema Zod de uma imagem (`.superRefine(regraDaImagem("imagem", true, "Escolha a imagem do troféu."))`): a recusa
+ * que o `CampoImagemDoForm` guardou em `recusa_<campo>` (formato, tamanho, proporção) e, sendo obrigatória, a falta do arquivo.
+ */
+export function regraDaImagem(campo: string, obrigatoria: boolean, mensagemDeFalta: string) {
+  return (valores: Record<string, unknown>, ctx: z.RefinementCtx) => {
+    const recusa = valores[`recusa_${campo}`];
+    if (typeof recusa === "string" && recusa !== "") ctx.addIssue({ code: "custom", path: [`recusa_${campo}`], message: recusa });
+    else if (obrigatoria && !valores[campo]) ctx.addIssue({ code: "custom", path: [campo], message: mensagemDeFalta });
+  };
+}
+
+/**
+ * O `CampoImagem` ligado ao formulário do `FormProvider` que o envolve: o arquivo fica em `campo` e a recusa em `recusa_<campo>`
+ * (a recusa aparece assim que a imagem é escolhida; a falta da imagem, só ao tentar enviar).
+ */
+export function CampoImagemDoForm({ campo, ...resto }: { campo: string } & Omit<CampoImagemProps, "arquivo" | "aoEscolher" | "aoRecusar" | "erro">) {
+  const { control, setValue, getFieldState, formState } = useFormContext();
+  const arquivo = (useWatch({ control, name: campo }) as File | null | undefined) ?? null;
+  const recusa = `recusa_${campo}`;
+  const mensagem = (formState.errors[recusa]?.message ?? formState.errors[campo]?.message) as string | undefined;
+  return (
+    <CampoImagem
+      {...resto}
+      arquivo={arquivo}
+      erro={mensagem}
+      aoEscolher={(novo) => setValue(campo, novo, { shouldDirty: true, shouldValidate: Boolean(getFieldState(campo, formState).error) })}
+      aoRecusar={(motivo) => setValue(recusa, motivo ?? "", { shouldValidate: true })}
+    />
   );
 }

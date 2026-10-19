@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { z } from "zod";
 import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
+import { Field, ligarAoErro } from "@/components/ui/Field";
+import { useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { Panel } from "@/components/web/Panel";
 import { chamar } from "@/lib/cliente-api";
 import { useMinhaAssinatura } from "@/state/minha-assinatura";
+
+const esquema = z.object({ justificativa: z.string().trim().min(1, "Informe a justificativa da devolução.") });
 
 /**
  * Devolve a OS ao SAP (`POST /os/{id}/devolver`): o supervisor escreve a justificativa (o erro que viu na ordem) e assina; a OS sai
@@ -15,17 +20,11 @@ export function DevolverOs({ osId }: { osId: string }) {
   const assinaturaPath = useMinhaAssinatura();
   const [aberto, setAberto] = useState(false);
   const [assinando, setAssinando] = useState(false);
-  const [justificativa, setJustificativa] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-
-  function pedirAssinatura() {
-    setErro(null);
-    if (!justificativa.trim()) {
-      setErro("Justificativa obrigatória");
-      return;
-    }
-    setAssinando(true);
-  }
+  const { form, ref, enviar } = useFormulario(esquema, { justificativa: "" });
+  const { register, formState } = form;
+  const erros = formState.errors;
+  const [justificativa] = useValorDoForm(form, "justificativa");
+  const idDoCampo = `devolver-${osId}`;
 
   return (
     <Panel style={{ gap: 10 }}>
@@ -36,32 +35,19 @@ export function DevolverOs({ osId }: { osId: string }) {
           Devolver a OS
         </button>
       ) : (
-        <div className="stack g8">
-          <label className="small" htmlFor={`devolver-${osId}`} style={{ color: "var(--ink3)" }}>
-            Justificativa da devolução
-          </label>
-          <textarea
-            id={`devolver-${osId}`}
-            className="textarea"
-            rows={3}
-            value={justificativa}
-            onChange={(e) => setJustificativa(e.target.value)}
-            placeholder="O que está errado na ordem?"
-          />
+        <form ref={ref} noValidate className="stack g8" onSubmit={enviar(() => setAssinando(true))}>
+          <Field label="Justificativa da devolução" htmlFor={idDoCampo} labelStyle={{ color: "var(--ink3)" }} erro={erros.justificativa?.message}>
+            <textarea className="textarea" rows={3} placeholder="O que está errado na ordem?" {...register("justificativa")} {...ligarAoErro(idDoCampo, erros.justificativa?.message)} />
+          </Field>
           <div className="row g8">
-            <button className="btn btn-d btn-sm" type="button" onClick={pedirAssinatura}>
+            <button className="btn btn-d btn-sm" type="submit">
               Assinar e devolver
             </button>
             <button className="btn btn-line btn-sm" type="button" onClick={() => setAberto(false)}>
               Voltar
             </button>
           </div>
-        </div>
-      )}
-      {erro && (
-        <span role="alert" style={{ color: "var(--blq)", fontSize: 13.5 }}>
-          {erro}
-        </span>
+        </form>
       )}
       {assinando && (
         <JanelaDeAssinatura

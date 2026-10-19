@@ -1,14 +1,21 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useState } from "react";
+import { z } from "zod";
 import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
 import { Button } from "@/components/ui/Button";
+import { Field, ligarAoErro } from "@/components/ui/Field";
+import { useFormulario } from "@/components/ui/useFormulario";
 import { chamar } from "@/lib/cliente-api";
 import type { Usuario } from "@/lib/tipos";
 import { useMinhaAssinatura } from "@/state/minha-assinatura";
 import { useToast } from "@/state/toast";
 
 type Alvo = Pick<Usuario, "id" | "nome">;
+
+const esquemaDoMotivo = z.object({
+  motivo: z.string().trim().min(3, "Informe o motivo da recusa, com pelo menos 3 caracteres.").max(500, "O motivo pode ter até 500 caracteres."),
+});
 
 /** Janela para liberar o cadastro pendente: o admin assina a decisão (`POST /usuarios/{id}/liberar`). */
 export function JanelaLiberar({ usuario, aoFechar }: { usuario: Alvo; aoFechar: () => void }) {
@@ -38,9 +45,8 @@ export function JanelaLiberar({ usuario, aoFechar }: { usuario: Alvo; aoFechar: 
 export function JanelaRecusar({ usuario, aoFechar }: { usuario: Alvo; aoFechar: () => void }) {
   const exibirAviso = useToast();
   const assinaturaPath = useMinhaAssinatura();
-  const idMotivo = useId();
-  const [motivo, setMotivo] = useState("");
-  const texto = motivo.trim();
+  const { form, validar } = useFormulario(esquemaDoMotivo, { motivo: "" });
+  const erro = form.formState.errors.motivo?.message;
 
   return (
     <JanelaDeAssinatura
@@ -53,17 +59,16 @@ export function JanelaRecusar({ usuario, aoFechar }: { usuario: Alvo; aoFechar: 
       }
       rotuloConfirmar="Assinar e recusar"
       assinaturaPath={assinaturaPath}
-      incompleto={texto.length < 3}
+      validar={validar}
       aoConfirmar={async () => {
-        await chamar("POST", `/usuarios/${usuario.id}/recusar`, { motivo: texto });
+        await chamar("POST", `/usuarios/${usuario.id}/recusar`, { motivo: form.getValues("motivo").trim() });
         exibirAviso(`O cadastro de ${usuario.nome} foi recusado.`);
       }}
       aoFechar={aoFechar}
     >
-      <div className="field">
-        <label htmlFor={idMotivo}>Motivo da recusa (obrigatório)</label>
-        <textarea id={idMotivo} className="textarea" rows={3} required maxLength={500} autoFocus value={motivo} onChange={(e) => setMotivo(e.target.value)} />
-      </div>
+      <Field label="Motivo da recusa (obrigatório)" htmlFor="recusa-motivo" erro={erro}>
+        <textarea className="textarea" rows={3} maxLength={500} autoFocus {...form.register("motivo")} {...ligarAoErro("recusa-motivo", erro)} />
+      </Field>
     </JanelaDeAssinatura>
   );
 }

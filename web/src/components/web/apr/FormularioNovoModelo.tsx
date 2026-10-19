@@ -1,15 +1,48 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useMemo } from "react";
+import { z } from "zod";
 import { Button, LinkButton } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
+import { Field, ligarAoErro } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { ErroDeEnvio, useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { Panel } from "@/components/web/Panel";
 import { ajudaParticipantesComAssinatura, rotuloParticipantesComAssinatura } from "@/data/modelos";
 import { chamar } from "@/lib/cliente-api";
 import { rotas } from "@/lib/rotas";
+import { dataOpcional, inteiroEntre } from "@/lib/validacao";
 import { useToast } from "@/state/toast";
+
+const limparCodigo = (codigo: string) => codigo.trim().replace(/s+/g, " ");
+
+/** O código tem de ser livre: o repetido (ou o excluído, que só volta restaurado) e o reservado "NOVO" não passam. */
+function esquemaDoModelo(existentes: FormularioNovoModeloProps["existentes"]) {
+  return z.object({
+    codigo: z
+      .string()
+      .max(40, "O código pode ter até 40 caracteres.")
+      .superRefine((valor, ctx) => {
+        const limpo = limparCodigo(valor);
+        if (!limpo) return ctx.addIssue({ code: "custom", message: "Informe o código do modelo, como APR 10." });
+        const repetido = existentes.find((e) => e.codigo.toLowerCase() === limpo.toLowerCase());
+        if (repetido) {
+          return ctx.addIssue({
+            code: "custom",
+            message: repetido.excluido
+              ? `O ${repetido.codigo} foi excluído. Restaure-o na aba Modelos em vez de criar outro.`
+              : `Já existe o ${repetido.codigo}. Para mudá-lo, abra o modelo e crie uma nova versão.`,
+          });
+        }
+        if (limpo.toLowerCase() === "novo") ctx.addIssue({ code: "custom", message: "Escolha outro código." });
+      }),
+    versao: inteiroEntre(1, 999, "Informe a versão, um número inteiro de 1 a 999."),
+    titulo: z.string().trim().min(1, "Informe o título do modelo."),
+    dataDocumento: dataOpcional,
+    copiarDe: z.string(),
+    comAssinatura: z.boolean(),
+  });
+}
 
 interface FormularioNovoModeloProps {
   /** Próximo código livre no padrão dos documentos (`APR 10`). */
@@ -27,85 +60,46 @@ interface FormularioNovoModeloProps {
 export function FormularioNovoModelo({ sugestao, existentes, modelos }: FormularioNovoModeloProps) {
   const router = useRouter();
   const exibirAviso = useToast();
-  const [codigo, setCodigo] = useState(sugestao);
-  const [titulo, setTitulo] = useState("");
-  const [versao, setVersao] = useState("1");
-  const [dataDocumento, setDataDocumento] = useState("");
-  const [copiarDe, setCopiarDe] = useState("");
+  const esquema = useMemo(() => esquemaDoModelo(existentes), [existentes]);
   // O modelo novo em branco começa com a coluna Assinatura; ao copiar outro modelo, a folha segue a dele.
-  const [comAssinatura, setComAssinatura] = useState(true);
-  const [ocupado, setOcupado] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  const limpo = codigo.trim().replace(/\s+/g, " ");
-  const repetido = existentes.find((e) => e.codigo.toLowerCase() === limpo.toLowerCase());
-  const reservado = limpo.toLowerCase() === "novo";
-  const avisoDoCodigo = repetido
-    ? repetido.excluido
-      ? `O ${repetido.codigo} foi excluído. Restaure-o na aba Modelos em vez de criar outro.`
-      : `Já existe o ${repetido.codigo}. Para mudá-lo, abra o modelo e crie uma nova versão.`
-    : reservado
-      ? "Escolha outro código."
-      : null;
-  const numeroDaVersao = Number(versao);
-  const versaoValida = Number.isInteger(numeroDaVersao) && numeroDaVersao >= 1 && numeroDaVersao <= 999;
-
-  async function enviar(evento: FormEvent) {
-    evento.preventDefault();
-    setOcupado(true);
-    setErro(null);
-    try {
-      const base = { titulo: titulo.trim(), versao: numeroDaVersao, data_documento: dataDocumento || null };
-      await chamar("POST", `/modelos-apr/${encodeURIComponent(limpo)}/versoes`, copiarDe ? { ...base, copiar_de: copiarDe } : { ...base, participantes_com_assinatura: comAssinatura, riscos: [], itens: [] });
-      exibirAviso(`Rascunho do ${limpo} criado. Ajuste os itens e publique.`);
-      router.push(rotas.web.modelo(limpo));
-      router.refresh();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível criar o modelo");
-      setOcupado(false);
-    }
-  }
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquema, { codigo: sugestao, versao: "1", titulo: "", dataDocumento: "", copiarDe: "", comAssinatura: true });
+  const { register, formState } = form;
+  const erros = formState.errors;
+  const [copiarDe] = useValorDoForm(form, "copiarDe");
 
   return (
-    <form onSubmit={enviar}>
+    <form
+      ref={ref}
+      noValidate
+      onSubmit={enviar(async (v) => {
+        const codigo = limparCodigo(v.codigo).toUpperCase();
+        const base = { titulo: v.titulo.trim(), versao: Number(v.versao), data_documento: v.dataDocumento || null };
+        await chamar("POST", `/modelos-apr/${encodeURIComponent(codigo)}/versoes`, v.copiarDe ? { ...base, copiar_de: v.copiarDe } : { ...base, participantes_com_assinatura: v.comAssinatura, riscos: [], itens: [] });
+        exibirAviso(`Rascunho do ${codigo} criado. Ajuste os itens e publique.`);
+        router.push(rotas.web.modelo(codigo));
+        router.refresh();
+      })}
+    >
       <Panel style={{ padding: "20px 22px", gap: 16, maxWidth: 760 }}>
         <div className="grade2">
-          <Field label="Código" htmlFor="nm-codigo">
-            <input
-              id="nm-codigo"
-              className="input mono"
-              required
-              maxLength={40}
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value.toUpperCase())}
-              aria-invalid={avisoDoCodigo ? true : undefined}
-              aria-describedby="nm-codigo-ajuda"
-            />
-            <span id="nm-codigo-ajuda" className="small" style={avisoDoCodigo ? { color: "var(--blq)" } : undefined}>
-              {avisoDoCodigo ?? "Como no documento em papel: APR 01, APR 02…"}
-            </span>
+          <Field label="Código" htmlFor="nm-codigo" erro={erros.codigo?.message}>
+            <input className="input mono" maxLength={40} style={{ textTransform: "uppercase" }} disabled={enviando} {...register("codigo")} {...ligarAoErro("nm-codigo", erros.codigo?.message)} />
+            <span className="small">Como no documento em papel: APR 01, APR 02…</span>
           </Field>
-          <Field label="Primeira versão (revisão do documento)" htmlFor="nm-versao">
-            <input id="nm-versao" className="input" type="number" min={1} max={999} required value={versao} onChange={(e) => setVersao(e.target.value)} />
+          <Field label="Primeira versão (revisão do documento)" htmlFor="nm-versao" erro={erros.versao?.message}>
+            <input className="input" type="number" disabled={enviando} {...register("versao")} {...ligarAoErro("nm-versao", erros.versao?.message)} />
             <span className="small">O &quot;REV 03&quot; do papel vira a versão 3.</span>
           </Field>
         </div>
-        <Field label="Título" htmlFor="nm-titulo">
-          <input
-            id="nm-titulo"
-            className="input"
-            required
-            value={titulo}
-            onChange={(e) => setTitulo(e.target.value)}
-            placeholder="ESPAÇO CONFINADO E/OU TRABALHO EM ALTURA"
-          />
+        <Field label="Título" htmlFor="nm-titulo" erro={erros.titulo?.message}>
+          <input className="input" placeholder="ESPAÇO CONFINADO E/OU TRABALHO EM ALTURA" disabled={enviando} {...register("titulo")} {...ligarAoErro("nm-titulo", erros.titulo?.message)} />
         </Field>
         <div className="grade2">
-          <Field label="Data do documento" htmlFor="nm-data">
-            <input id="nm-data" className="input" type="date" value={dataDocumento} onChange={(e) => setDataDocumento(e.target.value)} />
+          <Field label="Data do documento" htmlFor="nm-data" erro={erros.dataDocumento?.message}>
+            <input className="input" type="date" disabled={enviando} {...register("dataDocumento")} {...ligarAoErro("nm-data", erros.dataDocumento?.message)} />
           </Field>
           <Field label="Ponto de partida" htmlFor="nm-base">
-            <select id="nm-base" className="select" value={copiarDe} onChange={(e) => setCopiarDe(e.target.value)}>
+            <select id="nm-base" className="select" disabled={enviando} {...register("copiarDe")}>
               <option value="">Em branco</option>
               {modelos.map((m) => (
                 <option key={m.codigo} value={m.codigo}>
@@ -120,7 +114,7 @@ export function FormularioNovoModelo({ sugestao, existentes, modelos }: Formular
         ) : (
           <div className="stack g4">
             <label className="row g8" style={{ alignItems: "center" }}>
-              <input type="checkbox" checked={comAssinatura} onChange={(e) => setComAssinatura(e.target.checked)} />
+              <input type="checkbox" disabled={enviando} {...register("comAssinatura")} />
               {rotuloParticipantesComAssinatura}
             </label>
             <span className="small">{ajudaParticipantesComAssinatura}</span>
@@ -132,17 +126,13 @@ export function FormularioNovoModelo({ sugestao, existentes, modelos }: Formular
             : "O rascunho começa vazio: os itens de verificação, os riscos e as medidas são adicionados no editor."}{" "}
           O técnico só vê o modelo depois de publicado. Escreva a orientação na tela do modelo: é com ela que o técnico escolhe e que o sistema o recomenda.
         </Notice>
-        {erro && (
-          <Notice tone="blq" icon="alert">
-            {erro}
-          </Notice>
-        )}
+        <ErroDeEnvio mensagem={erroEnvio} />
         <div className="row g8" style={{ justifyContent: "flex-end" }}>
           <LinkButton variant="line" sm href={rotas.web.modelos}>
             Cancelar
           </LinkButton>
-          <Button variant="p" sm type="submit" disabled={ocupado || !limpo || !titulo.trim() || Boolean(avisoDoCodigo) || !versaoValida}>
-            {ocupado ? "Criando…" : "Criar rascunho"}
+          <Button variant="p" sm type="submit" aria-busy={enviando} disabled={enviando}>
+            {enviando ? "Criando…" : "Criar rascunho"}
           </Button>
         </div>
       </Panel>

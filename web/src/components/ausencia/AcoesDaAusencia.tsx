@@ -1,13 +1,16 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
+import { Field, ligarAoErro } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { MOTIVO_DO_AUSENTE, descreverPeriodo, somarDias, type Ausencia } from "@/lib/ausencia";
 import { chamar } from "@/lib/cliente-api";
 import { dataDoDia, hoje } from "@/lib/formatar";
-import { CamposDePeriodo, periodoParaApi, retornoDoPeriodo, type PeriodoDigitado } from "./CamposDePeriodo";
+import { diaExiste } from "@/lib/validacao";
+import { CamposDePeriodo, conferirPeriodo, esquemaDoPeriodo, periodoParaApi, type PeriodoDigitado } from "./CamposDePeriodo";
 import { LIMITE_DO_MOTIVO } from "./FormularioDeAusencia";
 import { JanelaDeAssinatura } from "./JanelaDeAssinatura";
 
@@ -138,6 +141,12 @@ export function AcoesDaAusencia({ ausencia: a, eu, supervisaEquipe }: AcoesDaAus
   );
 }
 
+/** O motivo de uma ação da ausência: até ${LIMITE_DO_MOTIVO} caracteres; com `mensagemSeVazio`, é obrigatório. */
+function motivoDaAusencia(mensagemSeVazio?: string) {
+  const texto = z.string().trim().max(LIMITE_DO_MOTIVO, `O motivo pode ter até ${LIMITE_DO_MOTIVO} caracteres.`);
+  return mensagemSeVazio ? texto.min(1, mensagemSeVazio) : texto;
+}
+
 interface ComumDaJanela {
   assinaturaPath: string | null;
   aoFechar: () => void;
@@ -156,7 +165,9 @@ function JanelaComMotivo({ titulo, resumo, rotulo, obrigatorio = false, rotuloCo
   enviar: (motivo: string) => Promise<unknown>;
 }) {
   const id = useId();
-  const [motivo, setMotivo] = useState("");
+  const esquema = useMemo(() => z.object({ motivo: obrigatorio ? motivoDaAusencia("Informe o motivo.") : motivoDaAusencia() }), [obrigatorio]);
+  const { form, validar } = useFormulario(esquema, { motivo: "" });
+  const erro = form.formState.errors.motivo?.message;
   return (
     <JanelaDeAssinatura
       titulo={titulo}
@@ -164,12 +175,12 @@ function JanelaComMotivo({ titulo, resumo, rotulo, obrigatorio = false, rotuloCo
       rotuloConfirmar={rotuloConfirmar}
       tom={tom}
       assinaturaPath={assinaturaPath}
-      incompleto={obrigatorio && motivo.trim() === ""}
-      aoConfirmar={() => enviar(motivo.trim()).then(() => undefined)}
+      validar={validar}
+      aoConfirmar={() => enviar(form.getValues("motivo").trim()).then(() => undefined)}
       aoFechar={aoFechar}
     >
-      <Field label={rotulo} htmlFor={`${id}-motivo`}>
-        <textarea id={`${id}-motivo`} className="textarea" rows={3} maxLength={LIMITE_DO_MOTIVO} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+      <Field label={rotulo} htmlFor={`${id}-motivo`} erro={erro}>
+        <textarea className="textarea" rows={3} maxLength={LIMITE_DO_MOTIVO} {...form.register("motivo")} {...ligarAoErro(`${id}-motivo`, erro)} />
       </Field>
     </JanelaDeAssinatura>
   );
@@ -177,18 +188,29 @@ function JanelaComMotivo({ titulo, resumo, rotulo, obrigatorio = false, rotuloCo
 
 /** O supervisor aprova o pedido, com ou sem ajuste das datas. */
 function JanelaAprovar({ a, periodo, post, assinaturaPath, aoFechar }: ComumDaJanela & { a: Ausencia; periodo: string; post: Postar }) {
-  const [ajustar, setAjustar] = useState(false);
-  const [datas, setDatas] = useState<PeriodoDigitado>({ inicio: a.inicio, modo: "retorno", dias: String(a.dias), retorno: a.retorno });
   const passou = a.inicio < hoje();
+  // As datas só são conferidas quando aparecem: ao ajustar, ou porque o início pedido já passou.
+  const esquema = useMemo(
+    () =>
+      z
+        .object({ ajustar: z.boolean(), datas: esquemaDoPeriodo })
+        .superRefine((v, ctx) => {
+          if (v.ajustar || passou) conferirPeriodo(v.datas, ctx, ["datas"]);
+        }),
+    [passou],
+  );
+  const { form, validar } = useFormulario(esquema, { ajustar: false, datas: { inicio: a.inicio, modo: "retorno", dias: String(a.dias), retorno: a.retorno } satisfies PeriodoDigitado });
+  const erros = form.formState.errors;
+  const [ajustar] = useValorDoForm(form, "ajustar");
+  const [datas, setDatas] = useValorDoForm(form, "datas");
   const mostrar = ajustar || passou;
-  const retorno = retornoDoPeriodo(datas);
   return (
     <JanelaDeAssinatura
       titulo="Aprovar o pedido"
       resumo={`${a.usuario_nome} pediu ${periodo}. Aprovado, ${a.usuario_nome} ainda confirma, assinando, para a ausência valer.`}
       rotuloConfirmar="Aprovar e assinar"
       assinaturaPath={assinaturaPath}
-      incompleto={mostrar && (retorno === null || datas.inicio < hoje())}
+      validar={validar}
       aoConfirmar={() => post("aprovar", mostrar ? periodoParaApi(datas) : {}).then(() => undefined)}
       aoFechar={aoFechar}
     >
@@ -198,11 +220,11 @@ function JanelaAprovar({ a, periodo, post, assinaturaPath, aoFechar }: ComumDaJa
         </Notice>
       ) : (
         <label className="row g8 small">
-          <input type="checkbox" checked={ajustar} onChange={(e) => setAjustar(e.target.checked)} />
+          <input type="checkbox" {...form.register("ajustar")} />
           Ajustar as datas antes de aprovar
         </label>
       )}
-      {mostrar && <CamposDePeriodo valor={datas} aoMudar={setDatas} />}
+      {mostrar && <CamposDePeriodo valor={datas} aoMudar={setDatas} erros={{ inicio: erros.datas?.inicio?.message, dias: erros.datas?.dias?.message, retorno: erros.datas?.retorno?.message }} />}
     </JanelaDeAssinatura>
   );
 }
@@ -210,20 +232,33 @@ function JanelaAprovar({ a, periodo, post, assinaturaPath, aoFechar }: ComumDaJa
 /** O ausente pede o fim antecipado: a data de retorno que ele quer. */
 function JanelaPedirFim({ a, post, assinaturaPath, aoFechar }: ComumDaJanela & { a: Ausencia; post: Postar }) {
   const id = useId();
-  const [data, setData] = useState("");
   const ultimo = somarDias(a.retorno, -1);
+  const esquema = useMemo(
+    () =>
+      z.object({
+        data: z
+          .string()
+          .min(1, "Informe o dia em que você quer voltar.")
+          .refine(diaExiste, "Informe uma data válida.")
+          .refine((v) => !diaExiste(v) || v >= hoje(), "O dia não pode ser anterior a hoje.")
+          .refine((v) => !diaExiste(v) || v <= ultimo, `O dia precisa ser até ${dataDoDia(ultimo)}, antes do retorno previsto.`),
+      }),
+    [ultimo],
+  );
+  const { form, validar } = useFormulario(esquema, { data: "" });
+  const erro = form.formState.errors.data?.message;
   return (
     <JanelaDeAssinatura
       titulo="Pedir o fim antecipado"
       resumo={`O retorno previsto é ${dataDoDia(a.retorno)}. Informe o dia em que você quer voltar ao trabalho; o supervisor aprova ou recusa.`}
       rotuloConfirmar="Pedir e assinar"
       assinaturaPath={assinaturaPath}
-      incompleto={data === "" || data < hoje() || data > ultimo}
-      aoConfirmar={() => post("pedir-fim", { data }).then(() => undefined)}
+      validar={validar}
+      aoConfirmar={() => post("pedir-fim", { data: form.getValues("data") }).then(() => undefined)}
       aoFechar={aoFechar}
     >
-      <Field label="Quero voltar em" htmlFor={`${id}-data`}>
-        <input id={`${id}-data`} className="input" type="date" min={hoje()} max={ultimo} value={data} onChange={(e) => setData(e.target.value)} />
+      <Field label="Quero voltar em" htmlFor={`${id}-data`} erro={erro}>
+        <input className="input" type="date" min={hoje()} max={ultimo} {...form.register("data")} {...ligarAoErro(`${id}-data`, erro)} />
       </Field>
     </JanelaDeAssinatura>
   );
@@ -232,24 +267,40 @@ function JanelaPedirFim({ a, post, assinaturaPath, aoFechar }: ComumDaJanela & {
 /** O supervisor muda a data de retorno (a ausência em curso, agendada ou vencida). */
 function JanelaProrrogar({ a, post, assinaturaPath, aoFechar }: ComumDaJanela & { a: Ausencia; post: Postar }) {
   const id = useId();
-  const [retorno, setRetorno] = useState("");
-  const [motivo, setMotivo] = useState("");
   const minimo = somarDias(hoje() > a.inicio ? hoje() : a.inicio, 1);
+  const esquema = useMemo(
+    () =>
+      z.object({
+        retorno: z
+          .string()
+          .min(1, "Informe o novo retorno.")
+          .refine(diaExiste, "Informe uma data válida.")
+          .refine((v) => !diaExiste(v) || v >= minimo, `O retorno não pode ser antes de ${dataDoDia(minimo)}.`)
+          .refine((v) => v !== a.retorno, "Este já é o retorno da ausência. Escolha outra data."),
+        motivo: motivoDaAusencia(),
+      }),
+    [minimo, a.retorno],
+  );
+  const { form, validar } = useFormulario(esquema, { retorno: "", motivo: "" });
+  const erros = form.formState.errors;
   return (
     <JanelaDeAssinatura
       titulo="Alterar a data de retorno"
       resumo={`${a.usuario_nome}: ${descreverPeriodo(a)}. A pessoa recebe o aviso da mudança.`}
       rotuloConfirmar="Alterar e assinar"
       assinaturaPath={assinaturaPath}
-      incompleto={retorno === "" || retorno < minimo || retorno === a.retorno}
-      aoConfirmar={() => post("prorrogar", { retorno, motivo: motivo.trim() || undefined }).then(() => undefined)}
+      validar={validar}
+      aoConfirmar={() => {
+        const { retorno, motivo } = form.getValues();
+        return post("prorrogar", { retorno, motivo: motivo.trim() || undefined }).then(() => undefined);
+      }}
       aoFechar={aoFechar}
     >
-      <Field label="Novo retorno (primeiro dia de volta)" htmlFor={`${id}-retorno`}>
-        <input id={`${id}-retorno`} className="input" type="date" min={minimo} value={retorno} onChange={(e) => setRetorno(e.target.value)} />
+      <Field label="Novo retorno (primeiro dia de volta)" htmlFor={`${id}-retorno`} erro={erros.retorno?.message}>
+        <input className="input" type="date" min={minimo} {...form.register("retorno")} {...ligarAoErro(`${id}-retorno`, erros.retorno?.message)} />
       </Field>
-      <Field label="Motivo (opcional)" htmlFor={`${id}-motivo`}>
-        <textarea id={`${id}-motivo`} className="textarea" rows={2} maxLength={LIMITE_DO_MOTIVO} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+      <Field label="Motivo (opcional)" htmlFor={`${id}-motivo`} erro={erros.motivo?.message}>
+        <textarea className="textarea" rows={2} maxLength={LIMITE_DO_MOTIVO} {...form.register("motivo")} {...ligarAoErro(`${id}-motivo`, erros.motivo?.message)} />
       </Field>
     </JanelaDeAssinatura>
   );

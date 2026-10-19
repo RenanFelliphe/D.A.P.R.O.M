@@ -49,6 +49,19 @@ export function Field({ label, htmlFor, labelStyle, className, erro, children }:
   );
 }
 
+/**
+ * Um controle sem rótulo (a célula de uma tabela editável) com a mensagem de erro logo abaixo, em vermelho. Marca o campo
+ * (`data-erro`) como o `Field`, para o foco ir até ele ao tentar enviar. O controle usa `ligarAoErro(id, erro)`.
+ */
+export function CampoDeCelula({ id, erro, children }: { id: string; erro?: string; children: ReactNode }) {
+  return (
+    <div className="celula-campo" data-erro={erro ? "" : undefined}>
+      {children}
+      {erro && <MensagemDeErro id={idDoErro(id)}>{erro}</MensagemDeErro>}
+    </div>
+  );
+}
+
 /** Complemento "· obrigatória" do rótulo (.req). */
 export function Req({ children, style }: { children: ReactNode; style?: CSSProperties }) {
   return (

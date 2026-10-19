@@ -2,9 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState } from "react";
+import { z } from "zod";
 import { Button, LinkButton } from "@/components/ui/Button";
+import { idDoErro, MensagemDeErro } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import { useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { rotas } from "@/lib/rotas";
 import { LIMITES, type RascunhoComIA, type ResultadoDaIA } from "@/lib/treinamento-servico";
 import { EXEMPLO_DE_PROCEDIMENTO, ORIENTACOES_DO_PROCEDIMENTO } from "@/lib/treinamento-servico-exemplo";
@@ -20,6 +23,15 @@ interface GerarComVitoriaProps {
   materiais: string[];
 }
 
+/** O procedimento colado: o mínimo para a Vitória ter o que ler e o máximo que a `api` aceita. */
+const esquema = z.object({
+  texto: z
+    .string()
+    .trim()
+    .min(LIMITES.procedimentoMin, `Cole o procedimento inteiro, com pelo menos ${LIMITES.procedimentoMin.toLocaleString("pt-BR")} caracteres: algumas frases não bastam.`)
+    .max(LIMITES.procedimentoMax, `O texto pode ter até ${LIMITES.procedimentoMax.toLocaleString("pt-BR")} caracteres.`),
+});
+
 /** Depois de pronto, quanto tempo a comemoração fica na tela antes de abrir a validação. */
 const ABRIR_REVISAO_MS = 3500;
 
@@ -31,15 +43,15 @@ const ABRIR_REVISAO_MS = 3500;
 export function GerarComVitoria({ codigo, rascunho, materiais }: GerarComVitoriaProps) {
   const roteador = useRouter();
   const idTexto = useId();
-  const [texto, setTexto] = useState(rascunho.texto_origem ?? "");
+  const { form, validar } = useFormulario(esquema, { texto: rascunho.texto_origem ?? "" });
+  const [texto, setTexto] = useValorDoForm(form, "texto");
+  const erroDoTexto = form.formState.errors.texto?.message;
   const [confirmando, setConfirmando] = useState(false);
   const [plano, setPlano] = useState<Plano>(planoPadrao);
   const [pronto, setPronto] = useState<ResultadoDaIA | null>(null);
   const ia = useRascunhoIA(codigo, rascunho.ia, { aoConcluir: setPronto });
   const { situacao } = ia;
   const temConteudo = rascunho.explicacao.length + rascunho.fases.length > 0;
-  const tamanho = texto.trim().length;
-  const textoValido = tamanho >= LIMITES.procedimentoMin;
   const revisao = rotas.app.treinamentoServico(codigo, "revisao");
 
   useEffect(() => {
@@ -51,6 +63,13 @@ export function GerarComVitoria({ codigo, rascunho, materiais }: GerarComVitoria
   async function gerar() {
     setConfirmando(false);
     await ia.gerar(texto, plano);
+  }
+
+  /** Confere o texto antes de gerar (a mensagem aparece abaixo do campo) e, havendo rascunho, pede a confirmação de substituí-lo. */
+  async function tentarGerar() {
+    if (!(await validar())) return;
+    if (temConteudo) setConfirmando(true);
+    else await gerar();
   }
 
   if (pronto) {
@@ -138,7 +157,7 @@ export function GerarComVitoria({ codigo, rascunho, materiais }: GerarComVitoria
 
       <div className="ts-gerar-coluna">
         <section className="panel ts-gerar-form" aria-labelledby={idTexto}>
-          <div className="field">
+          <div className="field" data-erro={erroDoTexto ? "" : undefined}>
             <label id={idTexto} htmlFor={`${idTexto}-campo`} className="ts-rotulo-grande">
               Texto do procedimento
             </label>
@@ -149,15 +168,17 @@ export function GerarComVitoria({ codigo, rascunho, materiais }: GerarComVitoria
               maxLength={LIMITES.procedimentoMax}
               value={texto}
               placeholder="Cole aqui o procedimento do serviço: o que ele usa, os passos na ordem, os cuidados e os números exatos."
+              aria-invalid={erroDoTexto ? true : undefined}
+              aria-describedby={erroDoTexto ? idDoErro(`${idTexto}-campo`) : undefined}
               onChange={(e) => {
                 setTexto(e.target.value);
                 ia.limparErro();
               }}
             />
+            {erroDoTexto && <MensagemDeErro id={idDoErro(`${idTexto}-campo`)}>{erroDoTexto}</MensagemDeErro>}
             <div className="row between wrap g8">
               <span className="small">
                 {texto.length.toLocaleString("pt-BR")} de {LIMITES.procedimentoMax.toLocaleString("pt-BR")} caracteres
-                {tamanho > 0 && !textoValido ? " · cole o procedimento inteiro, ao menos algumas frases" : ""}
               </span>
               {texto && (
                 <Button variant="ghost" sm onClick={() => setTexto("")}>
@@ -202,7 +223,7 @@ export function GerarComVitoria({ codigo, rascunho, materiais }: GerarComVitoria
               </span>
             </Notice>
           ) : (
-            <Button variant="p" block onClick={() => (temConteudo ? setConfirmando(true) : gerar())} disabled={!textoValido || !situacao.pode_gerar}>
+            <Button variant="p" block onClick={() => void tentarGerar()} disabled={!situacao.pode_gerar}>
               <Icon name="sparkle" size={16} />
               {situacao.usa_ia ? "Gerar de novo com a Vitória" : "Gerar o rascunho com a Vitória"}
             </Button>

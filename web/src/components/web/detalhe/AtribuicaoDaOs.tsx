@@ -2,6 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { z } from "zod";
+import { Field, ligarAoErro } from "@/components/ui/Field";
+import { ErroDeEnvio, useFormulario } from "@/components/ui/useFormulario";
 import { Panel } from "@/components/web/Panel";
 import { chamar } from "@/lib/cliente-api";
 import type { ResponsavelDaOs } from "@/lib/tipos";
@@ -14,28 +17,33 @@ interface AtribuicaoDaOsProps {
   colegas: ResponsavelDaOs[];
 }
 
+const esquema = z.object({ escolhido: z.string().min(1, "Escolha a pessoa a quem reservar a OS.") });
+
 /**
  * Atribuição individual (`PUT` e `DELETE /os/{id}/responsavel`): o supervisor da equipe reserva a OS a uma pessoa. A OS segue no
  * quadro da equipe, com a marca; só o responsável inicia a APR e a execução. Vale enquanto a OS não começou.
  */
 export function AtribuicaoDaOs({ osId, responsavel, colegas }: AtribuicaoDaOsProps) {
   const router = useRouter();
-  const [escolhido, setEscolhido] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
   const [, iniciar] = useTransition();
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquema, { escolhido: "" });
+  const { register, formState } = form;
+  const erros = formState.errors;
+  // "Liberar para a equipe toda" não leva campo: tem o próprio estado e o próprio erro.
+  const [liberando, setLiberando] = useState(false);
+  const [erroAoLiberar, setErroAoLiberar] = useState<string | null>(null);
+  const ocupado = enviando || liberando;
 
-  async function executar(acao: () => Promise<unknown>, falha: string) {
-    setErro(null);
-    setEnviando(true);
+  async function liberar() {
+    setErroAoLiberar(null);
+    setLiberando(true);
     try {
-      await acao();
-      setEscolhido("");
+      await chamar("DELETE", `/os/${osId}/responsavel`);
       iniciar(() => router.refresh());
     } catch (e) {
-      setErro(e instanceof Error ? e.message : falha);
+      setErroAoLiberar(e instanceof Error ? e.message : "Não foi possível liberar a OS");
     } finally {
-      setEnviando(false);
+      setLiberando(false);
     }
   }
 
@@ -51,42 +59,39 @@ export function AtribuicaoDaOs({ osId, responsavel, colegas }: AtribuicaoDaOsPro
       ) : (
         <p className="muted">Hoje a OS é da equipe toda: qualquer pessoa dela pode iniciar a APR. Reserve a uma pessoa para garantir quem vai fazê-la.</p>
       )}
-      <label className="small" htmlFor={`responsavel-${osId}`} style={{ color: "var(--ink3)" }}>
-        {responsavel ? "Trocar o responsável" : "Reservar para"}
-      </label>
-      <select id={`responsavel-${osId}`} className="select" value={escolhido} onChange={(e) => setEscolhido(e.target.value)} disabled={enviando || opcoes.length === 0}>
-        <option value="">{opcoes.length === 0 ? "Nenhuma outra pessoa na equipe" : "Escolha a pessoa"}</option>
-        {opcoes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.nome}
-          </option>
-        ))}
-      </select>
-      <div className="row wrap g8">
-        <button
-          className="btn btn-p btn-sm"
-          type="button"
-          disabled={enviando || !escolhido}
-          onClick={() => executar(() => chamar("PUT", `/os/${osId}/responsavel`, { usuario_id: escolhido }), "Não foi possível reservar a OS")}
-        >
-          {enviando ? "Salvando…" : responsavel ? "Trocar responsável" : "Reservar a OS"}
-        </button>
-        {responsavel && (
-          <button
-            className="btn btn-line btn-sm"
-            type="button"
-            disabled={enviando}
-            onClick={() => executar(() => chamar("DELETE", `/os/${osId}/responsavel`), "Não foi possível liberar a OS")}
-          >
-            Liberar para a equipe toda
+      <form
+        ref={ref}
+        noValidate
+        className="stack g8"
+        onSubmit={enviar(async (v) => {
+          setErroAoLiberar(null);
+          await chamar("PUT", `/os/${osId}/responsavel`, { usuario_id: v.escolhido });
+          form.reset({ escolhido: "" });
+          iniciar(() => router.refresh());
+        })}
+      >
+        <Field label={responsavel ? "Trocar o responsável" : "Reservar para"} htmlFor={`responsavel-${osId}`} labelStyle={{ color: "var(--ink3)" }} erro={erros.escolhido?.message}>
+          <select className="select" disabled={ocupado || opcoes.length === 0} {...register("escolhido")} {...ligarAoErro(`responsavel-${osId}`, erros.escolhido?.message)}>
+            <option value="">{opcoes.length === 0 ? "Nenhuma outra pessoa na equipe" : "Escolha a pessoa"}</option>
+            {opcoes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <ErroDeEnvio mensagem={erroEnvio ?? erroAoLiberar} />
+        <div className="row wrap g8">
+          <button className="btn btn-p btn-sm" type="submit" aria-busy={enviando} disabled={ocupado || opcoes.length === 0}>
+            {enviando ? "Salvando…" : responsavel ? "Trocar responsável" : "Reservar a OS"}
           </button>
-        )}
-      </div>
-      {erro && (
-        <span role="alert" style={{ color: "var(--blq)", fontSize: 13.5 }}>
-          {erro}
-        </span>
-      )}
+          {responsavel && (
+            <button className="btn btn-line btn-sm" type="button" disabled={ocupado} onClick={() => void liberar()}>
+              Liberar para a equipe toda
+            </button>
+          )}
+        </div>
+      </form>
     </Panel>
   );
 }

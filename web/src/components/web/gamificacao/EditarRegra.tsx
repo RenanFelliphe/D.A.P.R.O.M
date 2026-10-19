@@ -2,11 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { z } from "zod";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { CampoDeCelula, ligarAoErro, MensagemDeErro } from "@/components/ui/Field";
+import { useFormulario } from "@/components/ui/useFormulario";
 import { chamar } from "@/lib/cliente-api";
 import { numero, type RegraDePontuacao } from "@/lib/gamificacao";
+import { inteiroEntre } from "@/lib/validacao";
 import { useToast } from "@/state/toast";
+
+/** Os pontos de uma tarefa: inteiros de 0 a 1000 (a `api` recusa mais). A tarefa sem valor próprio só liga ou desliga. */
+const esquema = z.object({
+  pontos: inteiroEntre(0, 1000, "Informe os pontos, um número inteiro de 0 a 1000."),
+  ativa: z.boolean(),
+});
 
 /**
  * O valor de uma tarefa e, para o admin, o editor no lugar: muda os pontos e liga ou desliga a tarefa (`PATCH
@@ -17,31 +27,25 @@ export function EditarRegra({ regra, podeEditar }: { regra: RegraDePontuacao; po
   const router = useRouter();
   const exibirAviso = useToast();
   const [editando, setEditando] = useState(false);
-  const [valor, setValor] = useState(String(regra.pontos));
-  const [ativa, setAtiva] = useState(regra.ativa);
-  const [ocupado, setOcupado] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const valoresDaRegra = { pontos: String(regra.pontos), ativa: regra.ativa };
+  // O esquema do que não tem valor próprio ignora os pontos (o campo nem aparece).
+  const { form, enviar, enviando: ocupado, erroEnvio, limparErroEnvio } = useFormulario(regra.valor_proprio ? esquema : esquema.extend({ pontos: z.string() }), valoresDaRegra);
+  const { register, formState } = form;
+  const erros = formState.errors;
+  const idDosPontos = `regra-${regra.codigo}-pontos`;
 
-  async function salvar() {
-    setOcupado(true);
-    setErro(null);
-    try {
-      await chamar("PATCH", `/gamificacao/regras/${regra.codigo}`, regra.valor_proprio ? { pontos: Number(valor), ativa } : { ativa });
-      exibirAviso(`"${regra.nome}" salva. O novo valor vale dali em diante.`);
-      setEditando(false);
-      router.refresh();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível salvar a tarefa");
-    } finally {
-      setOcupado(false);
-    }
-  }
+  // a regra aparece numa linha de tabela, que não pode ser um <form>: o botão Salvar dispara o envio
+  const salvar = enviar(async (v) => {
+    await chamar("PATCH", `/gamificacao/regras/${regra.codigo}`, regra.valor_proprio ? { pontos: Number(v.pontos), ativa: v.ativa } : { ativa: v.ativa });
+    exibirAviso(`"${regra.nome}" salva. O novo valor vale dali em diante.`);
+    setEditando(false);
+    router.refresh();
+  });
 
   function cancelar() {
     setEditando(false);
-    setErro(null);
-    setValor(String(regra.pontos));
-    setAtiva(regra.ativa);
+    limparErroEnvio();
+    form.reset(valoresDaRegra);
   }
 
   const resumo = regra.valor_proprio ? (
@@ -70,20 +74,18 @@ export function EditarRegra({ regra, podeEditar }: { regra: RegraDePontuacao; po
     <span className="stack g6">
       <span className="regra-editar">
         {regra.valor_proprio && (
-          <input className="input" aria-label={`Pontos de ${regra.nome}`} inputMode="numeric" value={valor} onChange={(e) => setValor(e.target.value.replace(/\D/g, ""))} />
+          <CampoDeCelula id={idDosPontos} erro={erros.pontos?.message}>
+            <input className="input" aria-label={`Pontos de ${regra.nome}`} inputMode="numeric" {...register("pontos")} {...ligarAoErro(idDosPontos, erros.pontos?.message)} />
+          </CampoDeCelula>
         )}
         <label className="row g6 small">
-          <input type="checkbox" checked={ativa} onChange={(e) => setAtiva(e.target.checked)} />
+          <input type="checkbox" {...register("ativa")} />
           Ativa
         </label>
       </span>
-      {erro && (
-        <span role="alert" className="small" style={{ color: "var(--blq)", whiteSpace: "normal" }}>
-          {erro}
-        </span>
-      )}
+      {erroEnvio && <MensagemDeErro>{erroEnvio}</MensagemDeErro>}
       <span className="row g6">
-        <Button variant="p" sm style={{ height: 30 }} onClick={salvar} disabled={ocupado || (regra.valor_proprio && (valor === "" || Number(valor) > 1000))}>
+        <Button variant="p" sm style={{ height: 30 }} onClick={salvar} aria-busy={ocupado} disabled={ocupado}>
           {ocupado ? "Salvando…" : "Salvar"}
         </Button>
         <Button variant="line" sm style={{ height: 30 }} onClick={cancelar} disabled={ocupado}>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
+import { Field, idDoErro } from "@/components/ui/Field";
 import { chamar } from "@/lib/cliente-api";
 import type { Local, LocalEscolhido } from "./tipos";
 
@@ -13,10 +13,12 @@ interface SeletorLocalProps {
   prefixo: string;
   valor: LocalEscolhido | null;
   onChange: (valor: LocalEscolhido | null) => void;
+  /** Mensagem de validação (nenhum local escolhido), em vermelho abaixo da busca. */
+  erro?: string;
 }
 
 /** Escolhe o local de instalação: busca pelo código entre os que vieram do SAP. */
-export function SeletorLocal({ prefixo, valor, onChange }: SeletorLocalProps) {
+export function SeletorLocal({ prefixo, valor, onChange, erro }: SeletorLocalProps) {
   const [busca, setBusca] = useState("");
   const [resultados, setResultados] = useState<Local[] | null>(null);
   const [falha, setFalha] = useState<string | null>(null);
@@ -60,8 +62,8 @@ export function SeletorLocal({ prefixo, valor, onChange }: SeletorLocalProps) {
 
   return (
     <div className="stack g8">
-      <Field label="Local de instalação" htmlFor={`${prefixo}-lb`} labelStyle={rotulo}>
-        <input className="input" id={`${prefixo}-lb`} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite parte do código do local" autoComplete="off" />
+      <Field label="Local de instalação" htmlFor={`${prefixo}-lb`} labelStyle={rotulo} erro={erro}>
+        <input className="input" id={`${prefixo}-lb`} aria-invalid={erro ? true : undefined} aria-describedby={erro ? idDoErro(`${prefixo}-lb`) : undefined} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite parte do código do local" autoComplete="off" />
       </Field>
       {falha && (
         <span className="small" role="alert" style={{ color: "var(--blq)" }}>

@@ -1,26 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { z } from "zod";
 import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
+import { Field, ligarAoErro } from "@/components/ui/Field";
+import { useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { chamar } from "@/lib/cliente-api";
 import { useMinhaAssinatura } from "@/state/minha-assinatura";
+
+const esquema = z.object({ justificativa: z.string().trim().min(1, "Informe a justificativa do cancelamento.") });
 
 /** Cancela a OS de apoio (`POST /os/{id}/cancelar`): pede a justificativa e a assinatura do admin. Só aparece para OS de apoio liberada ou pendente. */
 export function CancelarOs({ osId }: { osId: string }) {
   const assinaturaPath = useMinhaAssinatura();
   const [aberto, setAberto] = useState(false);
   const [assinando, setAssinando] = useState(false);
-  const [justificativa, setJustificativa] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-
-  function pedirAssinatura() {
-    setErro(null);
-    if (!justificativa.trim()) {
-      setErro("Justificativa obrigatória");
-      return;
-    }
-    setAssinando(true);
-  }
+  const { form, ref, enviar } = useFormulario(esquema, { justificativa: "" });
+  const { register, formState } = form;
+  const erros = formState.errors;
+  const [justificativa] = useValorDoForm(form, "justificativa");
 
   if (!aberto) {
     return (
@@ -31,31 +29,18 @@ export function CancelarOs({ osId }: { osId: string }) {
   }
 
   return (
-    <div className="stack g8">
-      <label className="small" htmlFor="cancelar-justificativa" style={{ color: "var(--ink3)" }}>
-        Justificativa do cancelamento
-      </label>
-      <textarea
-        id="cancelar-justificativa"
-        className="textarea"
-        rows={3}
-        value={justificativa}
-        onChange={(e) => setJustificativa(e.target.value)}
-        placeholder="Por que esta OS está sendo cancelada?"
-      />
+    <form ref={ref} noValidate className="stack g8" onSubmit={enviar(() => setAssinando(true))}>
+      <Field label="Justificativa do cancelamento" htmlFor="cancelar-justificativa" labelStyle={{ color: "var(--ink3)" }} erro={erros.justificativa?.message}>
+        <textarea className="textarea" rows={3} placeholder="Por que esta OS está sendo cancelada?" {...register("justificativa")} {...ligarAoErro("cancelar-justificativa", erros.justificativa?.message)} />
+      </Field>
       <div className="row g8">
-        <button className="btn btn-d btn-sm" type="button" onClick={pedirAssinatura}>
+        <button className="btn btn-d btn-sm" type="submit">
           Assinar e cancelar
         </button>
         <button className="btn btn-line btn-sm" type="button" onClick={() => setAberto(false)}>
           Voltar
         </button>
       </div>
-      {erro && (
-        <span role="alert" style={{ color: "var(--blq)", fontSize: 13.5 }}>
-          {erro}
-        </span>
-      )}
       {assinando && (
         <JanelaDeAssinatura
           titulo="Cancelar a OS de apoio"
@@ -73,6 +58,6 @@ export function CancelarOs({ osId }: { osId: string }) {
           </p>
         </JanelaDeAssinatura>
       )}
-    </div>
+    </form>
   );
 }

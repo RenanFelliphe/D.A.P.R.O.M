@@ -152,11 +152,21 @@
   margin-top: 2px
 }
 
+.input[aria-invalid="true"],
+.textarea[aria-invalid="true"],
+.select[aria-invalid="true"],
 .field[data-erro] .input,
 .field[data-erro] .textarea,
-.field[data-erro] .select {
+.field[data-erro] .select,
+.celula-campo[data-erro] .input,
+.celula-campo[data-erro] .select {
   border-color: var(--blq);
   background: var(--blq-bg)
+}
+
+/* O campo de uma célula de tabela editável (`CampoDeCelula`): a mensagem fica colada embaixo do controle. */
+.celula-campo[data-erro] .field-erro {
+  margin-top: 4px
 }
 
 /* ===== Retorno ao usuário: avisos, selos, etiquetas, progresso e toast ===== */

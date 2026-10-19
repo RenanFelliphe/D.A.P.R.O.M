@@ -1,10 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import type { UseFormReturn } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
+import { Field, ligarAoErro } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { ErroDeEnvio, useFormulario } from "@/components/ui/useFormulario";
 import { AVISO_DE_PENDENTE, ordemDosPerfis, type ModoUsuarios } from "@/data/usuarios";
 import { chamar } from "@/lib/cliente-api";
 import { rotuloDoPerfil, rotuloDaSituacaoRegistro, type Perfil, type SituacaoRegistro, type Usuario } from "@/lib/tipos";
@@ -53,12 +56,275 @@ interface FormularioUsuarioProps {
 
 const SOMENTE_LEITURA = { background: "var(--surface2)" } as const;
 
+/** Etapa 1 do cadastro: a matrícula e o e-mail institucional que a `api` confere no registro de funcionários. */
+const esquemaDaConsulta = z.object({
+  matricula: z.string().trim().min(1, "Informe a matrícula").max(40, "A matrícula pode ter no máximo 40 caracteres"),
+  email: z.string().trim().min(1, "Informe o e-mail institucional").email("Informe um e-mail válido, como nome.sobrenome@empresa.com.br"),
+});
+
+/** Perfil e equipe (a equipe vazia é "sem equipe"); a senha só vale no cadastro. */
+const esquemaDaEdicao = z.object({
+  perfil: z.string().min(1, "Escolha o perfil"),
+  equipe_id: z.string(),
+});
+
+const esquemaDaConfirmacao = esquemaDaEdicao.extend({
+  senha: z.string().min(8, "A senha inicial precisa ter ao menos 8 caracteres").max(72, "A senha inicial pode ter no máximo 72 caracteres"),
+});
+
 /** Campo só de leitura: os dados pessoais vêm do registro de funcionários e não se digitam nem se editam aqui. */
 function DadoDoRegistro({ rotulo, valor, mono }: { rotulo: string; valor: string | null | undefined; mono?: boolean }) {
   return (
     <Field label={rotulo}>
       <input className={mono ? "input mono" : "input"} value={valor || "—"} readOnly aria-readonly="true" style={SOMENTE_LEITURA} />
     </Field>
+  );
+}
+
+type CamposPerfilEEquipe = { perfil: string; equipe_id: string };
+
+/** Os dois seletores de perfil e equipe, iguais na edição e no cadastro do admin. O formulário pode ter outros campos além destes. */
+function PerfilEEquipe<T extends CamposPerfilEEquipe>({
+  form,
+  equipes,
+  perfilAtual,
+  equipeSugerida,
+}: {
+  form: UseFormReturn<T>;
+  equipes: OpcaoEquipe[];
+  perfilAtual?: Perfil;
+  equipeSugerida?: OpcaoEquipe | null;
+}) {
+  const { register, formState } = form as unknown as UseFormReturn<CamposPerfilEEquipe>;
+  const erros = formState.errors;
+  // Um perfil que saiu da lista (o supervisor, legado) continua escolhido, para salvar a equipe não trocar o perfil sem querer.
+  const perfis = perfilAtual && !ordemDosPerfis.includes(perfilAtual) ? [perfilAtual, ...ordemDosPerfis] : ordemDosPerfis;
+  return (
+    <>
+      <Field label="Perfil" htmlFor="usuario-perfil" erro={erros.perfil?.message}>
+        <select className="input" {...register("perfil")} {...ligarAoErro("usuario-perfil", erros.perfil?.message)}>
+          {perfis.map((p) => (
+            <option key={p} value={p}>
+              {rotuloDoPerfil[p]}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Equipe" htmlFor="usuario-equipe" erro={erros.equipe_id?.message}>
+        <select className="input" {...register("equipe_id")} {...ligarAoErro("usuario-equipe", erros.equipe_id?.message)}>
+          <option value="">Sem equipe</option>
+          {equipes.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.nome}
+              {e.id === equipeSugerida?.id ? " (a do setor)" : ""}
+            </option>
+          ))}
+        </select>
+        {equipeSugerida === null && <span className="small">O setor não tem equipe no SYNQ OS.</span>}
+      </Field>
+    </>
+  );
+}
+
+/** Edição (só o admin): os dados pessoais são do registro; aqui só o perfil e a equipe (`PATCH /usuarios/{id}`). */
+function EdicaoDoUsuario({ usuario, equipes, aoConcluir }: { usuario: Usuario; equipes: OpcaoEquipe[]; aoConcluir: () => void }) {
+  const router = useRouter();
+  const exibirAviso = useToast();
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquemaDaEdicao, { perfil: usuario.perfil, equipe_id: usuario.equipe_id ?? "" });
+
+  return (
+    <form ref={ref} noValidate onSubmit={enviar(async (v) => {
+      await chamar("PATCH", `/usuarios/${usuario.id}`, { perfil: v.perfil, equipe_id: v.equipe_id || null });
+      exibirAviso("Usuário atualizado.");
+      router.refresh();
+      aoConcluir();
+    })} className="stack g12">
+      <Notice tone="info" icon="info">
+        Nome, e-mail, cargo e registro profissional vêm do registro de funcionários e não se editam aqui. Para trazer o que mudou lá, use “Atualizar do registro”.
+      </Notice>
+      <DadoDoRegistro rotulo="Nome" valor={usuario.nome} />
+      <div className="grade2">
+        <DadoDoRegistro rotulo="Matrícula" valor={usuario.matricula} mono />
+        <DadoDoRegistro rotulo="E-mail institucional (é o login)" valor={usuario.email} />
+      </div>
+      <div className="grade2">
+        <DadoDoRegistro rotulo="Cargo" valor={usuario.cargo} />
+        <DadoDoRegistro rotulo="Registro profissional" valor={usuario.registro_profissional} />
+      </div>
+      <div className="grade2">
+        <PerfilEEquipe form={form} equipes={equipes} perfilAtual={usuario.perfil} />
+      </div>
+      <ErroDeEnvio mensagem={erroEnvio} />
+      <div className="row g8" style={{ justifyContent: "flex-end" }}>
+        <Button variant="line" sm onClick={aoConcluir} disabled={enviando}>
+          Cancelar
+        </Button>
+        <Button variant="p" sm type="submit" disabled={enviando}>
+          {enviando ? "Salvando…" : "Salvar"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Cadastro, etapa 1: consultar o registro de funcionários (`GET /rh/funcionarios/{matricula}?email=`). */
+function ConsultaDoRegistro({ inicial, aoConsultar, aoConcluir }: { inicial: { matricula: string; email: string }; aoConsultar: (previa: PreviaDoCadastro, dados: { matricula: string; email: string }) => void; aoConcluir: () => void }) {
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquemaDaConsulta, inicial);
+  const { register, formState } = form;
+  const erros = formState.errors;
+
+  return (
+    <form ref={ref} noValidate onSubmit={enviar(async (v) => {
+      const dados = { matricula: v.matricula.trim(), email: v.email.trim().toLowerCase() };
+      const previa = await chamar<PreviaDoCadastro>("GET", `/rh/funcionarios/${encodeURIComponent(dados.matricula)}?email=${encodeURIComponent(dados.email)}`);
+      aoConsultar(previa, dados);
+    })} className="stack g12">
+      <Notice tone="info" icon="info">
+        Só quem está no registro de funcionários da empresa vira usuário. Informe a matrícula e o e-mail institucional da pessoa: o nome, o cargo e o registro profissional vêm de lá.
+      </Notice>
+      <div className="grade2">
+        <Field label="Matrícula" htmlFor="usuario-matricula" erro={erros.matricula?.message}>
+          <input className="input mono" autoComplete="off" placeholder="100231" {...register("matricula")} {...ligarAoErro("usuario-matricula", erros.matricula?.message)} />
+        </Field>
+        <Field label="E-mail institucional (é o login)" htmlFor="usuario-email" erro={erros.email?.message}>
+          <input className="input" type="email" autoComplete="off" placeholder="nome.sobrenome@empresa.com.br" {...register("email")} {...ligarAoErro("usuario-email", erros.email?.message)} />
+        </Field>
+      </div>
+      <ErroDeEnvio mensagem={erroEnvio} />
+      <div className="row g8" style={{ justifyContent: "flex-end" }}>
+        <Button variant="line" sm onClick={aoConcluir} disabled={enviando}>
+          Cancelar
+        </Button>
+        <Button variant="p" sm type="submit" disabled={enviando}>
+          {enviando ? "Consultando…" : "Consultar no registro"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Cadastro, etapa 2: conferir a pessoa achada no registro e criar a conta (`POST /usuarios`). */
+function ConfirmacaoDoCadastro({
+  previa,
+  email,
+  equipes,
+  supervisor,
+  aoVoltar,
+  aoCriarComoSupervisor,
+  aoConcluir,
+}: {
+  previa: PreviaDoCadastro;
+  email: string;
+  equipes: OpcaoEquipe[];
+  supervisor: boolean;
+  aoVoltar: () => void;
+  aoCriarComoSupervisor: (criado: { nome: string; email: string; senha: string }) => void;
+  aoConcluir: () => void;
+}) {
+  const router = useRouter();
+  const exibirAviso = useToast();
+  const f = previa.funcionario;
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquemaDaConfirmacao, {
+    perfil: "tecnico",
+    equipe_id: previa.equipe_sugerida?.id ?? "",
+    senha: supervisor ? sugerirSenha() : "",
+  });
+  const { register, setValue, formState } = form;
+  const erros = formState.errors;
+  const nomeDaEquipe = equipes.find((e) => e.id === form.watch("equipe_id"))?.nome ?? previa.equipe_sugerida?.nome ?? "—";
+
+  const dadosDaPessoa = (
+    <>
+      <DadoDoRegistro rotulo="Nome" valor={f.nome} />
+      <div className="grade2">
+        <DadoDoRegistro rotulo="Matrícula" valor={f.matricula} mono />
+        <DadoDoRegistro rotulo="E-mail institucional (é o login)" valor={email} />
+      </div>
+      <div className="grade2">
+        <DadoDoRegistro rotulo="Cargo" valor={f.cargo} />
+        <DadoDoRegistro rotulo="Registro profissional" valor={f.registro_profissional} />
+      </div>
+      <div className="grade2">
+        <DadoDoRegistro rotulo="Setor" valor={f.setor} />
+        <DadoDoRegistro rotulo="Situação no registro" valor={rotuloDaSituacaoRegistro[f.situacao]} />
+      </div>
+    </>
+  );
+
+  if (previa.conta_existente) {
+    return (
+      <div className="stack g12">
+        <Notice tone="ok" icon="check">
+          Encontrado no registro de funcionários. Confira se é a pessoa certa antes de continuar.
+        </Notice>
+        {dadosDaPessoa}
+        <Notice tone="al" icon="alert">
+          Esta pessoa já tem conta no SYNQ OS. Procure-a na lista de usuários.
+        </Notice>
+        <div className="row g8" style={{ justifyContent: "flex-end" }}>
+          <Button variant="line" sm onClick={aoVoltar}>
+            Voltar
+          </Button>
+          <Button variant="p" sm onClick={aoConcluir}>
+            Fechar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <form ref={ref} noValidate onSubmit={enviar(async (v) => {
+      // A `api` consulta o registro de novo: os dados gravados são sempre os da consulta feita agora, não os da prévia.
+      const base = { matricula: f.matricula, email, senha_inicial: v.senha };
+      if (supervisor) {
+        await chamar("POST", "/usuarios", { ...base, perfil: "tecnico" });
+        router.refresh();
+        aoCriarComoSupervisor({ nome: f.nome, email, senha: v.senha });
+        return;
+      }
+      await chamar("POST", "/usuarios", { ...base, perfil: v.perfil, equipe_id: v.equipe_id || null });
+      exibirAviso("Usuário criado. A pessoa define a própria senha no primeiro acesso.");
+      router.refresh();
+      aoConcluir();
+    })} className="stack g12">
+      <Notice tone="ok" icon="check">
+        Encontrado no registro de funcionários. Confira se é a pessoa certa antes de continuar.
+      </Notice>
+      {dadosDaPessoa}
+      <div className="grade2">
+        {supervisor ? (
+          <Field label="Equipe (a do setor)">
+            <input className="input" value={nomeDaEquipe} readOnly aria-readonly="true" style={SOMENTE_LEITURA} />
+          </Field>
+        ) : (
+          <PerfilEEquipe form={form} equipes={equipes} equipeSugerida={previa.equipe_sugerida} />
+        )}
+      </div>
+      <Field label="Senha inicial (mínimo 8 caracteres)" htmlFor="usuario-senha" erro={erros.senha?.message}>
+        <div className="row g8">
+          <input className="input mono grow" autoComplete="off" {...register("senha")} {...ligarAoErro("usuario-senha", erros.senha?.message)} />
+          <Button variant="line" sm onClick={() => setValue("senha", sugerirSenha(), { shouldDirty: true, shouldValidate: Boolean(erros.senha) })}>
+            Sugerir
+          </Button>
+        </div>
+        <span className="small">A pessoa troca essa senha no primeiro acesso. Anote-a para repassar: ela não aparece de novo.</span>
+      </Field>
+      {supervisor && (
+        <Notice tone="al" icon="clock">
+          {AVISO_DE_PENDENTE}
+        </Notice>
+      )}
+      <ErroDeEnvio mensagem={erroEnvio} />
+      <div className="row g8" style={{ justifyContent: "flex-end" }}>
+        <Button variant="line" sm onClick={aoVoltar} disabled={enviando}>
+          Voltar
+        </Button>
+        <Button variant="p" sm type="submit" disabled={enviando}>
+          {enviando ? "Cadastrando…" : supervisor ? "Cadastrar técnico" : "Criar usuário"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -70,82 +336,12 @@ function DadoDoRegistro({ rotulo, valor, mono }: { rotulo: string; valor: string
  * espera a liberação de um administrador. A edição (só do admin) muda o perfil e a equipe; o resto vem do registro.
  */
 export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir }: FormularioUsuarioProps) {
-  const router = useRouter();
   const exibirAviso = useToast();
   const supervisor = modo === "supervisor";
   const [previa, setPrevia] = useState<PreviaDoCadastro | null>(null);
+  /** O que foi consultado (já normalizado): volta preenchido quando a pessoa "Volta" da etapa 2. */
+  const [consultado, setConsultado] = useState({ matricula: "", email: "" });
   const [criado, setCriado] = useState<{ nome: string; email: string; senha: string } | null>(null);
-  const [matricula, setMatricula] = useState("");
-  const [email, setEmail] = useState("");
-  const [perfil, setPerfil] = useState<Perfil>(usuario?.perfil ?? "tecnico");
-  const [equipeId, setEquipeId] = useState(usuario?.equipe_id ?? "");
-  const [senha, setSenha] = useState(() => (supervisor && !usuario ? sugerirSenha() : ""));
-  const [ocupado, setOcupado] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  async function consultar(evento: FormEvent) {
-    evento.preventDefault();
-    setErro(null);
-    setOcupado(true);
-    try {
-      const resposta = await chamar<PreviaDoCadastro>("GET", `/rh/funcionarios/${encodeURIComponent(matricula.trim())}?email=${encodeURIComponent(email.trim().toLowerCase())}`);
-      setPrevia(resposta);
-      setEquipeId(resposta.equipe_sugerida?.id ?? "");
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível consultar o registro de funcionários");
-    } finally {
-      setOcupado(false);
-    }
-  }
-
-  async function confirmar(evento: FormEvent) {
-    evento.preventDefault();
-    if (!previa) return;
-    setErro(null);
-    if (senha.length < 8) return setErro("A senha inicial precisa ter ao menos 8 caracteres");
-    setOcupado(true);
-    try {
-      // A `api` consulta o registro de novo: os dados gravados são sempre os da consulta feita agora, não os da prévia.
-      const base = { matricula: previa.funcionario.matricula, email: email.trim().toLowerCase(), senha_inicial: senha };
-      if (supervisor) {
-        await chamar("POST", "/usuarios", { ...base, perfil: "tecnico" });
-        router.refresh();
-        setCriado({ nome: previa.funcionario.nome, email: base.email, senha });
-        return;
-      }
-      await chamar("POST", "/usuarios", { ...base, perfil, equipe_id: equipeId || null });
-      exibirAviso("Usuário criado. A pessoa define a própria senha no primeiro acesso.");
-      router.refresh();
-      aoConcluir();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível cadastrar o usuário");
-    } finally {
-      setOcupado(false);
-    }
-  }
-
-  async function salvarEdicao(evento: FormEvent) {
-    evento.preventDefault();
-    if (!usuario) return;
-    setErro(null);
-    setOcupado(true);
-    try {
-      await chamar("PATCH", `/usuarios/${usuario.id}`, { perfil, equipe_id: equipeId || null });
-      exibirAviso("Usuário atualizado.");
-      router.refresh();
-      aoConcluir();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível salvar o usuário");
-    } finally {
-      setOcupado(false);
-    }
-  }
-
-  const mensagemDeErro = erro && (
-    <Notice tone="blq" icon="alert">
-      {erro}
-    </Notice>
-  );
 
   if (criado) {
     return (
@@ -171,178 +367,20 @@ export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir
     );
   }
 
-  // ---- edição (só o admin): os dados pessoais são do registro; aqui só o perfil e a equipe ----
-  if (usuario) {
-    return (
-      <form onSubmit={salvarEdicao} className="stack g12">
-        <Notice tone="info" icon="info">
-          Nome, e-mail, cargo e registro profissional vêm do registro de funcionários e não se editam aqui. Para trazer o que mudou lá, use “Atualizar do registro”.
-        </Notice>
-        <DadoDoRegistro rotulo="Nome" valor={usuario.nome} />
-        <div className="grade2">
-          <DadoDoRegistro rotulo="Matrícula" valor={usuario.matricula} mono />
-          <DadoDoRegistro rotulo="E-mail institucional (é o login)" valor={usuario.email} />
-        </div>
-        <div className="grade2">
-          <DadoDoRegistro rotulo="Cargo" valor={usuario.cargo} />
-          <DadoDoRegistro rotulo="Registro profissional" valor={usuario.registro_profissional} />
-        </div>
-        <div className="grade2">
-          <Field label="Perfil">
-            <select className="input" value={perfil} onChange={(e) => setPerfil(e.target.value as Perfil)}>
-              {ordemDosPerfis.map((p) => (
-                <option key={p} value={p}>
-                  {rotuloDoPerfil[p]}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Equipe">
-            <select className="input" value={equipeId} onChange={(e) => setEquipeId(e.target.value)}>
-              <option value="">Sem equipe</option>
-              {equipes.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.nome}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        {mensagemDeErro}
-        <div className="row g8" style={{ justifyContent: "flex-end" }}>
-          <Button variant="line" sm onClick={aoConcluir} disabled={ocupado}>
-            Cancelar
-          </Button>
-          <Button variant="p" sm type="submit" disabled={ocupado}>
-            {ocupado ? "Salvando…" : "Salvar"}
-          </Button>
-        </div>
-      </form>
-    );
-  }
+  if (usuario) return <EdicaoDoUsuario usuario={usuario} equipes={equipes} aoConcluir={aoConcluir} />;
 
-  // ---- cadastro, etapa 1: consultar o registro ----
   if (!previa) {
     return (
-      <form onSubmit={consultar} className="stack g12">
-        <Notice tone="info" icon="info">
-          Só quem está no registro de funcionários da empresa vira usuário. Informe a matrícula e o e-mail institucional da pessoa: o nome, o cargo e o registro profissional vêm de lá.
-        </Notice>
-        <div className="grade2">
-          <Field label="Matrícula">
-            <input className="input mono" required value={matricula} onChange={(e) => setMatricula(e.target.value)} autoComplete="off" placeholder="100231" />
-          </Field>
-          <Field label="E-mail institucional (é o login)">
-            <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" placeholder="nome.sobrenome@empresa.com.br" />
-          </Field>
-        </div>
-        {mensagemDeErro}
-        <div className="row g8" style={{ justifyContent: "flex-end" }}>
-          <Button variant="line" sm onClick={aoConcluir} disabled={ocupado}>
-            Cancelar
-          </Button>
-          <Button variant="p" sm type="submit" disabled={ocupado}>
-            {ocupado ? "Consultando…" : "Consultar no registro"}
-          </Button>
-        </div>
-      </form>
+      <ConsultaDoRegistro
+        inicial={consultado}
+        aoConsultar={(resposta, dados) => {
+          setConsultado(dados);
+          setPrevia(resposta);
+        }}
+        aoConcluir={aoConcluir}
+      />
     );
   }
 
-  // ---- cadastro, etapa 2: confirmar ----
-  const f = previa.funcionario;
-  const nomeDaEquipe = equipes.find((e) => e.id === equipeId)?.nome ?? previa.equipe_sugerida?.nome ?? "—";
-  return (
-    <form onSubmit={confirmar} className="stack g12">
-      <Notice tone="ok" icon="check">
-        Encontrado no registro de funcionários. Confira se é a pessoa certa antes de continuar.
-      </Notice>
-      <DadoDoRegistro rotulo="Nome" valor={f.nome} />
-      <div className="grade2">
-        <DadoDoRegistro rotulo="Matrícula" valor={f.matricula} mono />
-        <DadoDoRegistro rotulo="E-mail institucional (é o login)" valor={email.trim().toLowerCase()} />
-      </div>
-      <div className="grade2">
-        <DadoDoRegistro rotulo="Cargo" valor={f.cargo} />
-        <DadoDoRegistro rotulo="Registro profissional" valor={f.registro_profissional} />
-      </div>
-      <div className="grade2">
-        <DadoDoRegistro rotulo="Setor" valor={f.setor} />
-        <DadoDoRegistro rotulo="Situação no registro" valor={rotuloDaSituacaoRegistro[f.situacao]} />
-      </div>
-
-      {previa.conta_existente ? (
-        <>
-          <Notice tone="al" icon="alert">
-            Esta pessoa já tem conta no SYNQ OS. Procure-a na lista de usuários.
-          </Notice>
-          <div className="row g8" style={{ justifyContent: "flex-end" }}>
-            <Button variant="line" sm onClick={() => setPrevia(null)}>
-              Voltar
-            </Button>
-            <Button variant="p" sm onClick={aoConcluir}>
-              Fechar
-            </Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="grade2">
-            {supervisor ? (
-              <Field label="Equipe (a do setor)">
-                <input className="input" value={nomeDaEquipe} readOnly aria-readonly="true" style={SOMENTE_LEITURA} />
-              </Field>
-            ) : (
-              <>
-                <Field label="Perfil">
-                  <select className="input" value={perfil} onChange={(e) => setPerfil(e.target.value as Perfil)}>
-                    {ordemDosPerfis.map((p) => (
-                      <option key={p} value={p}>
-                        {rotuloDoPerfil[p]}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Equipe">
-                  <select className="input" value={equipeId} onChange={(e) => setEquipeId(e.target.value)}>
-                    <option value="">Sem equipe</option>
-                    {equipes.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.nome}
-                        {e.id === previa.equipe_sugerida?.id ? " (a do setor)" : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {!previa.equipe_sugerida && <span className="small">O setor {f.setor} não tem equipe no SYNQ OS.</span>}
-                </Field>
-              </>
-            )}
-          </div>
-          <Field label="Senha inicial (mínimo 8 caracteres)">
-            <div className="row g8">
-              <input className="input mono grow" required minLength={8} value={senha} onChange={(e) => setSenha(e.target.value)} autoComplete="off" />
-              <Button variant="line" sm onClick={() => setSenha(sugerirSenha())}>
-                Sugerir
-              </Button>
-            </div>
-            <span className="small">A pessoa troca essa senha no primeiro acesso. Anote-a para repassar: ela não aparece de novo.</span>
-          </Field>
-          {supervisor && (
-            <Notice tone="al" icon="clock">
-              {AVISO_DE_PENDENTE}
-            </Notice>
-          )}
-          {mensagemDeErro}
-          <div className="row g8" style={{ justifyContent: "flex-end" }}>
-            <Button variant="line" sm onClick={() => setPrevia(null)} disabled={ocupado}>
-              Voltar
-            </Button>
-            <Button variant="p" sm type="submit" disabled={ocupado}>
-              {ocupado ? "Cadastrando…" : supervisor ? "Cadastrar técnico" : "Criar usuário"}
-            </Button>
-          </div>
-        </>
-      )}
-    </form>
-  );
+  return <ConfirmacaoDoCadastro previa={previa} email={consultado.email} equipes={equipes} supervisor={supervisor} aoVoltar={() => setPrevia(null)} aoCriarComoSupervisor={setCriado} aoConcluir={aoConcluir} />;
 }

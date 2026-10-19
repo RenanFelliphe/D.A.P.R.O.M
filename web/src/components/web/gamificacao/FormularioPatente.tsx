@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo } from "react";
+import { FormProvider } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
-import { Notice } from "@/components/ui/Notice";
-import { CampoImagem } from "@/components/web/gamificacao/CampoImagem";
-import type { Patente } from "@/lib/gamificacao";
+import { Field, ligarAoErro } from "@/components/ui/Field";
+import { ErroDeEnvio, useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
+import { arquivoDeImagem, CampoImagemDoForm, regraDaImagem } from "@/components/web/gamificacao/CampoImagem";
 import { chamar, enviarFormulario } from "@/lib/cliente-api";
+import type { Patente } from "@/lib/gamificacao";
+import { inteiroEntre } from "@/lib/validacao";
 
 interface FormularioPatenteProps {
   /** A patente que está sendo editada; sem ela, o formulário cria uma nova. */
@@ -17,6 +20,26 @@ interface FormularioPatenteProps {
 
 const COR_PADRAO = "#9DB4C0";
 
+/** Os limites são os da `api`: nome até 40, descrição até 300, cor `#RRGGBB`, pontos inteiros de 0 em diante. As duas imagens são obrigatórias só ao criar. */
+function esquemaDaPatente(editando: boolean) {
+  return z
+    .object({
+      nome: z.string().trim().min(1, "Informe o nome da patente.").max(40, "O nome pode ter até 40 caracteres."),
+      pontosNecessarios: inteiroEntre(0, 10_000_000, "Informe os pontos necessários, um número inteiro de 0 em diante."),
+      cor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Use uma cor no formato #RRGGBB, como #9DB4C0."),
+      descricao: z.string().trim().max(300, "A descrição pode ter até 300 caracteres."),
+      ativa: z.boolean(),
+      imagem: arquivoDeImagem,
+      recusa_imagem: z.string(),
+      imagemEquipe: arquivoDeImagem,
+      recusa_imagemEquipe: z.string(),
+    })
+    .superRefine((v, ctx) => {
+      regraDaImagem("imagem", !editando, "Escolha a imagem das pessoas.")(v, ctx);
+      regraDaImagem("imagemEquipe", !editando, "Escolha a imagem das equipes.")(v, ctx);
+    });
+}
+
 /**
  * Cadastro de uma patente (na `JanelaModal`): nome, pontuação necessária, cor, descrição, se está ativa e as duas imagens, a das
  * pessoas e a das equipes. Cada uma é escolhida à parte e as duas só ficam iguais se o admin escolher o mesmo arquivo nos dois
@@ -24,123 +47,98 @@ const COR_PADRAO = "#9DB4C0";
  * que a pessoa escolheu de novo (`PUT .../imagem` e `PUT .../imagem-equipe`).
  */
 export function FormularioPatente({ patente, aoConcluir, aoCancelar }: FormularioPatenteProps) {
-  const [nome, setNome] = useState(patente?.nome ?? "");
-  const [pontosNecessarios, setPontosNecessarios] = useState(patente ? String(patente.pontos_necessarios) : "");
-  const [cor, setCor] = useState(patente?.cor ?? COR_PADRAO);
-  const [descricao, setDescricao] = useState(patente?.descricao ?? "");
-  const [ativa, setAtiva] = useState(patente?.ativa ?? true);
-  const [imagem, setImagem] = useState<File | null>(null);
-  const [erroDaImagem, setErroDaImagem] = useState<string | null>(null);
-  const [imagemDaEquipe, setImagemDaEquipe] = useState<File | null>(null);
-  const [erroDaImagemDaEquipe, setErroDaImagemDaEquipe] = useState<string | null>(null);
-  const [ocupado, setOcupado] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
+  const esquema = useMemo(() => esquemaDaPatente(Boolean(patente)), [patente]);
+  const { form, ref, enviar, enviando: ocupado, erroEnvio } = useFormulario(esquema, {
+    nome: patente?.nome ?? "",
+    pontosNecessarios: patente ? String(patente.pontos_necessarios) : "",
+    cor: patente?.cor ?? COR_PADRAO,
+    descricao: patente?.descricao ?? "",
+    ativa: patente?.ativa ?? true,
+    imagem: null,
+    recusa_imagem: "",
+    imagemEquipe: null,
+    recusa_imagemEquipe: "",
+  });
+  const { register, formState, setValue } = form;
+  const erros = formState.errors;
+  const [cor] = useValorDoForm(form, "cor");
   const corValida = /^#[0-9A-Fa-f]{6}$/.test(cor);
-  const imagensOk = patente ? true : Boolean(imagem && imagemDaEquipe);
-  const pronto =
-    nome.trim() !== "" && pontosNecessarios.trim() !== "" && Number.isInteger(Number(pontosNecessarios)) && Number(pontosNecessarios) >= 0 && corValida && imagensOk && !erroDaImagem && !erroDaImagemDaEquipe;
-
-  async function enviar(evento: FormEvent) {
-    evento.preventDefault();
-    setOcupado(true);
-    setErro(null);
-    try {
-      if (!patente) {
-        const form = new FormData();
-        form.set("nome", nome.trim());
-        form.set("pontos_necessarios", pontosNecessarios);
-        form.set("cor", cor);
-        form.set("descricao", descricao.trim());
-        form.set("ativa", String(ativa));
-        form.set("imagem", imagem!);
-        form.set("imagem_equipe", imagemDaEquipe!);
-        await enviarFormulario("/gamificacao/patentes", form);
-        aoConcluir(`Patente "${nome.trim()}" criada.`);
-        return;
-      }
-      await chamar("PATCH", `/gamificacao/patentes/${patente.id}`, { nome: nome.trim(), pontos_necessarios: Number(pontosNecessarios), cor, descricao: descricao.trim(), ativa });
-      if (imagem) {
-        const form = new FormData();
-        form.set("imagem", imagem);
-        await enviarFormulario(`/gamificacao/patentes/${patente.id}/imagem`, form, "PUT");
-      }
-      if (imagemDaEquipe) {
-        const form = new FormData();
-        form.set("imagem_equipe", imagemDaEquipe);
-        await enviarFormulario(`/gamificacao/patentes/${patente.id}/imagem-equipe`, form, "PUT");
-      }
-      aoConcluir(`Patente "${nome.trim()}" salva.`);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível salvar a patente");
-    } finally {
-      setOcupado(false);
-    }
-  }
 
   return (
-    <form onSubmit={enviar} className="stack g12">
-      <div className="grade2">
-        <Field label="Nome" htmlFor="patente-nome">
-          <input id="patente-nome" className="input" required maxLength={40} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ouro" />
+    <FormProvider {...form}>
+      <form
+        ref={ref}
+        noValidate
+        className="stack g12"
+        onSubmit={enviar(async (v) => {
+          const nome = v.nome.trim();
+          if (!patente) {
+            const corpo = new FormData();
+            corpo.set("nome", nome);
+            corpo.set("pontos_necessarios", v.pontosNecessarios);
+            corpo.set("cor", v.cor);
+            corpo.set("descricao", v.descricao.trim());
+            corpo.set("ativa", String(v.ativa));
+            corpo.set("imagem", v.imagem!);
+            corpo.set("imagem_equipe", v.imagemEquipe!);
+            await enviarFormulario("/gamificacao/patentes", corpo);
+            aoConcluir(`Patente "${nome}" criada.`);
+            return;
+          }
+          await chamar("PATCH", `/gamificacao/patentes/${patente.id}`, { nome, pontos_necessarios: Number(v.pontosNecessarios), cor: v.cor, descricao: v.descricao.trim(), ativa: v.ativa });
+          if (v.imagem) {
+            const corpo = new FormData();
+            corpo.set("imagem", v.imagem);
+            await enviarFormulario(`/gamificacao/patentes/${patente.id}/imagem`, corpo, "PUT");
+          }
+          if (v.imagemEquipe) {
+            const corpo = new FormData();
+            corpo.set("imagem_equipe", v.imagemEquipe);
+            await enviarFormulario(`/gamificacao/patentes/${patente.id}/imagem-equipe`, corpo, "PUT");
+          }
+          aoConcluir(`Patente "${nome}" salva.`);
+        })}
+      >
+        <div className="grade2">
+          <Field label="Nome" htmlFor="patente-nome" erro={erros.nome?.message}>
+            <input className="input" maxLength={40} placeholder="Ouro" disabled={ocupado} {...register("nome")} {...ligarAoErro("patente-nome", erros.nome?.message)} />
+          </Field>
+          <Field label="Pontos necessários na temporada" htmlFor="patente-pontos" erro={erros.pontosNecessarios?.message}>
+            <input className="input" inputMode="numeric" placeholder="1500" disabled={ocupado} {...register("pontosNecessarios")} {...ligarAoErro("patente-pontos", erros.pontosNecessarios?.message)} />
+          </Field>
+          <Field label="Cor (destaca o nome e a barra)" htmlFor="patente-cor" erro={erros.cor?.message}>
+            <div className="campo-cor">
+              <input aria-label="Escolher a cor" type="color" disabled={ocupado} value={corValida ? cor : COR_PADRAO} onChange={(e) => setValue("cor", e.target.value.toUpperCase(), { shouldDirty: true, shouldValidate: Boolean(erros.cor) })} />
+              <input className="input mono" maxLength={7} disabled={ocupado} {...register("cor", { setValueAs: (v: string) => v.toUpperCase() })} {...ligarAoErro("patente-cor", erros.cor?.message)} />
+            </div>
+          </Field>
+          <Field label="Situação" htmlFor="patente-ativa">
+            <label className="campo-marca">
+              <input id="patente-ativa" type="checkbox" disabled={ocupado} {...register("ativa")} />
+              Ativa (a desativada deixa de ser atribuída, mas continua no histórico)
+            </label>
+          </Field>
+        </div>
+        <Field label="Descrição (opcional)" htmlFor="patente-descricao" erro={erros.descricao?.message}>
+          <textarea className="textarea" rows={2} maxLength={300} disabled={ocupado} {...register("descricao")} {...ligarAoErro("patente-descricao", erros.descricao?.message)} />
         </Field>
-        <Field label="Pontos necessários na temporada" htmlFor="patente-pontos">
-          <input id="patente-pontos" className="input" required inputMode="numeric" value={pontosNecessarios} onChange={(e) => setPontosNecessarios(e.target.value.replace(/\D/g, ""))} placeholder="1500" />
-        </Field>
-        <Field label="Cor (destaca o nome e a barra)" htmlFor="patente-cor">
-          <div className="campo-cor">
-            <input aria-label="Escolher a cor" type="color" value={corValida ? cor : COR_PADRAO} onChange={(e) => setCor(e.target.value.toUpperCase())} />
-            <input id="patente-cor" className="input mono" maxLength={7} value={cor} onChange={(e) => setCor(e.target.value.toUpperCase())} aria-invalid={!corValida} />
-          </div>
-        </Field>
-        <Field label="Situação" htmlFor="patente-ativa">
-          <label className="campo-marca">
-            <input id="patente-ativa" type="checkbox" checked={ativa} onChange={(e) => setAtiva(e.target.checked)} />
-            Ativa (a desativada deixa de ser atribuída, mas continua no histórico)
-          </label>
-        </Field>
-      </div>
-      <Field label="Descrição (opcional)" htmlFor="patente-descricao">
-        <textarea id="patente-descricao" className="textarea" rows={2} maxLength={300} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
-      </Field>
-      <div className="grade2">
-        <CampoImagem
-          rotulo="Imagem das pessoas"
-          arquivo={imagem}
-          aoEscolher={setImagem}
-          urlAtual={patente?.imagem_url}
-          obrigatoria={!patente}
-          desabilitado={ocupado}
-          erro={erroDaImagem}
-          aoRecusar={setErroDaImagem}
-        />
-        <CampoImagem
-          rotulo="Imagem das equipes"
-          arquivo={imagemDaEquipe}
-          aoEscolher={setImagemDaEquipe}
-          urlAtual={patente?.imagem_equipe_url}
-          obrigatoria={!patente}
-          desabilitado={ocupado}
-          erro={erroDaImagemDaEquipe}
-          aoRecusar={setErroDaImagemDaEquipe}
-        />
-      </div>
-      <span className="small muted">
-        A imagem das pessoas aparece no ranking de pessoas, no perfil e na barra; a das equipes, no ranking de equipes e na equipe. Elas só ficam iguais se você escolher o mesmo arquivo nos dois campos.
-      </span>
-      {erro && (
-        <Notice tone="blq" icon="alert">
-          {erro}
-        </Notice>
-      )}
-      <div className="row g8">
-        <Button variant="p" type="submit" disabled={ocupado || !pronto}>
-          {ocupado ? "Salvando…" : patente ? "Salvar" : "Criar patente"}
-        </Button>
-        <Button variant="line" onClick={aoCancelar} disabled={ocupado}>
-          Cancelar
-        </Button>
-      </div>
-    </form>
+        <div className="grade2">
+          <CampoImagemDoForm campo="imagem" rotulo="Imagem das pessoas" urlAtual={patente?.imagem_url} obrigatoria={!patente} desabilitado={ocupado} />
+          <CampoImagemDoForm campo="imagemEquipe" rotulo="Imagem das equipes" urlAtual={patente?.imagem_equipe_url} obrigatoria={!patente} desabilitado={ocupado} />
+        </div>
+        <span className="small muted">
+          A imagem das pessoas aparece no ranking de pessoas, no perfil e na barra; a das equipes, no ranking de equipes e na equipe. Elas só ficam iguais se você escolher o mesmo arquivo nos dois campos.
+        </span>
+        <ErroDeEnvio mensagem={erroEnvio} />
+        <div className="row g8">
+          <Button variant="p" type="submit" aria-busy={ocupado} disabled={ocupado}>
+            {ocupado ? "Salvando…" : patente ? "Salvar" : "Criar patente"}
+          </Button>
+          <Button variant="line" onClick={aoCancelar} disabled={ocupado}>
+            Cancelar
+          </Button>
+        </div>
+      </form>
+    </FormProvider>
   );
 }

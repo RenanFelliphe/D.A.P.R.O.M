@@ -25,12 +25,10 @@ interface JanelaDeAssinaturaProps {
   /** Os campos da ação, mostrados antes da assinatura. */
   children?: ReactNode;
   /**
-   * Falta preencher algo nos campos acima. O botão não fica desativado: ao clicar, a janela diz o que falta
-   * (`motivoIncompleto`) e não envia.
+   * Confere os campos acima antes de assinar (o `validar` do `useFormulario`): se algo estiver errado, a mensagem já está junto do
+   * campo e a janela não envia. O botão não fica desativado por isso.
    */
-  incompleto?: boolean;
-  /** O que falta, em uma frase, quando `incompleto`. */
-  motivoIncompleto?: string;
+  validar?: () => Promise<boolean>;
   /**
    * Faz a chamada à `api`; uma falha vira a mensagem da janela. Devolver um texto mantém a janela aberta com ele, como
    * aviso de que deu certo, em vez de fechá-la.
@@ -53,8 +51,7 @@ export function JanelaDeAssinatura({
   assinaturaPath,
   semAssinatura = false,
   children,
-  incompleto = false,
-  motivoIncompleto,
+  validar,
   aoConfirmar,
   aoFechar,
 }: JanelaDeAssinaturaProps) {
@@ -64,7 +61,7 @@ export function JanelaDeAssinatura({
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   /** O que impediu de enviar (antes de chamar a `api`), mostrado junto do que falta. */
-  const [pendencia, setPendencia] = useState<{ onde: "campos" | "confirmacao"; texto: string } | null>(null);
+  const [pendencia, setPendencia] = useState<{ onde: "confirmacao"; texto: string } | null>(null);
   const caixa = useRef<HTMLInputElement>(null);
 
   const faltaAssinatura = !semAssinatura && !assinaturaPath;
@@ -72,10 +69,7 @@ export function JanelaDeAssinatura({
   async function confirmar() {
     setErro(null);
     setPendencia(null);
-    if (incompleto) {
-      setPendencia({ onde: "campos", texto: motivoIncompleto ?? "Preencha os campos acima antes de continuar." });
-      return;
-    }
+    if (validar && !(await validar())) return;
     if (faltaAssinatura) {
       setPendencia({ onde: "confirmacao", texto: "Cadastre a sua assinatura no perfil para poder assinar." });
       return;
@@ -143,7 +137,7 @@ export function JanelaDeAssinatura({
                 {pendencia?.onde === "confirmacao" && !faltaAssinatura && <MensagemDeErro>{pendencia.texto}</MensagemDeErro>}
               </div>
             ))}
-          {pendencia && (pendencia.onde === "campos" || faltaAssinatura) && <MensagemDeErro>{pendencia.texto}</MensagemDeErro>}
+          {pendencia && faltaAssinatura && <MensagemDeErro>{pendencia.texto}</MensagemDeErro>}
           {erro && (
             <Notice tone="blq" icon="alert" role="alert">
               {erro}

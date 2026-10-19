@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useId, useState } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
+import { CampoDeCelula } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
+import { useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { Panel } from "@/components/web/Panel";
-import { chamar, ErroCliente } from "@/lib/cliente-api";
+import { chamar } from "@/lib/cliente-api";
 import { descreverIntervalo, type Intervalo } from "@/lib/preventivas";
 import { rotas } from "@/lib/rotas";
 import { CampoIntervalo } from "./CampoIntervalo";
@@ -19,26 +22,22 @@ export interface PlanoSemIntervalo {
   numero_ordem: string;
 }
 
+const esquema = z.object({
+  intervalo: z.custom<Intervalo | null>().refine((v): boolean => v !== null, "Informe o intervalo entre ciclos, como 3 meses."),
+});
+
 function Linha({ plano }: { plano: PlanoSemIntervalo }) {
   const id = useId();
-  const [intervalo, setIntervalo] = useState<Intervalo | null>(null);
   const [salvo, setSalvo] = useState<Intervalo | null>(null);
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const { form, enviar, enviando: salvando, erroEnvio } = useFormulario(esquema, { intervalo: null });
+  const [intervalo, setIntervalo] = useValorDoForm(form, "intervalo");
+  const erroDoIntervalo = form.formState.errors.intervalo?.message;
 
-  async function salvar() {
-    if (!intervalo) return;
-    setSalvando(true);
-    setErro(null);
-    try {
-      await chamar("PUT", `/preventivas/${plano.plano_id}`, { intervalo });
-      setSalvo(intervalo);
-    } catch (e) {
-      setErro(e instanceof ErroCliente ? e.message : "Servidor indisponível. Tente de novo.");
-    } finally {
-      setSalvando(false);
-    }
-  }
+  // o item de uma lista não pode ser um <form> dentro de outro <li>: o botão Salvar dispara o envio
+  const salvar = enviar(async (v) => {
+    await chamar("PUT", `/preventivas/${plano.plano_id}`, { intervalo: v.intervalo });
+    setSalvo(v.intervalo);
+  });
 
   return (
     <li className="prev-pendente">
@@ -59,15 +58,17 @@ function Linha({ plano }: { plano: PlanoSemIntervalo }) {
           <label htmlFor={id} className="small">
             Intervalo
           </label>
-          <CampoIntervalo id={id} valor={intervalo} aoMudar={setIntervalo} desabilitado={salvando} />
-          <Button variant="p" sm onClick={salvar} disabled={!intervalo || salvando}>
+          <CampoDeCelula id={id} erro={erroDoIntervalo}>
+            <CampoIntervalo id={id} valor={intervalo} aoMudar={setIntervalo} desabilitado={salvando} />
+          </CampoDeCelula>
+          <Button variant="p" sm onClick={salvar} aria-busy={salvando} disabled={salvando}>
             {salvando ? "Salvando…" : "Salvar"}
           </Button>
         </div>
       )}
-      {erro && (
+      {erroEnvio && (
         <span className="entrada-retorno erro" role="alert" style={{ flexBasis: "100%" }}>
-          {erro}
+          {erroEnvio}
         </span>
       )}
     </li>

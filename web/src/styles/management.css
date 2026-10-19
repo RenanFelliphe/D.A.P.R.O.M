@@ -1979,6 +1979,11 @@ details.excluidos > summary {
   font-size: 13.5px
 }
 
+/* A mensagem de erro de uma linha do editor ocupa a largura toda, abaixo dos campos. */
+.editor-material > .em-erro {
+  grid-column: 1 / -1
+}
+
 @media (max-width: 720px) {
   .editor-material {
     grid-template-columns: minmax(0, 1fr) 96px;

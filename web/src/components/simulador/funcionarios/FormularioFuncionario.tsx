@@ -1,15 +1,32 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
+import { Field, ligarAoErro } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { ErroDeEnvio, useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { chamar } from "@/lib/cliente-api";
 import { useToast } from "@/state/toast";
-import { rotuloDaSituacao, type CatalogoDeFuncionarios, type Funcionario, type SituacaoFuncionario } from "./tipos";
+import { dataOpcional } from "@/lib/validacao";
+import { rotuloDaSituacao, type CatalogoDeFuncionarios, type Funcionario } from "./tipos";
 
 const vazioParaNulo = (v: string) => v.trim() || null;
+
+const esquema = z.object({
+  matricula: z.string().trim().min(1, "Informe a matrícula.").max(40, "A matrícula pode ter no máximo 40 caracteres."),
+  situacao: z.enum(["ativo", "afastado", "desligado"], "Escolha a situação."),
+  nome: z.string().trim().min(1, "Informe o nome completo."),
+  email: z.string().trim().min(1, "Informe o e-mail institucional.").email("Informe um e-mail válido, como nome.sobrenome@empresa.com.br."),
+  centro: z.string().min(1, "Escolha o setor."),
+  cargo: z.string().trim().min(1, "Informe o cargo."),
+  registro: z.string(),
+  telefone: z.string(),
+  admissao: dataOpcional,
+  nascimento: dataOpcional,
+  gestor: z.string(),
+  lotacao: z.string(),
+});
 
 /**
  * Cadastro manual e edição de um funcionário do registro (`POST` e `PATCH /rh-simulado/gestao/funcionarios`). A matrícula vem
@@ -20,62 +37,68 @@ export function FormularioFuncionario({ funcionario, catalogo, aoConcluir }: { f
   const router = useRouter();
   const exibirAviso = useToast();
   const editando = Boolean(funcionario);
-  const [matricula, setMatricula] = useState(funcionario?.matricula ?? catalogo.proxima_matricula);
-  const [nome, setNome] = useState(funcionario?.nome ?? "");
-  const [email, setEmail] = useState(funcionario?.email ?? "");
-  const [centro, setCentro] = useState(funcionario?.centro_trabalho ?? catalogo.setores[0]?.centro_trabalho ?? "");
-  const [cargo, setCargo] = useState(funcionario?.cargo ?? "");
-  const [registro, setRegistro] = useState(funcionario?.registro_profissional ?? "");
-  const [situacao, setSituacao] = useState<SituacaoFuncionario>(funcionario?.situacao ?? "ativo");
-  const [admissao, setAdmissao] = useState(funcionario?.data_admissao ?? "");
-  const [nascimento, setNascimento] = useState(funcionario?.data_nascimento ?? "");
-  const [telefone, setTelefone] = useState(funcionario?.telefone ?? "");
-  const [gestor, setGestor] = useState(funcionario?.gestor_matricula ?? "");
-  const [lotacao, setLotacao] = useState(funcionario?.lotacao ?? "");
-  const [ocupado, setOcupado] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquema, {
+    matricula: funcionario?.matricula ?? catalogo.proxima_matricula,
+    situacao: funcionario?.situacao ?? "ativo",
+    nome: funcionario?.nome ?? "",
+    email: funcionario?.email ?? "",
+    centro: funcionario?.centro_trabalho ?? catalogo.setores[0]?.centro_trabalho ?? "",
+    cargo: funcionario?.cargo ?? "",
+    registro: funcionario?.registro_profissional ?? "",
+    telefone: funcionario?.telefone ?? "",
+    admissao: funcionario?.data_admissao ?? "",
+    nascimento: funcionario?.data_nascimento ?? "",
+    gestor: funcionario?.gestor_matricula ?? "",
+    lotacao: funcionario?.lotacao ?? "",
+  });
+  const { register, formState } = form;
+  const erros = formState.errors;
+  const [centro] = useValorDoForm(form, "centro");
+  const [situacao] = useValorDoForm(form, "situacao");
 
   const setor = catalogo.setores.find((s) => s.centro_trabalho === centro);
   const desligando = situacao === "desligado" && funcionario?.situacao !== "desligado";
 
-  async function enviar(evento: FormEvent) {
-    evento.preventDefault();
-    setErro(null);
-    setOcupado(true);
-    const dados = {
-      nome: nome.trim(),
-      email: email.trim().toLowerCase(),
-      cargo: cargo.trim(),
-      centro_trabalho: centro,
-      registro_profissional: vazioParaNulo(registro),
-      situacao,
-      data_admissao: vazioParaNulo(admissao),
-      data_nascimento: vazioParaNulo(nascimento),
-      telefone: vazioParaNulo(telefone),
-      gestor_matricula: vazioParaNulo(gestor),
-      lotacao: vazioParaNulo(lotacao),
-    };
-    try {
-      if (funcionario) await chamar("PATCH", `/rh-simulado/gestao/funcionarios/${encodeURIComponent(funcionario.matricula)}`, dados);
-      else await chamar("POST", "/rh-simulado/gestao/funcionarios", { ...dados, matricula: matricula.trim() });
-      exibirAviso(editando ? "Funcionário atualizado." : "Funcionário criado.");
-      router.refresh();
-      aoConcluir();
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível salvar o funcionário");
-    } finally {
-      setOcupado(false);
-    }
-  }
-
   return (
-    <form onSubmit={enviar} className="stack g12">
+    <form
+      ref={ref}
+      noValidate
+      className="stack g12"
+      onSubmit={enviar(async (v) => {
+        const dados = {
+          nome: v.nome.trim(),
+          email: v.email.trim().toLowerCase(),
+          cargo: v.cargo.trim(),
+          centro_trabalho: v.centro,
+          registro_profissional: vazioParaNulo(v.registro),
+          situacao: v.situacao,
+          data_admissao: vazioParaNulo(v.admissao),
+          data_nascimento: vazioParaNulo(v.nascimento),
+          telefone: vazioParaNulo(v.telefone),
+          gestor_matricula: vazioParaNulo(v.gestor),
+          lotacao: vazioParaNulo(v.lotacao),
+        };
+        if (funcionario) await chamar("PATCH", `/rh-simulado/gestao/funcionarios/${encodeURIComponent(funcionario.matricula)}`, dados);
+        else await chamar("POST", "/rh-simulado/gestao/funcionarios", { ...dados, matricula: v.matricula.trim() });
+        exibirAviso(editando ? "Funcionário atualizado." : "Funcionário criado.");
+        router.refresh();
+        aoConcluir();
+      })}
+    >
       <div className="grade2">
-        <Field label="Matrícula">
-          <input className="input mono" required value={matricula} onChange={(e) => setMatricula(e.target.value)} readOnly={editando} aria-readonly={editando} style={editando ? { background: "var(--surface2)" } : undefined} autoComplete="off" />
+        <Field label="Matrícula" htmlFor="func-matricula" erro={erros.matricula?.message}>
+          <input
+            className="input mono"
+            {...register("matricula")}
+            {...ligarAoErro("func-matricula", erros.matricula?.message)}
+            readOnly={editando}
+            aria-readonly={editando}
+            style={editando ? { background: "var(--surface2)" } : undefined}
+            autoComplete="off"
+          />
         </Field>
-        <Field label="Situação">
-          <select className="input" value={situacao} onChange={(e) => setSituacao(e.target.value as SituacaoFuncionario)}>
+        <Field label="Situação" htmlFor="func-situacao" erro={erros.situacao?.message}>
+          <select className="input" {...register("situacao")} {...ligarAoErro("func-situacao", erros.situacao?.message)}>
             {catalogo.situacoes.map((s) => (
               <option key={s} value={s}>
                 {rotuloDaSituacao[s]}
@@ -84,15 +107,15 @@ export function FormularioFuncionario({ funcionario, catalogo, aoConcluir }: { f
           </select>
         </Field>
       </div>
-      <Field label="Nome completo">
-        <input className="input" required value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="off" />
+      <Field label="Nome completo" htmlFor="func-nome" erro={erros.nome?.message}>
+        <input className="input" {...register("nome")} {...ligarAoErro("func-nome", erros.nome?.message)} autoComplete="off" />
       </Field>
-      <Field label="E-mail institucional">
-        <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" placeholder="nome.sobrenome@empresa.com.br" />
+      <Field label="E-mail institucional" htmlFor="func-email" erro={erros.email?.message}>
+        <input className="input" type="email" {...register("email")} {...ligarAoErro("func-email", erros.email?.message)} autoComplete="off" placeholder="nome.sobrenome@empresa.com.br" />
       </Field>
       <div className="grade2">
-        <Field label="Setor">
-          <select className="input" value={centro} onChange={(e) => setCentro(e.target.value)}>
+        <Field label="Setor" htmlFor="func-setor" erro={erros.centro?.message}>
+          <select className="input" {...register("centro")} {...ligarAoErro("func-setor", erros.centro?.message)}>
             {catalogo.setores.map((s) => (
               <option key={s.centro_trabalho} value={s.centro_trabalho}>
                 {s.centro_trabalho} · {s.nome}
@@ -101,8 +124,8 @@ export function FormularioFuncionario({ funcionario, catalogo, aoConcluir }: { f
           </select>
           {setor && !setor.equipe_no_synq_os && <span className="small">Este setor não tem equipe no SYNQ OS.</span>}
         </Field>
-        <Field label="Cargo">
-          <input className="input" required list="cargos-do-setor" value={cargo} onChange={(e) => setCargo(e.target.value)} autoComplete="off" />
+        <Field label="Cargo" htmlFor="func-cargo" erro={erros.cargo?.message}>
+          <input className="input" list="cargos-do-setor" {...register("cargo")} {...ligarAoErro("func-cargo", erros.cargo?.message)} autoComplete="off" />
           <datalist id="cargos-do-setor">
             {setor?.cargos.map((c) => (
               <option key={c} value={c} />
@@ -111,27 +134,27 @@ export function FormularioFuncionario({ funcionario, catalogo, aoConcluir }: { f
         </Field>
       </div>
       <div className="grade2">
-        <Field label="Registro profissional (opcional)">
-          <input className="input" value={registro} onChange={(e) => setRegistro(e.target.value)} placeholder="CREA ES-050003/D" />
+        <Field label="Registro profissional (opcional)" htmlFor="func-registro">
+          <input className="input" id="func-registro" {...register("registro")} placeholder="CREA ES-050003/D" />
         </Field>
-        <Field label="Telefone corporativo">
-          <input className="input" value={telefone} onChange={(e) => setTelefone(e.target.value)} placeholder="(27) 3200-1234" />
-        </Field>
-      </div>
-      <div className="grade2">
-        <Field label="Data de admissão">
-          <input className="input" type="date" value={admissao} onChange={(e) => setAdmissao(e.target.value)} />
-        </Field>
-        <Field label="Data de nascimento">
-          <input className="input" type="date" value={nascimento} onChange={(e) => setNascimento(e.target.value)} />
+        <Field label="Telefone corporativo" htmlFor="func-telefone">
+          <input className="input" id="func-telefone" {...register("telefone")} placeholder="(27) 3200-1234" />
         </Field>
       </div>
       <div className="grade2">
-        <Field label="Gestor imediato (matrícula)">
-          <input className="input mono" value={gestor} onChange={(e) => setGestor(e.target.value)} autoComplete="off" />
+        <Field label="Data de admissão" htmlFor="func-admissao" erro={erros.admissao?.message}>
+          <input className="input" type="date" {...register("admissao")} {...ligarAoErro("func-admissao", erros.admissao?.message)} />
         </Field>
-        <Field label="Lotação">
-          <input className="input" value={lotacao} onChange={(e) => setLotacao(e.target.value)} placeholder="Vila Velha/ES" />
+        <Field label="Data de nascimento" htmlFor="func-nascimento" erro={erros.nascimento?.message}>
+          <input className="input" type="date" {...register("nascimento")} {...ligarAoErro("func-nascimento", erros.nascimento?.message)} />
+        </Field>
+      </div>
+      <div className="grade2">
+        <Field label="Gestor imediato (matrícula)" htmlFor="func-gestor">
+          <input className="input mono" id="func-gestor" {...register("gestor")} autoComplete="off" />
+        </Field>
+        <Field label="Lotação" htmlFor="func-lotacao">
+          <input className="input" id="func-lotacao" {...register("lotacao")} placeholder="Vila Velha/ES" />
         </Field>
       </div>
       {desligando && (
@@ -141,17 +164,13 @@ export function FormularioFuncionario({ funcionario, catalogo, aoConcluir }: { f
             : "Ao salvar, o registro avisa o SYNQ OS. Como a pessoa não tem conta lá, nada muda."}
         </Notice>
       )}
-      {erro && (
-        <Notice tone="blq" icon="alert">
-          {erro}
-        </Notice>
-      )}
+      <ErroDeEnvio mensagem={erroEnvio} />
       <div className="row g8" style={{ justifyContent: "flex-end" }}>
-        <Button variant="line" sm onClick={aoConcluir} disabled={ocupado}>
+        <Button variant="line" sm onClick={aoConcluir} disabled={enviando}>
           Cancelar
         </Button>
-        <Button variant="p" sm type="submit" disabled={ocupado}>
-          {ocupado ? "Salvando…" : editando ? "Salvar" : "Criar funcionário"}
+        <Button variant="p" sm type="submit" aria-busy={enviando} disabled={enviando}>
+          {enviando ? "Salvando…" : editando ? "Salvar" : "Criar funcionário"}
         </Button>
       </div>
     </form>

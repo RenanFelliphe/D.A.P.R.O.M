@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
-import { Notice } from "@/components/ui/Notice";
+import { Field, ligarAoErro } from "@/components/ui/Field";
+import { ErroDeEnvio, useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { Panel } from "@/components/web/Panel";
 import type { OrientacaoDoModelo as Orientacao } from "@/data/modelos";
 import { chamar } from "@/lib/cliente-api";
@@ -23,6 +24,21 @@ const linhas = (texto: string) =>
     .map((l) => l.trim())
     .filter(Boolean);
 
+/** Uma lista de linhas (exemplos, palavras-chave) com os limites da `api`: quantidade e tamanho de cada linha. */
+function listaDeLinhas(maximo: number, nome: string) {
+  return z.string().superRefine((texto, ctx) => {
+    const itens = linhas(texto);
+    if (itens.length > maximo) ctx.addIssue({ code: "custom", message: `Use no máximo ${maximo} ${nome}.` });
+    else if (itens.some((l) => l.length > MAX_LINHA)) ctx.addIssue({ code: "custom", message: `Cada linha pode ter até ${MAX_LINHA} caracteres.` });
+  });
+}
+
+const esquema = z.object({
+  descricao: z.string().trim().max(MAX_DESCRICAO, `A descrição pode ter até ${MAX_DESCRICAO} caracteres.`),
+  exemplos: listaDeLinhas(MAX_EXEMPLOS, "exemplos"),
+  palavras: listaDeLinhas(MAX_PALAVRAS, "palavras-chave"),
+});
+
 interface OrientacaoDoModeloProps {
   codigo: string;
   orientacao: Orientacao;
@@ -39,51 +55,33 @@ export function OrientacaoDoModelo({ codigo, orientacao, podeEditar }: Orientaca
   const exibirAviso = useToast();
   const [salva, setSalva] = useState(orientacao);
   const [editando, setEditando] = useState(false);
-  const [descricao, setDescricao] = useState(orientacao.descricao);
-  const [exemplos, setExemplos] = useState(orientacao.exemplos.join("\n"));
-  const [palavras, setPalavras] = useState(orientacao.palavras_chave.join("\n"));
-  const [ocupado, setOcupado] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
+  const valoresDe = (o: Orientacao) => ({ descricao: o.descricao, exemplos: o.exemplos.join("\n"), palavras: o.palavras_chave.join("\n") });
+  const { form, ref, enviar, enviando: ocupado, erroEnvio, limparErroEnvio } = useFormulario(esquema, valoresDe(orientacao));
+  const { register, formState } = form;
+  const erros = formState.errors;
+  const [descricao] = useValorDoForm(form, "descricao");
+  const [exemplos] = useValorDoForm(form, "exemplos");
+  const [palavras] = useValorDoForm(form, "palavras");
   const listaDeExemplos = linhas(exemplos);
   const listaDePalavras = linhas(palavras);
-  const problema =
-    listaDeExemplos.length > MAX_EXEMPLOS
-      ? `Use no máximo ${MAX_EXEMPLOS} exemplos.`
-      : listaDePalavras.length > MAX_PALAVRAS
-        ? `Use no máximo ${MAX_PALAVRAS} palavras-chave.`
-        : [...listaDeExemplos, ...listaDePalavras].some((l) => l.length > MAX_LINHA)
-          ? `Cada linha pode ter até ${MAX_LINHA} caracteres.`
-          : null;
   const vazia = !salva.descricao && salva.exemplos.length === 0 && salva.palavras_chave.length === 0;
 
   function abrir() {
-    setDescricao(salva.descricao);
-    setExemplos(salva.exemplos.join("\n"));
-    setPalavras(salva.palavras_chave.join("\n"));
-    setErro(null);
+    form.reset(valoresDe(salva));
+    limparErroEnvio();
     setEditando(true);
   }
 
-  async function salvar(evento: FormEvent) {
-    evento.preventDefault();
-    setOcupado(true);
-    setErro(null);
-    try {
-      const nova = await chamar<Orientacao>("PUT", `/modelos-apr/${encodeURIComponent(codigo)}/orientacao`, {
-        descricao: descricao.trim(),
-        exemplos: listaDeExemplos,
-        palavras_chave: listaDePalavras,
-      });
-      setSalva(nova);
-      setEditando(false);
-      exibirAviso(`Orientação do ${codigo} salva. Já vale para as APRs novas, em todas as versões.`);
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível salvar a orientação");
-    } finally {
-      setOcupado(false);
-    }
-  }
+  const salvar = enviar(async (v) => {
+    const nova = await chamar<Orientacao>("PUT", `/modelos-apr/${encodeURIComponent(codigo)}/orientacao`, {
+      descricao: v.descricao.trim(),
+      exemplos: linhas(v.exemplos),
+      palavras_chave: linhas(v.palavras),
+    });
+    setSalva(nova);
+    setEditando(false);
+    exibirAviso(`Orientação do ${codigo} salva. Já vale para as APRs novas, em todas as versões.`);
+  });
 
   return (
     <Panel style={{ padding: "20px 22px", gap: 14 }}>
@@ -103,24 +101,23 @@ export function OrientacaoDoModelo({ codigo, orientacao, podeEditar }: Orientaca
       </div>
 
       {editando ? (
-        <form onSubmit={salvar} className="stack g12">
-          <Field label={`Descrição dos serviços que o modelo atende · ${descricao.length} de ${MAX_DESCRICAO}`} htmlFor="orientacao-descricao">
+        <form ref={ref} noValidate onSubmit={salvar} className="stack g12">
+          <Field label={`Descrição dos serviços que o modelo atende · ${descricao.length} de ${MAX_DESCRICAO}`} htmlFor="orientacao-descricao" erro={erros.descricao?.message}>
             <textarea
-              id="orientacao-descricao"
               className="textarea"
               rows={3}
               maxLength={MAX_DESCRICAO}
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
+              {...register("descricao")}
+              {...ligarAoErro("orientacao-descricao", erros.descricao?.message)}
               placeholder="Serviços em válvulas de segurança e alívio: calibração, teste e troca."
             />
           </Field>
           <div className="grade2">
-            <Field label={`Exemplos de serviço (um por linha) · ${listaDeExemplos.length} de ${MAX_EXEMPLOS}`} htmlFor="orientacao-exemplos">
-              <textarea id="orientacao-exemplos" className="textarea" rows={6} value={exemplos} onChange={(e) => setExemplos(e.target.value)} placeholder="Calibração de PSV" />
+            <Field label={`Exemplos de serviço (um por linha) · ${listaDeExemplos.length} de ${MAX_EXEMPLOS}`} htmlFor="orientacao-exemplos" erro={erros.exemplos?.message}>
+              <textarea className="textarea" rows={6} {...register("exemplos")} {...ligarAoErro("orientacao-exemplos", erros.exemplos?.message)} placeholder="Calibração de PSV" />
             </Field>
-            <Field label={`Palavras-chave (uma por linha) · ${listaDePalavras.length} de ${MAX_PALAVRAS}`} htmlFor="orientacao-palavras">
-              <textarea id="orientacao-palavras" className="textarea" rows={6} value={palavras} onChange={(e) => setPalavras(e.target.value)} placeholder={"calibr\nPSV\nválvula de segurança"} />
+            <Field label={`Palavras-chave (uma por linha) · ${listaDePalavras.length} de ${MAX_PALAVRAS}`} htmlFor="orientacao-palavras" erro={erros.palavras?.message}>
+              <textarea className="textarea" rows={6} {...register("palavras")} {...ligarAoErro("orientacao-palavras", erros.palavras?.message)} placeholder={"calibr\nPSV\nválvula de segurança"} />
             </Field>
           </div>
           <span className="small muted">
@@ -128,16 +125,12 @@ export function OrientacaoDoModelo({ codigo, orientacao, podeEditar }: Orientaca
             curtas, só a palavra inteira (“PSV”, “tê”). Pesos: título da OS 3, serviço do catálogo 2, descrição da OS 1. O modelo com mais pontos é o
             recomendado; empate no topo não recomenda nenhum.
           </span>
-          {(erro ?? problema) && (
-            <Notice tone="blq" icon="alert">
-              {erro ?? problema}
-            </Notice>
-          )}
+          <ErroDeEnvio mensagem={erroEnvio} />
           <div className="row g8" style={{ justifyContent: "flex-end" }}>
             <Button variant="line" sm onClick={() => setEditando(false)} disabled={ocupado}>
               Cancelar
             </Button>
-            <Button variant="p" sm type="submit" disabled={ocupado || problema !== null}>
+            <Button variant="p" sm type="submit" aria-busy={ocupado} disabled={ocupado}>
               {ocupado ? "Salvando…" : "Salvar"}
             </Button>
           </div>

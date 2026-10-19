@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/Button";
-import { Field, Req } from "@/components/ui/Field";
+import { Field, ligarAoErro, Req } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { ErroDeEnvio, useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
+import { diaExiste } from "@/lib/validacao";
 import { chamar } from "@/lib/cliente-api";
 import { rotas } from "@/lib/rotas";
 import type { Equipe } from "@/lib/tipos";
@@ -12,6 +15,17 @@ import { SeletorLocal } from "./SeletorLocal";
 import { PRIORIDADES, type Atividade, type LocalEscolhido } from "./tipos";
 
 const rotulo = { fontSize: 12 } as const;
+
+const esquema = z.object({
+  tipo: z.enum(["corretiva", "preventiva"]),
+  prioridade: z.string(),
+  atividade: z.string(),
+  titulo: z.string().trim().min(1, "Informe o título da OS."),
+  descricao: z.string(),
+  local: z.custom<LocalEscolhido | null>().refine((v): boolean => v !== null, "Escolha o local de instalação."),
+  equipeId: z.string().min(1, "Escolha a equipe."),
+  data: z.string().min(1, "Informe a data programada.").refine(diaExiste, "Informe uma data válida."),
+});
 
 interface FormularioApoioProps {
   /** Distingue os ids dos campos quando houver mais de um formulário na página. */
@@ -34,58 +48,22 @@ interface FormularioApoioProps {
 
 /** Formulário da OS de apoio: a única OS que nasce no sistema, ligada à OS que ela destrava (`POST /os` com `os_origem_id`). */
 export function FormularioApoio(p: FormularioApoioProps) {
-  const [tipo, setTipo] = useState<"corretiva" | "preventiva">("corretiva");
-  const [titulo, setTitulo] = useState(p.tituloInicial ?? "");
-  const [descricao, setDescricao] = useState(p.descricaoInicial ?? "");
-  const [atividade, setAtividade] = useState("");
-  const [local, setLocal] = useState<LocalEscolhido | null>(p.localInicial ?? null);
-  const [equipeId, setEquipeId] = useState("");
-  const [data, setData] = useState(p.hoje);
-  const [prioridade, setPrioridade] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
-  const [enviando, setEnviando] = useState(false);
   const [criada, setCriada] = useState<{ id: string; equipeId: string } | null>(null);
+  const valoresIniciais = { tipo: "corretiva" as const, prioridade: "", atividade: "", titulo: p.tituloInicial ?? "", descricao: p.descricaoInicial ?? "", local: p.localInicial ?? null, equipeId: "", data: p.hoje };
+  const { form, ref, enviar, enviando, erroEnvio } = useFormulario(esquema, valoresIniciais);
+  const { register, formState, getValues, setValue } = form;
+  const erros = formState.errors;
+  const [local, definirLocal] = useValorDoForm(form, "local");
 
   function escolherAtividade(codigo: string) {
-    setAtividade(codigo);
+    setValue("atividade", codigo);
     const a = p.atividades.find((x) => x.codigo === codigo);
-    if (a && !titulo.trim()) setTitulo(a.descricao);
-  }
-
-  async function enviar(evento: FormEvent) {
-    evento.preventDefault();
-    if (!titulo.trim()) return setErro("Informe o título da OS.");
-    if (!local) return setErro("Escolha o local de instalação.");
-    if (!equipeId) return setErro("Escolha a equipe.");
-    if (!data) return setErro("Informe a data programada.");
-    setErro(null);
-    setEnviando(true);
-    try {
-      const nova = await chamar<{ id: string }>("POST", "/os", {
-        tipo,
-        titulo: titulo.trim(),
-        descricao: descricao.trim() || undefined,
-        codigo_atividade: atividade || undefined,
-        local_instalacao_id: local.id,
-        equipe_id: equipeId,
-        data_inicio_prog: data,
-        prioridade: prioridade || undefined,
-        os_origem_id: p.osOrigemId,
-      });
-      setCriada({ id: nova.id, equipeId });
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível criar a OS.");
-    } finally {
-      setEnviando(false);
-    }
+    if (a && !getValues("titulo").trim()) setValue("titulo", a.descricao, { shouldValidate: Boolean(formState.errors.titulo) });
   }
 
   function outra() {
     setCriada(null);
-    setTitulo(p.tituloInicial ?? "");
-    setDescricao(p.descricaoInicial ?? "");
-    setAtividade("");
-    setPrioridade("");
+    form.reset({ ...getValues(), titulo: p.tituloInicial ?? "", descricao: p.descricaoInicial ?? "", atividade: "", prioridade: "" });
   }
 
   if (criada) {
@@ -110,16 +88,34 @@ export function FormularioApoio(p: FormularioApoioProps) {
 
   const id = (campo: string) => `${p.prefixo}-${campo}`;
   return (
-    <form className="stack g12" onSubmit={enviar} noValidate>
+    <form
+      ref={ref}
+      className="stack g12"
+      noValidate
+      onSubmit={enviar(async (v) => {
+        const nova = await chamar<{ id: string }>("POST", "/os", {
+          tipo: v.tipo,
+          titulo: v.titulo.trim(),
+          descricao: v.descricao.trim() || undefined,
+          codigo_atividade: v.atividade || undefined,
+          local_instalacao_id: v.local!.id,
+          equipe_id: v.equipeId,
+          data_inicio_prog: v.data,
+          prioridade: v.prioridade || undefined,
+          os_origem_id: p.osOrigemId,
+        });
+        setCriada({ id: nova.id, equipeId: v.equipeId });
+      })}
+    >
       <div className="row g8 wrap">
         <Field label="Tipo" htmlFor={id("tp")} labelStyle={rotulo} className="grow">
-          <select className="select" id={id("tp")} value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)}>
+          <select className="select" {...register("tipo")} id={id("tp")}>
             <option value="corretiva">Corretiva</option>
             <option value="preventiva">Preventiva</option>
           </select>
         </Field>
         <Field label="Prioridade" htmlFor={id("pr")} labelStyle={rotulo} className="grow">
-          <select className="select" id={id("pr")} value={prioridade} onChange={(e) => setPrioridade(e.target.value)}>
+          <select className="select" {...register("prioridade")} id={id("pr")}>
             <option value="">Sem prioridade</option>
             {PRIORIDADES.map((x) => (
               <option key={x}>{x}</option>
@@ -136,7 +132,7 @@ export function FormularioApoio(p: FormularioApoioProps) {
         htmlFor={id("at")}
         labelStyle={rotulo}
       >
-        <select className="select" id={id("at")} value={atividade} onChange={(e) => escolherAtividade(e.target.value)}>
+        <select className="select" {...register("atividade", { onChange: (e) => escolherAtividade(e.target.value) })} id={id("at")}>
           <option value="">Sem atividade</option>
           {p.atividades.map((a) => (
             <option key={a.codigo} value={a.codigo}>
@@ -153,16 +149,17 @@ export function FormularioApoio(p: FormularioApoioProps) {
         }
         htmlFor={id("ti")}
         labelStyle={rotulo}
+        erro={erros.titulo?.message}
       >
-        <input className="input" id={id("ti")} value={titulo} onChange={(e) => setTitulo(e.target.value)} />
+        <input className="input" {...register("titulo")} {...ligarAoErro(id("ti"), erros.titulo?.message)} />
       </Field>
       <Field label="Descrição" htmlFor={id("ds")} labelStyle={rotulo}>
-        <textarea className="textarea" id={id("ds")} rows={2} style={{ fontSize: 14 }} value={descricao} onChange={(e) => setDescricao(e.target.value)} />
+        <textarea className="textarea" {...register("descricao")} id={id("ds")} rows={2} style={{ fontSize: 14 }} />
       </Field>
-      <SeletorLocal prefixo={p.prefixo} valor={local} onChange={setLocal} />
+      <SeletorLocal prefixo={p.prefixo} valor={local} onChange={definirLocal} erro={erros.local?.message} />
       <div className="row g8 wrap">
-        <Field label="Equipe" htmlFor={id("eq")} labelStyle={rotulo} className="grow">
-          <select className="select" id={id("eq")} value={equipeId} onChange={(e) => setEquipeId(e.target.value)}>
+        <Field label="Equipe" htmlFor={id("eq")} labelStyle={rotulo} className="grow" erro={erros.equipeId?.message}>
+          <select className="select" {...register("equipeId")} {...ligarAoErro(id("eq"), erros.equipeId?.message)}>
             <option value="">Escolha a equipe</option>
             {p.equipes.map((e) => (
               <option key={e.id} value={e.id}>
@@ -171,17 +168,13 @@ export function FormularioApoio(p: FormularioApoioProps) {
             ))}
           </select>
         </Field>
-        <Field label="Data programada" htmlFor={id("dt")} labelStyle={rotulo} className="grow">
-          <input className="input" type="date" id={id("dt")} value={data} onChange={(e) => setData(e.target.value)} style={{ height: 40 }} />
+        <Field label="Data programada" htmlFor={id("dt")} labelStyle={rotulo} className="grow" erro={erros.data?.message}>
+          <input className="input" type="date" {...register("data")} {...ligarAoErro(id("dt"), erros.data?.message)} style={{ height: 40 }} />
         </Field>
       </div>
-      {erro && (
-        <Notice tone="blq" icon="alert" style={{ fontSize: 14 }}>
-          <span role="alert">{erro}</span>
-        </Notice>
-      )}
+      <ErroDeEnvio mensagem={erroEnvio} />
       <div>
-        <Button type="submit" variant="p" sm style={{ height: 44 }} disabled={enviando}>
+        <Button type="submit" variant="p" sm style={{ height: 44 }} aria-busy={enviando} disabled={enviando}>
           {enviando ? "Criando…" : p.rotuloEnviar}
         </Button>
       </div>

@@ -1,14 +1,30 @@
 "use client";
 
-import { useId, useState } from "react";
-import { Field } from "@/components/ui/Field";
+import { useId, useMemo } from "react";
+import { z } from "zod";
+import { Field, ligarAoErro } from "@/components/ui/Field";
 import { Notice } from "@/components/ui/Notice";
+import { useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { chamar } from "@/lib/cliente-api";
 import { dataDoDia } from "@/lib/formatar";
-import { CamposDePeriodo, periodoParaApi, periodoVazio, retornoDoPeriodo } from "./CamposDePeriodo";
+import { CamposDePeriodo, conferirPeriodo, esquemaDoPeriodo, periodoParaApi, periodoVazio, retornoDoPeriodo } from "./CamposDePeriodo";
 import { JanelaDeAssinatura } from "./JanelaDeAssinatura";
 
 export const LIMITE_DO_MOTIVO = 500;
+
+/** O motivo e o período (e, no registro do supervisor, a pessoa) são obrigatórios; cada mensagem aparece no campo dela. */
+function esquemaDaAusencia(registrar: boolean) {
+  return z
+    .object({
+      pessoa: z.string(),
+      motivo: z.string().trim().min(1, "Informe o motivo da ausência.").max(LIMITE_DO_MOTIVO, `O motivo pode ter até ${LIMITE_DO_MOTIVO} caracteres.`),
+      periodo: esquemaDoPeriodo,
+    })
+    .superRefine((v, ctx) => {
+      if (registrar && !v.pessoa) ctx.addIssue({ code: "custom", path: ["pessoa"], message: "Escolha a pessoa." });
+      conferirPeriodo(v.periodo, ctx, ["periodo"]);
+    });
+}
 
 interface FormularioDeAusenciaProps {
   /** `pedir`: o técnico pede e o supervisor responde. `registrar`: o supervisor registra a de alguém ou a própria, assinando. */
@@ -25,15 +41,19 @@ interface FormularioDeAusenciaProps {
 export function FormularioDeAusencia({ modo, assinaturaPath, pessoas = [], pessoaInicial, aoFechar }: FormularioDeAusenciaProps) {
   const id = useId();
   const registrar = modo === "registrar";
-  const [pessoa, setPessoa] = useState(pessoaInicial ?? pessoas.find((p) => p.eu)?.id ?? pessoas[0]?.id ?? "");
-  const [motivo, setMotivo] = useState("");
-  const [periodo, setPeriodo] = useState(periodoVazio());
+  const esquema = useMemo(() => esquemaDaAusencia(registrar), [registrar]);
+  const { form, validar } = useFormulario(esquema, { pessoa: pessoaInicial ?? pessoas.find((p) => p.eu)?.id ?? pessoas[0]?.id ?? "", motivo: "", periodo: periodoVazio() });
+  const { register, formState, getValues } = form;
+  const erros = formState.errors;
+  const [pessoa] = useValorDoForm(form, "pessoa");
+  const [motivo] = useValorDoForm(form, "motivo");
+  const [periodo, setPeriodo] = useValorDoForm(form, "periodo");
 
   const eu = pessoas.find((p) => p.id === pessoa)?.eu ?? false;
   const retorno = retornoDoPeriodo(periodo);
-  const incompleto = motivo.trim() === "" || retorno === null || (registrar && !pessoa);
 
   async function enviar() {
+    const { motivo, periodo } = getValues();
     const resposta = await chamar<{ execucao_aberta?: boolean }>("POST", "/ausencias", {
       motivo: motivo.trim(),
       ...periodoParaApi(periodo),
@@ -56,13 +76,13 @@ export function FormularioDeAusencia({ modo, assinaturaPath, pessoas = [], pesso
       rotuloConfirmar={registrar ? "Registrar e assinar" : "Enviar pedido"}
       assinaturaPath={assinaturaPath}
       semAssinatura={!registrar}
-      incompleto={incompleto}
+      validar={validar}
       aoConfirmar={enviar}
       aoFechar={aoFechar}
     >
       {registrar && pessoas.length > 1 && (
-        <Field label="Pessoa" htmlFor={`${id}-pessoa`}>
-          <select id={`${id}-pessoa`} className="select" value={pessoa} onChange={(e) => setPessoa(e.target.value)}>
+        <Field label="Pessoa" htmlFor={`${id}-pessoa`} erro={erros.pessoa?.message}>
+          <select className="select" {...register("pessoa")} {...ligarAoErro(`${id}-pessoa`, erros.pessoa?.message)}>
             {pessoas.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.eu ? `${p.nome} (eu)` : p.nome}
@@ -76,19 +96,18 @@ export function FormularioDeAusencia({ modo, assinaturaPath, pessoas = [], pesso
           Pessoa: <strong>{pessoas[0]!.nome}</strong>
         </p>
       )}
-      <Field label="Motivo" htmlFor={`${id}-motivo`}>
+      <Field label="Motivo" htmlFor={`${id}-motivo`} erro={erros.motivo?.message}>
         <textarea
-          id={`${id}-motivo`}
           className="textarea"
           rows={3}
           maxLength={LIMITE_DO_MOTIVO}
           placeholder="Férias, atestado, viagem, treinamento…"
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
+          {...register("motivo")}
+          {...ligarAoErro(`${id}-motivo`, erros.motivo?.message)}
         />
         <span className="small muted">{`${motivo.length}/${LIMITE_DO_MOTIVO}`}</span>
       </Field>
-      <CamposDePeriodo valor={periodo} aoMudar={setPeriodo} />
+      <CamposDePeriodo valor={periodo} aoMudar={setPeriodo} erros={{ inicio: erros.periodo?.inicio?.message, dias: erros.periodo?.dias?.message, retorno: erros.periodo?.retorno?.message }} />
       {registrar && retorno && periodo.inicio && (
         <Notice tone="info" icon="info">
           {`A ausência vai de ${dataDoDia(periodo.inicio)} até a véspera de ${dataDoDia(retorno)}. Ela não termina sozinha: depois do retorno fica vencida até a pessoa confirmar a volta ou você a encerrar.`}
