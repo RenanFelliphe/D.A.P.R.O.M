@@ -201,7 +201,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 - **16 tarefas pontuam**, calculadas só no servidor, entre elas APR completa, execução concluída, responsável pela APR, preventiva concluída e em dia, local crítico, resgate de OS, apoio, acompanhar técnico novo, assinatura cadastrada, Campo de treino, treinamentos de serviço e, para o supervisor, assinatura final no prazo e intervalo de preventiva definido. O admin edita os valores.
 - **Temporadas trimestrais** (Verão, Outono, Inverno e Primavera), com fechamento automático.
 - **Ranking** de pessoas e de equipes (a equipe pela média por membro), por temporada ou geral, com opção de **anonimato**.
-- **5 patentes** (com imagem de pessoa e de equipe) e **26 conquistas**.
+- **5 patentes** (com imagem de pessoa e de equipe) e **27 conquistas**.
 - Telas: Minha pontuação, Ranking, Conquistas, Patentes e Como pontuar. Avisos "+N pontos", "Conquista desbloqueada" e "Nova patente".
 - **A segurança nunca custa pontos**: a execução interrompida por risco vale o mesmo que a encerrada, e nenhuma regra olha a resposta de um item. O admin não joga, mas edita tarefas, patentes e conquistas.
 

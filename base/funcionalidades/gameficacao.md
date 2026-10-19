@@ -68,7 +68,7 @@ As regras 1, 3, 4 e 5 são as "regras de justiça" escolhidas na discussão.
 
 | O quê | Por quê |
 |---|---|
-| Sincronização offline → online | Pontuaria desligar o sinal de propósito, e o sistema é online primeiro. O que foi feito offline pontua normalmente quando chega |
+| Sincronização offline → online | Pontuaria desligar o sinal de propósito, e o sistema é online primeiro. O que foi feito offline pontua normalmente quando chega. Só há o troféu "Sem sinal, sem problema", que vale 0 ponto (seção 7.4) |
 | Iniciar a execução | Premiaria começar sem terminar |
 | Pausa, suspensão (fim do expediente) e cancelamento por engano | A OS continua; os pontos vêm quando a execução é concluída |
 | Evidência a mais (fotos e PDFs além do exigido), observação e descrição longas | Inflariam anexos e textos de enchimento |
@@ -277,6 +277,7 @@ Nenhum critério conta bloqueios ou interrupções de quem bloqueou ou interromp
 | Ciências no prazo | lançamentos "Ciência no prazo" (supervisor) |
 | Intervalos definidos | lançamentos "Intervalo de preventiva definido" (supervisor) |
 | Campo de treino | treino concluído (quantidade 1) |
+| OS sincronizadas depois de trabalhar sem sinal | OS distintas em que a pessoa teve ao menos um evento aplicado que chegou pela fila (mais de 60 s entre o relógio do aparelho e o da `api`). Conta OS, não eventos; o que a `api` recusa não conta |
 | Pontos gerais | pontos desde a criação da conta |
 | Pontos numa temporada | a melhor temporada da pessoa |
 | Patente | alcançar a patente escolhida numa temporada |
@@ -319,6 +320,7 @@ Sugestão para a primeira carga, que o admin ajusta. Cada conquista vem com uma 
 | De olho na equipe | Acompanhou de perto o trabalho da equipe. | 50 ciências no prazo | 50 |
 | Planejador | Deixou o ciclo das preventivas pronto para avisar. | 10 intervalos definidos | 50 |
 | Pódio | Entre os três melhores da temporada. | posição ≤ 3 numa temporada | 100 |
+| Sem sinal, sem problema | Trabalhou onde o sinal não chega e o registro chegou ao painel quando ele voltou. | 1 OS sincronizada depois de trabalhar sem sinal (migração `0037`, 19/10/2026) | **0** |
 | Brilho de diamante | Chegou ao topo numa temporada. | patente Diamante | 100 |
 
 **Equipe** (sem pontos)
@@ -409,7 +411,9 @@ Alterados:
 - `servicos/armazenamento.ts`: o bucket `gamificacao`;
 - `db/schema/plataforma.ts`: as entidades da auditoria.
 
-### 8.4 App (quando existir)
+### 8.4 App
+
+> **Feito em 19/10/2026** (etapa 17 de [mobile.md](../../funcionalidades/mobile.md)): a aba Pontos tem Minha pontuação (com o extrato por temporada), Ranking de pessoas e de equipes e Conquistas; a janela "Parabéns!" mostra a conquista e a nova patente; o anonimato fica no perfil.
 
 O app recebe:
 - Minha pontuação, Ranking e Conquistas, só para consulta;
@@ -500,7 +504,7 @@ Pendente:
 - Rever os limites das patentes no fim da primeira temporada real (seção 3.3).
 - Trocar as imagens da carga inicial pelas definitivas.
 - Os limites das patentes precisam considerar que as preventivas passaram a valer mais (já na revisão do fim da primeira temporada real).
-- A conquista de sincronização offline precisaria de uma marcação de origem no evento enviado pela fila; fica para quando o app existir.
+- ~~A conquista de sincronização offline~~ — feita em 19/10/2026 (seção 14).
 
 ---
 
@@ -551,3 +555,18 @@ Decidido em 14/10/2026 e **implementado em 16/10/2026** (ver [treinamentos-de-se
   - Nota máxima: 1 treinamento gabaritado, 25 pontos.
 - **Entram por uma migração nova;** a `0016` e a `0017` não mudam.
 - **Ranking por treinamento (18/10/2026):** cada treinamento tem o seu ranking, mostrado no resultado do jogo, na capa e no "Ver ranking" do cartão. Primeiro era pela nota da primeira conclusão; no mesmo dia passou a ser pela **melhor nota** de cada pessoa, com a nota nova do treinamento (acertos × tempo × fases), discutida antes: ela é **só do treinamento** e não entra na gamificação geral, que continua com 5 pelo concluído e 1 por fase certa, só na primeira conclusão (seção 12 do [treinamentos-de-servico.md](treinamentos-de-servico.md)). Ao contrário do ranking geral, quem aguarda liberação aparece, porque treina e pontua; o anonimato é o mesmo. Detalhes na seção 9 do [treinamentos-de-servico.md](treinamentos-de-servico.md).
+
+---
+
+## 14. Conquista de sincronização offline
+
+Implementada em 19/10/2026 (pendência 8 do [pendencias.md](../../pendencias.md)), depois do app e da fila offline. A [regra 2.2](#22-o-que-não-pontua) continua valendo: **sincronizar não pontua**, então o troféu "Sem sinal, sem problema" vale **0 ponto** na carga (o admin pode dar pontos a ele no cadastro, se a empresa quiser; o risco é premiar desligar o sinal de propósito).
+
+- **Marcação de origem:** a coluna `evento_campo.offline` (migração `0037_sincronizacao_offline`). Quem a preenche é a `api`, no momento em que aplica o evento, pela regra dos 60 s que já existia (`ATRASO_OFFLINE_MS`): o aparelho **não** diz que veio da fila, então não há como pedir o troféu sem ter de fato mandado um evento atrasado. O evento recusado desfaz a própria transação e não deixa linha, então não conta.
+- **Critério novo de pessoa:** `sincronizacoes_offline` ("OS sincronizadas depois de trabalhar sem sinal"). Conta **OS distintas**, não eventos (uma OS feita sem sinal gera vários eventos). A data do troféu é a da chegada do primeiro evento da OS ao servidor.
+- **Quando confere:** nenhum lançamento de pontos dispara essa conquista, então o servidor a confere ao aplicar cada evento que chegou pela fila (`processarEventos`), só para quem enviou. O aviso "Conquista desbloqueada" aparece na próxima abertura do app ou da web, como as demais.
+- **Vale para o passado:** a migração marca como `offline` os eventos já gravados com atraso maior que 60 s e dá o troféu a quem já os tinha (técnicos ativos), sem lançamento (0 ponto).
+- **Limite conhecido:** um aparelho com o relógio atrasado mais de 60 s também gera evento "offline" (a mesma regra marca o aviso de relógio errado no detalhe da OS). Como o troféu é um só e vale 0 ponto, não se tratou de separar os dois casos.
+- **Dados:** `api/src/db/seed/sincronizacao-offline-dados.ts` (o dado e o SQL da migração; um teste confere que batem) e `sincronizacao-offline-imagens.ts` (o troféu, gravado pela subida da `api`, como o dos treinamentos de serviço). Fica fora de `CONQUISTAS_DA_CARGA`, que é o retrato fechado da `0016`.
+- **Web e app:** nada mudou nas telas: a galeria, o aviso e o cadastro leem os critérios da `api`.
+- **Testes:** `api/test/gamificacao-sincronizacao-offline.test.ts` (online não conta; o da fila marca e concede sem lançar ponto; conta OS e não eventos; recusado e reenvio não contam nem duplicam; a migração bate com os dados).

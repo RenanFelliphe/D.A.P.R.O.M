@@ -647,7 +647,7 @@ Na web há a seção **Gamificação** (`/app/gamificacao`), a mesma para todos 
 1. Pontos por tarefa e patentes — os valores e os limites são o ponto de partida do [gameficacao.md](../../gameficacao.md); revisar os limites das patentes no fim da primeira temporada real (a carga supõe cerca de 20 técnicos).
 2. Imagens da carga — são simples e geradas em código; o admin troca pelas definitivas.
 3. Formulário de inspeção — pode virar bônus quando a estrutura dele for definida (questão 57).
-4. Conquista de sincronização offline — precisa de uma marcação de origem no evento enviado pela fila, para quando o app existir.
+4. ~~Conquista de sincronização offline~~ — feita em 19/10/2026: `evento_campo.offline` (a `api` marca pela regra dos 60 s) e a conquista "Sem sinal, sem problema", com 0 ponto (a sincronização não pontua).
 
 ### Eventos e modo offline
 
