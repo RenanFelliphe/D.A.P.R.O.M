@@ -19,7 +19,7 @@
 - **A atribuição individual e a devolução de OS foram decididas e feitas em 15/10/2026:** o supervisor da equipe reserva a OS a uma pessoa, que passa a ser a única a iniciar a APR e a execução, e devolve ao SAP a OS com erro, com uma justificativa que vai na planilha de baixa (seção 6).
 - **Extras prontas:** OS de apoio, assinatura no perfil, equipe automática, evidência em PDF, catálogo de serviço com os materiais recomendados, ciclo das preventivas, gamificação, o registro de funcionários simulado (cadastro só por matrícula e e-mail de quem está nele, e desligamento em tempo real) e as telas dos simuladores do registro e do SAP.
 - **Extras não iniciadas:**
-  - a digitalização de OS e APR antigas, decidida com leitura por IA em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (a câmera é só protótipo).
+  - a digitalização de OS e APR antigas, decidida com leitura por IA em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (feita em 19/10/2026: PDF em lote, foto de folhas avulsas e a APR em papel; falta testar com a IA de verdade).
 - **Números (18/10/2026):** 168 rotas na `api` (as dos simuladores do SAP e do registro de funcionários só existem com `SAP_SIMULADO` e `RH_SIMULADO`), 33 migrações (`0000` a `0032`) e 878 testes em 47 arquivos. Os 878 testes passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` saem sem erros.
 
 ## O que ainda falta, num relance
@@ -33,7 +33,7 @@
 - [x] **Materiais recomendados** no lugar da conferência obrigatória na APR: [materiais-recomendados.md](materiais-recomendados.md).
 - [x] **Treinamentos de serviço (sem IA)**: [treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md) (seção 3.3).
 - [x] **Vitória (o assistente), níveis 1 a 3, e o módulo de IA genérico**, com o Gemini na demonstração: [vitoria.md](funcionalidades/vitoria.md) (seção 3.2). O rascunho de treinamento por IA e a bateria de perguntas entraram em 17/10/2026.
-- [ ] **Escaneamento de OS e APR antigas**, decidida com leitura por IA, em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (seção 3.3).
+- [x] **Escaneamento de OS e APR antigas**, feito em 19/10/2026 com leitura por IA (falta testar com a IA de verdade), em [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) (seção 3.3).
 - [x] **Usuário ausente:** [ausencia.md](ausencia.md); o supervisor ausente e a equipe sem supervisor são cobertos pelo representante da equipe ([representante.md](representante.md) e [avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.4).
 - [x] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão, com um clique no aviso ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seções 5.1 e 5.2).
 - [x] Os avisos da leitura no cartão da tela do SAP ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.3).
@@ -215,7 +215,7 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 | Intervalo entre ciclos das preventivas | DesignDoc (prioridades) | **Pronto** |
 | Gamificação | Time, na Reunião 2 | **Pronta** |
 | Chatbot de consulta | Iago, na Reunião 2 | **Virou a Vitória e os treinamentos de serviço** ([vitoria.md](funcionalidades/vitoria.md)). Os dois estão prontos: os treinamentos, com o rascunho pela IA ([treinamentos-de-servico.md](funcionalidades/treinamentos-de-servico.md)), e a Vitória assistente, níveis 1 a 3 ([vitoria.md](funcionalidades/vitoria.md)) |
-| Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **PDF digitalizado em lote feito em 19/10/2026 (OCR local + IA no manuscrito + conferência); foto avulsa pela câmera e APR antiga não iniciadas** ([vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A Digitalização da tela de importação só abre a câmera |
+| Escaneamento de OS e APR antigas | DesignDoc (prioridades) | **Feito em 19/10/2026: PDF digitalizado em lote (OCR local + IA no manuscrito + conferência), foto de folhas avulsas pela câmera e APR em papel junto com a OS** ([vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A câmera tira uma foto por folha (até 8), avisa se está escura ou tremida e manda ler pelo mesmo caminho do PDF |
 | API de funcionários para cadastro rápido | DesignDoc (extras) | **Pronta com o simulador.** Registro de funcionários simulado, com tela própria; cadastro só de quem está nele e desligamento em tempo real ([apifuncionarios.md](apifuncionarios.md)) |
 | Tela do simulador do SAP | Time, em 14/10/2026 | **Pronta** ([apiSAP.md](apiSAP.md)) |
 | Atribuição individual e devolução de OS | Time, em 15/10/2026 | **Pronta** (seção 6) |
@@ -321,11 +321,11 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras") e da Reuniã
 
 **Escaneamento de OS e APR antigas**
 
-- **O que existe:** a câmera abre e captura no navegador, mas nada é lido nem enviado, e o PDF só com imagem é recusado (`pdf_sem_texto`).
+- **O que existe (19/10/2026):** o PDF escaneado em lote, a câmera com várias fotos de folhas avulsas e a APR em papel que vem junto com a OS (lida, conferida e guardada à parte da APR do sistema). O PDF só com imagem enviado pelo caminho "para liberar" continua recusado (`pdf_sem_texto`).
 - **Decidida** (14/10/2026), com o desenho na seção 10 do [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas); o modelo de IA e mais sete pontos seguem em aberto. O objetivo são as OS antigas, já executadas no papel, que entram encerradas, de histórico. A IA de visão lê as folhas, inclusive a parte escrita à mão, e o sistema conferir o que foi lido.
 - **Do que depende:** do teste da leitura com folhas fictícias e, no piloto, da aprovação da empresa para enviar as folhas ao fornecedor de IA.
 - **Quando existir:** vira uma nova origem de importação e pode reaproveitar a conferência do PDF.
-- **APR antigas:** não há nada.
+- **APR antigas:** entram junto com a OS digitalizada, à parte da APR do sistema (não valem como APR do dia, não pontuam, não bloqueiam); desenho na seção 10.0 do vitoria.md.
 
 ### 3.4 Ordem sugerida para as extras
 

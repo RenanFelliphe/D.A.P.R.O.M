@@ -34,8 +34,8 @@ O MVP está completo quando as três linhas atenderem e os itens 🔴 da tabela 
 | 8 | Conquista de sincronização offline (gamificação) | código | 🟡 | 4 | [x] 19/10/2026 |
 | 9 | Digitalização: pergunta antes da importação | código | 🟢 | — | [x] 19/10/2026 |
 | 10 | Digitalização: PDF digitalizado em lote (OCR + IA) | código | 🟢 | 9 | [x] 19/10/2026 |
-| 11 | Digitalização: foto de folhas avulsas | código | 🟢 | 10 | [ ] |
-| 12 | Digitalização: APRs antigas | código | 🟢 | 10 | [ ] |
+| 11 | Digitalização: foto de folhas avulsas | código | 🟢 | 10 | [x] 19/10/2026 |
+| 12 | Digitalização: APRs antigas | código | 🟢 | 10 | [x] 19/10/2026 |
 | 13 | Validação (React Hook Form e Zod) nos demais formulários | código | 🟡 | — | [ ] |
 | 14 | Rodar a bateria inteira da Vitória (53 perguntas) | código | 🟡 | cota da IA | [ ] |
 | 15 | Atualizar README, especificação e READMEs da `api` e da `web` | código | 🟡 | 1 a 7 | [ ] |
@@ -132,7 +132,7 @@ A referência das telas é a `web` em `/app/*`. As regras que o app herda da Reu
 
 A especificação deixa o escaneamento para depois do MVP, mas ele é prioridade no DesignDoc e foi redesenhado na Reunião 3 (item 15 do [resumo](base/reunioes/correcoes-reuniao-3-resumo.md)). O desenho anterior está na seção 10 do [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas).
 
-**Hoje (19/10/2026):** os itens 9 e 10 estão feitos (detalhes em [vitoria.md, seção 10](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A câmera da tela de importação ainda só abre e captura, sem ler nem enviar (item 11); das APRs antigas não há nada (item 12).
+**Hoje (19/10/2026):** os itens 9 a 12 estão feitos (detalhes em [vitoria.md, seção 10](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)): o PDF digitalizado em lote, a foto de folhas avulsas pela câmera e a APR em papel que vem junto com a OS. Em aberto da digitalização: o modelo de IA (testar com `pnpm pdf:digitalizado` e o Gemini) e a aprovação da empresa para enviar folhas ao fornecedor.
 
 ### 9. Pergunta antes da importação — feito em 19/10/2026
 
@@ -147,15 +147,17 @@ A especificação deixa o escaneamento para depois do MVP, mas ele é prioridade
 - A OS entra **encerrada, como histórico**, e o admin confere o que foi lido antes de registrar (pode reaproveitar a conferência do PDF de hoje).
 - O modelo de IA e os demais pontos em aberto da seção 10 do [vitoria.md](funcionalidades/vitoria.md#10-digitalização-de-os-antigas) precisam ser fechados antes; o primeiro passo é testar a leitura com folhas fictícias.
 - **Descartado:** treinar um modelo próprio (LGPD e falta de folhas transcritas).
-- **Feito:** tarefa em segundo plano `digitalizacao` (PDF → folhas → OCR Tesseract local → IA de visão só no manuscrito → conferências), leitura guardada, tela de conferência com as folhas ao lado e registro das OS como `encerrada` de histórico (`os.origem = digitalizacao`, `os_digitalizacao`, PDF das folhas). **Fora (itens 11 e 12):** foto de folhas avulsas pela câmera e a APR antiga. **Em aberto:** o modelo de IA (testar com `pnpm pdf:digitalizado` e o Gemini; o Claude segue como destino com dados reais) e a escolha do limite de folhas por OS enviadas à IA.
+- **Feito:** tarefa em segundo plano `digitalizacao` (PDF → folhas → OCR Tesseract local → IA de visão só no manuscrito → conferências), leitura guardada, tela de conferência com as folhas ao lado e registro das OS como `encerrada` de histórico (`os.origem = digitalizacao`, `os_digitalizacao`, PDF das folhas). **Os itens 11 (foto de folhas avulsas) e 12 (APR antiga) vieram depois, no mesmo dia.** **Em aberto:** o modelo de IA (testar com `pnpm pdf:digitalizado` e o Gemini; o Claude segue como destino com dados reais) e a escolha do limite de folhas por OS enviadas à IA.
 
-### 11. Foto de folhas avulsas
+### 11. Foto de folhas avulsas — feito em 19/10/2026
 
 - Continua para 1 ou 2 folhas avulsas, pelo mesmo caminho do lote.
+- **Feito** (api e web; desenho em [vitoria.md, seção 10.0](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). A janela da câmera (`JanelaCamera`) fotografa **uma folha por vez** (até 8 por envio), ou escolhe imagens do aparelho; **mede a luz e a nitidez na hora** e avisa "foto escura", "luz demais" ou "pode estar tremida" (só aviso, nunca impede o envio); reordena, gira e remove as folhas; e manda ler. Cada foto é normalizada no navegador (orientação do EXIF, no máximo 2.800 px, JPEG). `POST /digitalizacoes` aceita agora o campo `fotos` (repetido, uma por folha) ao lado do `arquivo`: a `api` junta as fotos num PDF (uma página por foto, com a proporção da foto) e dali em diante o caminho é o mesmo do PDF escaneado (OCR, IA no manuscrito, conferência, registro encerrado). **Validado sem aparelho:** testes da `api` (as fotos viram PDF e são lidas; recusa de foto inválida, demais, vazia e do envio misturado), `tsc` e ESLint da `web`; a medida de luz e nitidez foi conferida só com imagens sintéticas. **Fica de fora:** detecção automática dos cantos e recorte com os 4 cantos arrastáveis (o OpenCV.js da seção 10.4); a captura automática quando a imagem estabiliza; e **falta ver num aparelho** (a câmera, o foco, o limite de nitidez em fotos de verdade: o valor `NITIDEZ_MINIMA` é inicial e precisa ser afinado).
 
-### 12. APRs antigas
+### 12. APRs antigas — feito em 19/10/2026
 
-- Não há nada definido. Decidir se entram junto com a OS digitalizada ou ficam fora.
+- **Decisão:** a APR antiga **entra junto com a OS digitalizada** (a folha da APR vem grampeada na OS), mas **à parte da APR do sistema**: não vale como APR do dia, não ampara execução, não pontua e não bloqueia nada, porque o serviço já foi feito (decisões 1, 4 e 5 da seção 10.13 do vitoria.md). Quem não quer a APR estruturada desmarca "Registrar a APR com a OS" e as folhas ficam só nas imagens do PDF da OS.
+- **Feito** (api e web; desenho em [vitoria.md, seção 10.0](funcionalidades/vitoria.md#10-digitalização-de-os-antigas)). O OCR acha as folhas da APR (o título "Análise Preliminar de Risco", mais as folhas sem número de OS que vêm logo depois) **antes** de ler as OS, para as etiquetas e o número escrito à mão da APR não se misturarem com o cabeçalho impresso; o código do modelo ("APR 04") sai do título impresso. A IA lê o cabeçalho (número da OS, data e hora, serviço), quem participou (nome, matrícula e função) e, com o modelo conhecido, a coluna marcada em cada item (duas chamadas por APR). **O número da OS escrito à mão diz de quem é a APR**; sem ele, vale a posição (a OS que vem antes no PDF). A conferência confere cada matrícula com as contas do sistema e com o registro de funcionários (nome e matrícula têm de formar um par), a data da APR com o início da execução e o código do título com o que a IA leu. Na tela de conferência há o bloco "APR em papel": modelo (select), data e hora, serviço, participantes, as respostas item a item e a caixa "Conferi a APR com as folhas"; a resposta que bloquearia uma APR nova aparece como aviso (só o admin vê isso). O registro grava em `os_digitalizacao_apr` (migração `0038`, com `usuario_id` de quem tem conta e `fonte` ia/manual/nenhuma) e a APR aparece no detalhe da OS, **só com as marcas, sem dizer o que é eliminatório**. Nova rota `GET /digitalizacoes/modelos-apr` (só o admin). `pnpm pdf:digitalizado` agora gera também uma folha de APR (APR 04) para a primeira OS, para experimentar com o Gemini. **Validado:** 940 testes da `api` (16 novos de fotos e APR, num Postgres embutido), `pnpm db:test`, `tsc` e ESLint da `api` e da `web`; o OCR de verdade achou a folha da APR do exemplo gerado. **Não foi testado com a IA de verdade** (nem com o manuscrito de uma pessoa): rodar `pnpm pdf:digitalizado` e subir o PDF com o Gemini antes da demo. **Fica de fora:** os riscos marcados "( )" no formulário (só as respostas dos itens são lidas), a versão do modelo pela data impressa (vale a mais recente publicada) e reatribuir a APR a outra OS na conferência. **A migração `0038` só chega ao banco compartilhado quando a `api` sobe com ela.**
 
 ## 4. Antes da apresentação
 
