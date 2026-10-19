@@ -123,6 +123,60 @@ describe("Vitória — POST /vitoria/mensagens", () => {
     assert.equal(linha, undefined, "não é uma pergunta sem resposta: só a ação foi descartada");
   });
 
+  it("resposta parcial: vale o texto da IA, leva à tela próxima e grava a pergunta para o admin melhorar o manual", async () => {
+    const texto = "Seus pontos estão em Como pontuar. O salário não consta no manual: fale com o seu supervisor.";
+    amb.ia.respostas.push(JSON.stringify({ texto, expressao: "padrao", fonte: "manual", acao: { tipo: "parcial", destino: "gamificacao_pontos" } }));
+    const r = await enviarMensagem(tecnico, pedidoBase("como vejo meus pontos e qual o meu salário parcial?"));
+    assert.equal(r.status, 200);
+    assert.equal(r.texto, texto, "o texto da IA vale, não a mensagem fixa do 'não sei'");
+    assert.equal(r.expressao, "padrao");
+    assert.equal(r.acao?.destino, "gamificacao_pontos");
+    assert.equal(r.fonte, "manual");
+    const [linha] = await amb.db.select().from(vitoriaPerguntaSemResposta).where(eq(vitoriaPerguntaSemResposta.pergunta, "como vejo meus pontos e qual o meu salário parcial?"));
+    assert.ok(linha, "a parte sem resposta ficou registrada");
+  });
+
+  it("resposta parcial com destino que não existe só derruba o botão: o texto continua valendo", async () => {
+    amb.ia.respostas.push(JSON.stringify({ texto: "Isto o manual cobre; o resto não consta.", acao: { tipo: "parcial", destino: "chave-que-nao-existe" } }));
+    const r = await enviarMensagem(tecnico, pedidoBase("parcial com chave inválida"));
+    assert.equal(r.texto, "Isto o manual cobre; o resto não consta.");
+    assert.equal(r.acao, null);
+  });
+
+  it("parcial sem destino é só texto; o 'não sei' total continua com a mensagem fixa, ignorando o texto da IA", async () => {
+    amb.ia.respostas.push(JSON.stringify({ texto: "Cobri uma parte; falta o resto.", acao: { tipo: "parcial" } }));
+    const parcial = await enviarMensagem(tecnico, pedidoBase("parcial sem destino"));
+    assert.equal(parcial.texto, "Cobri uma parte; falta o resto.");
+    assert.equal(parcial.acao, null);
+
+    amb.ia.respostas.push(JSON.stringify({ texto: "Sei lá, invento qualquer coisa.", expressao: "ops", acao: { tipo: "nao_sei" } }));
+    const nada = await enviarMensagem(tecnico, pedidoBase("nada disso está no manual"));
+    assert.equal(nada.texto, "Isso eu não sei responder pelo manual. Fale com seu supervisor ou com o administrador.");
+    assert.equal(nada.expressao, "ops");
+  });
+
+  it("a fonte 'geral' chega à web (para o selo); sem fonte, vale 'manual'", async () => {
+    amb.ia.respostas.push(JSON.stringify({ texto: "Manutenção preventiva é a que se faz em ciclo, antes de algo quebrar. É uma explicação geral.", fonte: "geral", acao: { tipo: "nenhuma" } }));
+    const geral = await enviarMensagem(tecnico, pedidoBase("o que é manutenção preventiva?"));
+    assert.equal(geral.fonte, "geral");
+
+    amb.ia.respostas.push(JSON.stringify({ texto: "Abra a busca.", acao: { tipo: "nenhuma" } }));
+    const manual = await enviarMensagem(tecnico, pedidoBase("onde fica a busca, de novo?"));
+    assert.equal(manual.fonte, "manual");
+  });
+
+  it("o prompt libera o raciocínio e o conhecimento geral, mas mantém as recusas de segurança sem exceção", async () => {
+    amb.ia.respostas.push(JSON.stringify({ texto: "Ok", acao: { tipo: "nenhuma" } }));
+    await enviarMensagem(tecnico, pedidoBase("teste do prompt"));
+    const instrucao = amb.ia.chamadas.at(-1)!.mensagens.find((m) => m.papel === "sistema")!.texto;
+    assert.doesNotMatch(instrucao, /Responda só pelo manual/, "a trava antiga de 'só pelo manual' saiu");
+    assert.match(instrucao, /Raciocínio: aqui você é livre/);
+    assert.match(instrucao, /fonte "geral"/);
+    assert.match(instrucao, /Nunca use esta camada para segurança de campo/);
+    assert.match(instrucao, /Nunca diga o que é um item eliminatório/);
+    assert.match(instrucao, /Nunca ensine normas de segurança de campo/);
+  });
+
   it("ação com_contexto com o campo presente resolve a URL de verdade, e 'destacar' leva o alvo do destino", async () => {
     amb.ia.respostas.push(JSON.stringify({ texto: "Abra a nova APR da OS", acao: { tipo: "destacar", destino: "apr_nova" } }));
     const r = await enviarMensagem(tecnico, pedidoBase("como faço a apr desta os", { contexto: { os_id: "os-123" } }));

@@ -65,7 +65,7 @@ export function rotasVitoria(deps: Deps, { autenticar, exigirPerfil }: Autentica
       for (const pedaco of dividirEmPedacos(resultado.texto)) await stream.writeSSE({ event: "texto", data: pedaco });
       await stream.writeSSE({
         event: "final",
-        data: JSON.stringify(emSnakeCase({ acao: resultado.acao, expressao: resultado.expressao, motivo: resultado.motivo, sugestoes: resultado.sugestoes })),
+        data: JSON.stringify(emSnakeCase({ acao: resultado.acao, expressao: resultado.expressao, fonte: resultado.fonte, motivo: resultado.motivo, sugestoes: resultado.sugestoes })),
       });
     });
   });

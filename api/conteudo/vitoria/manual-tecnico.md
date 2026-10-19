@@ -166,6 +166,60 @@
 
 - A Vitória é a assistente virtual do SYNQ OS. O perfil dela mostra quem ela é, o que pode e o que não pode fazer no
   sistema e qual modelo de IA está respondendo agora. Também abre tocando no nome dela, no topo do chat. [vitoria_perfil]
-- Ela não vê as OS, as respostas da APR nem os dados de ninguém: só consulta este manual. A conversa não fica guardada
+- Ela não vê as OS, as respostas da APR nem os dados de ninguém: os fatos do sistema vêm só deste manual (em conceitos gerais
+  do ofício ela pode explicar com o que sabe, avisando que é uma informação geral e não uma regra da empresa). A conversa não fica guardada
   no servidor.
 - Ela não aprova nem reprova APR, não assina nada e não decide nada por ninguém.
+
+## Por que o sistema funciona assim
+
+- Por que a APR vem antes da execução: ela é a análise dos riscos do serviço feita pela equipe antes de começar. O
+  botão de iniciar só aparece depois que a APR está aprovada e todos os participantes assinaram, então ninguém começa
+  sem ela.
+- Por que a APR pede pelo menos 2 participantes: ninguém executa o serviço sozinho.
+- Por que cada participante assina a APR na própria conta: a assinatura mostra que aquela pessoa leu e concordou, e
+  ninguém assina por outra. Por isso a assinatura do perfil é a primeira coisa a cadastrar.
+- Por que existe o direito de recusa: quem não concorda com a APR, ou não está bem física ou emocionalmente, pode sair
+  dela informando o motivo. O supervisor é avisado na hora e, se a equipe ficar com menos de 2, a APR é refeita.
+- Por que o sistema pede a hora real quando se esquece de encerrar: o tempo da execução precisa ser verdadeiro para o
+  relatório, então ele é corrigido com a hora em que o trabalho de fato parou, e não com a hora em que a pessoa voltou
+  ao sistema.
+- Por que pausar, suspender e interromper têm motivo obrigatório: o relatório da execução mostra cada parada (quem, por
+  quê, quando). Lesão e enfermidade avisam o supervisor na hora porque a lesão no trabalho, mesmo leve, precisa ser
+  registrada pela empresa.
+- Por que o sistema registra a localização ao iniciar, pausar, suspender, interromper e encerrar: para constar no
+  relatório. Sem permissão de localização o serviço segue normalmente, marcado como "sem localização".
+- Por que o supervisor assina por último: ele lê o relatório da execução e só então a OS fica concluída e o PDF é gerado.
+- Por que o encerramento pede confirmação: o tempo para ali e a execução não pode ser retomada.
+- Por que as preventivas valem o dobro de pontos e trazem um checklist de inspeção: elas seguem um ciclo e o checklist
+  é como se registra que a inspeção foi feita.
+- Por que a OS pode ficar pendente depois da APR: se uma resposta do checklist pediu evidência ou comentário, o
+  supervisor revisa o que foi registrado antes de a OS seguir.
+- Por que os treinamentos de serviço pontuam só na primeira conclusão: refazer serve para revisar, mas a pontuação e a
+  posição no ranking não mudam.
+- Por que o Campo de treino existe: para aprender o sistema com dados de mentira, sem afetar nenhuma OS de verdade.
+
+## Glossário
+
+- OS (ordem de serviço): o pedido de um serviço a executar, com local, equipamento, instruções e materiais recomendados.
+  Ela chega ao sistema pelo SAP, por uma planilha ou pelo PDF da OS, e não é criada à mão pela equipe.
+- OS preventiva: uma OS que segue um ciclo, como as inspeções periódicas. Tem um checklist de inspeção no encerramento.
+  [preventivas]
+- APR (Análise Preliminar de Risco): a análise dos riscos da atividade, feita pela equipe antes de executar, com
+  modelo, riscos marcados e checklist.
+- Modelo de APR: o roteiro da APR para cada tipo de atividade. O sistema sugere um e a pessoa escolhe o que fizer mais
+  sentido.
+- Execução: o período entre iniciar e encerrar o serviço, com cronômetro, pausas e localização.
+- Pausa: parada curta; a equipe volta ao mesmo serviço no mesmo dia.
+- Suspensão: o serviço não continua hoje; a OS fica pendente e a retomada pede APR nova.
+- Interrupção por risco: parada porque apareceu um risco ou impedimento; pede motivo, foto e assinatura.
+- Supervisor: quem a equipe aponta como responsável por ela; lê o relatório, assina por último e recebe os avisos.
+- Representante da equipe: quem assume o que é do supervisor quando ele está ausente ou fica alguns dias sem usar o
+  sistema.
+- Relatório da execução: documento com tempo total, pausas, suspensões, interrupções, localização, fotos, checklist e
+  assinaturas da APR.
+- Evidência: a foto (ou o comentário) que uma resposta do checklist pode pedir para a APR se completar.
+- Sino: o ícone de avisos no topo da tela.
+- Patente: o nível que acompanha o total de pontos acumulado. [gamificacao_patentes]
+- Conquista: uma meta que dá pontos extras quando alcançada. [gamificacao_conquistas]
+- SAP: o sistema de onde as OS chegam e para onde o supervisor pode devolver uma OS.

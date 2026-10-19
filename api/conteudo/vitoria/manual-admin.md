@@ -134,6 +134,36 @@
 
 - A Vitória é a assistente virtual do SYNQ OS. O perfil dela mostra quem ela é, o que pode e o que não pode fazer no
   sistema e qual modelo de IA está respondendo agora. Também abre tocando no nome dela, no topo do chat. [vitoria_perfil]
-- Ela não vê as OS, as respostas da APR nem os dados de ninguém: só consulta este manual. A conversa não fica guardada
+- Ela não vê as OS, as respostas da APR nem os dados de ninguém: os fatos do sistema vêm só deste manual (em conceitos gerais
+  do ofício ela pode explicar com o que sabe, avisando que é uma informação geral e não uma regra da empresa). A conversa não fica guardada
   no servidor; só as perguntas que ela não soube responder, sem identificar quem perguntou.
 - Ela não aprova nem reprova APR, não assina nada e não decide nada por ninguém.
+
+## Por que o sistema funciona assim
+
+- Por que editar um modelo publicado cria uma versão nova: as APR já respondidas guardam a versão em que foram feitas,
+  então nada muda retroativamente.
+- Por que a auditoria não deixa editar nem apagar: ela só acrescenta registros, para valer como prova de quem fez o quê
+  nas telas de gestão.
+- Por que liberar, recusar, reprogramar e cancelar OS pedem a sua assinatura: são ações importantes, e a assinatura do
+  perfil mostra que foi você quem as fez.
+- Por que o sistema nunca devolve o acesso sozinho a quem foi readmitido: o aviso traz o botão "Reativar a conta" e
+  quem decide é o administrador.
+- Por que o administrador não faz APR nem executa OS: o papel dele é a gestão do sistema (cadastros, modelos,
+  importação, auditoria).
+- Por que a Vitória não diz no chat o que reprova a APR, nem para o administrador: essa informação fica só no editor do
+  modelo.
+- Por que a lista de perguntas sem resposta existe: é como o manual da Vitória melhora. Cada pergunta tratada vira uma
+  resposta melhor no manual.
+
+## Glossário
+
+- OS (ordem de serviço): o pedido de um serviço a executar. Chega pelo SAP, por planilha ou pelo PDF da OS. [importacao]
+- APR (Análise Preliminar de Risco): a análise dos riscos que a equipe faz antes de executar uma OS, a partir de um
+  modelo.
+- Modelo de APR: o roteiro da APR de uma atividade, com versões. [modelos_apr]
+- SAP: o sistema de onde as OS chegam e para onde elas voltam pela exportação de baixa. [exportacao_sap]
+- Supervisor: quem a equipe aponta como responsável por ela; é um campo da equipe, não um perfil à parte.
+- Representante da equipe: quem assume as tarefas do supervisor quando ele está ausente ou parado.
+- Alerta: aviso para o administrador sobre algo que precisa de atenção. [alertas]
+- Simulador: as telas do SAP e do registro de funcionários simulados, onde o admin vê e cria as OS e os funcionários que o sistema lê. [simulador_ordens]
