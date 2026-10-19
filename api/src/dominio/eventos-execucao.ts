@@ -109,7 +109,10 @@ export async function aplicarExecucaoIniciada(ctx: Contexto, osIdEnvelope: strin
 
   const [a] = await ctx.tx.select().from(apr).where(eq(apr.id, p.apr_id));
   if (!a) throw adiar("apr_ausente", "A APR ainda não foi recebida");
-  if (a.osId !== ordem.id || a.resultado !== "aprovada") throw rejeitar("apr_invalida", "Preencha a APR antes de iniciar");
+  // Sem sinal o aparelho não valida a APR (só o servidor sabe o que bloqueia): a execução feita assim não pode se perder (Decisão-chave 2).
+  // Vinda da fila e amparada por uma APR do próprio técnico que o servidor bloqueou, ela é aplicada e vira alerta ao supervisor.
+  const bloqueadaSemSinal = ctx.offline && a.resultado === "bloqueada" && a.preenchidaPor === ctx.usuario.id;
+  if (a.osId !== ordem.id || (a.resultado !== "aprovada" && !bloqueadaSemSinal)) throw rejeitar("apr_invalida", "Preencha a APR antes de iniciar");
   if (diaDe(a.concluidaEm) !== diaDe(p.inicio)) throw rejeitar("apr_vencida", "A APR é de outro dia: faça uma APR nova");
   const [participante] = await ctx.tx.select().from(aprParticipante).where(and(eq(aprParticipante.aprId, a.id), eq(aprParticipante.usuarioId, ctx.usuario.id)));
   if (!participante || participante.recusouEm) throw rejeitar("fora_da_apr", participante ? "Você saiu desta APR (direito de recusa)" : "Você não é participante desta APR");
@@ -117,7 +120,8 @@ export async function aplicarExecucaoIniciada(ctx: Contexto, osIdEnvelope: strin
   if (situacao.responsavelRecusou || situacao.semParticipantes) {
     throw rejeitar("apr_sem_participantes", situacao.responsavelRecusou ? "O responsável recusou a APR: faça uma APR nova" : "A APR ficou com menos de 2 participantes: faça uma APR nova");
   }
-  if (situacao.faltam.length > 0) {
+  // A APR bloqueada não é assinada: não há assinatura a esperar.
+  if (situacao.faltam.length > 0 && !bloqueadaSemSinal) {
     // No offline a assinatura de outro aparelho ainda pode chegar: o evento espera. Online, é a equipe que precisa assinar.
     const mensagem = `Faltam as assinaturas da APR: ${situacao.faltam.map((x) => x.nome).join(", ")}`;
     throw ctx.offline ? adiar("apr_sem_assinaturas", mensagem) : rejeitar("apr_sem_assinaturas", mensagem);
@@ -147,6 +151,17 @@ export async function aplicarExecucaoIniciada(ctx: Contexto, osIdEnvelope: strin
     inicioLongitude: posicao.longitude,
   });
 
+  if (bloqueadaSemSinal) {
+    ctx.saida.alertas.push(
+      ...(await criarAlertas(ctx.tx, {
+        tipo: "bloqueio",
+        osId: ordem.id,
+        equipeId: ordem.equipeId,
+        detalhe: `OS ${ordem.numeroOrdem ?? ordem.titulo}: ${ctx.usuario.nome} executou o serviço sem sinal, com uma APR que o servidor bloqueou ao recebê-la. A APR não pôde ser validada no aparelho; confira a execução.`,
+        agora: ctx.recebidoEm,
+      })),
+    );
+  }
   if (abertasNaOs > 0 || jaEncerrada) {
     ctx.saida.alertas.push(
       ...(await criarAlertas(ctx.tx, { tipo: "execucao_duplicada", osId: ordem.id, equipeId: ordem.equipeId, detalhe: `OS ${ordem.numeroOrdem ?? ordem.titulo}: mais de uma execução (${jaEncerrada ? "OS já encerrada" : "outra em andamento"})` })),

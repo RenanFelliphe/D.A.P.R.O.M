@@ -383,6 +383,44 @@ describe("Eventos de campo: APR, execução e sync", () => {
     assert.equal(semFoto.rejeitados[0].codigo, "interrupcao_incompleta");
   });
 
+  it("sem sinal, a execução amparada por uma APR que o servidor bloqueou é aplicada e vira alerta; online continua recusada (D1)", async () => {
+    const duasHorasAtras = new Date(amb.relogio.agora.getTime() - 2 * 3600_000).toISOString();
+    const o = await novaOs();
+    // O aparelho sem sinal não validou a APR: manda "presencial", e o servidor a bloqueia (não há assinatura a copiar).
+    const p = { ...(await payloadApr(o.id, { bloquear: true, semObservacao: true, comFoto: false, concluidaEm: duasHorasAtras })), assinatura_presencial: true };
+    const aprRegistrada = await enviar(tecnico, evento("apr_concluida", p, o.id, duasHorasAtras));
+    assert.deepEqual(aprRegistrada.aprs, [{ id: p.id, resultado: "bloqueada" }]);
+    assert.equal(await statusDa(o.id), "pendente");
+
+    const execId = randomUUID();
+    const iniciada = evento("execucao_iniciada", { id: execId, apr_id: p.id, inicio: duasHorasAtras }, o.id, duasHorasAtras);
+    const r = await enviar(tecnico, iniciada);
+    assert.deepEqual(r.rejeitados, []);
+    assert.deepEqual(r.pendentes, []);
+    assert.deepEqual(r.confirmados, [iniciada.id]);
+    assert.equal(r.alertas.length, 1);
+    const [alerta] = await amb.sql<{ tipo: string; detalhe: string }>("select tipo, detalhe from alerta where id = $1", [r.alertas[0]]);
+    assert.equal(alerta!.tipo, "bloqueio");
+    assert.match(alerta!.detalhe, /sem sinal/);
+    assert.equal(await statusDa(o.id), "em_execucao");
+
+    // Reenviar não repete nada; e a mesma APR bloqueada não ampara uma segunda execução.
+    assert.deepEqual((await enviar(tecnico, iniciada)).confirmados, [iniciada.id]);
+    const segunda = await enviar(tecnico, evento("execucao_iniciada", { id: randomUUID(), apr_id: p.id, inicio: duasHorasAtras }, o.id, duasHorasAtras));
+    assert.equal(segunda.rejeitados[0].codigo, "apr_ja_usada");
+
+    // Online (sem atraso) a APR bloqueada continua sem amparar a execução, e outra pessoa não executa com a APR bloqueada de alguém.
+    const o2 = await novaOs();
+    const bloqueadaOnline = await payloadApr(o2.id, { bloquear: true });
+    await enviar(tecnico, evento("apr_concluida", bloqueadaOnline, o2.id));
+    assert.equal((await enviar(tecnico, iniciar(o2.id, bloqueadaOnline.id).ev)).rejeitados[0].codigo, "apr_invalida");
+    const o3 = await novaOs();
+    const deOutro = { ...(await payloadApr(o3.id, { bloquear: true, semObservacao: true, comFoto: false, concluidaEm: duasHorasAtras })), assinatura_presencial: true };
+    await enviar(tecnico, evento("apr_concluida", deOutro, o3.id, duasHorasAtras));
+    const intruso = await enviar(colega, evento("execucao_iniciada", { id: randomUUID(), apr_id: deOutro.id, inicio: duasHorasAtras }, o3.id, duasHorasAtras));
+    assert.equal(intruso.rejeitados[0].codigo, "apr_invalida");
+  });
+
   it("conflitos: online recusa OS já em execução; da fila offline aplica e gera alerta execucao_duplicada", async () => {
     const o = await novaOs();
     const apr1 = await aprAprovada(o.id);
@@ -515,6 +553,9 @@ describe("Eventos de campo: APR, execução e sync", () => {
     assert.ok(snap.os.every((x: any) => "recomendado" in x.escolha_do_modelo && Array.isArray(x.escolha_do_modelo.encontradas)));
     assert.ok(snap.atividades.length > 100);
     assert.ok(snap.locais.some((l: any) => l.id === localId));
+    assert.equal(snap.equipe.id, equipeId);
+    assert.equal(snap.equipe.supervisor_id, supervisor.id);
+    assert.ok(snap.equipe.nome && snap.equipe.centro_trabalho);
     assert.ok(snap.usuarios.some((u: any) => u.id === colega.id) && snap.usuarios.every((u: any) => !("email" in u)));
     assert.ok(snap.cursor);
 

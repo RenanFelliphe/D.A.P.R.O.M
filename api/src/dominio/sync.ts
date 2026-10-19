@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { apr, aprParticipante, atividade, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
+import { apr, aprParticipante, atividade, equipe, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
 import { ausenciaDaPessoaParaApi, ausentesEm } from "./ausencia";
 import { materiaisDosServicos } from "./catalogo";
 import { checklistsDasOs } from "./checklist-inspecao";
@@ -16,7 +16,7 @@ const DIAS_DE_HISTORICO = 60;
  * `em_execucao` da equipe, as `encerrada` do próprio técnico dos últimos 60 dias, com o resumo das APRs e execuções de
  * cada uma, o checklist de inspeção do plano das preventivas e a escolha do modelo da APR (o recomendado pela leitura da OS e o que cada modelo achou nela), os modelos
  * publicados com a orientação (mais as versões que as APRs do snapshot usaram), a tabela de atividades (com os
- * materiais de cada serviço do catálogo), os locais dessas OS e os usuários da equipe. No MVP é sempre completo: o
+ * materiais de cada serviço do catálogo), os locais dessas OS, a equipe e os usuários dela. No MVP é sempre completo: o
  * `cursor` devolvido é só o instante da geração.
  */
 export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipeId: string }, agora: Date) {
@@ -70,8 +70,9 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
 
   const checklists = await checklistsDasOs(db, ordens);
 
-  const equipe = await db.select().from(usuario).where(and(eq(usuario.equipeId, usuarioLogado.equipeId), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")));
-  const ausentes = await ausentesEm(db, [...equipe.map((u) => u.id), usuarioLogado.id], diaDe(agora));
+  const pessoas = await db.select().from(usuario).where(and(eq(usuario.equipeId, usuarioLogado.equipeId), eq(usuario.ativo, true), eq(usuario.liberacao, "liberado")));
+  const ausentes = await ausentesEm(db, [...pessoas.map((u) => u.id), usuarioLogado.id], diaDe(agora));
+  const [minhaEquipe] = await db.select({ id: equipe.id, nome: equipe.nome, centroTrabalho: equipe.centroTrabalho, supervisorId: equipe.supervisorId }).from(equipe).where(eq(equipe.id, usuarioLogado.equipeId));
 
   // A escolha do modelo offline: a orientação de cada modelo e, em cada OS, o recomendado e o que cada modelo achou nela.
   const paraEscolher = await modelosParaEscolher(db);
@@ -94,7 +95,9 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
       riscos: riscos.filter((r) => r.modeloAprId === m.id),
       itens: itens.filter((i) => i.modeloAprId === m.id).map(semClassificacao),
     })),
-    usuarios: equipe.map((u) => usuarioParaApi(u, { semEmail: true, ausencia: ausentes.get(u.id) })),
+    /** A equipe de quem baixou a cópia: o app mostra o nome dela no detalhe da OS. */
+    equipe: minhaEquipe ?? null,
+    usuarios: pessoas.map((u) => usuarioParaApi(u, { semEmail: true, ausencia: ausentes.get(u.id) })),
     /** A ausência de quem baixou a cópia (o app mostra a faixa e a tela de retorno); nula quando não está ausente. */
     minhaAusencia: ausenciaDaPessoaParaApi(ausentes.get(usuarioLogado.id)),
     cursor: agora.toISOString(),
