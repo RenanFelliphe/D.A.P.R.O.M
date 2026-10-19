@@ -6,6 +6,7 @@ import {
   conquista,
   conquistaEquipe,
   conquistaUsuario,
+  eventoCampo,
   lancamentoEquipe,
   lancamentoPontos,
   os,
@@ -58,6 +59,7 @@ export const CRITERIOS_INFO: Record<Criterio, InfoDoCriterio> = {
   campo_de_treino: pessoa("Campo de treino concluído", "", { pedeQuantidade: false }),
   treinamentos_servico_concluidos: pessoa("Treinamentos de serviço concluídos", "treinamentos"),
   treinamentos_gabaritados: pessoa("Treinamentos de serviço gabaritados", "treinamentos"),
+  sincronizacoes_offline: pessoa("OS sincronizadas depois de trabalhar sem sinal", "OS"),
   pontos_gerais: pessoa("Pontos gerais", "pontos"),
   pontos_numa_temporada: pessoa("Pontos numa temporada", "pontos"),
   patente: pessoa("Patente alcançada numa temporada", "", { pedeQuantidade: false, pedePatente: true }),
@@ -108,6 +110,8 @@ export function textoDaMeta(c: { criterio: Criterio; quantidade: number }, paten
       return `Conclua ${pl(n, "treinamento de serviço", "treinamentos de serviço")}`;
     case "treinamentos_gabaritados":
       return `Gabarite ${pl(n, "treinamento de serviço", "treinamentos de serviço")}`;
+    case "sincronizacoes_offline":
+      return `Sincronize ${pl(n, "OS feita", "OS feitas")} sem sinal`;
     case "pontos_gerais":
       return `Some ${pl(n, "ponto", "pontos")} no total`;
     case "pontos_numa_temporada":
@@ -169,6 +173,11 @@ export interface DadosDaPessoa {
    * pontuou (a primeira que ela concluiu daquele treinamento: abandonar e refazer não conta como "a primeira").
    */
   treinamentosGabaritados: Date[];
+  /**
+   * Uma data por OS em que a pessoa trabalhou sem sinal e o registro chegou pela fila (a `api` marcou o evento aplicado como
+   * `offline`): a chegada do primeiro desses eventos, do mais antigo ao mais novo.
+   */
+  sincronizacoesOffline: Date[];
 }
 
 export async function carregarDadosDaPessoa(db: Db, usuarioId: string): Promise<DadosDaPessoa> {
@@ -211,7 +220,20 @@ export async function carregarDadosDaPessoa(db: Db, usuarioId: string): Promise<
     )
     .orderBy(asc(treinamentoServicoTentativa.concluidaEm));
 
-  return { extrato, fechadas, treinamentosGabaritados: gabaritados.map((g) => g.ocorridoEm).filter((d): d is Date => d !== null) };
+  // Conta OS, não eventos: uma OS feita sem sinal tem vários eventos, e o troféu é por ter sincronizado o trabalho de campo.
+  const sincronizadas = await db
+    .select({ chegouEm: sql<Date | string>`min(${eventoCampo.recebidoEm})` })
+    .from(eventoCampo)
+    .where(and(eq(eventoCampo.usuarioId, usuarioId), eq(eventoCampo.offline, true), sql`${eventoCampo.osId} is not null`))
+    .groupBy(eventoCampo.osId)
+    .orderBy(sql`min(${eventoCampo.recebidoEm})`);
+
+  return {
+    extrato,
+    fechadas,
+    treinamentosGabaritados: gabaritados.map((g) => g.ocorridoEm).filter((d): d is Date => d !== null),
+    sincronizacoesOffline: sincronizadas.map((s) => new Date(s.chegouEm)),
+  };
 }
 
 const REGRA_DO_CRITERIO: Partial<Record<Criterio, RegraCodigo>> = {
@@ -251,6 +273,8 @@ export function progressoDaPessoa(m: Meta, d: DadosDaPessoa): Progresso {
   switch (m.criterio) {
     case "treinamentos_gabaritados":
       return por(d.treinamentosGabaritados.length, m.quantidade);
+    case "sincronizacoes_offline":
+      return por(d.sincronizacoesOffline.length, m.quantidade);
     case "locais_diferentes":
       return por(new Set(d.extrato.filter((l) => l.regra === "execucao_concluida" && l.localId).map((l) => l.localId)).size, m.quantidade);
     case "pontos_gerais":
@@ -277,6 +301,8 @@ export function quandoBateuPessoa(m: Meta, d: DadosDaPessoa): Date | null {
   switch (m.criterio) {
     case "treinamentos_gabaritados":
       return d.treinamentosGabaritados[m.quantidade - 1] ?? null;
+    case "sincronizacoes_offline":
+      return d.sincronizacoesOffline[m.quantidade - 1] ?? null;
     case "locais_diferentes": {
       const primeira = new Map<string, Date>();
       for (const l of d.extrato) if (l.regra === "execucao_concluida" && l.localId && !primeira.has(l.localId)) primeira.set(l.localId, l.ocorridoEm);

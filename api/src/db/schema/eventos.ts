@@ -1,4 +1,4 @@
-import { check, index, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 import { os } from "./sap";
 import { usuario } from "./usuarios";
@@ -42,6 +42,12 @@ export const eventoCampo = pgTable(
     ocorridoEm: instante().notNull(),
     /** Relógio do servidor. */
     recebidoEm: instante().notNull().defaultNow(),
+    /**
+     * Chegou da fila offline: o atraso entre `ocorrido_em` e `recebido_em` passou de `ATRASO_OFFLINE_MS` (60 s). É a `api` quem decide, pelo
+     * relógio dela, nunca o aparelho; só os eventos aplicados chegam aqui (o recusado desfaz a própria transação). Alimenta a conquista
+     * de sincronização offline.
+     */
+    offline: boolean().notNull().default(false),
   },
   (t) => [
     check("evento_campo_tipo_check", emLista(t.tipo, EVENTO_TIPOS)),

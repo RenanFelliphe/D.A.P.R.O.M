@@ -24,6 +24,7 @@ import { carregarDadosIniciais } from "./db/seed/carregar";
 import { carregarOrdensDeExemplo } from "./db/seed/ordens-sap";
 import { carregarRegistroDosUsuarios } from "./db/seed/registro-rh";
 import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
+import { garantirImagensDeSincronizacaoOffline } from "./db/seed/sincronizacao-offline-imagens";
 import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servico-imagens";
 import type { Deps } from "./deps";
 import { executarLeitura } from "./servicos/leitura-sap";
@@ -108,6 +109,7 @@ async function main() {
   await armazenamento.gravar("assinaturas", assinaturaId, PNG, "image/png");
   console.log(`Gamificação: ${await garantirImagensDaGamificacao(armazenamento)} imagens de patentes e conquistas`);
   await garantirImagensDeTreinamentoServico(armazenamento);
+  await garantirImagensDeSincronizacaoOffline(armazenamento);
 
   const logins: string[] = [];
   async function criar(matricula: string, nome: string, perfil: Perfil, centro: string | null, extra: { cargo?: string; email?: string } = {}) {

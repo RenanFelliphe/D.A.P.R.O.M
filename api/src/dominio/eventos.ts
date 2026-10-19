@@ -5,8 +5,9 @@ import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid } from "../http/validacao";
 import { aplicarAprAssinada, aplicarAprConcluida, aplicarAprRecusada } from "./eventos-apr";
+import { concederConquistas } from "./conquistas";
 import { ganhosDe, type ganhoParaApi } from "./lancamentos";
-import { ATRASO_OFFLINE_MS, RejeicaoEvento, rejeitar, type Contexto } from "./eventos-base";
+import { ATRASO_OFFLINE_MS, RejeicaoEvento, contextoDePontos, rejeitar, type Contexto } from "./eventos-base";
 import {
   aplicarEncerramentoAssinado,
   aplicarExecucaoCancelada,
@@ -112,9 +113,10 @@ export async function processarEventos(
           const [existe] = await tx.select({ id: os.id }).from(os).where(eq(os.id, osDoEnvelope));
           if (!existe) throw rejeitar("os_inexistente", "OS não encontrada");
         }
+        const offline = recebidoEm.getTime() - e.ocorrido_em.getTime() > ATRASO_OFFLINE_MS;
         const inserido = await tx
           .insert(eventoCampo)
-          .values({ id: e.id, usuarioId: usuario.id, tipo: e.tipo, osId: osDoEnvelope, payload: e.payload, ocorridoEm: e.ocorrido_em, recebidoEm })
+          .values({ id: e.id, usuarioId: usuario.id, tipo: e.tipo, osId: osDoEnvelope, payload: e.payload, ocorridoEm: e.ocorrido_em, recebidoEm, offline })
           .onConflictDoNothing()
           .returning({ id: eventoCampo.id });
         if (inserido.length === 0) {
@@ -135,11 +137,16 @@ export async function processarEventos(
           usuario,
           evento: { id: e.id, tipo: e.tipo, osId: osDoEnvelope, ocorridoEm: e.ocorrido_em },
           recebidoEm,
-          offline: recebidoEm.getTime() - e.ocorrido_em.getTime() > ATRASO_OFFLINE_MS,
+          offline,
           ...opcoes,
           saida: parcial,
         };
         await despachar(ctx, e);
+        // O que chegou pela fila pode completar a conquista de sincronização offline (nenhum lançamento a dispara).
+        if (offline) {
+          const conquistas = await concederConquistas(contextoDePontos(ctx), { usuarios: [usuario.id] });
+          parcial.ganhos.push(...conquistas.ganhos);
+        }
         for (const id of parcial.osAfetadas) await recalcularStatusOs(tx, id);
         if (!osDoEnvelope && parcial.osAfetadas.size === 1) {
           await tx.update(eventoCampo).set({ osId: [...parcial.osAfetadas][0]! }).where(eq(eventoCampo.id, e.id));

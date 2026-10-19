@@ -29,14 +29,14 @@ describe("Gamificação: conquistas (seção 7)", () => {
   const obtidas = async (usuarioId: string) =>
     new Map((await c.amb.db.select({ id: conquista.id, titulo: conquista.titulo, obtidaEm: conquistaUsuario.obtidaEm }).from(conquistaUsuario).innerJoin(conquista, eq(conquista.id, conquistaUsuario.conquistaId)).where(eq(conquistaUsuario.usuarioId, usuarioId))).map((o) => [o.titulo, o]));
 
-  it("a carga inicial traz as 26 conquistas (20 de pessoa e 6 de equipe, sem pontos) e as 5 patentes", async () => {
-    // 23 da migração 0016 + 3 dos treinamentos de serviço (migração 0027: Aprendiz, Especialista, Nota máxima, todas de pessoa).
+  it("a carga inicial traz as 27 conquistas (21 de pessoa e 6 de equipe, sem pontos) e as 5 patentes", async () => {
+    // 23 da migração 0016 + 3 dos treinamentos de serviço (migração 0027: Aprendiz, Especialista, Nota máxima) + a de sincronização offline (0037), todas de pessoa.
     const todas = await c.amb.db.select().from(conquista);
-    assert.equal(todas.length, 26);
+    assert.equal(todas.length, 27);
     const deEquipe = todas.filter((x) => ["aprs_da_equipe", "execucoes_da_equipe", "preventivas_em_dia_da_equipe", "pontos_gerais_da_equipe", "patente_da_equipe", "posicao_da_equipe", "temporadas_impecaveis"].includes(x.criterio));
     assert.equal(deEquipe.length, 6);
     assert.ok(deEquipe.every((x) => x.pontos === 0));
-    assert.ok(todas.filter((x) => !deEquipe.includes(x)).every((x) => x.pontos >= 25));
+    assert.ok(todas.filter((x) => !deEquipe.includes(x)).every((x) => x.pontos >= 25 || x.criterio === "sincronizacoes_offline"), "só a de sincronização offline vale 0 ponto (a sincronização não pontua)");
     const patentes = await c.amb.esperar(200, "GET", "/gamificacao/patentes", { como: c.supervisor });
     assert.deepEqual(patentes.patentes.map((p: any) => [p.nome, p.pontos_necessarios, p.cor]), [["Bronze", 0, "#CD7F32"], ["Prata", 300, "#A8A9AD"], ["Ouro", 1500, "#D4AF37"], ["Platina", 3000, "#9DB4C0"], ["Diamante", 5000, "#4FC3F7"]]);
     const regras = await c.amb.esperar(200, "GET", "/gamificacao/regras", { como: c.supervisor });

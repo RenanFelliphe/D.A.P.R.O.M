@@ -6,6 +6,7 @@ import { carregarDadosIniciais } from "./db/seed/carregar";
 import { carregarOrdensDeExemplo } from "./db/seed/ordens-sap";
 import { preencherHistoricoDaGamificacao } from "./db/seed/gamificacao-historico";
 import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
+import { garantirImagensDeSincronizacaoOffline } from "./db/seed/sincronizacao-offline-imagens";
 import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servico-imagens";
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
@@ -53,6 +54,7 @@ async function main() {
   // As imagens das patentes e das conquistas da carga inicial (as que o admin trocou não voltam).
   await garantirImagensDaGamificacao(armazenamento).catch((erro) => console.warn(`Imagens da gamificação não verificadas: ${erro.message}`));
   await garantirImagensDeTreinamentoServico(armazenamento).catch((erro) => console.warn(`Imagens dos treinamentos de serviço não verificadas: ${erro.message}`));
+  await garantirImagensDeSincronizacaoOffline(armazenamento).catch((erro) => console.warn(`Imagem da conquista de sincronização offline não verificada: ${erro.message}`));
 
   const deps = {
     db,

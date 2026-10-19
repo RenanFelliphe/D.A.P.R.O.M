@@ -260,6 +260,13 @@
       "when": 1792383074050,
       "tag": "0036_digitalizacao_de_os_antigas",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792400145785,
+      "tag": "0037_sincronizacao_offline",
+      "breakpoints": true
     }
   ]
 }

@@ -46,6 +46,7 @@ export const CRITERIOS_DE_PESSOA = [
   "campo_de_treino",
   "treinamentos_servico_concluidos",
   "treinamentos_gabaritados",
+  "sincronizacoes_offline",
   "pontos_gerais",
   "pontos_numa_temporada",
   "patente",
