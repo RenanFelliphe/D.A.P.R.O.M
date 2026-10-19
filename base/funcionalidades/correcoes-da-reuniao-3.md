@@ -102,7 +102,13 @@ O Mario reclamou que, quando o sistema não deixa salvar, não diz por quê: o b
 
 A base é [`Field.tsx`](../web/src/components/ui/Field.tsx) (aceita `erro`, com `role="alert"` e `aria-describedby`) e [`useFormulario.tsx`](../web/src/components/ui/useFormulario.tsx). Aplicado em: as janelas de motivo da pausa e da suspensão e a de recusa da APR, o encerramento, a interrupção por risco, a nova APR (mínimo de 2 participantes), o início da execução, a suspensão da execução esquecida, a revisão da APR, a evidência dos itens reprovados, a assinatura (`JanelaDeAssinatura`) e a janela do relatório com a assinatura do supervisor. Os textos "Falta:" desapareceram.
 
-**Fica para a próxima rodada** a varredura nos demais formulários da gestão (usuários, equipes, modelos de APR, OS de apoio, reprogramação, simuladores etc.), que ainda usam o padrão antigo.
+**A varredura nos demais formulários foi feita em 19/10/2026 (pendência 13 do [pendencias.md](../../pendencias.md)).** Entraram, com o mesmo padrão (erro em vermelho abaixo de cada campo, foco no primeiro, botão ativo): usuários e equipes; modelos de APR (novo modelo, orientação) e atividades; materiais (cadastro e edição na linha) e a lista de materiais do serviço; OS de apoio e reprogramação; devolver, cancelar e reservar a OS; as ações da ausência (pedir, registrar, aprovar, prorrogar, fim antecipado, recusa de cadastro); o ciclo da preventiva, o intervalo do resultado da importação e o representante da equipe; patentes, conquistas e a pontuação das tarefas; o simulador de funcionários e de ordens (cadastro e criação em lotes); o login e as trocas de senha; o texto do procedimento do treinamento e o "Reportar problema". Peças novas na base:
+
+- `CampoDeCelula` (em `Field.tsx`): o erro em vermelho dentro da célula de uma tabela editável, para as linhas que não podem ser um `<form>` (o botão Salvar dispara o envio).
+- `validar` (em `useFormulario`) e a propriedade `validar` da `JanelaDeAssinatura`: a janela confere os campos antes de assinar, e a mensagem fica junto de cada campo (a propriedade `incompleto` e o "Preencha os campos acima" saíram).
+- [`lib/validacao.ts`](../../web/src/lib/validacao.ts): o dia que existe, a data opcional, o inteiro dentro de um intervalo e a troca de senha; `conferirPeriodo` (no período da ausência) e `regraDaImagem` (nas imagens das patentes e conquistas) levam a mensagem ao campo certo.
+
+**Ficaram como estão, de propósito:** os conversadores (a Vitória, o pedido de ajuste do treinamento), as conferências de importação e de digitalização (o admin revisa linha a linha e a tela já conta o que bloqueia), as confirmações em massa do simulador (só têm listas com valor sempre válido) e os filtros.
 
 ## 7. O que ficou de fora ou registrado
 

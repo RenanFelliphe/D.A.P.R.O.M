@@ -36,7 +36,7 @@ O MVP está completo quando as três linhas atenderem e os itens 🔴 da tabela 
 | 10 | Digitalização: PDF digitalizado em lote (OCR + IA) | código | 🟢 | 9 | [x] 19/10/2026 |
 | 11 | Digitalização: foto de folhas avulsas | código | 🟢 | 10 | [x] 19/10/2026 |
 | 12 | Digitalização: APRs antigas | código | 🟢 | 10 | [x] 19/10/2026 |
-| 13 | Validação (React Hook Form e Zod) nos demais formulários | código | 🟡 | — | [ ] |
+| 13 | Validação (React Hook Form e Zod) nos demais formulários | código | 🟡 | — | [x] 19/10/2026 |
 | 14 | Rodar a bateria inteira da Vitória (53 perguntas) | código | 🟡 | cota da IA | [ ] |
 | 15 | Atualizar README, especificação e READMEs da `api` e da `web` | código | 🟡 | 1 a 7 | [ ] |
 | 16 | Configurar o servidor de e-mail (SMTP) | terceiros | 🟡 | TI da empresa | [ ] |
@@ -164,7 +164,8 @@ A especificação deixa o escaneamento para depois do MVP, mas ele é prioridade
 ### 13. Validação nos demais formulários (item 16 da Reunião 3)
 
 - Os formulários da Reunião 3 já usam React Hook Form com Zod ([correções da Reunião 3](funcionalidades/correcoes-da-reuniao-3.md), seção 6).
-- **Faltam:** usuários, equipes, modelos de APR, OS de apoio, reprogramação, simuladores e os demais da gestão, que ainda desativam o botão sem dizer por quê. Foi uma reclamação direta do Mario.
+- Era a reclamação direta do Mario: os formulários da gestão desativavam o botão sem dizer por quê.
+- **Feito em 19/10/2026** (seção 6 de [correcoes-da-reuniao-3.md](base/funcionalidades/correcoes-da-reuniao-3.md)). Usuários, equipes, modelos de APR, atividades, materiais, OS de apoio, reprogramação, devolver/cancelar/reservar a OS, ações da ausência, ciclo da preventiva, representante, patentes, conquistas, pontuação, simuladores (cadastro e lotes), login e troca de senha agora mostram o erro **em vermelho abaixo do campo**, levam o foco ao primeiro erro e deixam o botão ativo. Ficaram de fora, de propósito: os conversadores (Vitória e ajuste do treinamento), as conferências de importação e digitalização e as confirmações em massa do simulador. **Validado por código:** `tsc` e ESLint da `web` sem erros; **falta ver nas telas** (a ordem do foco, a mensagem dentro das tabelas editáveis e das janelas).
 
 ### 14. Bateria da Vitória
 
