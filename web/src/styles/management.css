@@ -325,6 +325,166 @@
   color: var(--ink3)
 }
 
+/* A pergunta antes da importação: liberar no sistema ou já concluída no papel */
+.caminhos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px
+}
+
+/* A cor vem de .t-arq / .t-cam (as mesmas dos cartões da página) */
+.caminho {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: inset 0 3px 0 var(--tom);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, transform .15s;
+  animation: caminho-entra .28s ease-out both
+}
+
+.caminho:nth-child(2) {
+  animation-delay: .06s
+}
+
+.caminho:hover,
+.caminho:focus-visible {
+  border-color: var(--tom);
+  box-shadow: inset 0 3px 0 var(--tom), 0 10px 28px rgba(23, 33, 43, .09);
+  transform: translateY(-2px)
+}
+
+.caminho:focus-visible {
+  outline: 2px solid #6FB3CF;
+  outline-offset: 2px
+}
+
+.caminho-detalhes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--ink3)
+}
+
+.caminho-detalhes li {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start
+}
+
+.caminho-detalhes svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--tom)
+}
+
+.caminho-acao {
+  margin-top: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tom-ink)
+}
+
+@keyframes caminho-entra {
+  from {
+    opacity: 0;
+    transform: translateY(8px)
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caminho {
+    animation: none;
+    transition: none
+  }
+}
+
+@media (max-width: 640px) {
+  .caminhos {
+    grid-template-columns: minmax(0, 1fr)
+  }
+}
+
+/* Conferência da Digitalização: as folhas ao lado, o escrito à mão e a lista em aberto */
+.folhas-lado {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px
+}
+
+.folhas-lado a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+  color: inherit;
+  text-decoration: none
+}
+
+.folhas-lado img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 210 / 297;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--surface2);
+  transition: box-shadow .15s, transform .15s
+}
+
+.folhas-lado a:hover img,
+.folhas-lado a:focus-visible img {
+  box-shadow: 0 8px 22px rgba(23, 33, 43, .14);
+  transform: translateY(-1px)
+}
+
+.manuscrito {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed var(--line3);
+  border-radius: 12px;
+  background: var(--surface2)
+}
+
+.lista-aberta {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column
+}
+
+.lista-aberta li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line)
+}
+
+.lista-aberta li:first-child {
+  border-top: 0
+}
+
 /* Passo a passo do fluxo em desenvolvimento (Digitalização pela câmera) */
 .passos {
   list-style: none;

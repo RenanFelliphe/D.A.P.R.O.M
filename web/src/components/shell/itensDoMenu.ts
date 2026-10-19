@@ -13,7 +13,7 @@ import type { ItemMenu } from "./MenuLateral";
  * abas, "APR" reúne Modelos e Atividades, "Catálogo" reúne Serviços e Materiais, "Gamificação" reúne Minha pontuação, Ranking,
  * Conquistas, Patentes e Como pontuar, e "Dashboard" reúne os dashboards; o menu também lista as abas como dropdown. Quais abas
  * aparecem fica com cada seção (`secao.ts` em `components/web/os`, `apr`, `catalogo`, `gamificacao` e `indicadores`).
- * - Admin: Ordem de Serviço, APR, Catálogo, Equipes e usuários, Auditoria, Perguntas à Vitória, Gamificação (sem Minha pontuação:
+ * - Admin: Ordem de Serviço, APR, Catálogo, Equipes e usuários, Auditoria, Vitória, Gamificação (sem Minha pontuação:
  *   o admin não joga) e Dashboard.
  * - Supervisor e técnico: Ordem de Serviço (o técnico, "OS da equipe"), Minha equipe, Catálogo (só para consulta), Gamificação e
  *   Dashboard; o supervisor com cadastro de técnicos e o técnico só para consulta.
@@ -50,7 +50,7 @@ export function itensDeNavegacao(usuario: Usuario, pendentes?: number, perguntas
     {
       href: rotas.app.vitoriaSemResposta,
       icone: "chat",
-      rotulo: "Perguntas à Vitória",
+      rotulo: "Vitória",
       chave: "menu-vitoria",
       ...(perguntasSemResposta ? { contador: perguntasSemResposta, rotuloDoContador: `${perguntasSemResposta} perguntas sem resposta da Vitória` } : {}),
     },

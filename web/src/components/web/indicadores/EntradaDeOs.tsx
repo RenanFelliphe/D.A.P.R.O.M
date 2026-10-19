@@ -16,7 +16,7 @@ const nomeDaUnidade = { dia: "dia", semana: "semana", mes: "mês" } as const;
 
 /** Quantas OS cada método de entrada registrou no período, com a fatia de cada um e o volume por trás. */
 function ContadoresDeMetodo({ resumo }: { resumo: ResumoDasImportacoes }) {
-  const { api, planilha } = resumo.por_origem;
+  const { api, planilha, digitalizacao } = resumo.por_origem;
   const total = resumo.totais.criadas;
   const metodos: { tom: string; icone: IconName; nome: string; cor: string; criadas: number; detalhe: string }[] = [
     {
@@ -33,7 +33,16 @@ function ContadoresDeMetodo({ resumo }: { resumo: ResumoDasImportacoes }) {
       criadas: planilha.criadas,
       detalhe: `${plural(planilha.arquivos, "arquivo", "arquivos")}${planilha.arquivos_com_erro > 0 ? ` (${planilha.arquivos_com_erro} com falha)` : ""} · ${plural(planilha.atualizadas, "OS atualizada", "OS atualizadas")}`,
     },
-    { tom: "t-cam", icone: "camera", ...origensDeEntrada.digitalizacao, criadas: 0, detalhe: "Nenhuma digitalização no período" },
+    {
+      tom: "t-cam",
+      icone: "camera",
+      ...origensDeEntrada.digitalizacao,
+      criadas: digitalizacao.criadas,
+      detalhe:
+        digitalizacao.arquivos === 0
+          ? "Nenhuma digitalização no período"
+          : `${plural(digitalizacao.arquivos, "PDF digitalizado", "PDFs digitalizados")} · ${plural(digitalizacao.atualizadas, "OS encerrada pela folha", "OS encerradas pela folha")}`,
+    },
   ];
   return (
     <div className="metodos">
@@ -134,7 +143,7 @@ export function EntradaDeOs({ resumo, rotuloAnterior }: { resumo: ResumoDasImpor
   const unidade = nomeDaUnidade[resumo.agrupamento];
   const { leituras, leituras_com_erro: comErro } = resumo.por_origem.api;
 
-  const registradas: PontoDoGrafico[] = resumo.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { api: p.api, planilha: p.planilha } }));
+  const registradas: PontoDoGrafico[] = resumo.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { api: p.api, planilha: p.planilha, digitalizacao: p.digitalizacao } }));
   const sincronizacoes: PontoDoGrafico[] = resumo.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { ok: p.leituras - p.falhas, falhas: p.falhas } }));
 
   return (
@@ -155,6 +164,7 @@ export function EntradaDeOs({ resumo, rotuloAnterior }: { resumo: ResumoDasImpor
             series={[
               { chave: "api", ...origensDeEntrada.api },
               { chave: "planilha", ...origensDeEntrada.planilha },
+              { chave: "digitalizacao", ...origensDeEntrada.digitalizacao },
             ]}
             agrupamento={resumo.agrupamento}
             medida="OS registradas"

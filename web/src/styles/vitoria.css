@@ -1018,3 +1018,101 @@
     transition: none;
   }
 }
+
+/* ---------- Diagnóstico da Vitória (admin) ---------- */
+.vd {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.vd-ativa {
+  border-color: var(--enc);
+}
+.vd-limite_do_dia {
+  border-color: var(--blq-bd);
+}
+.vd-fornecedor_com_problema {
+  border-color: var(--crit-bd);
+}
+.vd-titulo {
+  font-size: 18px;
+}
+.vd-volta {
+  color: var(--ink2);
+}
+.vd-slider {
+  position: relative;
+  height: 28px;
+  margin: 6px 0 2px;
+  --vd-cor: var(--enc);
+}
+.vd-slider.vd-perto {
+  --vd-cor: var(--al-bd);
+}
+.vd-slider.vd-esgotado {
+  --vd-cor: var(--blq);
+}
+.vd-trilho {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--chip);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.vd-preenchido {
+  height: 100%;
+  background: var(--vd-cor);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+.vd-botao {
+  position: absolute;
+  top: 3px;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 3px solid var(--vd-cor);
+  box-shadow: 0 2px 6px rgba(23, 33, 43, 0.25);
+  transition: left 0.4s ease;
+}
+.vd-pontas {
+  font-size: 13px;
+}
+.vd-fatos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+}
+.vd-fatos dt {
+  font-size: 12px;
+  color: var(--ink4);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.vd-fatos dd {
+  margin: 2px 0 0;
+}
+.vd-fatos dd.mono {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.vd-erro {
+  overflow-wrap: anywhere;
+}
+.vd-nota {
+  font-size: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vd-preenchido,
+  .vd-botao {
+    transition: none;
+  }
+}

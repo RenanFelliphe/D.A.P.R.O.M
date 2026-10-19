@@ -6,10 +6,15 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { chamar, enviarFormulario, ErroCliente } from "@/lib/cliente-api";
 import { cx } from "@/lib/cx";
 import { dataHora } from "@/lib/formatar";
+import { AcompanharDigitalizacao } from "./AcompanharDigitalizacao";
 import { ConferenciaPdf } from "./ConferenciaPdf";
+import { DigitalizacoesEmAberto } from "./DigitalizacoesEmAberto";
 import { JanelaCamera } from "./JanelaCamera";
+import { PerguntaDaImportacao, type CaminhoDaImportacao } from "./PerguntaDaImportacao";
 import { ResultadoArquivo } from "./ResultadoArquivo";
+import { ResultadoDigitalizacao } from "./ResultadoDigitalizacao";
 import type { LeituraDoPdf, ResultadoDaImportacao } from "./tipos";
+import { LIMITE_DO_PDF_DIGITALIZADO_MB, type Digitalizacao, type ResultadoDaDigitalizacao } from "./tipos-digitalizacao";
 
 const LIMITE_MB = 10;
 /** Esperas (ms) até atualizar a tela depois de sincronizar: a leitura roda em segundo plano. */
@@ -26,10 +31,15 @@ interface EntradasDeOsProps {
   ehAdmin: boolean;
 }
 
-/** O que aparece abaixo dos cartões: o resultado de um arquivo importado, ou o PDF lido à espera da conferência. */
+/**
+ * O que aparece abaixo dos cartões: o resultado de um arquivo importado, o PDF lido à espera da conferência, a digitalização
+ * (PDF de OS já executadas no papel) em leitura ou em conferência, ou o resultado do registro dela.
+ */
 type Resultado =
   | { tipo: "importado"; formato: "planilha" | "pdf"; nome: string; dados: ResultadoDaImportacao }
-  | { tipo: "conferencia"; arquivo: File; url: string; leitura: LeituraDoPdf };
+  | { tipo: "conferencia"; arquivo: File; url: string; leitura: LeituraDoPdf }
+  | { tipo: "digitalizando"; id: string }
+  | { tipo: "digitalizado"; nome: string; dados: ResultadoDaDigitalizacao };
 
 interface CartaoProps {
   tom: "api" | "arq" | "cam";
@@ -87,14 +97,17 @@ function Cartao({ tom, icone, titulo, canal, selos, descricao, detalhes, acao, a
 }
 
 /**
- * As três formas de uma OS nova entrar no sistema, um cartão para cada: Sincronização (força a leitura da API, como o
- * antigo "Ler agora"), Importação (planilha .xlsx exportada do SAP, ou o PDF da OS impresso pelo SAP, que é lido e
- * conferido campo a campo antes de registrar) e Digitalização (câmera, ainda sem leitura), que só o administrador vê. O
- * resultado da importação, ou a conferência do PDF, aparece logo abaixo.
+ * As formas de uma OS entrar no sistema, um cartão para cada: Sincronização (força a leitura da API, como o antigo "Ler
+ * agora"), Importação (planilha .xlsx exportada do SAP, ou o PDF da OS impresso pelo SAP, que é lido e conferido campo a
+ * campo antes de registrar; antes de escolher o arquivo, a tela pergunta se a OS é para liberar no sistema ou se já foi
+ * concluída no papel, e nesse caso o PDF escaneado segue pela Digitalização: leitura em segundo plano e conferência com as
+ * folhas ao lado) e Digitalização (câmera, ainda sem leitura), que só o administrador vê. O resultado da importação, a
+ * conferência do PDF ou a da digitalização aparece logo abaixo.
  */
 export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmin }: EntradasDeOsProps) {
   const roteador = useRouter();
   const campo = useRef<HTMLInputElement>(null);
+  const campoPapel = useRef<HTMLInputElement>(null);
   const temporizadores = useRef<ReturnType<typeof setTimeout>[]>([]);
   const urlDoPdf = useRef<string | null>(null);
 
@@ -103,8 +116,12 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
   const [erroSinc, setErroSinc] = useState<string | null>(null);
 
   const [arrastando, setArrastando] = useState(false);
-  /** O arquivo em andamento: o PDF sendo lido ou a planilha sendo importada. */
-  const [enviando, setEnviando] = useState<"lendo" | "importando" | null>(null);
+  /** O arquivo em andamento: o PDF sendo lido, a planilha sendo importada ou o PDF digitalizado subindo. */
+  const [enviando, setEnviando] = useState<"lendo" | "importando" | "digitalizando" | null>(null);
+  /** A pergunta "liberar ou concluída no papel?" aberta, com o arquivo já solto sobre o cartão (se foi solto). */
+  const [pergunta, setPergunta] = useState<{ arquivo: File | null } | null>(null);
+  /** Sobe quando uma digitalização foi enviada, registrada ou descartada: a lista dos PDFs em aberto é pedida de novo. */
+  const [versaoDaLista, setVersaoDaLista] = useState(0);
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
 
@@ -185,6 +202,49 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
     }
   }
 
+  /** O PDF escaneado de OS já executadas no papel: sobe e a leitura segue em segundo plano (OCR e IA), acompanhada na tela. */
+  async function digitalizar(arquivo: File | undefined) {
+    if (!arquivo) return;
+    const pdf = arquivo.name.toLowerCase().endsWith(".pdf") || arquivo.type === "application/pdf";
+    setErroArquivo(null);
+    if (!pdf) {
+      setErroArquivo('A digitalização lê o PDF escaneado das folhas. Para uma planilha .xlsx, escolha "Para liberar no sistema".');
+      return;
+    }
+    if (arquivo.size > LIMITE_DO_PDF_DIGITALIZADO_MB * 1024 * 1024) {
+      setErroArquivo(`O PDF passa de ${LIMITE_DO_PDF_DIGITALIZADO_MB} MB. Divida as folhas em mais de um arquivo.`);
+      return;
+    }
+    mostrar(null);
+    setEnviando("digitalizando");
+    try {
+      const form = new FormData();
+      form.set("arquivo", arquivo);
+      const criada = await enviarFormulario<Digitalizacao>("/digitalizacoes", form);
+      mostrar({ tipo: "digitalizando", id: criada.id });
+      setVersaoDaLista((v) => v + 1);
+    } catch (e) {
+      setErroArquivo(e instanceof ErroCliente ? e.message : "Servidor indisponível. Tente de novo.");
+    } finally {
+      setEnviando(null);
+    }
+  }
+
+  /**
+   * Depois da pergunta: com o arquivo já solto sobre o cartão, segue direto pelo caminho escolhido; sem ele, abre o seletor de
+   * arquivos do caminho (o de "papel" só aceita PDF). O seletor abre depois que a janela fecha: com ela aberta, o resto da página
+   * está inerte.
+   */
+  function escolherCaminho(caminho: CaminhoDaImportacao) {
+    const arquivo = pergunta?.arquivo ?? null;
+    setPergunta(null);
+    if (arquivo) {
+      void (caminho === "papel" ? digitalizar(arquivo) : importar(arquivo));
+      return;
+    }
+    window.setTimeout(() => (caminho === "papel" ? campoPapel : campo).current?.click(), 80);
+  }
+
   const arrastar = {
     sobre: (e: DragEvent) => {
       e.preventDefault();
@@ -197,7 +257,8 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
     soltar: (e: DragEvent) => {
       e.preventDefault();
       setArrastando(false);
-      if (!enviando) void importar(e.dataTransfer.files[0]);
+      const solto = e.dataTransfer.files[0];
+      if (!enviando && solto) setPergunta({ arquivo: solto });
     },
   };
 
@@ -245,7 +306,7 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
               <span className="fmt">PDF</span>
             </>
           }
-          descricao="Envie a planilha exportada do SAP ou o PDF de uma OS. Clique para escolher o arquivo ou arraste-o até aqui."
+          descricao="Envie a planilha exportada do SAP, o PDF de uma OS ou o PDF escaneado de OS já concluídas no papel. Clique para escolher o arquivo ou arraste-o até aqui."
           detalhes={
             <>
               <span>
@@ -257,13 +318,17 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
                 No PDF, você confere cada OS antes de registrar
               </span>
               <span>
+                <Icon name="camera" size={13} />
+                OS já concluídas no papel entram encerradas, só como histórico
+              </span>
+              <span>
                 <Icon name="refresh" size={13} />
                 Reimportar não duplica OS nem reabre as encerradas
               </span>
             </>
           }
-          acao={enviando === "lendo" ? "Lendo o PDF…" : enviando ? "Importando…" : arrastando ? "Solte o arquivo aqui" : "Escolher arquivo"}
-          aoClicar={() => campo.current?.click()}
+          acao={enviando === "lendo" ? "Lendo o PDF…" : enviando === "digitalizando" ? "Enviando o PDF…" : enviando ? "Importando…" : arrastando ? "Solte o arquivo aqui" : "Escolher arquivo"}
+          aoClicar={() => setPergunta({ arquivo: null })}
           ocupado={enviando !== null}
           arrastando={arrastando}
           aoArrastar={arrastar}
@@ -314,7 +379,40 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
           void importar(escolhido);
         }}
       />
+      <input
+        ref={campoPapel}
+        type="file"
+        accept=".pdf,application/pdf"
+        hidden
+        aria-label="PDF escaneado das folhas de OS já concluídas no papel"
+        onChange={(e) => {
+          const escolhido = e.target.files?.[0];
+          e.target.value = "";
+          void digitalizar(escolhido);
+        }}
+      />
 
+      {ehAdmin && resultado?.tipo !== "digitalizando" && (
+        <DigitalizacoesEmAberto versao={versaoDaLista} aoAbrir={(id) => mostrar({ tipo: "digitalizando", id })} />
+      )}
+
+      {resultado?.tipo === "digitalizando" && (
+        <AcompanharDigitalizacao
+          key={resultado.id}
+          id={resultado.id}
+          podeCadastrarEquipe={ehAdmin}
+          aoSair={() => {
+            mostrar(null);
+            setVersaoDaLista((v) => v + 1);
+          }}
+          aoRegistrar={(nome, dados) => {
+            mostrar({ tipo: "digitalizado", nome, dados });
+            setVersaoDaLista((v) => v + 1);
+            roteador.refresh();
+          }}
+        />
+      )}
+      {resultado?.tipo === "digitalizado" && <ResultadoDigitalizacao nome={resultado.nome} dados={resultado.dados} podeCadastrarEquipe={ehAdmin} />}
       {resultado?.tipo === "importado" && <ResultadoArquivo nome={resultado.nome} formato={resultado.formato} dados={resultado.dados} podeCadastrarEquipe={ehAdmin} />}
       {resultado?.tipo === "conferencia" && (
         <ConferenciaPdf
@@ -332,6 +430,7 @@ export function EntradasDeOs({ ultimaLeituraEm, automatica, intervaloMin, ehAdmi
         />
       )}
 
+      {pergunta && <PerguntaDaImportacao arquivo={pergunta.arquivo} aoEscolher={escolherCaminho} aoFechar={() => setPergunta(null)} />}
       {cameraAberta && <JanelaCamera aoFechar={() => setCameraAberta(false)} />}
     </div>
   );

@@ -34,7 +34,7 @@ export function ImportacoesAnteriores({ importacoes }: { importacoes: Importacao
                         {i.origem === "api" ? (
                           origensDeEntrada.api.nome
                         ) : (
-                          <span className="mono" style={{ fontSize: 12.5, overflowWrap: "anywhere" }} title={`${origensDeEntrada.planilha.nome}: ${i.origem === "pdf" ? "PDF da OS" : "planilha"}`}>
+                          <span className="mono" style={{ fontSize: 12.5, overflowWrap: "anywhere" }} title={i.origem === "digitalizacao" ? `${origensDeEntrada.digitalizacao.nome}: PDF digitalizado de OS já executadas` : `${origensDeEntrada.planilha.nome}: ${i.origem === "pdf" ? "PDF da OS" : "planilha"}`}>
                             {nomeDoArquivo(i.arquivo)}
                           </span>
                         )}

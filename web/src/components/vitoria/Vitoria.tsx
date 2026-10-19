@@ -29,6 +29,14 @@ import { DestaqueVitoria } from "./DestaqueVitoria";
 import { Figurinha } from "./Figurinha";
 import { IndicadorPensando } from "./IndicadorPensando";
 
+/** A pausa antes de uma resposta que não precisou pensar: um mínimo, um pouco de acaso e um pouco mais para textos longos (`letras`). */
+const PENSAR_MIN_MS = 1100;
+const PENSAR_VARIACAO_MS = 900;
+const PENSAR_POR_LETRA_MS = 4;
+const PENSAR_TETO_MS = 900;
+const iniciarPausa = (letras = 0) =>
+  new Promise<void>((ok) => window.setTimeout(ok, PENSAR_MIN_MS + Math.random() * PENSAR_VARIACAO_MS + Math.min(letras * PENSAR_POR_LETRA_MS, PENSAR_TETO_MS)));
+
 interface RespostaFinalDaVitoria {
   acao: AcaoResolvida | null;
   expressao?: ExpressaoVitoria;
@@ -114,16 +122,31 @@ export function Vitoria() {
     if (window.matchMedia("(max-width: 640px)").matches) fechar();
   }
 
+  /**
+   * Resposta pronta (sugestão fixa, saudação ou o manual sem IA) chega na hora e denuncia o script. Então a mensagem nasce
+   * vazia, com o mesmo balão de "pensando" da IA, e só se completa depois de uma pausa curta, que cresce um pouco com o texto.
+     */
+  async function pensarAntesDe(idResposta: string, letras: number, preencher: () => void) {
+    await iniciarPausa(letras);
+    preencher();
+    setCarregando(false);
+    setRespondendo((atual) => (atual === idResposta ? null : atual));
+    if (!abertoRef.current) setNaoLida(true);
+  }
+
   /** As sugestões fixas nunca chamam a IA: a pergunta e a resposta já vêm prontas de `shared/vitoria/sugestoes.ts`. */
-  function responderComSugestao(s: SugestaoFixa) {
+  async function responderComSugestao(s: SugestaoFixa) {
+    if (carregando) return;
     pararFigurinhas();
     avisarEvento("sugestao");
     const { resolvida } = s.acao ? resolverAcao(s.acao, contexto) : { resolvida: null };
-    setMensagens((atual) => [
-      ...atual,
-      { id: novoUuid(), papel: "usuario", texto: s.pergunta },
-      { id: novoUuid(), papel: "assistente", texto: s.resposta, expressao: "padrao", acao: resolvida },
-    ]);
+    const idResposta = novoUuid();
+    setMensagens((atual) => [...atual, { id: novoUuid(), papel: "usuario", texto: s.pergunta }, { id: idResposta, papel: "assistente", texto: "" }]);
+    setCarregando(true);
+    setRespondendo(idResposta);
+    await pensarAntesDe(idResposta, s.resposta.length, () =>
+      setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, texto: s.resposta, expressao: "padrao", acao: resolvida } : m))),
+    );
   }
 
   /**
@@ -131,13 +154,16 @@ export function Vitoria() {
    * chamar a `api`. Essas mensagens não vão no histórico da IA, não contam no limite da conversa e não viram "pergunta
    * sem resposta" (`shared/vitoria/reacoes.ts`).
    */
-  function responderLocalmente(pergunta: string, resposta: RespostaLocal) {
+  async function responderLocalmente(pergunta: string, resposta: RespostaLocal) {
     const idResposta = novoUuid();
-    setMensagens((atual) => [
-      ...atual,
-      { id: novoUuid(), papel: "usuario", texto: pergunta, local: true },
-      { id: idResposta, papel: "assistente", texto: resposta.texto, expressao: "padrao", local: true, figurinha: figurinhaDe(resposta.reacao, resposta.completa) },
-    ]);
+    setMensagens((atual) => [...atual, { id: novoUuid(), papel: "usuario", texto: pergunta, local: true }, { id: idResposta, papel: "assistente", texto: "", local: true }]);
+    setCarregando(true);
+    setRespondendo(idResposta);
+    await pensarAntesDe(idResposta, resposta.texto.length, () =>
+      setMensagens((atual) =>
+        atual.map((m) => (m.id === idResposta ? { ...m, texto: resposta.texto, expressao: "padrao", figurinha: figurinhaDe(resposta.reacao, resposta.completa) } : m)),
+      ),
+    );
   }
 
   async function enviar() {
@@ -148,7 +174,7 @@ export function Vitoria() {
     pararFigurinhas();
     const local = respostaLocalDaVitoria(texto);
     if (local) {
-      responderLocalmente(texto, local);
+      void responderLocalmente(texto, local);
       return;
     }
     const daConversa = mensagens.filter((m) => !m.local);
@@ -158,8 +184,15 @@ export function Vitoria() {
     setMensagens((atual) => [...atual, { id: novoUuid(), papel: "usuario", texto }, { id: idResposta, papel: "assistente", texto: "" }]);
     setCarregando(true);
     setRespondendo(idResposta);
+    // A pausa já corre durante a ida à api: a da IA (que demorou) não espera de novo, a do manual sem IA (instantânea) espera o resto.
+    const pausa = iniciarPausa(300);
     try {
-      await chamarEmStream("/vitoria/mensagens", { mensagem: texto, tela, contexto, historico, numero_mensagem: numeroMensagem }, (evento) => {
+      // A api manda a resposta inteira de uma vez, tanto a da IA (que já demorou) quanto a do manual sem IA (que não demora nada):
+      // junta os eventos e solta tudo depois da pausa mínima, para as duas parecerem a mesma Vitória pensando.
+      const eventos: { event: string; data: string }[] = [];
+      await chamarEmStream("/vitoria/mensagens", { mensagem: texto, tela, contexto, historico, numero_mensagem: numeroMensagem }, (evento) => eventos.push(evento));
+      await pausa;
+      for (const evento of eventos) {
         if (evento.event === "texto") {
           setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, texto: m.texto + evento.data } : m)));
         } else if (evento.event === "final") {
@@ -168,7 +201,7 @@ export function Vitoria() {
           const figurinha = reacaoDaResposta ? figurinhaDe(reacaoDaResposta, false) : undefined;
           setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, expressao: final.expressao ?? "padrao", acao: final.acao, figurinha } : m)));
         }
-      });
+      }
     } catch {
       const figurinha = figurinhaDe("errada", false);
       setMensagens((atual) => atual.map((m) => (m.id === idResposta ? { ...m, texto: "Não consegui falar com o servidor agora. Tente de novo em instantes.", expressao: "ops", figurinha } : m)));

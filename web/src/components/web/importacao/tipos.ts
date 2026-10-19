@@ -24,8 +24,8 @@ export interface AvisoDaOrdem {
 
 export interface Importacao {
   id: string;
-  origem: "api" | "planilha" | "pdf";
-  /** `<id>/<nome>.xlsx` ou `<id>/<nome>.pdf` no bucket; só os arquivos têm. */
+  origem: "api" | "planilha" | "pdf" | "digitalizacao";
+  /** `<id>/<nome>.xlsx` ou `<id>/<nome>.pdf` no bucket (`digitalizacoes/<id>/original.pdf` na digitalização); só os arquivos têm. */
   arquivo: string | null;
   usuario_id: string | null;
   usuario_nome: string | null;
@@ -123,6 +123,7 @@ export interface PontoDaSerie {
   fim: string;
   api: number;
   planilha: number;
+  digitalizacao: number;
   leituras: number;
   falhas: number;
 }
@@ -147,6 +148,7 @@ export interface ResumoDasImportacoes {
   por_origem: {
     api: ContagensDaEntrada & { leituras: number; leituras_com_erro: number };
     planilha: ContagensDaEntrada & { arquivos: number; arquivos_com_erro: number };
+    digitalizacao: ContagensDaEntrada & { arquivos: number; arquivos_com_erro: number };
   };
   serie: PontoDaSerie[];
   /** Do mais comum ao menos; os que passam de cinco somam em "Outros motivos". */
@@ -154,18 +156,19 @@ export interface ResumoDasImportacoes {
 }
 
 /**
- * As três formas de uma OS nova entrar, com a cor de cada uma nos gráficos (paleta categórica de `variables.css`). A
- * Importação (arquivo) leva a chave `planilha` e soma a planilha e o PDF da OS. A digitalização ainda não registra OS (a
- * `api` não tem essa origem): no painel ela aparece sempre com zero.
+ * As três formas de uma OS entrar, com a cor de cada uma nos gráficos (paleta categórica de `variables.css`). A Importação
+ * (arquivo) leva a chave `planilha` e soma a planilha e o PDF da OS. A Digitalização registra as OS antigas, já executadas
+ * no papel, como encerradas (de histórico).
  */
 export const origensDeEntrada = {
   api: { nome: "Sincronização (API)", curto: "API", cor: "var(--o-api)" },
   planilha: { nome: "Importação (arquivo)", curto: "Arquivo", cor: "var(--o-arq)" },
-  digitalizacao: { nome: "Digitalização (câmera)", curto: "Câmera", cor: "var(--o-cam)" },
+  digitalizacao: { nome: "Digitalização (papel)", curto: "Papel", cor: "var(--o-cam)" },
 } as const;
 
-/** O método de entrada de uma importação do histórico: a planilha e o PDF são os dois arquivos da Importação. */
-export const metodoDaImportacao = (origem: Importacao["origem"]) => (origem === "api" ? origensDeEntrada.api : origensDeEntrada.planilha);
+/** O método de entrada de uma importação do histórico: a planilha e o PDF são os dois arquivos da Importação; a digitalização é o terceiro método. */
+export const metodoDaImportacao = (origem: Importacao["origem"]) =>
+  origem === "api" ? origensDeEntrada.api : origem === "digitalizacao" ? origensDeEntrada.digitalizacao : origensDeEntrada.planilha;
 
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const MESES_LONGOS = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];

@@ -13,6 +13,7 @@ const ROTULO_ORIGEM: Record<OsDetalhe["origem"], string> = {
   planilha: "Importada da planilha",
   pdf: "Importada do PDF da OS",
   apoio: "Aberta como apoio",
+  digitalizacao: "Digitalizada (executada no papel)",
 };
 
 /** Dados da OS que vêm do SAP (a OS de apoio ainda não tem número). Campos que não vieram ficam de fora. */

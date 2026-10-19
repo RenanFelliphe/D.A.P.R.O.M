@@ -77,7 +77,7 @@ export async function Casca({ children }: { children: ReactNode }) {
         api<{ alertas: Alerta[] }>("/alertas", { consulta: { tamanho: 5 } }),
         // Falha aqui não derruba o painel.
         admin ? api<{ total: number }>("/usuarios", { consulta: { liberacao: "pendente", tamanho: 1 } }).catch(() => ({ total: 0 })) : null,
-        // O selo de "Perguntas à Vitória": as que ela não soube responder e o admin ainda não tratou.
+        // O selo de "Vitória": as que ela não soube responder e o admin ainda não tratou.
         admin ? api<{ total: number }>("/vitoria/sem-resposta", { consulta: { tratada: false, tamanho: 1 } }).catch(() => ({ total: 0 })) : null,
       ])
     : [null, null, null, null];

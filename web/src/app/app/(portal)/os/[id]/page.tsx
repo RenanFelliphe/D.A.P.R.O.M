@@ -27,6 +27,7 @@ import { DadosSap } from "@/components/web/detalhe/DadosSap";
 import { DetalheCabecalho } from "@/components/web/detalhe/DetalheCabecalho";
 import { DevolverOs } from "@/components/web/detalhe/DevolverOs";
 import { DocumentoOs } from "@/components/web/detalhe/DocumentoOs";
+import { ExecucaoEmPapel } from "@/components/web/detalhe/ExecucaoEmPapel";
 import { ExecucoesDaOs } from "@/components/web/detalhe/ExecucoesDaOs";
 import { HistoricoDoLocal } from "@/components/web/detalhe/HistoricoDoLocal";
 import { LinhaDoTempo } from "@/components/web/detalhe/LinhaDoTempo";
@@ -198,6 +199,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
         <div className="stack g16">
           {aba === "resumo" && (
             <>
+              {os.em_papel && <ExecucaoEmPapel papel={os.em_papel} />}
               <DadosSap os={os} />
               <CicloDaOs osId={os.id} preventiva={os.tipo === "preventiva"} gestao estilo="panel" />
               <ChecklistDaOsCard perguntas={checklist} />

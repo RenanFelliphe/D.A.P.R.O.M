@@ -10,10 +10,12 @@ interface ArquivoProcessadoProps {
   criadas: number;
   atualizadas: number;
   ignoradas: number;
+  /** O que cada contagem quer dizer, quando não é o padrão da planilha e do PDF (a digitalização encerra as OS). */
+  legenda?: { criadas: string; atualizadas: string };
 }
 
 /** Arquivo processado (planilha ou PDF da OS), com o resumo de criadas, atualizadas e ignoradas. */
-export function ArquivoProcessado({ nome, formato, detalhe, criadas, atualizadas, ignoradas }: ArquivoProcessadoProps) {
+export function ArquivoProcessado({ nome, formato, detalhe, criadas, atualizadas, ignoradas, legenda }: ArquivoProcessadoProps) {
   return (
     <Panel>
       <div className="row g12 wrap">
@@ -38,7 +40,7 @@ export function ArquivoProcessado({ nome, formato, detalhe, criadas, atualizadas
             Criadas
           </span>
           <span className="v">{criadas}</span>
-          <span className="small">entraram como liberadas</span>
+          <span className="small">{legenda?.criadas ?? "entraram como liberadas"}</span>
         </div>
         <div>
           <span className="muted row g6">
@@ -46,7 +48,7 @@ export function ArquivoProcessado({ nome, formato, detalhe, criadas, atualizadas
             Atualizadas
           </span>
           <span className="v">{atualizadas}</span>
-          <span className="small">só datas, equipe e prioridade</span>
+          <span className="small">{legenda?.atualizadas ?? "só datas, equipe e prioridade"}</span>
         </div>
         <div className={ignoradas > 0 ? "warn" : undefined}>
           <span className="row g6" style={ignoradas > 0 ? { color: "var(--al)", fontSize: 13 } : { fontSize: 13 }}>

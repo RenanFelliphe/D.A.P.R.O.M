@@ -16,6 +16,19 @@ export interface LocalDaOs {
   critico: boolean;
 }
 
+/** O que a folha em papel diz da execução de uma OS digitalizada (início e fim reais escritos à mão, pessoas e descrição). */
+export interface ExecucaoEmPapel {
+  inicio_real: string | null;
+  fim_real: string | null;
+  numero_pessoas: number | null;
+  texto_manuscrito: string | null;
+  /** Quem preencheu: a IA de visão, a pessoa na conferência, ou ninguém. */
+  fonte: "ia" | "manual" | "nenhuma";
+  folhas: number;
+  registrada_em: string;
+  registrada_por_nome: string;
+}
+
 /** A OS no detalhe: a linha inteira do banco mais o local, a equipe e os campos derivados. */
 export interface OsDetalhe {
   id: string;
@@ -40,7 +53,7 @@ export interface OsDetalhe {
   status_sap: string | null;
   solicitante: string | null;
   os_origem_id: string | null;
-  origem: "sap" | "planilha" | "pdf" | "apoio";
+  origem: "sap" | "planilha" | "pdf" | "apoio" | "digitalizacao";
   pdf_path: string | null;
   pdf_em: string | null;
   ciencia_por: string | null;
@@ -64,6 +77,8 @@ export interface OsDetalhe {
   /** O apêndice da OS devolvida ao SAP; `null` se a OS não foi devolvida. */
   devolucao: DevolucaoDaOs | null;
   pdf_pronto: boolean;
+  /** A execução em papel das OS que a Digitalização encerrou (não há `execucao`); `null` nas demais. */
+  em_papel: ExecucaoEmPapel | null;
   execucao_aberta_ha_horas: number | null;
   atrasada: boolean;
   /** Eventos cujo horário do aparelho está à frente do servidor (relógio do aparelho adiantado). */
