@@ -17,7 +17,12 @@ export type TipoDeEvento =
   | "encerramento_assinado"
   | "execucao_interrompida"
   | "execucao_suspensa"
-  | "execucao_cancelada";
+  | "execucao_cancelada"
+  // Execução compartilhada: um participante pede ao responsável, o responsável decide, quem pediu desiste, outro participante apoia.
+  | "pedido_aberto"
+  | "pedido_decidido"
+  | "pedido_cancelado"
+  | "pedido_apoiado";
 
 export interface EventoDeCampo {
   /** Gerado no cliente; reenviar o mesmo id não tem efeito. */

@@ -8,11 +8,16 @@ import {
   execucao,
   execucaoAssinatura,
   execucaoPausa,
+  execucaoPedido,
+  execucaoPedidoApoio,
   localInstalacao,
   modeloApr,
   os,
   usuario,
 } from "../db/schema";
+import { ESCOLHA_DESCARTAR, ROTULO_DO_ESTADO_DA_CONFERENCIA, ROTULO_DO_TIPO_DA_CONFERENCIA, TOLERANCIA_MS } from "../../../shared/api/conferencia-execucao";
+import { PRAZO_DO_PEDIDO_MS, ROTULO_DO_ESTADO_DO_PEDIDO, ROTULO_DO_PEDIDO } from "../../../shared/api/execucao-pedidos";
+import { dadosDaConferenciaParaRelatorio, type DadosDaConferencia } from "../dominio/conferencia-execucao";
 import type { Deps } from "../deps";
 import { ROTULO_DA_PAUSA, ROTULO_DA_SUSPENSAO, descreverMotivo, ehMotivoDeSaude } from "../dominio/motivos-de-parada";
 import { tempoDaExecucao } from "../dominio/painel-comum";
@@ -73,6 +78,10 @@ export interface DadosDoRelatorio {
     assinaturaDoEncerramento: { nome: string; cargo: string | null; assinaturaPath: string; em: Date } | null;
   }[];
   pausas: (typeof execucaoPausa.$inferSelect & { numeroDaExecucao: number; fimEfetivo: Date })[];
+  /** O que os participantes que não iniciaram a execução fizeram nela (execução compartilhada), em ordem: pausas, retomadas, o fim e os pedidos ao responsável. */
+  acoes: { numeroDaExecucao: number; quando: Date; quem: string; oQue: string; resultado: string }[];
+  /** A conferência do que a equipe registrou sem sinal em aparelhos diferentes (execução compartilhada, etapa 3), por execução; vazia quando não houve. */
+  conferencias: { numeroDaExecucao: number; dados: DadosDaConferencia }[];
   fotos: { numeroDaExecucao: number; fotoPath: string; capturadaEm: Date; latitude: number | null; longitude: number | null }[];
   documentos: { numeroDaExecucao: number; nome: string | null; capturadaEm: Date }[];
   ciencia: { nome: string; cargo: string | null; assinaturaPath: string | null; em: Date } | null;
@@ -157,7 +166,7 @@ export async function carregarDadosDoRelatorio(deps: Deps, osId: string): Promis
     const tempo = tempoDaExecucao({ inicio: e.inicio, fim }, pausas) ?? { totalMs: 0, pausaMs: 0, liquidoMs: 0 };
     const modelo = modelosPorApr.find((m) => m.aprId === e.aprId)!;
     const doEncerramento = assinaturasDoEncerramento.filter((a) => a.execucaoId === e.id);
-    const assinante = doEncerramento.find((a) => a.usuarioId === e.executorId) ?? doEncerramento[0];
+    const assinante = doEncerramento.find((a) => a.usuarioId === (e.finalizadaPor ?? e.executorId)) ?? doEncerramento[0];
     return {
       numero: numeroDe.get(e.id)!,
       e,
@@ -171,6 +180,12 @@ export async function carregarDadosDoRelatorio(deps: Deps, osId: string): Promis
     };
   });
   const fimDe = new Map(lista.map((x) => [x.e.id, x.fim]));
+  const acoes = await acoesDosParticipantes(db, execucoes, pausasBrutas, numeroDe);
+  const conferencias: DadosDoRelatorio["conferencias"] = [];
+  for (const e of execucoes) {
+    const dados = await dadosDaConferenciaParaRelatorio(db, e.id);
+    if (dados) conferencias.push({ numeroDaExecucao: numeroDe.get(e.id)!, dados });
+  }
 
   const evidencias = await db
     .select({ execucaoId: evidencia.execucaoId, tipo: evidencia.tipo, fotoPath: evidencia.fotoPath, nomeArquivo: evidencia.nomeArquivo, capturadaEm: evidencia.capturadaEm, latitude: evidencia.latitude, longitude: evidencia.longitude })
@@ -201,11 +216,127 @@ export async function carregarDadosDoRelatorio(deps: Deps, osId: string): Promis
     equipe: base.equipe,
     execucoes: lista,
     pausas: pausasBrutas.map((p) => ({ ...p, numeroDaExecucao: numeroDe.get(p.execucaoId)!, fimEfetivo: p.fim ?? fimDe.get(p.execucaoId)! })),
+    acoes,
+    conferencias,
     fotos,
     documentos,
     ciencia,
     imagens,
   };
+}
+
+const emMinutosESegundos = (ms: number) => {
+  const s = Math.max(0, Math.round(ms / 1000));
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}min${String(s % 60).padStart(2, "0")}s`;
+};
+
+/**
+ * O que os participantes que não iniciaram a execução fizeram nela: pausas e retomadas, o fim (encerrar, suspender, interromper) e os
+ * pedidos ao responsável, com o resultado de cada um e quanto ele esperou. O que o responsável fez já está nas outras seções.
+ */
+async function acoesDosParticipantes(
+  db: Deps["db"],
+  execucoes: (typeof execucao.$inferSelect)[],
+  pausas: (typeof execucaoPausa.$inferSelect)[],
+  numeroDe: Map<string, number>,
+): Promise<DadosDoRelatorio["acoes"]> {
+  const ids = execucoes.map((e) => e.id);
+  const pedidos = await db.select().from(execucaoPedido).where(inArray(execucaoPedido.execucaoId, ids)).orderBy(asc(execucaoPedido.criadoEm));
+  const apoios = pedidos.length ? await db.select().from(execucaoPedidoApoio).where(inArray(execucaoPedidoApoio.pedidoId, pedidos.map((p) => p.id))) : [];
+  const quemIds = new Set(
+    [...execucoes.map((e) => e.finalizadaPor), ...pausas.flatMap((p) => [p.iniciadaPor, p.encerradaPor]), ...pedidos.flatMap((p) => [p.solicitanteId, p.decididoPor]), ...apoios.map((a) => a.usuarioId)].filter((x): x is string => !!x),
+  );
+  const nomes = new Map((quemIds.size ? await db.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(inArray(usuario.id, [...quemIds])) : []).map((u) => [u.id, u.nome]));
+  const nome = (id: string | null) => (id ? (nomes.get(id) ?? "—") : "—");
+  const executorDe = new Map(execucoes.map((e) => [e.id, e.executorId]));
+  const fimDe = new Map(execucoes.map((e) => [e.id, e.fim]));
+
+  const acoes: DadosDoRelatorio["acoes"] = [];
+  for (const p of pausas) {
+    const numero = numeroDe.get(p.execucaoId)!;
+    if (p.iniciadaPor && p.iniciadaPor !== executorDe.get(p.execucaoId)) {
+      acoes.push({ numeroDaExecucao: numero, quando: p.inicio, quem: nome(p.iniciadaPor), oQue: `Pausou a execução (${descreverMotivo(ROTULO_DA_PAUSA, p.motivo, p.complemento)})`, resultado: "Vale na hora; o responsável foi avisado" });
+    }
+    const retomou = p.fim && p.encerradaPor && p.fim.getTime() !== fimDe.get(p.execucaoId)?.getTime();
+    if (retomou && p.encerradaPor !== executorDe.get(p.execucaoId)) acoes.push({ numeroDaExecucao: numero, quando: p.fim!, quem: nome(p.encerradaPor), oQue: "Retomou a execução", resultado: "Vale na hora; o responsável foi avisado" });
+  }
+  for (const e of execucoes) {
+    if (!e.finalizadaPor || e.finalizadaPor === e.executorId || !e.fim) continue;
+    const oQue = e.resultado === "suspensa" ? "Suspendeu a execução" : e.resultado === "interrompida" ? "Interrompeu a execução por risco" : "Encerrou a OS";
+    const porPedido = pedidos.some((p) => p.execucaoId === e.id && (p.estado === "aprovado" || p.estado === "aprovado_por_prazo") && p.solicitanteId === e.finalizadaPor);
+    acoes.push({ numeroDaExecucao: numeroDe.get(e.id)!, quando: e.fim, quem: nome(e.finalizadaPor), oQue, resultado: porPedido ? "Por pedido aprovado (ver o pedido abaixo)" : "Vale na hora (saúde, risco ou sem sinal)" });
+  }
+  for (const p of pedidos) {
+    const apoiaram = apoios.filter((a) => a.pedidoId === p.id).map((a) => nome(a.usuarioId));
+    const decisao =
+      p.estado === "aprovado" || p.estado === "recusado"
+        ? `${ROTULO_DO_ESTADO_DO_PEDIDO[p.estado]} (${nome(p.decididoPor)}) em ${emMinutosESegundos(p.decididoEm!.getTime() - p.criadoEm.getTime())}`
+        : p.estado === "aprovado_por_prazo"
+          ? `Aprovado sozinho: sem resposta em ${emMinutosESegundos(PRAZO_DO_PEDIDO_MS)}`
+          : ROTULO_DO_ESTADO_DO_PEDIDO[p.estado];
+    acoes.push({
+      numeroDaExecucao: numeroDe.get(p.execucaoId)!,
+      quando: p.criadoEm,
+      quem: nome(p.solicitanteId),
+      oQue: `Pediu ao responsável para ${ROTULO_DO_PEDIDO[p.tipo]}${p.tipo === "suspender" ? ` (${descreverMotivo(ROTULO_DA_SUSPENSAO, p.motivo, p.complemento)})` : ""}`,
+      resultado: `${decisao}${p.motivoRecusa ? `: "${p.motivoRecusa}"` : ""}${apoiaram.length > 0 ? `. Apoiado por ${apoiaram.join(", ")}` : ""}`,
+    });
+  }
+  return acoes.sort((a, b) => a.numeroDaExecucao - b.numeroDaExecucao || a.quando.getTime() - b.quando.getTime());
+}
+
+/** O valor de uma opção da conferência como o relatório o mostra: um horário, o resultado ou a pausa com o início e o fim. */
+function valorDaOpcao(campo: string, o: { instante: string | null; fim: string | null; texto: string | null }): string {
+  if (campo === "resultado") return o.texto ?? "—";
+  const hora = (iso: string | null) => (iso ? horaBr(new Date(iso)) : "—");
+  if (campo.startsWith("pausa:")) return `${o.texto ?? "Pausa"} (${hora(o.instante)} às ${hora(o.fim)})`;
+  return o.instante ? dataHoraBr(new Date(o.instante)) : "—";
+}
+
+/**
+ * A seção "Conferência da execução": quando e por quê ela existiu, o que cada aparelho registrou em cada campo, o que valeu e por quem,
+ * as ciências e assinaturas (com as ressalvas) e quem não sincronizou ou não assinou. Não vai no PDF da OS (a APR e a folha do SAP).
+ */
+function conferenciaDaExecucao(c: Cursor, numero: number, x: DadosDaConferencia) {
+  const { conf, snapshot } = x;
+  secao(c, `CONFERÊNCIA DA EXECUÇÃO ${numero}`);
+  linhaDeCelulas(c, [
+    { fracao: 0.3, rotulo: "SITUAÇÃO", valor: ROTULO_DO_ESTADO_DA_CONFERENCIA[conf.estado], negrito: true },
+    { fracao: 0.3, rotulo: "TIPO", valor: conf.tipo ? ROTULO_DO_TIPO_DA_CONFERENCIA[conf.tipo] : "Ainda não comparada" },
+    { fracao: 0.2, rotulo: "ABERTA EM", valor: dataHoraBr(conf.criadaEm) },
+    { fracao: 0.2, rotulo: "RESPONSÁVEL", valor: x.responsavel ?? "—" },
+  ]);
+  const escolhaDe = new Map(x.decisoes.map((d) => [d.campo, d]));
+  if (snapshot && snapshot.campos.length > 0) {
+    const f = [0.14, 0.5, 0.36];
+    const lp = larguras(c, f);
+    linhaDeCabecalho(c, ["Campo", `O que cada aparelho registrou (tolerância de ${TOLERANCIA_MS / 60_000} min)`, "O que valeu"], f);
+    for (const campo of snapshot.campos) {
+      const versoes = campo.opcoes.map((o) => `${o.autor_nome}: ${valorDaOpcao(campo.campo, o)}`).join("\n");
+      const decisao = escolhaDe.get(campo.campo);
+      const escolhido = decisao?.escolha ?? (campo.divergente ? campo.sugerido : null);
+      const valeu = !campo.divergente
+        ? campo.so_um ? "Registrado por um aparelho só (aparelho com sinal)" : "Sem divergência"
+        : escolhido === ESCOLHA_DESCARTAR
+          ? `Descartada${decisao?.por ? ` por ${decisao.por}` : ""}`
+          : `${x.nomeDoAutor(escolhido!)}${decisao ? ` (escolha de ${decisao.por ?? "—"})` : " (padrão sugerido: ninguém escolheu a tempo)"}`;
+      linhaDeTabela(c, [{ largura: lp[0]!, texto: campo.rotulo, negrito: true }, { largura: lp[1]!, texto: versoes }, { largura: lp[2]!, texto: valeu }], { respiro: 4, minimo: 12 });
+    }
+  }
+  if (x.assinaturas.length > 0) {
+    const f = [0.22, 0.14, 0.2, 0.44];
+    const lp = larguras(c, f);
+    linhaDeCabecalho(c, ["Quem", "Registro", "Quando", "Ressalva"], f);
+    for (const a of x.assinaturas) {
+      linhaDeTabela(c, [{ largura: lp[0]!, texto: a.nome }, { largura: lp[1]!, texto: a.tipo === "ciencia" ? "Ciência" : "Assinatura" }, { largura: lp[2]!, texto: dataHoraBr(a.em) }, { largura: lp[3]!, texto: a.ressalva ?? "—", negrito: !!a.ressalva }], { respiro: 4, minimo: 12 });
+    }
+  }
+  const faltas: string[] = [];
+  if (x.faltaramSincronizar.length > 0) faltas.push(`Não sincronizaram até o fechamento: ${x.faltaramSincronizar.join(", ")}.`);
+  if (x.faltaramAssinar.length > 0) faltas.push(`Não deram ciência ou não assinaram: ${x.faltaramAssinar.join(", ")}.`);
+  if (conf.estado === "fechada_sem_todos" || faltas.length > 0) faltas.push(x.fechadaPor ? `Fechada com o que existia por ${x.fechadaPor}.` : "Fechada sozinha, ao fim de 7 dias.");
+  if (faltas.length > 0) linhaDeCelulas(c, [{ fracao: 1, rotulo: "O QUE FALTOU", valor: faltas.join("\n") }]);
+  c.y += 4;
 }
 
 const coordenadas = (p: Ponto) => (p.latitude === null || p.longitude === null ? null : `${p.latitude.toFixed(6)}, ${p.longitude.toFixed(6)}`);
@@ -433,6 +564,31 @@ function desenharRelatorio(c: Cursor, d: DadosDoRelatorio, geradoEm: Date): stri
     }
   }
   c.y += 4;
+
+  // Execução compartilhada: o que os participantes que não iniciaram a execução fizeram nela.
+  if (d.acoes.length > 0) {
+    secao(c, "AÇÕES DOS PARTICIPANTES");
+    const f = [0.05, 0.14, 0.18, 0.28, 0.35];
+    const lp = larguras(c, f);
+    linhaDeCabecalho(c, ["Exec.", "Quando", "Quem", "O que fez", "Como valeu"], f);
+    for (const a of d.acoes) {
+      linhaDeTabela(
+        c,
+        [
+          { largura: lp[0]!, texto: String(a.numeroDaExecucao) },
+          { largura: lp[1]!, texto: dataHoraBr(a.quando) },
+          { largura: lp[2]!, texto: a.quem },
+          { largura: lp[3]!, texto: a.oQue, negrito: true },
+          { largura: lp[4]!, texto: a.resultado },
+        ],
+        { respiro: 4, minimo: 12 },
+      );
+    }
+    c.y += 4;
+  }
+
+  // Execução compartilhada, etapa 3: o que a equipe registrou sem sinal, a escolha e as assinaturas.
+  for (const x of d.conferencias) conferenciaDaExecucao(c, x.numeroDaExecucao, x.dados);
 
   // Localização: o endereço da OS ao lado dos pontos registrados (início, cada parada e o fim de cada execução).
   secao(c, "LOCALIZAÇÃO");

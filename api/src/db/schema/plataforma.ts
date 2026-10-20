@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 
-export const TAREFA_TIPOS = ["pdf_os", "email_alerta", "email_resumo", "leitura_sap", "leitura_rh", "conferencia_rh", "digitalizacao"] as const;
+export const TAREFA_TIPOS = ["pdf_os", "email_alerta", "email_resumo", "leitura_sap", "leitura_rh", "conferencia_rh", "digitalizacao", "pedido_prazo"] as const;
 export const TAREFA_ESTADOS = ["pendente", "em_andamento", "concluida", "falhou"] as const;
 
 /** Tarefas em segundo plano: geração de PDF, e-mail dos avisos e o resumo diário, leitura do SAP, as conferências com o registro de funcionários e a leitura das folhas digitalizadas. */
@@ -11,7 +11,7 @@ export const tarefa = pgTable(
   {
     id: uuid().primaryKey().defaultRandom(),
     tipo: text({ enum: TAREFA_TIPOS }).notNull(),
-    /** os.id, alerta.id, importacao.id, leitura_rh.id, usuario.id (conferencia_rh e email_resumo) ou nulo (leitura agendada do SAP). */
+    /** execucao_pedido.id (pedido_prazo), os.id, alerta.id, importacao.id, leitura_rh.id, usuario.id (conferencia_rh e email_resumo) ou nulo (leitura agendada do SAP). */
     referenciaId: uuid(),
     estado: text({ enum: TAREFA_ESTADOS }).notNull().default("pendente"),
     tentativas: integer().notNull().default(0),

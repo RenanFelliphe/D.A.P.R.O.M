@@ -1,3 +1,4 @@
+import type { PedidoDaApi } from "./execucao-pedidos";
 /** Tipos e contas da tela de execução: o que a `api` devolve em `GET /os/{id}` e o tempo calculado a partir disso. */
 
 /** Onde o aparelho estava num dos cinco momentos da execução; `null` = sem localização (permissão negada ou local coberto). */
@@ -17,6 +18,9 @@ export interface PausaDaApi {
   /** O que ou quem se aguarda (`aguardando`) ou a descrição (`outro`). */
   complemento?: string | null;
   localizacao?: LocalizacaoDaApi | null;
+  /** Quem pausou e quem retomou (qualquer participante da APR pode); nulos nas pausas anteriores à execução compartilhada: vale o responsável. */
+  iniciada_por?: { id: string; nome: string } | null;
+  encerrada_por?: { id: string; nome: string } | null;
 }
 
 /**
@@ -57,6 +61,10 @@ export interface ExecucaoDaApi {
   encerramento_assinado_em?: string | null;
   localizacao_inicio?: LocalizacaoDaApi | null;
   localizacao_fim?: LocalizacaoDaApi | null;
+  /** Quem encerrou, interrompeu ou suspendeu (e, se encerrou, assina o encerramento); nulo nas execuções anteriores e nas em andamento: vale o responsável. */
+  finalizada_por?: { id: string; nome: string } | null;
+  /** Os pedidos de participantes ao responsável (encerrar ou suspender), do mais antigo ao mais novo; o aberto traz `restante_ms`. */
+  pedidos?: PedidoDaApi[];
 }
 
 export interface AprDaApi {

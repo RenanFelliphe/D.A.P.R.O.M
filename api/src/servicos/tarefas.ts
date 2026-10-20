@@ -8,8 +8,10 @@ import { manipularLeituraSap } from "./leitura-sap";
 import { processarDigitalizacao } from "../dominio/digitalizacao";
 import { fecharTemporadasVencidas } from "../dominio/fechamento-temporada";
 import { conferirAusencias } from "../dominio/ausencia";
+import { conferirConferencias } from "../dominio/conferencia-execucao";
 import { atualizarSupervisaoDasEquipes } from "../dominio/representacao";
 import { verificarCiclos } from "../dominio/preventivas";
+import { fecharPedidosVencidos } from "../dominio/pedidos-execucao";
 import { agendarLeituraDiariaRh, alertarFalhaDaLeituraRh, manipularConferenciaRh, manipularLeituraRh } from "../dominio/rh";
 
 type Tarefa = typeof tarefa.$inferSelect;
@@ -23,7 +25,17 @@ const MANIPULADORES: Record<string, Manipulador> = {
   leitura_rh: manipularLeituraRh,
   conferencia_rh: manipularConferenciaRh,
   digitalizacao: manipularDigitalizacao,
+  pedido_prazo: manipularPedidoPrazo,
 };
+
+/**
+ * Tarefa `pedido_prazo`: `referenciaId` é o `execucao_pedido` que vence aos 2 minutos. Se ainda está aberto, é aprovado sozinho (a
+ * ação vale no instante do clique de quem pediu). Se o responsável já respondeu, não há o que fazer.
+ */
+async function manipularPedidoPrazo(deps: Deps, t: { id: string; referenciaId: string | null }): Promise<void> {
+  if (!t.referenciaId) return;
+  await fecharPedidosVencidos(deps.db, deps.agora(), { pedidoId: t.referenciaId });
+}
 
 /**
  * Tarefa `digitalizacao`: `referenciaId` é a `digitalizacao` que o admin enviou. A leitura de um PDF grande leva minutos, então a
@@ -55,6 +67,8 @@ const INTERVALO_EXECUTOR_MS = 5_000;
 export const INTERVALO_CICLOS_MIN = 60;
 /** De quanto em quanto tempo as ausências são conferidas (início aplicado, pedido parado cancelado e ausência vencida avisada). */
 export const INTERVALO_AUSENCIAS_MIN = 60;
+/** De quanto em quanto tempo os prazos das conferências das execuções são conferidos (avisos de 24 h e 48 h, e o fechamento aos 7 dias). */
+export const INTERVALO_CONFERENCIAS_MIN = 60;
 /** De quanto em quanto tempo as temporadas da gamificação que passaram da tolerância são fechadas. */
 export const INTERVALO_TEMPORADAS_MIN = 60;
 /** De quanto em quanto tempo se confere se já é hora da leitura diária do registro de funcionários (o índice único evita repetir). */
@@ -159,7 +173,8 @@ export async function agendarLeituraSap(deps: Deps): Promise<boolean> {
  * `SAP_API_URL` está configurada, a cada `SAP_LEITURA_INTERVALO_MIN` minutos), agenda a leitura diária do registro de funcionários
  * (quando `RH_API_URL` está configurada, uma por dia a partir de `RH_LEITURA_HORA`), confere o ciclo das preventivas (ao subir e a
  * cada `INTERVALO_CICLOS_MIN` minutos, criando os alertas de ciclo próximo e vencido), confere as ausências (ao subir e a cada
- * `INTERVALO_AUSENCIAS_MIN` minutos, com quem responde por cada equipe), agenda o resumo diário por e-mail (quando há servidor de
+ * `INTERVALO_AUSENCIAS_MIN` minutos, com quem responde por cada equipe), confere os prazos das conferências das execuções (a cada
+ * `INTERVALO_CONFERENCIAS_MIN` minutos: avisos de 24 h e 48 h e o fechamento aos 7 dias), agenda o resumo diário por e-mail (quando há servidor de
  * e-mail, uma vez por dia a partir de `EMAIL_RESUMO_HORA`) e executa as tarefas vencidas, sem que
  * duas rodadas se sobreponham. Devolve a função que o encerra.
  */
@@ -170,6 +185,7 @@ export function iniciarTarefas(deps: Deps): () => void {
   let ultimaConferenciaDeCiclos = 0;
   let ultimoFechamentoDeTemporadas = 0;
   let ultimaConferenciaDeAusencias = 0;
+  let ultimaConferenciaDeConferencias = 0;
   let ultimaChecagemDaLeituraRh = 0;
   let ultimaChecagemDoResumo = 0;
 
@@ -199,6 +215,11 @@ export function iniciarTarefas(deps: Deps): () => void {
         // Depois das ausências (o início aplicado vale para o representante): toda equipe com representante, quem responde por ela e o
         // aviso aos administradores das equipes sem supervisor.
         await atualizarSupervisaoDasEquipes(deps.db, deps.agora()).catch((erro) => console.error("Falha ao conferir quem responde pelas equipes:", erro));
+      }
+      if (agora - ultimaConferenciaDeConferencias >= minutos(INTERVALO_CONFERENCIAS_MIN)) {
+        ultimaConferenciaDeConferencias = agora;
+        // Idempotente; uma falha aqui não impede as tarefas da rodada.
+        await conferirConferencias(deps.db, deps.agora()).catch((erro) => console.error("Falha ao conferir os prazos das conferências das execuções:", erro));
       }
       if (deps.email.configurado && agora - ultimaChecagemDoResumo >= minutos(INTERVALO_RESUMO_MIN)) {
         ultimaChecagemDoResumo = agora;

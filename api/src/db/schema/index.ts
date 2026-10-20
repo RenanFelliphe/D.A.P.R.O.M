@@ -8,6 +8,7 @@ export * from "./digitalizacao";
 export * from "./preventivas";
 export * from "./apr";
 export * from "./execucao";
+export * from "./conferencia";
 export * from "./eventos";
 export * from "./impedimento";
 export * from "./gamificacao";

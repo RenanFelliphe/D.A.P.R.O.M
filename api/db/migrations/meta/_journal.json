@@ -281,6 +281,20 @@
       "when": 1792458251956,
       "tag": "0039_sugestao_de_materiais",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792465289830,
+      "tag": "0040_execucao_compartilhada",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792468991128,
+      "tag": "0041_conferencia_da_execucao",
+      "breakpoints": true
     }
   ]
 }

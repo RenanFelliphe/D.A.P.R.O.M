@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { EVIDENCIA_TIPOS, os, reprogramacao, usuario, type EventoTipo } from "../db/schema";
+import { EVIDENCIA_TIPOS, eventoCampo, execucao, os, reprogramacao, usuario, type EventoTipo } from "../db/schema";
 import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid, validar } from "../http/validacao";
@@ -26,6 +26,40 @@ export const rejeitar = (codigo: string, mensagem: string) => new RejeicaoEvento
 export const adiar = (codigo: string, mensagem: string) => new RejeicaoEvento("pendente", codigo, mensagem);
 
 /**
+ * O evento da fila offline que conflita com o que outro aparelho já registrou (duas pausas abertas, dois fins, uma execução de outro
+ * aparelho): não é recusado nem muda a execução. `processarEventos` o captura, guarda o evento como **versão** de quem o fez
+ * (`evento_campo.so_versao`) e a conferência da execução o compara depois (execução compartilhada, etapa 3). Só se lança antes de
+ * qualquer escrita do evento, e só do evento que veio sem sinal (`ctx.offline`); com sinal o conflito continua recusando.
+ */
+export class EventoComoVersao extends Error {
+  constructor(
+    /** A execução de que o evento trata, quando o evento não a traz com o id dela (o início feito em outro aparelho). */
+    public readonly execucaoId?: string,
+  ) {
+    super("Evento guardado como versão de outro aparelho");
+  }
+}
+
+/** O conflito do evento: sem sinal, vira versão (a fila nunca perde o que o campo registrou); com sinal, é recusado como sempre. */
+export const rejeitarOuVersao = (ctx: { offline: boolean }, codigo: string, mensagem: string): Error => (ctx.offline ? new EventoComoVersao() : rejeitar(codigo, mensagem));
+
+/**
+ * A execução canônica de um id que um aparelho gerou: a própria execução, ou aquela a que o `execucao_iniciada` de outro aparelho
+ * (que ficou como versão porque a APR já amparava a execução do responsável) foi ligado. Os eventos seguintes desse aparelho (pausa,
+ * fim, encerramento) citam o id local; é por esta função que chegam à execução certa.
+ */
+export async function resolverExecucaoId(tx: Db, id: string): Promise<string> {
+  const [existe] = await tx.select({ id: execucao.id }).from(execucao).where(eq(execucao.id, id));
+  if (existe) return id;
+  const [ligada] = await tx
+    .select({ execucaoId: eventoCampo.execucaoId })
+    .from(eventoCampo)
+    .where(and(eq(eventoCampo.tipo, "execucao_iniciada"), sql`${eventoCampo.payload}->>'id' = ${id}`, isNotNull(eventoCampo.execucaoId)))
+    .limit(1);
+  return ligada?.execucaoId ?? id;
+}
+
+/**
  * Evento que chega com mais atraso que isto veio da fila offline (ou de um relógio errado): o aparelho decidiu sem
  * conhecer o que mudou no servidor. Nesses casos o conflito não recusa o evento, vira alerta (Decisão-chave 2).
  */
@@ -46,7 +80,16 @@ export interface Contexto {
    */
   evidenciaDepois?: boolean;
   /** `ganhos`: os lançamentos de pontos que o evento gerou (de todos os participantes; a resposta devolve só os de quem enviou). */
-  saida: { alertas: string[]; aprs: { id: string; resultado: string }[]; osAfetadas: Set<string>; ganhos: Ganho[] };
+  saida: {
+    alertas: string[];
+    aprs: { id: string; resultado: string }[];
+    osAfetadas: Set<string>;
+    ganhos: Ganho[];
+    /** Execução compartilhada, etapa 3: o evento foi guardado como versão de outro aparelho (`EventoComoVersao`). */
+    soVersao?: boolean;
+    /** A execução de que o evento trata, quando só o handler sabe (o início que ficou como versão da execução de outro aparelho). */
+    execucaoId?: string;
+  };
 }
 
 /** O contexto da pontuação do evento: a mesma transação, com o relógio da `api` (o evento do aparelho pode estar com a hora errada). */

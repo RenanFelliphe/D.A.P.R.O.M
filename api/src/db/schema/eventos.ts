@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import { boolean, check, index, jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
+import { execucao } from "./execucao";
 import { os } from "./sap";
 import { usuario } from "./usuarios";
 
@@ -19,6 +21,11 @@ export const EVENTO_TIPOS = [
   "execucao_interrompida",
   "execucao_suspensa",
   "execucao_cancelada",
+  /** Execução compartilhada: um participante pede ao responsável para encerrar ou suspender; o responsável decide; o solicitante desiste; outro participante apoia. */
+  "pedido_aberto",
+  "pedido_decidido",
+  "pedido_cancelado",
+  "pedido_apoiado",
 ] as const;
 export type EventoTipo = (typeof EVENTO_TIPOS)[number];
 
@@ -48,9 +55,24 @@ export const eventoCampo = pgTable(
      * de sincronização offline.
      */
     offline: boolean().notNull().default(false),
+    /**
+     * A execução de que o evento trata (execução compartilhada, etapa 3): a `api` a anota ao aplicar o evento, para comparar o que cada
+     * aparelho registrou. Nulo nos eventos que não são de execução e nos anteriores a esta coluna.
+     */
+    execucaoId: uuid().references(() => execucao.id),
+    /**
+     * O evento veio da fila offline e conflitou com o que outro aparelho já tinha registrado (duas pausas abertas, dois fins): não é
+     * recusado nem muda a execução; fica guardado como a versão de quem o fez, para a conferência comparar. A sincronização nunca descarta dado de campo.
+     */
+    soVersao: boolean().notNull().default(false),
   },
   (t) => [
     check("evento_campo_tipo_check", emLista(t.tipo, EVENTO_TIPOS)),
+    index("evento_campo_execucao_idx").on(t.execucaoId, t.ocorridoEm).where(sql`${t.execucaoId} is not null`),
+    // O id local da execução que outro aparelho iniciou (`resolverExecucaoId`) e o da pausa que ficou como versão.
+    index("evento_campo_id_do_payload_idx")
+      .on(sql`(${t.payload}->>'id')`)
+      .where(sql`${t.tipo} in ('execucao_iniciada', 'pausa_iniciada')`),
     index("evento_campo_os_idx").on(t.osId, t.ocorridoEm),
     index("evento_campo_usuario_idx").on(t.usuarioId, t.recebidoEm.desc()),
   ],

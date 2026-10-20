@@ -19,6 +19,13 @@ import { os } from "./sap";
 import { usuario } from "./usuarios";
 
 export const EXECUCAO_RESULTADOS = ["encerrada", "interrompida", "suspensa", "cancelada"] as const;
+/** O que um participante pede ao responsável (execução compartilhada): encerrar a OS ou suspender a execução por um motivo comum. */
+export const PEDIDO_TIPOS = ["encerrar", "suspender"] as const;
+/**
+ * Como um pedido terminou: `aprovado` e `recusado` pelo responsável; `aprovado_por_prazo` quando os 2 minutos passaram sem resposta;
+ * `cancelado` pelo solicitante; `obsoleto` quando o responsável agiu antes ou a execução acabou.
+ */
+export const PEDIDO_ESTADOS = ["aberto", "aprovado", "aprovado_por_prazo", "recusado", "cancelado", "obsoleto"] as const;
 /**
  * Por que a execução parou por um momento: a lista da pausa (Reunião 3). `aguardando` e `outro` pedem um complemento (o que ou
  * quem; a descrição); `enfermidade` e `lesao` avisam o supervisor na hora.
@@ -83,6 +90,11 @@ export const execucao = pgTable(
      * Nulo na encerrada = a OS está em `encerrando`, esperando a assinatura do responsável.
      */
     encerramentoAssinadoEm: instante(),
+    /**
+     * Quem encerrou, interrompeu ou suspendeu a execução: qualquer participante da APR pode (execução compartilhada). Quem encerrou
+     * assina o encerramento. Nulo nas execuções anteriores e nas ainda em andamento: vale `executor_id`.
+     */
+    finalizadaPor: uuid().references(() => usuario.id),
   },
   (t) => [
     check("execucao_resultado_check", emLista(t.resultado, EXECUCAO_RESULTADOS)),
@@ -128,6 +140,9 @@ export const execucaoPausa = pgTable(
     /** Onde a pessoa estava ao pausar; nula = "sem localização". */
     latitude: numeric({ precision: 9, scale: 6, mode: "number" }),
     longitude: numeric({ precision: 9, scale: 6, mode: "number" }),
+    /** Quem pausou e quem retomou (ou encerrou a execução que estava em pausa): qualquer participante da APR. Nulos nas pausas anteriores: vale `executor_id`. */
+    iniciadaPor: uuid().references(() => usuario.id),
+    encerradaPor: uuid().references(() => usuario.id),
   },
   (t) => [
     check("execucao_pausa_motivo_check", emLista(t.motivo, PAUSA_MOTIVOS)),
@@ -139,6 +154,70 @@ export const execucaoPausa = pgTable(
     // No máximo uma pausa aberta por execução.
     uniqueIndex("execucao_pausa_unica_aberta_idx").on(t.execucaoId).where(sql`${t.fim} is null`),
   ],
+).enableRLS();
+
+/**
+ * O pedido de um participante ao responsável pela execução (encerrar ou suspender por motivo comum): o responsável aceita ou recusa
+ * em até 2 minutos; sem resposta, é aprovado sozinho. `instante` é o do clique, e é nele que a ação vale, não no da aprovação. Um
+ * pedido aberto por execução.
+ */
+export const execucaoPedido = pgTable(
+  "execucao_pedido",
+  {
+    /** Nasce no aparelho (idempotência do evento). */
+    id: uuid().primaryKey(),
+    execucaoId: uuid()
+      .notNull()
+      .references(() => execucao.id),
+    tipo: text({ enum: PEDIDO_TIPOS }).notNull(),
+    solicitanteId: uuid()
+      .notNull()
+      .references(() => usuario.id),
+    /** O instante do clique do solicitante: o fim da execução, se o pedido for aprovado. */
+    instante: instante().notNull(),
+    /** Só no pedido de suspensão: o motivo e o complemento. */
+    motivo: text(),
+    complemento: text(),
+    latitude: numeric({ precision: 9, scale: 6, mode: "number" }),
+    longitude: numeric({ precision: 9, scale: 6, mode: "number" }),
+    /** Relógio da `api`: o prazo de 2 minutos conta daqui, nunca do relógio do aparelho. */
+    criadoEm: instante().notNull(),
+    expiraEm: instante().notNull(),
+    estado: text({ enum: PEDIDO_ESTADOS }).notNull().default("aberto"),
+    /** Quem aprovou ou recusou (só nesses dois estados). */
+    decididoPor: uuid().references(() => usuario.id),
+    /** Quando deixou de estar aberto (decisão, prazo, cancelamento ou obsolescência). */
+    decididoEm: instante(),
+    motivoRecusa: text(),
+  },
+  (t) => [
+    check("execucao_pedido_tipo_check", emLista(t.tipo, PEDIDO_TIPOS)),
+    check("execucao_pedido_estado_check", emLista(t.estado, PEDIDO_ESTADOS)),
+    check("execucao_pedido_gps_completo", sql`(${t.latitude} is null) = (${t.longitude} is null)`),
+    check("execucao_pedido_prazo", sql`${t.expiraEm} > ${t.criadoEm}`),
+    check("execucao_pedido_decisao", sql`(${t.estado} = 'aberto') = (${t.decididoEm} is null) and (${t.estado} in ('aprovado', 'recusado')) = (${t.decididoPor} is not null)`),
+    check("execucao_pedido_suspensao_com_motivo", sql`${t.tipo} <> 'suspender' or ${t.motivo} is not null`),
+    // Um pedido aberto por execução: quem pede outra coisa nesse meio-tempo apoia o que já está aberto.
+    uniqueIndex("execucao_pedido_aberto_idx").on(t.execucaoId).where(sql`${t.estado} = 'aberto'`),
+    index("execucao_pedido_execucao_idx").on(t.execucaoId),
+    // O executor de tarefas e a leitura procuram os abertos que já venceram.
+    index("execucao_pedido_vencendo_idx").on(t.expiraEm).where(sql`${t.estado} = 'aberto'`),
+  ],
+).enableRLS();
+
+/** Quem concordou com um pedido aberto (outro participante que quis o mesmo): aparece no relatório. */
+export const execucaoPedidoApoio = pgTable(
+  "execucao_pedido_apoio",
+  {
+    pedidoId: uuid()
+      .notNull()
+      .references(() => execucaoPedido.id),
+    usuarioId: uuid()
+      .notNull()
+      .references(() => usuario.id),
+    apoiadoEm: instante().notNull(),
+  },
+  (t) => [primaryKey({ name: "execucao_pedido_apoio_pkey", columns: [t.pedidoId, t.usuarioId] })],
 ).enableRLS();
 
 export const execucaoAssinatura = pgTable(

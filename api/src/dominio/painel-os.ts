@@ -13,6 +13,8 @@ import {
   execucao,
   execucaoAssinatura,
   execucaoPausa,
+  execucaoPedido,
+  execucaoPedidoApoio,
   itemModeloApr,
   localInstalacao,
   modeloApr,
@@ -32,11 +34,13 @@ import { enfileirarTarefa } from "../servicos/fila";
 import { reservasDesfeitasPorAusencia } from "./ausencia";
 import { buscaDeOs } from "./busca";
 import { checklistsDasOs } from "./checklist-inspecao";
+import { conferenciaEsperandoDados, conferenciasDaOs } from "./conferencia-execucao";
 import { servicoDaAtividade } from "./catalogo";
 import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
 import { ganhosDe } from "./lancamentos";
 import { assinaturaDoAto } from "./assinatura";
 import { ROTULO_DA_PAUSA, ROTULO_DA_SUSPENSAO, descreverMotivo } from "./motivos-de-parada";
+import { fecharPedidosVencidos } from "./pedidos-execucao";
 import { pontuarCiencia } from "./pontuacao";
 import { recalcularStatusOs } from "./status-os";
 import {
@@ -372,7 +376,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
 }
 
 /** Execuções da OS, da mais antiga para a mais recente, com pausas, assinaturas, fotos e tempos. */
-async function carregarExecucoes(db: Db, osId: string) {
+async function carregarExecucoes(db: Db, osId: string, agora: Date) {
   const linhas = await db
     .select({
       id: execucao.id,
@@ -390,6 +394,7 @@ async function carregarExecucoes(db: Db, osId: string) {
       suspensaoMotivo: execucao.suspensaoMotivo,
       suspensaoComplemento: execucao.suspensaoComplemento,
       encerramentoAssinadoEm: execucao.encerramentoAssinadoEm,
+      finalizadaPor: execucao.finalizadaPor,
       inicioLatitude: execucao.inicioLatitude,
       inicioLongitude: execucao.inicioLongitude,
       fimLatitude: execucao.fimLatitude,
@@ -402,7 +407,7 @@ async function carregarExecucoes(db: Db, osId: string) {
   if (linhas.length === 0) return [];
   const ids = linhas.map((l) => l.id);
 
-  const [pausas, assinaturas, arquivos] = await Promise.all([
+  const [pausas, assinaturas, arquivos, pedidos] = await Promise.all([
     db.select().from(execucaoPausa).where(inArray(execucaoPausa.execucaoId, ids)).orderBy(asc(execucaoPausa.inicio)),
     db
       .select({
@@ -422,7 +427,16 @@ async function carregarExecucoes(db: Db, osId: string) {
       .from(evidencia)
       .where(inArray(evidencia.execucaoId, ids))
       .orderBy(asc(evidencia.capturadaEm), asc(evidencia.id)),
+    db.select().from(execucaoPedido).where(inArray(execucaoPedido.execucaoId, ids)).orderBy(asc(execucaoPedido.criadoEm), asc(execucaoPedido.id)),
   ]);
+
+  // Execução compartilhada: quem pausou, retomou, encerrou, pediu, decidiu e apoiou (qualquer participante da APR pode agir).
+  const apoios = pedidos.length ? await db.select().from(execucaoPedidoApoio).where(inArray(execucaoPedidoApoio.pedidoId, pedidos.map((p) => p.id))).orderBy(asc(execucaoPedidoApoio.apoiadoEm)) : [];
+  const quemIds = new Set(
+    [...linhas.map((l) => l.finalizadaPor), ...pausas.flatMap((p) => [p.iniciadaPor, p.encerradaPor]), ...pedidos.flatMap((p) => [p.solicitanteId, p.decididoPor]), ...apoios.map((a) => a.usuarioId)].filter((x): x is string => !!x),
+  );
+  const nomes = new Map((quemIds.size ? await db.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(inArray(usuario.id, [...quemIds])) : []).map((u) => [u.id, u.nome]));
+  const quem = (id: string | null) => (id ? { id, nome: nomes.get(id) ?? "—" } : null);
 
   return linhas.map((l) => {
     const dela = pausas.filter((p) => p.execucaoId === l.id);
@@ -442,6 +456,27 @@ async function carregarExecucoes(db: Db, osId: string) {
       suspensaoComplemento: l.suspensaoComplemento,
       /** Quando o responsável assinou o encerramento; nulo na encerrada = a OS está `encerrando`. */
       encerramentoAssinadoEm: l.encerramentoAssinadoEm,
+      /** Quem encerrou, interrompeu ou suspendeu (e, se encerrou, assina o encerramento); nulo nas execuções anteriores: vale o responsável. */
+      finalizadaPor: quem(l.finalizadaPor),
+      /** Os pedidos de participantes ao responsável (encerrar ou suspender), do mais antigo ao mais novo; o aberto traz quanto falta. */
+      pedidos: pedidos
+        .filter((p) => p.execucaoId === l.id)
+        .map((p) => ({
+          id: p.id,
+          tipo: p.tipo,
+          estado: p.estado,
+          solicitante: quem(p.solicitanteId)!,
+          instante: p.instante,
+          motivo: p.motivo,
+          complemento: p.complemento,
+          criadoEm: p.criadoEm,
+          expiraEm: p.expiraEm,
+          decididoEm: p.decididoEm,
+          decididoPor: quem(p.decididoPor),
+          motivoRecusa: p.motivoRecusa,
+          apoios: apoios.filter((a) => a.pedidoId === p.id).map((a) => quem(a.usuarioId)!),
+          ...(p.estado === "aberto" ? { restanteMs: Math.max(0, p.expiraEm.getTime() - agora.getTime()) } : {}),
+        })),
       /** Onde a pessoa estava ao iniciar e ao terminar (encerrar, suspender ou interromper); `null` = sem localização. */
       localizacaoInicio: l.inicioLatitude !== null && l.inicioLongitude !== null ? { latitude: l.inicioLatitude, longitude: l.inicioLongitude } : null,
       localizacaoFim: l.fimLatitude !== null && l.fimLongitude !== null ? { latitude: l.fimLatitude, longitude: l.fimLongitude } : null,
@@ -455,6 +490,8 @@ async function carregarExecucoes(db: Db, osId: string) {
         motivo: p.motivo,
         complemento: p.complemento,
         localizacao: p.latitude !== null && p.longitude !== null ? { latitude: p.latitude, longitude: p.longitude } : null,
+        iniciadaPor: quem(p.iniciadaPor),
+        encerradaPor: quem(p.encerradaPor),
       })),
       assinaturas: assinaturas.filter((a) => a.execucaoId === l.id).map(({ execucaoId: _e, ...a }) => a),
       ...separarEvidencias(arquivos.filter((f) => f.execucaoId === l.id)),
@@ -464,6 +501,8 @@ async function carregarExecucoes(db: Db, osId: string) {
 
 /** Detalhe da OS: dados do SAP, o serviço do catálogo, APRs, execuções, alertas, reprogramações e a linha do tempo que une tudo. */
 export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, agora: Date) {
+  // O pedido que passou dos 2 minutos já foi aprovado (e a OS mudou de status): a leitura não o mostra como aberto.
+  await fecharPedidosVencidos(db, agora, { osId });
   const { os: o, local, equipeNome, equipeCentro, equipeSupervisorId, cienciaPorNome, responsavelNome, reservadaPorNome, devolvidaPorNome } = await osVisivel(db, eu, osId);
 
   const equipeAnterior = alias(equipe, "equipe_anterior");
@@ -471,7 +510,7 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
   const [servico, aprs, execucoes, alertas, reprogramacoes, abertas, [suspeitos], checklists, reservasDesfeitas] = await Promise.all([
     o.codigoAtividade ? servicoDaAtividade(db, o.codigoAtividade) : null,
     carregarAprs(db, osId, eu.perfil === "admin"),
-    carregarExecucoes(db, osId),
+    carregarExecucoes(db, osId, agora),
     db
       .select({
         id: alerta.id,
@@ -576,6 +615,8 @@ export async function detalharOs(db: Db, eu: UsuarioAutenticado, osId: string, a
     checklistInspecao: checklists.get(o.id) ?? [],
     aprs,
     execucoes,
+    /** A conferência do que a equipe registrou sem sinal em aparelhos diferentes (execução compartilhada, etapa 3); vazio quando não houve. */
+    conferencias: await conferenciasDaOs(db, osId),
     alertas,
     reprogramacoes,
     linhaDoTempo,
@@ -671,10 +712,10 @@ export async function listarAprsDaOs(db: Db, eu: UsuarioAutenticado, osId: strin
   return carregarAprs(db, osId, eu.perfil === "admin");
 }
 
-/** Quem executou a OS (a execução encerrada; mais de uma só na execução duplicada vinda do modo offline). */
+/** Quem executou a OS: o responsável pela execução encerrada e quem a encerrou, se for outra pessoa (mais de uma execução só na duplicada vinda do modo offline). */
 export async function executoresDaOs(db: Db, osId: string): Promise<string[]> {
-  const linhas = await db.selectDistinct({ id: execucao.executorId }).from(execucao).where(and(eq(execucao.osId, osId), eq(execucao.resultado, "encerrada")));
-  return linhas.map((l) => l.id);
+  const linhas = await db.select({ executor: execucao.executorId, encerrou: execucao.finalizadaPor }).from(execucao).where(and(eq(execucao.osId, osId), eq(execucao.resultado, "encerrada")));
+  return [...new Set(linhas.flatMap((l) => [l.executor, l.encerrou]).filter((x): x is string => !!x))];
 }
 
 /**
@@ -696,6 +737,10 @@ export async function darCiencia(db: Db, eu: UsuarioAutenticado, osId: string, a
       );
     }
 
+    // O relatório da execução inclui a conferência: com os registros de aparelhos diferentes ainda por comparar, o supervisor espera.
+    if (await conferenciaEsperandoDados(tx as unknown as Db, osId)) {
+      throw conflito("conferencia_pendente", "A conferência da execução ainda não terminou: os registros dos aparelhos da equipe estão sendo comparados. Assine quando ela chegar às assinaturas");
+    }
     await tx.update(os).set({ cienciaPor: eu.id, cienciaEm: agora, cienciaAssinaturaPath: assinaturaDoAto(eu) }).where(eq(os.id, osId));
     const status = await recalcularStatusOs(tx as unknown as Db, osId);
     // O PDF só sai agora: ele leva a assinatura final do supervisor.

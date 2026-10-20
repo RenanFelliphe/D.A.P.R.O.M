@@ -25,7 +25,7 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
   const minhasEncerradas = db
     .select({ osId: execucao.osId })
     .from(execucao)
-    .where(and(eq(execucao.executorId, usuarioLogado.id), eq(execucao.resultado, "encerrada"), gte(execucao.fim, desde)));
+    .where(and(or(eq(execucao.executorId, usuarioLogado.id), eq(execucao.finalizadaPor, usuarioLogado.id)), eq(execucao.resultado, "encerrada"), gte(execucao.fim, desde)));
 
   const ordens = await db
     .select()

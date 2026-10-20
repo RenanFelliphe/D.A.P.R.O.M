@@ -190,7 +190,7 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
     };
   });
 
-  // A assinatura do encerramento é uma só: a do responsável (`executor_id`); na falta dela, a primeira que existir.
+  // A assinatura do encerramento é uma só: a de quem encerrou a OS (`finalizada_por`, ou o responsável nas execuções anteriores a ele); na falta dela, a primeira que existir.
   const assinaturasDoEncerramento = await db
     .select({
       usuarioId: execucaoAssinatura.usuarioId,
@@ -204,7 +204,7 @@ export async function carregarDadosPdf(deps: Deps, osId: string): Promise<DadosP
     .innerJoin(usuario, eq(usuario.id, execucaoAssinatura.usuarioId))
     .where(eq(execucaoAssinatura.execucaoId, principal.id))
     .orderBy(asc(execucaoAssinatura.assinadaEm));
-  const doResponsavel = assinaturasDoEncerramento.find((a) => a.usuarioId === principal.executorId) ?? assinaturasDoEncerramento[0];
+  const doResponsavel = assinaturasDoEncerramento.find((a) => a.usuarioId === (principal.finalizadaPor ?? principal.executorId)) ?? assinaturasDoEncerramento[0];
   const responsavel: AssinanteFinal | null = doResponsavel
     ? { nome: doResponsavel.nome, cargo: doResponsavel.cargo, registro: doResponsavel.registro, assinaturaPath: doResponsavel.assinaturaPath, em: doResponsavel.assinadaEm }
     : null;

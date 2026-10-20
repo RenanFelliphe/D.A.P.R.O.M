@@ -4,7 +4,8 @@ import { z } from "zod";
 import { CATEGORIAS_DE_EMAIL, ehCategoriaObrigatoria, ROTULO_DA_CATEGORIA } from "../../../shared/notificacoes/avisos";
 import type { Db } from "../db/conexao";
 import type { Deps } from "../deps";
-import { ESTADOS_TREINAMENTO, ausencia, equipe, execucao, execucaoPausa, localInstalacao, os, usuario } from "../db/schema";
+import { ESTADOS_TREINAMENTO, ausencia, equipe, execucao, execucaoPausa, execucaoPedido, localInstalacao, os, usuario } from "../db/schema";
+import { fecharPedidosVencidos } from "../dominio/pedidos-execucao";
 import { aprsParaAssinar } from "../dominio/apr-assinaturas";
 import { ausenciaDaPessoaParaApi, ausenciaVigenteDe } from "../dominio/ausencia";
 import { representacoesEmVigor, rotuloDoMotivo } from "../dominio/representacao";
@@ -147,6 +148,41 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
       .where(and(eq(execucao.executorId, eu.id), isNull(execucao.resultado)))
       .orderBy(execucao.inicio);
     return responder(c, { execucoes: linhas });
+  });
+
+  /**
+   * Os pedidos que participantes fizeram a quem pergunta, o responsável pela execução (encerrar a OS ou suspender por um motivo comum):
+   * ele tem 2 minutos para aceitar ou recusar, e a tela mostra a faixa "[nome] pediu para encerrar — 1:42" com o que vem daqui. Fecha
+   * antes os que já venceram (aprovados sozinhos). `restante_ms` é o que falta no relógio da `api`.
+   */
+  r.get("/me/pedidos-abertos", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    const agora = deps.agora();
+    await fecharPedidosVencidos(deps.db, agora);
+    const linhas = await deps.db
+      .select({
+        id: execucaoPedido.id,
+        execucaoId: execucaoPedido.execucaoId,
+        osId: execucao.osId,
+        numeroOrdem: os.numeroOrdem,
+        titulo: os.titulo,
+        tipo: execucaoPedido.tipo,
+        solicitanteId: execucaoPedido.solicitanteId,
+        solicitanteNome: usuario.nome,
+        motivo: execucaoPedido.motivo,
+        complemento: execucaoPedido.complemento,
+        criadoEm: execucaoPedido.criadoEm,
+        expiraEm: execucaoPedido.expiraEm,
+      })
+      .from(execucaoPedido)
+      .innerJoin(execucao, eq(execucao.id, execucaoPedido.execucaoId))
+      .innerJoin(os, eq(os.id, execucao.osId))
+      .innerJoin(usuario, eq(usuario.id, execucaoPedido.solicitanteId))
+      .where(and(eq(execucao.executorId, eu.id), eq(execucaoPedido.estado, "aberto")))
+      .orderBy(execucaoPedido.criadoEm);
+    return responder(c, {
+      pedidos: linhas.map(({ solicitanteId, solicitanteNome, ...l }) => ({ ...l, solicitante: { id: solicitanteId, nome: solicitanteNome }, restanteMs: Math.max(0, l.expiraEm.getTime() - agora.getTime()) })),
+    });
   });
 
   /**

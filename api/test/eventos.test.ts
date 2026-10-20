@@ -336,11 +336,11 @@ describe("Eventos de campo: APR, execução e sync", () => {
     await enviar(tecnico, e.ev);
     // Antes do clique em "Encerrar OS" não há o que assinar.
     assert.equal((await enviar(tecnico, assinarEncerramento(e.id))).rejeitados[0].codigo, "execucao_nao_encerrada");
-    // Ninguém encerra a execução de outro, nem assina o encerramento dele.
-    assert.equal((await enviar(colega, clicarEncerrar(e.id))).rejeitados[0].codigo, "execucao_de_outro");
+    // O colega que participa da APR, com sinal, não encerra na hora: pede ao responsável (execução compartilhada). Nem assina o encerramento de quem encerrou.
+    assert.equal((await enviar(colega, clicarEncerrar(e.id))).rejeitados[0].codigo, "pedido_necessario");
     await enviar(tecnico, clicarEncerrar(e.id));
     assert.equal(await statusDa(o.id), "encerrando");
-    assert.equal((await enviar(colega, assinarEncerramento(e.id))).rejeitados[0].codigo, "execucao_de_outro");
+    assert.equal((await enviar(colega, assinarEncerramento(e.id))).rejeitados[0].codigo, "encerramento_de_outro");
     const repetido = await enviar(tecnico, clicarEncerrar(e.id));
     assert.equal(repetido.confirmados.length, 1);
     assert.equal(await statusDa(o.id), "encerrando");

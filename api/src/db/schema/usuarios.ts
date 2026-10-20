@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, date, index, pgTable, text, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, jsonb, pgTable, text, uuid, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { CATEGORIAS_DE_EMAIL, ehCategoriaObrigatoria } from "../../../../shared/notificacoes/avisos";
 import { emLista, instante } from "./comum";
 
@@ -122,6 +122,13 @@ export const usuario = pgTable(
     emailsDesligados: text().array().notNull().default(sql`'{}'::text[]`),
     /** O último dia (de São Paulo) em que o resumo diário por e-mail foi agendado para a pessoa: um por dia. */
     resumoEmailDia: date({ mode: "string" }),
+    /**
+     * A última vez que o app da pessoa baixou a cópia da equipe (`POST /sync/pull`), logo depois de subir a fila, e quantos eventos ainda
+     * esperavam nela, por OS (`{ [os_id]: quantos }`). Nulo = a pessoa nunca usou o modo offline, então não tem fila a esperar. A
+     * conferência de uma execução só anda quando quem usa o app sincronizou depois do fim dela, com a fila daquela OS vazia.
+     */
+    ultimaSincronizacaoEm: instante(),
+    filaNaSincronizacao: jsonb().$type<Record<string, number>>(),
   },
   (t) => [
     check("usuario_perfil_check", emLista(t.perfil, PERFIS)),

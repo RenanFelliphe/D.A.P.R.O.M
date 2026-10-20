@@ -40,6 +40,17 @@ export const TIPOS_DE_AVISO = [
   "preventiva_proxima",
   "preventiva_vencida",
   "inspecao_com_pendencia",
+  // Execução compartilhada: o pedido de um participante ao responsável, a resposta, e o aviso do que um participante fez
+  "pedido_de_acao",
+  "pedido_decidido",
+  "acao_de_participante",
+  // Execução compartilhada, etapa 3: a conferência do que a equipe registrou sem sinal em aparelhos diferentes
+  "conferencia_aberta",
+  "conferencia_cobranca",
+  "conferencia_para_decidir",
+  "conferencia_para_assinar",
+  "conferencia_ressalva",
+  "conferencia_tempo_esgotado",
   // Execução e assinaturas (Reunião 3)
   "apr_para_assinar",
   "direito_de_recusa",
@@ -134,6 +145,15 @@ export const ROTULO_DO_AVISO: Record<TipoDeAviso, string> = {
   preventiva_proxima: "Preventiva: ciclo próximo",
   preventiva_vencida: "Preventiva: ciclo vencido",
   inspecao_com_pendencia: "Inspeção com pendência",
+  pedido_de_acao: "Pedido de um participante da execução",
+  pedido_decidido: "Resposta ao seu pedido na execução",
+  acao_de_participante: "Um participante agiu na execução",
+  conferencia_aberta: "Conferência da execução aberta",
+  conferencia_cobranca: "Conferência da execução esperando você",
+  conferencia_para_decidir: "Conferência da execução: escolha as versões",
+  conferencia_para_assinar: "Conferência da execução: ciência ou assinatura",
+  conferencia_ressalva: "Ressalva na conferência da execução",
+  conferencia_tempo_esgotado: "Conferência da execução fechada por prazo",
   apr_para_assinar: "APR aguardando a sua assinatura",
   direito_de_recusa: "Direito de recusa na APR",
   lesao_ou_enfermidade: "Lesão ou enfermidade na execução",
@@ -201,6 +221,17 @@ export const CATEGORIA_DO_AVISO: Record<TipoDeAviso, CategoriaDeEmail | null> = 
   preventiva_proxima: "preventivas",
   preventiva_vencida: "preventivas",
   inspecao_com_pendencia: "os",
+  // Só no sino: o pedido vale por 2 minutos, e o e-mail não chegaria a tempo; os avisos da ação ficam no sino para não fazer barulho.
+  pedido_de_acao: null,
+  pedido_decidido: null,
+  acao_de_participante: null,
+  // A conferência dura horas ou dias (a equipe sincroniza quando tem sinal): o e-mail chega a tempo e ajuda. Categoria Equipe.
+  conferencia_aberta: "equipe",
+  conferencia_cobranca: "equipe",
+  conferencia_para_decidir: "equipe",
+  conferencia_para_assinar: "equipe",
+  conferencia_ressalva: "equipe",
+  conferencia_tempo_esgotado: "equipe",
   // Só no sino: quem assina está ao lado de quem preencheu a APR.
   apr_para_assinar: null,
   // A lesão no trabalho, mesmo leve, é acidente de trabalho: o aviso por e-mail é obrigatório, como o do impedimento.
@@ -262,7 +293,7 @@ export const DESCRICAO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
   os: "OS reservada para você ou tirada de você, assinatura final do supervisor na OS que você executou, OS aguardando a sua assinatura de supervisor, OS de apoio encerrada, inspeção com pendência, conflitos e execuções duplicadas.",
   preventivas: "Ciclo das preventivas próximo do vencimento ou vencido.",
   ausencias: "Pedidos, aprovações, recusas, alterações e retorno das ausências.",
-  equipe: "Representante que assume ou devolve a equipe, membro desativado, técnico que você cadastrou liberado ou recusado, e sugestões e contestações de materiais (a avaliar, aceitas ou recusadas).",
+  equipe: "Representante que assume ou devolve a equipe, membro desativado, técnico que você cadastrou liberado ou recusado, e sugestões e contestações de materiais (a avaliar, aceitas ou recusadas), e a conferência da execução registrada sem sinal (aberta, a escolher, a assinar, com ressalva ou fechada por prazo).",
   treinamentos: "Novo treinamento de serviço publicado e problema reportado num treinamento.",
   sistema: "Falha na leitura do SAP ou do registro de funcionários, cadastro aguardando liberação, funcionário readmitido, equipe sem supervisor, PDF de OS não gerado e a Vitória sem IA.",
   resumo_diario: "Um e-mail por dia, de manhã, com o que espera por você: OS aguardando ciência, pedidos de ausência, cadastros a liberar e OS reservadas.",
@@ -324,6 +355,14 @@ export function caminhoDoAviso(a: ReferenciasDoAviso): string {
       return "/app/usuarios";
     case "apr_para_assinar":
       return a.osId ? `/app/os/${a.osId}/apr/aprovada` : "/app/lista";
+    // A conferência da execução: a tela dela é da OS (a execução compartilhada, etapa 3).
+    case "conferencia_aberta":
+    case "conferencia_cobranca":
+    case "conferencia_para_decidir":
+    case "conferencia_para_assinar":
+    case "conferencia_ressalva":
+    case "conferencia_tempo_esgotado":
+      return a.osId ? `/app/os/${a.osId}/conferencia` : "/app/lista";
     case "treinamento_publicado":
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinar` : "/app/catalogo/servicos";
     case "treinamento_problema":

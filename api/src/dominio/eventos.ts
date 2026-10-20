@@ -1,13 +1,15 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { EVENTO_TIPOS, apr, eventoCampo, os } from "../db/schema";
+import { EVENTO_TIPOS, apr, eventoCampo, execucao, execucaoPausa, execucaoPedido, os, type EventoTipo } from "../db/schema";
 import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid } from "../http/validacao";
 import { aplicarAprAssinada, aplicarAprConcluida, aplicarAprRecusada } from "./eventos-apr";
 import { concederConquistas } from "./conquistas";
 import { ganhosDe, type ganhoParaApi } from "./lancamentos";
-import { ATRASO_OFFLINE_MS, RejeicaoEvento, contextoDePontos, rejeitar, type Contexto } from "./eventos-base";
+import { ATRASO_OFFLINE_MS, EventoComoVersao, RejeicaoEvento, contextoDePontos, rejeitar, resolverExecucaoId, type Contexto } from "./eventos-base";
+import { avancarConferenciasDaOs } from "./conferencia-execucao";
+import type { Db } from "../db/conexao";
 import {
   aplicarEncerramentoAssinado,
   aplicarExecucaoCancelada,
@@ -17,6 +19,10 @@ import {
   aplicarExecucaoSuspensa,
   aplicarPausaEncerrada,
   aplicarPausaIniciada,
+  aplicarPedidoAbertoEvento,
+  aplicarPedidoApoiado,
+  aplicarPedidoCancelado,
+  aplicarPedidoDecidido,
 } from "./eventos-execucao";
 import { inicioDaAusencia } from "./ausencia";
 import { recalcularStatusOs } from "./status-os";
@@ -54,6 +60,55 @@ export interface ResultadoDoEnvio {
   ganhos: ReturnType<typeof ganhoParaApi>[];
 }
 
+/**
+ * A execução de que o evento trata (execução compartilhada, etapa 3): a `api` a anota em `evento_campo.execucao_id` para a conferência
+ * comparar o que cada aparelho registrou. O id que o aparelho cita pode ser o de uma execução que ficou como versão de outra (`resolverExecucaoId`);
+ * a pausa e o pedido chegam à execução pela linha deles ou pelo evento que os abriu.
+ */
+async function execucaoDoEvento(tx: Db, tipo: EventoTipo, p: Record<string, unknown>): Promise<string | null> {
+  const texto = (v: unknown) => (typeof v === "string" && v ? v : null);
+  switch (tipo) {
+    case "execucao_iniciada": {
+      // O início que ficou como versão da execução de outro aparelho não tem execução com este id: o handler diz qual é (`EventoComoVersao`).
+      const id = texto(p.id);
+      if (!id) return null;
+      const [existe] = await tx.select({ id: execucao.id }).from(execucao).where(eq(execucao.id, id));
+      return existe?.id ?? null;
+    }
+    case "pausa_iniciada":
+    case "execucao_encerrada":
+    case "execucao_interrompida":
+    case "execucao_suspensa":
+    case "execucao_cancelada":
+    case "encerramento_assinado":
+    case "pedido_aberto": {
+      const id = texto(p.execucao_id);
+      return id ? resolverExecucaoId(tx, id) : null;
+    }
+    case "pausa_encerrada": {
+      const id = texto(p.pausa_id);
+      if (!id) return null;
+      const [pausa] = await tx.select({ execucaoId: execucaoPausa.execucaoId }).from(execucaoPausa).where(eq(execucaoPausa.id, id));
+      if (pausa) return pausa.execucaoId;
+      const [versao] = await tx
+        .select({ execucaoId: eventoCampo.execucaoId })
+        .from(eventoCampo)
+        .where(and(eq(eventoCampo.tipo, "pausa_iniciada"), sql`${eventoCampo.payload}->>'id' = ${id}`));
+      return versao?.execucaoId ?? null;
+    }
+    case "pedido_decidido":
+    case "pedido_cancelado":
+    case "pedido_apoiado": {
+      const id = texto(p.pedido_id);
+      if (!id) return null;
+      const [pedido] = await tx.select({ execucaoId: execucaoPedido.execucaoId }).from(execucaoPedido).where(eq(execucaoPedido.id, id));
+      return pedido?.execucaoId ?? null;
+    }
+    default:
+      return null;
+  }
+}
+
 async function despachar(ctx: Contexto, e: EventoRecebido) {
   const osId = e.os_id ?? null;
   switch (e.tipo) {
@@ -79,6 +134,14 @@ async function despachar(ctx: Contexto, e: EventoRecebido) {
       return aplicarExecucaoSuspensa(ctx, e.payload);
     case "execucao_cancelada":
       return aplicarExecucaoCancelada(ctx, e.payload);
+    case "pedido_aberto":
+      return aplicarPedidoAbertoEvento(ctx, e.payload);
+    case "pedido_decidido":
+      return aplicarPedidoDecidido(ctx, e.payload);
+    case "pedido_cancelado":
+      return aplicarPedidoCancelado(ctx, e.payload);
+    case "pedido_apoiado":
+      return aplicarPedidoApoiado(ctx, e.payload);
   }
 }
 
@@ -141,13 +204,25 @@ export async function processarEventos(
           ...opcoes,
           saida: parcial,
         };
-        await despachar(ctx, e);
+        try {
+          await despachar(ctx, e);
+        } catch (erro) {
+          // O conflito vindo da fila offline não é recusado: o evento fica como versão de quem o fez e a conferência o compara depois.
+          if (!(erro instanceof EventoComoVersao)) throw erro;
+          parcial.soVersao = true;
+          if (erro.execucaoId) parcial.execucaoId = erro.execucaoId;
+        }
+        const execucaoId = parcial.execucaoId ?? (await execucaoDoEvento(tx, e.tipo, e.payload));
+        if (execucaoId) await tx.update(eventoCampo).set({ execucaoId, soVersao: parcial.soVersao === true }).where(eq(eventoCampo.id, e.id));
         // O que chegou pela fila pode completar a conquista de sincronização offline (nenhum lançamento a dispara).
         if (offline) {
           const conquistas = await concederConquistas(contextoDePontos(ctx), { usuarios: [usuario.id] });
           parcial.ganhos.push(...conquistas.ganhos);
         }
-        for (const id of parcial.osAfetadas) await recalcularStatusOs(tx, id);
+        for (const id of parcial.osAfetadas) {
+          await recalcularStatusOs(tx, id);
+          await avancarConferenciasDaOs(tx, id, recebidoEm, { alertas: parcial.alertas });
+        }
         if (!osDoEnvelope && parcial.osAfetadas.size === 1) {
           await tx.update(eventoCampo).set({ osId: [...parcial.osAfetadas][0]! }).where(eq(eventoCampo.id, e.id));
         }

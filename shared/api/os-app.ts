@@ -1,5 +1,7 @@
 /** Tipos das respostas de OS usadas nas telas do técnico (lista, detalhe e APR) e pequenas regras sobre elas. Chaves em snake_case, como a `api` devolve. */
 
+import type { ConferenciaDaOs } from "./conferencia-execucao";
+import type { PedidoDaApi } from "./execucao-pedidos";
 import type { TomDoSelo } from "./tipos";
 import { MIN_PARTICIPANTES } from "./apr";
 import type { ServicoDaOs } from "./catalogo";
@@ -99,6 +101,10 @@ export interface ExecucaoDaOs {
    * (a OS está `encerrando`).
    */
   encerramento_assinado_em?: string | null;
+  /** Quem encerrou (e assina o encerramento); nulo nas execuções anteriores: vale o responsável. */
+  finalizada_por?: { id: string; nome: string } | null;
+  /** Os pedidos de participantes ao responsável; o aberto traz `restante_ms`. */
+  pedidos?: PedidoDaApi[];
 }
 
 export interface OsDetalhada {
@@ -149,6 +155,8 @@ export interface DetalheDaOs {
   execucoes: ExecucaoDaOs[];
   /** As perguntas do checklist de inspeção do plano de manutenção (preventiva); vazio nas demais. */
   checklist_inspecao?: PerguntaDoChecklist[];
+  /** A conferência do que a equipe registrou sem sinal em aparelhos diferentes (execução compartilhada, etapa 3); vazio quando não houve. */
+  conferencias?: ConferenciaDaOs[];
 }
 
 /** Selo de cada status da OS. */

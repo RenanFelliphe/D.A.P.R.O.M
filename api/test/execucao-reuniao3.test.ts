@@ -416,8 +416,8 @@ describe("Reunião 3: assinaturas, motivos, localização e o encerramento em do
       // Antes de encerrar não há o que assinar.
       assert.equal(codigoDaRecusa(await h.assinarEncerramento(tecnico, o.id, execId)), "execucao_nao_encerrada");
       await h.clicarEncerrar(tecnico, o.id, execId);
-      // Só quem executou assina o encerramento.
-      assert.equal(codigoDaRecusa(await h.assinarEncerramento(colega, o.id, execId)), "execucao_de_outro");
+      // Só quem encerrou assina o encerramento.
+      assert.equal(codigoDaRecusa(await h.assinarEncerramento(colega, o.id, execId)), "encerramento_de_outro");
 
       const r = await h.enviar(tecnico, h.evento("encerramento_assinado", { execucao_id: execId }, o.id));
       assert.deepEqual(r.rejeitados, []);
