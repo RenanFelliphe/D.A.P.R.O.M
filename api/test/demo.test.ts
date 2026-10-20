@@ -201,3 +201,41 @@ describe("Dados de demonstração logo depois da meia-noite", () => {
     });
   }
 });
+
+describe("Dados de demonstração com o elenco da apresentação", () => {
+  it("usa as contas que já existem nos papéis, sem criar contas nem ausências", async () => {
+    const amb = await criarAmbiente({ comCarga: true });
+    try {
+      const serv = await amb.criarEquipe({ nome: "Serviços Especiais", centroTrabalho: "SERV_ESP" });
+      const inst = await amb.criarEquipe({ nome: "Instrumentação", centroTrabalho: "INSTRUM" });
+      const lab = await amb.criarEquipe({ nome: "Laboratório Químico", centroTrabalho: "LAB_QUI" });
+      const pessoas: [string, string, boolean][] = [
+        ["sup1", serv.id, true], ["tec1", serv.id, false], ["tec2", serv.id, false], ["tec5", serv.id, false], ["tec7", serv.id, false], ["tec8", serv.id, false],
+        ["sup2", inst.id, true], ["tec3", inst.id, false], ["tec4", inst.id, false],
+        ["sup3", lab.id, true], ["tec6", lab.id, false],
+      ];
+      const elenco: Record<string, string> = {};
+      for (const [papel, equipeId, supervisor] of pessoas) elenco[papel] = (await amb.criarUsuario({ perfil: "tecnico", equipeId, supervisor, matricula: `R-${papel}`, comAssinatura: false })).matricula;
+      elenco.adm = (await amb.criarUsuario({ perfil: "admin", matricula: "R-adm" })).matricula;
+
+      // Conta fora da equipe do papel: recusa antes de gravar qualquer coisa.
+      await assert.rejects(popularDemo(amb.deps, { elenco: { ...elenco, tec6: elenco.tec1! } }), /não pode fazer o papel tec6/);
+      assert.equal((await amb.sql("select 1 from os")).length, 0);
+
+      const r = await popularDemo(amb.deps, { elenco });
+      assert.equal(r.jaPopulado, false);
+      assert.deepEqual(r.usuariosCriados, []);
+      assert.equal((await amb.sql("select 1 from ausencia")).length, 0);
+      const fora = await amb.sql("select 1 from apr_participante p join usuario u on u.id = p.usuario_id where u.matricula not like 'R-%'");
+      assert.equal(fora.length, 0, "participante fora do elenco");
+      // Cada equipe tem OS encerrada e esperando a ciência; quem não tinha assinatura ganhou a de exemplo.
+      const porEquipe = await amb.sql<{ centro: string; status: string }>("select distinct e.centro_trabalho centro, o.status from os o join equipe e on e.id = o.equipe_id");
+      for (const centro of ["SERV_ESP", "INSTRUM", "LAB_QUI"]) {
+        for (const status of ["encerrada", "aguardando_supervisor", "liberada"]) assert.ok(porEquipe.some((x) => x.centro === centro && x.status === status), `${centro} sem OS ${status}`);
+      }
+      assert.equal((await amb.sql("select 1 from usuario where assinatura_path is null")).length, 0);
+    } finally {
+      await amb.fechar();
+    }
+  });
+});

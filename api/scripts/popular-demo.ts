@@ -6,11 +6,16 @@
  *
  *   pnpm demo:popular
  *
+ * Para a apresentação, com as contas de quem apresenta no lugar das fictícias, passe o elenco (papel=matrícula; o papel que
+ * faltar segue fictício). As contas precisam existir e estar na equipe do papel; ver `ELENCO_FICTICIO` em `src/db/seed/demo.ts`:
+ *
+ *   pnpm demo:popular sup1=1001 tec1=1002 adm=admin
+ *
  * Rode com a `api` já iniciada ao menos uma vez (migrações e modelos de APR). Nunca use com dados reais.
  */
 import { lerConfig } from "../src/config";
 import { conectar } from "../src/db/conexao";
-import { popularDemo } from "../src/db/seed/demo";
+import { PAPEIS_DEMO, popularDemo, type PapelDemo } from "../src/db/seed/demo";
 import { ArmazenamentoSupabase } from "../src/servicos/armazenamento";
 import { AuthSupabase } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
@@ -18,6 +23,13 @@ import { criarProvedorIA } from "../src/servicos/ia";
 import { OcrEmMemoria } from "../src/servicos/ocr-memoria";
 import { ClienteRhHttp } from "../src/servicos/rh-http";
 import { ClienteSapHttp } from "../src/servicos/sap-http";
+
+const elenco: Partial<Record<PapelDemo, string>> = {};
+for (const arg of process.argv.slice(2)) {
+  const [papel, matricula] = arg.split("=");
+  if (!PAPEIS_DEMO.includes(papel as PapelDemo) || !matricula) throw new Error(`Argumento inválido: ${arg} (use papel=matrícula; papéis: ${PAPEIS_DEMO.join(", ")})`);
+  elenco[papel as PapelDemo] = matricula;
+}
 
 const config = lerConfig();
 const { pool, db } = conectar(config.databaseUrl);
@@ -34,7 +46,7 @@ try {
     // A demonstração não lê folhas digitalizadas: o OCR de verdade só é aberto na api.
     ocr: new OcrEmMemoria(),
     agora: () => new Date(),
-  });
+  }, { elenco });
   if (resultado.jaPopulado) {
     console.log("O banco já tem dados de demonstração (OS 5100xxx); nada foi alterado.");
   } else {

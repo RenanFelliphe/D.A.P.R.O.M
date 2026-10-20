@@ -63,6 +63,33 @@ export interface ResultadoDemo {
   contagem: Record<string, number>;
 }
 
+/** Os papéis da demonstração e a conta fictícia que faz cada um (a matrícula dela é o próprio papel). */
+const ELENCO_FICTICIO = {
+  sup1: { nome: "Sandra Supervisora", perfil: "tecnico", centro: "SERV_ESP", cargo: null },
+  sup2: { nome: "Saulo Supervisor", perfil: "tecnico", centro: "INSTRUM", cargo: null },
+  sup3: { nome: "Laura Supervisora", perfil: "tecnico", centro: "LAB_QUI", cargo: null },
+  tec1: { nome: "Tiago Técnico", perfil: "tecnico", centro: "SERV_ESP", cargo: "Técnico em Gás" },
+  tec2: { nome: "Taís Técnica", perfil: "tecnico", centro: "SERV_ESP", cargo: "Técnica em Gás" },
+  tec5: { nome: "Tadeu Técnico", perfil: "tecnico", centro: "SERV_ESP", cargo: "Técnico em Gás" },
+  tec7: { nome: "Júlia Técnica", perfil: "tecnico", centro: "SERV_ESP", cargo: "Técnica em Gás" },
+  tec8: { nome: "Nuno Técnico", perfil: "tecnico", centro: "SERV_ESP", cargo: "Técnico em Gás" },
+  tec3: { nome: "Tomás Técnico", perfil: "tecnico", centro: "INSTRUM", cargo: "Técnico em Instrumentação" },
+  tec4: { nome: "Tânia Técnica", perfil: "tecnico", centro: "INSTRUM", cargo: "Técnica em Instrumentação" },
+  tec6: { nome: "Lucas Técnico", perfil: "tecnico", centro: "LAB_QUI", cargo: "Técnico em Química" },
+  adm: { nome: "Ana Administradora", perfil: "admin", centro: null, cargo: null },
+} as const satisfies Record<string, { nome: string; perfil: Perfil; centro: string | null; cargo: string | null }>;
+export type PapelDemo = keyof typeof ELENCO_FICTICIO;
+export const PAPEIS_DEMO = Object.keys(ELENCO_FICTICIO) as PapelDemo[];
+
+export interface OpcoesDemo {
+  /**
+   * Papel → matrícula de uma conta que já existe, na equipe do papel (o `adm`, um admin): a demonstração da apresentação, com as contas de
+   * quem apresenta no lugar das fictícias. Com ele ficam de fora as ausências e os funcionários sem conta do registro simulado; o papel
+   * que ele não traz segue com a conta fictícia.
+   */
+  elenco?: Partial<Record<PapelDemo, string>>;
+}
+
 const BR = 3 * 3600_000; // America/Sao_Paulo é UTC−3, sem horário de verão desde 2019
 
 /**
@@ -83,10 +110,14 @@ export function noMesmoDia(agora: Date, minutosAtras: number[]): Date[] {
   return instantes.map((t) => new Date(t + ajuste));
 }
 
-export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
+export async function popularDemo(depsOriginais: Deps, opcoes: OpcoesDemo = {}): Promise<ResultadoDemo> {
   const { db } = depsOriginais;
   const [existente] = await db.select({ id: os.id }).from(os).where(like(os.numeroOrdem, `${PREFIXO_ORDEM}%`)).limit(1);
   if (existente) return { jaPopulado: true, usuariosCriados: [], contagem: {} };
+  const elenco = opcoes.elenco ?? {};
+  const comElenco = Object.keys(elenco).length > 0;
+  // Só os alertas que a demonstração cria entram na parte já lida.
+  const alertasAntes = new Set((await db.select({ id: alerta.id }).from(alerta)).map((a) => a.id));
 
   const real = depsOriginais.agora();
   const relogio = { t: real };
@@ -122,7 +153,16 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     }
     return { id: u.id, nome: u.nome, matricula: u.matricula, email: u.email, perfil: u.perfil, equipeId: u.equipeId, equipesSupervisionadas: (await db.select({ id: equipe.id }).from(equipe).where(eq(equipe.supervisorId, u.id))).map((e) => e.id), equipesRepresentadas: [], ativo: u.ativo, senhaProvisoria: u.senhaProvisoria, assinaturaPath: u.assinaturaPath, ausencia: null } satisfies UsuarioAutenticado;
   };
-  const garantir = async (matricula: string, nome: string, perfil: Perfil, centro: string | null, cargo: string | null = null) => {
+  // O elenco é conferido antes de qualquer gravação: uma conta que não existe ou está fora da equipe do papel para tudo.
+  for (const [papel, matricula] of Object.entries(elenco) as [PapelDemo, string][]) {
+    const { perfil, centro } = ELENCO_FICTICIO[papel];
+    const [u] = await db.select({ nome: usuario.nome, perfil: usuario.perfil, equipeId: usuario.equipeId }).from(usuario).where(eq(sql`lower(${usuario.matricula})`, matricula.toLowerCase()));
+    if (!u) throw new Error(`Elenco: nenhuma conta com a matrícula ${matricula} (papel ${papel})`);
+    if (perfil === "admin" ? u.perfil !== "admin" : u.equipeId !== equipes[centro!]) throw new Error(`Elenco: ${u.nome} (${matricula}) não pode fazer o papel ${papel}, que é ${perfil === "admin" ? "de um admin" : `da equipe ${centro}`}`);
+  }
+  const garantir = async (papel: PapelDemo) => {
+    const { nome, perfil, centro, cargo } = ELENCO_FICTICIO[papel];
+    const matricula = elenco[papel] ?? papel;
     let u = await carregarUsuario(matricula);
     if (!u) {
       const senha = gerarSenhaInicial();
@@ -145,21 +185,26 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     return u;
   };
 
-  const sup1 = await garantir("sup1", "Sandra Supervisora", "tecnico", "SERV_ESP");
-  const sup2 = await garantir("sup2", "Saulo Supervisor", "tecnico", "INSTRUM");
-  const tec1 = await garantir("tec1", "Tiago Técnico", "tecnico", "SERV_ESP", "Técnico em Gás");
-  const tec2 = await garantir("tec2", "Taís Técnica", "tecnico", "SERV_ESP", "Técnica em Gás");
-  const tec5 = await garantir("tec5", "Tadeu Técnico", "tecnico", "SERV_ESP", "Técnico em Gás");
-  const tec3 = await garantir("tec3", "Tomás Técnico", "tecnico", "INSTRUM", "Técnico em Instrumentação");
-  const tec4 = await garantir("tec4", "Tânia Técnica", "tecnico", "INSTRUM", "Técnica em Instrumentação");
-  const adm = await garantir("adm", "Ana Administradora", "admin", null);
+  const sup1 = await garantir("sup1");
+  const sup2 = await garantir("sup2");
+  const sup3 = await garantir("sup3");
+  const tec1 = await garantir("tec1");
+  const tec2 = await garantir("tec2");
+  const tec5 = await garantir("tec5");
+  const tec7 = await garantir("tec7");
+  const tec8 = await garantir("tec8");
+  const tec3 = await garantir("tec3");
+  const tec4 = await garantir("tec4");
+  const tec6 = await garantir("tec6");
+  const adm = await garantir("adm");
   await db.update(equipe).set({ supervisorId: sup1.id }).where(and(eq(equipe.id, equipes.SERV_ESP!), sql`${equipe.supervisorId} is null`));
   await db.update(equipe).set({ supervisorId: sup2.id }).where(and(eq(equipe.id, equipes.INSTRUM!), sql`${equipe.supervisorId} is null`));
+  await db.update(equipe).set({ supervisorId: sup3.id }).where(and(eq(equipe.id, equipes.LAB_QUI!), sql`${equipe.supervisorId} is null`));
   // Toda equipe tem quem represente o supervisor (o técnico mais antigo da equipe que não é ele).
   await garantirRepresentantes(db);
 
-  // O registro de funcionários simulado ganha o funcionário de cada usuário (e uns 30 sem conta, para demonstrar o cadastro).
-  if (deps.config.rhSimulado) await carregarRegistroDosUsuarios(db, { aleatorios: 30, agora: real });
+  // O registro de funcionários simulado ganha o funcionário de cada usuário (e, sem elenco, uns 30 sem conta, para demonstrar o cadastro).
+  if (deps.config.rhSimulado) await carregarRegistroDosUsuarios(db, { aleatorios: comElenco ? 0 : 30, agora: real });
 
   // ---------- locais ---------------------------------------------------------------------------------------------
   const locaisDef: [string, string, string | null, boolean][] = [
@@ -552,6 +597,50 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   apr = await aprovar(tec2, id, apr01, [tec2, tec5], em(1, 10, 0));
   await executar(tec2, id, apr, [tec2, tec5], { inicio: em(1, 10, 15), resultado: "aberta", duracaoMin: 0 });
 
+  // ================= AS OUTRAS EQUIPES ===============================================================================
+  // Cada equipe com uma OS encerrada, uma esperando a ciência e, no laboratório, uma bloqueada: todo supervisor tem o que mostrar.
+  // O laboratório tem só duas pessoas, então a supervisora vai junto (a APR pede ao menos duas).
+  const duplaL = [tec6, sup3];
+  const dupla3 = [tec7, tec8];
+
+  // 13. laboratório: análise do gás 12 dias atrás, com ciência
+  id = await criarOs({ tipo: "preventiva", titulo: "Análise cromatográfica do gás distribuído", equipamento: "Cromatógrafo CG-02", local: L.pr, equipe: equipes.LAB_QUI, prioridade: "Médio", inicio: 12, fim: 12, ciclo: { intervalo: { quantidade: 1, unidade: "mes" } } });
+  apr = await aprovar(tec6, id, apr01, duplaL, em(12, 8, 10), { riscos: 1 });
+  await executar(tec6, id, apr, duplaL, {
+    inicio: em(12, 8, 25),
+    duracaoMin: 120,
+    fotos: 2,
+    descricao: "Amostra coletada no ponto de recebimento e analisada: composição e poder calorífico dentro da especificação.",
+    documentos: [{ nome: "laudo-cromatografia-CG-02.pdf", titulo: "Laudo de cromatografia - CG-02", linhas: ["Metano: 89,2 %", "Etano: 6,1 %", "Poder calorífico superior: 9.420 kcal/m³", "Resultado: dentro da especificação."] }],
+  });
+  await darCiencia(id, sup3, em(11, 10, 0));
+
+  // 14. laboratório: odorante medido ontem, esperando a ciência da supervisora
+  id = await criarOs({ titulo: "Medição do teor de odorante na rede", equipamento: "Odorizador OD-03", local: L.vv, equipe: equipes.LAB_QUI, prioridade: "Alto", inicio: 1, fim: 1, atividade: ativ[1] });
+  apr = await aprovar(tec6, id, apr01, duplaL, em(1, 13, 0));
+  await executar(tec6, id, apr, duplaL, { inicio: em(1, 13, 15), duracaoMin: 90, fotos: 2, descricao: "Teor de mercaptana medido em três pontos da rede: 14, 15 e 13 mg/m³, dentro da faixa." });
+
+  // 15. laboratório: APR bloqueada ontem à tarde (o alerta vai para a supervisora)
+  id = await criarOs({ titulo: "Coleta de amostra em estação com suspeita de condensado", equipamento: "Estação ERS-05", local: L.ers, equipe: equipes.LAB_QUI, prioridade: "Muito alto", inicio: 1, fim: 0, atividade: ativ[2] });
+  await aprovar(tec6, id, apr02, duplaL, em(1, 15, 30), { falhar: primeiroEliminatorio(apr02, 1) });
+
+  // 16. instrumentação: transmissor calibrado 11 dias atrás, com ciência
+  id = await criarOs({ titulo: "Calibração de transmissor de pressão", equipamento: "Transmissor PT-204", local: L.pr, equipe: equipes.INSTRUM, prioridade: "Alto", inicio: 11, fim: 11, atividade: ativ[1] });
+  apr = await aprovar(tec3, id, apr01, duplaI, em(11, 8, 0), { riscos: 2 });
+  await executar(tec3, id, apr, duplaI, { inicio: em(11, 8, 15), duracaoMin: 160, pausa: [80, 95], fotos: 2, descricao: "Transmissor calibrado em cinco pontos; erro máximo de 0,1 % do fundo de escala." });
+  await darCiencia(id, sup2, em(10, 9, 0));
+
+  // 17. instrumentação: solenoide trocada ontem, esperando a ciência
+  id = await criarOs({ titulo: "Substituição de válvula solenoide de bloqueio", equipamento: "Solenoide SV-08", local: L.vit, equipe: equipes.INSTRUM, prioridade: "Muito alto", inicio: 1, fim: 1 });
+  apr = await aprovar(tec4, id, apr01, [tec4, tec3], em(1, 7, 30));
+  await executar(tec4, id, apr, [tec4, tec3], { inicio: em(1, 7, 45), duracaoMin: 110, fotos: 3, descricao: "Solenoide substituída; teste de acionamento remoto e de fechamento por falta de energia aprovados." });
+
+  // 18. serviços especiais, segunda dupla: abrigo de medidores tratado 5 dias atrás, com ciência
+  id = await criarOs({ titulo: "Tratamento de corrosão em abrigo de medidores", equipamento: "Abrigo AB-31", local: L.gua, prioridade: "Baixo", inicio: 6, fim: 5, atividade: ativ[2] });
+  apr = await aprovar(tec7, id, apr02, dupla3, em(5, 8, 0), { riscos: 1 });
+  await executar(tec7, id, apr, dupla3, { inicio: em(5, 8, 20), duracaoMin: 210, pausa: [120, 135], fotos: 2, descricao: "Corrosão removida, fundo anticorrosivo e acabamento aplicados; abrigo identificado." });
+  await darCiencia(id, sup1, em(4, 11, 0));
+
   // ================= EM EXECUÇÃO AGORA ==============================================================================
   // Logo depois da meia-noite, a APR e o início não podem cair em dias diferentes (`noMesmoDia`).
   // 11. em andamento (tec1 + tec2), iniciada há ~75 min
@@ -565,6 +654,12 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   const [aprEmPausa, inicioEmPausa] = noMesmoDia(real, [130, 115, 55]);
   apr = await aprovar(tec3, id, apr01, duplaI, aprEmPausa!);
   await executar(tec3, id, apr, duplaI, { inicio: inicioEmPausa!, resultado: "pausada", pausa: [60, 90], duracaoMin: 0 });
+
+  // 19. segunda dupla dos serviços especiais em campo, iniciada há ~40 min
+  id = await criarOs({ titulo: "Substituição de válvula de bloqueio de ramal", equipamento: "Válvula VB-44", local: L.lin, prioridade: "Alto", inicio: 0, fim: 0, atividade: ativ[2] });
+  const [aprSegundaDupla, inicioSegundaDupla] = noMesmoDia(real, [55, 40]);
+  apr = await aprovar(tec7, id, apr02, dupla3, aprSegundaDupla!);
+  await executar(tec7, id, apr, dupla3, { inicio: inicioSegundaDupla!, resultado: "aberta", duracaoMin: 0 });
 
   // ================= LIBERADAS ======================================================================================
   // atrasada sem justificativa, atrasada com reprogramação (justificada), no prazo, futuras, críticas e de outras equipes
@@ -616,6 +711,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   // aberta nas OS da demonstração entra em ausência em curso (o início a suspenderia). Os atos e os avisos
   // são gravados como as regras da `api` os gravariam; a conferência periódica aplica o início das que já começaram (desfaz as
   // reservas, suspende a execução aberta) e avisa o supervisor da vencida.
+  // Com elenco, as contas são de gente de verdade: nenhuma ausência inventada.
   const ausenciaDemo = async (
     quem: UsuarioAutenticado,
     quemAprova: UsuarioAutenticado,
@@ -650,13 +746,15 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
     }
     return a!;
   };
-  await ausenciaDemo(tec5, sup1, { motivo: "Férias", inicio: 3, retorno: -4, estado: "confirmada", origem: "pedido", criadaHaDias: 20 });
-  const agendada = await ausenciaDemo(tec2, sup1, { motivo: "Treinamento de segurança", inicio: -5, retorno: -8, estado: "confirmada", origem: "supervisor", criadaHaDias: 2 });
-  await avisarAusencia(db, { tipo: "ausencia_registrada", ausenciaId: agendada.id, usuarioAlvoId: tec2.id, destinatarios: [tec2.id], detalhe: `${sup1.nome} registrou uma ausência para você de ${dataBr(agendada.inicio)} a ${dataBr(somarDias(agendada.retorno, -1))}, com retorno em ${dataBr(agendada.retorno)}. Motivo: ${agendada.motivo}`, agora: em(2, 9) });
-  await ausenciaDemo(tec4, sup2, { motivo: "Atestado médico", inicio: 10, retorno: 1, estado: "confirmada", origem: "supervisor", criadaHaDias: 10 });
-  const pedida = await ausenciaDemo(tec3, sup2, { motivo: "Viagem a trabalho em outra filial", inicio: -10, retorno: -17, estado: "pedida", origem: "pedido", criadaHaDias: 0 });
-  await avisarAusencia(db, { tipo: "ausencia_pedida", ausenciaId: pedida.id, usuarioAlvoId: tec3.id, destinatarios: [sup2.id], detalhe: `${tec3.nome} pediu ausência de ${dataBr(pedida.inicio)} a ${dataBr(somarDias(pedida.retorno, -1))}, com retorno em ${dataBr(pedida.retorno)}. Motivo: ${pedida.motivo}`, agora: minutosAtras(90) });
-  await conferirAusencias(db, real);
+  if (!comElenco) {
+    await ausenciaDemo(tec5, sup1, { motivo: "Férias", inicio: 3, retorno: -4, estado: "confirmada", origem: "pedido", criadaHaDias: 20 });
+    const agendada = await ausenciaDemo(tec2, sup1, { motivo: "Treinamento de segurança", inicio: -5, retorno: -8, estado: "confirmada", origem: "supervisor", criadaHaDias: 2 });
+    await avisarAusencia(db, { tipo: "ausencia_registrada", ausenciaId: agendada.id, usuarioAlvoId: tec2.id, destinatarios: [tec2.id], detalhe: `${sup1.nome} registrou uma ausência para você de ${dataBr(agendada.inicio)} a ${dataBr(somarDias(agendada.retorno, -1))}, com retorno em ${dataBr(agendada.retorno)}. Motivo: ${agendada.motivo}`, agora: em(2, 9) });
+    await ausenciaDemo(tec4, sup2, { motivo: "Atestado médico", inicio: 10, retorno: 1, estado: "confirmada", origem: "supervisor", criadaHaDias: 10 });
+    const pedida = await ausenciaDemo(tec3, sup2, { motivo: "Viagem a trabalho em outra filial", inicio: -10, retorno: -17, estado: "pedida", origem: "pedido", criadaHaDias: 0 });
+    await avisarAusencia(db, { tipo: "ausencia_pedida", ausenciaId: pedida.id, usuarioAlvoId: tec3.id, destinatarios: [sup2.id], detalhe: `${tec3.nome} pediu ausência de ${dataBr(pedida.inicio)} a ${dataBr(somarDias(pedida.retorno, -1))}, com retorno em ${dataBr(pedida.retorno)}. Motivo: ${pedida.motivo}`, agora: minutosAtras(90) });
+    await conferirAusencias(db, real);
+  }
 
   // ================= GAMIFICAÇÃO ====================================================================================
   // APRs e execuções já pontuaram pelas regras da `api` (`processarEventos`); as ciências, as assinaturas e os intervalos do ciclo
@@ -665,7 +763,7 @@ export async function popularDemo(depsOriginais: Deps): Promise<ResultadoDemo> {
   await preencherHistoricoDaGamificacao(db, real, { forcar: true });
 
   // ================= ALERTAS: parte já lida =========================================================================
-  const lidos = await db.select({ id: alerta.id }).from(alerta).orderBy(alerta.criadoEm);
+  const lidos = (await db.select({ id: alerta.id }).from(alerta).orderBy(alerta.criadoEm)).filter((a) => !alertasAntes.has(a.id));
   if (lidos.length > 2) await db.update(alerta).set({ lidoEm: minutosAtras(60 * 20) }).where(inArray(alerta.id, lidos.slice(0, Math.floor(lidos.length / 2)).map((a) => a.id)));
 
   // ---------- resumo ---------------------------------------------------------------------------------------------
