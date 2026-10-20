@@ -52,6 +52,8 @@ Os avisos marcados com **(novo)** entraram nesta rodada. A coluna "E-mail" é a 
 | `representacao_iniciada`, `representacao_encerrada` | o representante assumiu ou devolveu a equipe | Equipe |
 | `cadastro_liberado`, `cadastro_recusado` **(novo)** | o admin liberou ou recusou o técnico que o supervisor cadastrou (ou o registro de funcionários o recusou) | Equipe |
 | `membro_desativado` **(novo)** | um membro da equipe perdeu o acesso (desligado no registro ou desativado pelo admin); diz quantas OS continuam reservadas para ele | Equipe |
+| `sugestao_materiais_nova`, `contestacao_materiais_nova` **(novo)** | alguém sugeriu uma lista ou contestou a recomendada de um serviço que a equipe mais faz ([sugestao-de-materiais.md](sugestao-de-materiais.md)) | Equipe |
+| `materiais_atualizados` **(novo)** | a lista de materiais de um serviço que a equipe faz mudou (sugestão aceita ou edição do admin); só no sino, para os membros também | só o sino |
 | "OS aguardando a sua ciência" **(novo)** | no resumo diário, com os pedidos de ausência e as ausências vencidas | Resumo diário |
 
 ### 2.2 Técnico
@@ -111,7 +113,7 @@ Os avisos marcados com **(novo)** entraram nesta rodada. A coluna "E-mail" é a 
 | Ordens de serviço | reserva, ciência, apoio encerrado, inspeção com pendência, conflitos e execuções duplicadas | sim |
 | Preventivas | ciclo próximo e vencido | sim |
 | Ausências | todos os avisos da ausência | sim |
-| Equipe | representação, membro desativado, técnico cadastrado liberado ou recusado | sim |
+| Equipe | representação, membro desativado, técnico cadastrado liberado ou recusado, sugestão ou contestação de materiais a avaliar e a resposta ao autor | sim |
 | Treinamentos | treinamento novo e problema reportado | sim |
 | Sistema (só o admin vê) | falhas do SAP, do registro e do PDF, cadastro pendente, readmissão, equipe sem supervisor, Vitória sem IA | sim |
 | Resumo diário | o e-mail da manhã | sim |

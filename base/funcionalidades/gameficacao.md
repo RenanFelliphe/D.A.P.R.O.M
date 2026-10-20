@@ -56,6 +56,9 @@ As regras 1, 3, 4 e 5 são as "regras de justiça" escolhidas na discussão.
 | **Supervisor** | | | | |
 | Ciência no prazo | o supervisor que deu a ciência | 3 | até 72 h depois do encerramento | uma por OS |
 | Intervalo de preventiva definido | o supervisor que definiu | 3 | ao definir o intervalo de um plano que estava sem | uma por plano |
+| **Colaboração** | | | | |
+| Sugestão de materiais aceita | o autor da sugestão (ou da contestação) da lista de materiais de um serviço | 30 | quando o supervisor da equipe que mais faz o serviço aceita, com ou sem ajuste (enviar não pontua) | uma por pessoa e serviço a cada 30 dias |
+| Sugestão de materiais avaliada | o supervisor que avaliou | 3 | ao aceitar ou recusar | uma por sugestão |
 | **Conquistas** | | | | |
 | Conquista obtida | a pessoa | o que estiver na conquista (sugestão: 25, 50 ou 100) | quando a conquista é concedida | uma por conquista |
 
@@ -78,6 +81,7 @@ As regras 1, 3, 4 e 5 são as "regras de justiça" escolhidas na discussão.
 | Ciência depois de 72 h | O ponto é pela ciência em dia |
 | Entrar no sistema todo dia | Não é trabalho |
 | Checklist de inspeção da preventiva | Ele é obrigatório para encerrar a OS, então um bônus pontuaria o encerramento duas vezes. O incentivo às preventivas está em "Preventiva concluída" |
+| Enviar a sugestão ou a contestação de materiais | Premiaria enviar muito, não enviar bem. Os pontos vêm quando o supervisor aceita ([sugestao-de-materiais.md](sugestao-de-materiais.md)) |
 | Ações do admin | O admin não joga (regra 7) |
 
 ### 2.3 Como chegamos nesses valores
@@ -570,3 +574,13 @@ Implementada em 19/10/2026 (pendência 8 do [pendencias.md](../../pendencias.md)
 - **Dados:** `api/src/db/seed/sincronizacao-offline-dados.ts` (o dado e o SQL da migração; um teste confere que batem) e `sincronizacao-offline-imagens.ts` (o troféu, gravado pela subida da `api`, como o dos treinamentos de serviço). Fica fora de `CONQUISTAS_DA_CARGA`, que é o retrato fechado da `0016`.
 - **Web e app:** nada mudou nas telas: a galeria, o aviso e o cadastro leem os critérios da `api`.
 - **Testes:** `api/test/gamificacao-sincronizacao-offline.test.ts` (online não conta; o da fila marca e concede sem lançar ponto; conta OS e não eventos; recusado e reenvio não contam nem duplicam; a migração bate com os dados).
+
+## 15. Colaboração: sugestão de materiais
+
+Implementada em 19/10/2026 ([sugestao-de-materiais.md](sugestao-de-materiais.md)). Qualquer pessoa que não seja administradora sugere uma lista de materiais para um serviço ou contesta a recomendada; o supervisor da equipe que mais faz o serviço avalia. Duas tarefas novas, no grupo **Colaboração**:
+
+- **Sugestão de materiais aceita (30 pontos):** para o autor, quando a sugestão (ou a contestação) é aceita, com ou sem ajuste do supervisor. É mais que uma OS média (cerca de 29), porque o incentivo é à colaboração. **Enviar não pontua**, para não premiar o volume. Vale **uma por pessoa e serviço a cada 30 dias**: as aceitas dentro do prazo atualizam a lista, mas só a primeira pontua (a chave do lançamento é `sugestao_materiais:{codigo}:{id}`, e a `api` confere o extrato da pessoa).
+- **Sugestão de materiais avaliada (3 pontos):** para o supervisor que avalia, aceitando **ou recusando**: o ponto é por responder, para a fila não parar. Uma por sugestão.
+- O administrador não pontua (regra geral): se ele avalia, nada é lançado.
+- **Carga:** as duas tarefas entram pela migração `0039_sugestao_de_materiais`. O admin ajusta o valor e o estado de cada uma no cadastro das regras, como as demais.
+- **Fora desta rodada:** uma conquista de colaboração (por exemplo, "5 sugestões aceitas") pede um critério novo e a imagem do troféu.

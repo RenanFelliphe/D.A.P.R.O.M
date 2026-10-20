@@ -106,3 +106,7 @@ Uma migração nova (a próxima numeração, sem alterar as já geradas):
 ## 8. Pontos em aberto
 
 - Nenhum. Se a operação pedir de novo um item indispensável, ele volta como item do checklist da APR do modelo, que é onde a Segurança do Trabalho define o que bloqueia.
+
+## 9. Depois deste plano (19/10/2026)
+
+A lista deixou de ser só do admin: qualquer funcionário sugere uma lista ou contesta a recomendada, e o supervisor da equipe que mais faz o serviço decide. Veja [sugestao-de-materiais.md](sugestao-de-materiais.md).
