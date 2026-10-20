@@ -13,6 +13,8 @@ export type TelaDoTreinamento = "criar" | "gerar" | "explicacao" | "fases" | "re
 export const rotas = {
   app: {
     entrar: "/app/entrar",
+    /** O pedido de conta de quem trabalha na empresa e ainda não tem uma (aberto sem login). */
+    solicitarConta: "/app/entrar/solicitar",
     trocarSenha: "/app/trocar-senha",
     /** Cadastro da assinatura: a primeira coisa depois da liberação, antes de qualquer outra tela. */
     assinatura: "/app/assinatura",

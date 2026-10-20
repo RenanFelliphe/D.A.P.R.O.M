@@ -72,6 +72,32 @@
   font-weight: 600
 }
 
+/* "Ainda não tem uma conta? Solicite", embaixo do botão Entrar. */
+.login-solicitar {
+  color: var(--ink3);
+  font-size: 14px;
+  text-align: center
+}
+
+.login-solicitar a {
+  font-weight: 600
+}
+
+/* A volta do pedido de conta para a tela de entrada. */
+.login-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  color: var(--ink3);
+  font-size: 13px;
+  text-decoration: none
+}
+
+.login-voltar:hover {
+  color: var(--ink)
+}
+
 .login-foot {
   width: 100%;
   max-width: 440px;

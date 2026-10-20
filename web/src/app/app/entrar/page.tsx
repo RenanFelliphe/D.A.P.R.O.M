@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { EntrarHero } from "@/components/app/entrar/EntrarHero";
 import { FormularioEntrar } from "@/components/app/entrar/FormularioEntrar";
+import { rotas } from "@/lib/rotas";
 import { destinoInterno } from "@/lib/sessao-comum";
 
 export const metadata: Metadata = { title: "Entrar" };
@@ -15,6 +17,9 @@ export default async function EntrarPage({ searchParams }: PageProps<"/app/entra
       <div className="login-side">
         <div className="login-card">
           <FormularioEntrar para={para} />
+          <p className="login-solicitar">
+            Ainda não tem uma conta? <Link href={rotas.app.solicitarConta}>Solicite</Link>
+          </p>
         </div>
         <div className="login-foot">
           <span>Esqueceu a senha? Procure o administrador.</span>

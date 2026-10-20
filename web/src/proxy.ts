@@ -15,6 +15,8 @@ import {
 const MARGEM_MS = 60_000;
 
 const ENTRAR = "/app/entrar";
+/** O pedido de conta, aberto a quem ainda não tem login (como a própria entrada). */
+const SOLICITAR_CONTA = "/app/entrar/solicitar";
 
 /** Acrescenta à requisição o endereço pedido (o Campo de treino só vale na área de campo, `/app`; ver `lib/api.ts`). */
 const comEndereco = (req: NextRequest, base: Headers = new Headers(req.headers)) => {
@@ -46,7 +48,7 @@ function semSessao(req: NextRequest) {
  */
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (pathname === ENTRAR) return NextResponse.next();
+  if (pathname === ENTRAR || pathname === SOLICITAR_CONTA) return NextResponse.next();
 
   const acesso = req.cookies.get(COOKIE_ACESSO)?.value;
   const renovacao = req.cookies.get(COOKIE_RENOVACAO)?.value;
