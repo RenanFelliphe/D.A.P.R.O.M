@@ -1944,11 +1944,6 @@ details.excluidos > summary {
   color: var(--ink4)
 }
 
-.cartao-servico-editar {
-  flex: none;
-  height: 34px
-}
-
 /*
  * "Equipes do serviço" e "Ver materiais" em duas colunas fixas (abrir os materiais não tira nenhum dos dois do lugar); o
  * painel dos materiais e o treinamento embaixo, na linha toda. Sem "Equipes do serviço", "Ver materiais" ocupa a linha.
@@ -1970,7 +1965,19 @@ details.excluidos > summary {
   grid-column: 1 / -1
 }
 
-/* Dentro do painel de "Ver materiais": sugerir e contestar a lista. */
+/*
+ * A janela de editar, sugerir e contestar a lista de um serviço: mais larga que a padrão (o editor tem quatro colunas). O
+ * corpo é o contêiner do editor, que se ajusta à largura da janela (e encolhe no celular).
+ */
+.dlg.dlg-lista-servico {
+  width: min(880px, calc(100vw - 32px))
+}
+
+.dlg-lista-servico .dlg-corpo {
+  container-type: inline-size
+}
+
+/* Dentro do painel de "Ver materiais": editar, sugerir e contestar a lista. */
 .cartao-servico-colaborar {
   display: flex;
   flex-wrap: wrap;

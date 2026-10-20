@@ -6,6 +6,7 @@ import { editaCatalogo } from "@/components/web/catalogo/secao";
 import { AssistenteDeSugestao } from "@/components/web/sugestao/AssistenteDeSugestao";
 import { usuarioAtual } from "@/lib/api";
 import { rotas } from "@/lib/rotas";
+import { APRESENTACAO_DA_SUGESTAO } from "@/lib/sugestao-materiais";
 import { equipesDoServico, servicoDoCatalogo } from "@/lib/sugestao-materiais-servidor";
 import { codigoDaRota } from "@/lib/treinamento-servico-servidor";
 
@@ -31,11 +32,9 @@ export default async function SugerirMateriaisPage({ params, searchParams }: { p
         Voltar ao serviço
       </Link>
       <div className="stack g4">
-        <h2 className="sg-titulo-fluxo">{tipo === "sugestao" ? "Sugerir uma lista de materiais" : "Contestar a lista recomendada"}</h2>
+        <h2 className="sg-titulo-fluxo">{APRESENTACAO_DA_SUGESTAO[tipo].titulo}</h2>
         <p className="muted small" style={{ maxWidth: 720 }}>
-          {tipo === "sugestao"
-            ? "Quem faz o serviço no campo sabe o que ele pede. Monte a lista que você acha certa; o supervisor da equipe que mais faz este serviço avalia."
-            : "Se a lista recomendada está errada, diga por quê. O supervisor da equipe que mais faz este serviço avalia, e você pode já sugerir a lista certa."}
+          {APRESENTACAO_DA_SUGESTAO[tipo].texto}
         </p>
       </div>
       <AssistenteDeSugestao key={tipo} tipo={tipo} codigo={codigo} descricao={servico.descricao} atual={servico.materiais} equipes={equipes} />

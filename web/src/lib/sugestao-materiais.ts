@@ -1,6 +1,6 @@
 import type { CategoriaMaterial, Material, MaterialDoServico } from "@/lib/catalogo";
 import { novoUuid } from "@/lib/uuid";
-import type { ItemDaSugestao, ItemEnviado } from "../../../shared/api/sugestao-materiais";
+import type { ItemDaSugestao, ItemEnviado, TipoDeSugestao } from "../../../shared/api/sugestao-materiais";
 
 /** Movido para `shared/api/sugestao-materiais.ts`: o app (`mobile`) usa o mesmo código (tipos e o cálculo da diferença entre listas). */
 export * from "../../../shared/api/sugestao-materiais";
@@ -96,3 +96,15 @@ export const itemParaComparar = (i: ItemEmEdicao) => ({
   quantidade: lerQuantidade(i.quantidade) ?? null,
   observacao: i.observacao.trim() || null,
 });
+
+/** O título e a explicação de cada fluxo, iguais na página e na janela do cartão do serviço. */
+export const APRESENTACAO_DA_SUGESTAO: Record<TipoDeSugestao, { titulo: string; texto: string }> = {
+  sugestao: {
+    titulo: "Sugerir uma lista de materiais",
+    texto: "Quem faz o serviço no campo sabe o que ele pede. Monte a lista que você acha certa; o supervisor da equipe que mais faz este serviço avalia.",
+  },
+  contestacao: {
+    titulo: "Contestar a lista recomendada",
+    texto: "Se a lista recomendada está errada, diga por quê. O supervisor da equipe que mais faz este serviço avalia, e você pode já sugerir a lista certa.",
+  },
+};

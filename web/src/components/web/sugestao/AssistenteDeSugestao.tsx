@@ -91,7 +91,8 @@ const ETAPAS_DA_CONTESTACAO: Etapa[] = [
 /**
  * A sugestão de lista e a contestação da lista recomendada, em etapas. Sugestão: a lista (a partir da atual), o motivo (opcional) e a
  * revisão. Contestação: o motivo (obrigatório), a lista certa (opcional) e a revisão. A revisão mostra o que muda e para quem a
- * sugestão vai; só ali ela é enviada.
+ * sugestão vai; só ali ela é enviada. Na página, depois de enviar, abre a sugestão; com `aoEnviar` (a janela do cartão), quem
+ * chamou decide.
  */
 export function AssistenteDeSugestao({
   tipo,
@@ -99,12 +100,14 @@ export function AssistenteDeSugestao({
   descricao,
   atual,
   equipes,
+  aoEnviar,
 }: {
   tipo: TipoDeSugestao;
   codigo: string;
   descricao: string;
   atual: MaterialDoServico[];
   equipes: EquipeDoServico[];
+  aoEnviar?: (sugestao: Sugestao) => void;
 }) {
   const router = useRouter();
   const exibirAviso = useToast();
@@ -144,7 +147,8 @@ export function AssistenteDeSugestao({
       lista: temLista ? v.itens.map((i) => itemParaEnvio(i as ItemEmEdicao)) : null,
     });
     exibirAviso(tipo === "sugestao" ? "Sugestão enviada. Você ganha pontos se ela for aceita." : "Contestação enviada ao supervisor.");
-    router.push(rotas.app.sugestaoDeMateriais(codigo, resposta.id));
+    if (aoEnviar) aoEnviar(resposta);
+    else router.push(rotas.app.sugestaoDeMateriais(codigo, resposta.id));
     router.refresh();
   });
 
