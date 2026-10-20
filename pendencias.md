@@ -47,6 +47,9 @@ O MVP está completo quando as três linhas atenderem e os itens 🔴 da tabela 
 | 21 | Equipe com só 1 pessoa disponível (mínimo de 2 na APR) | decisão | 🟡 | questão 72 | [ ] |
 | 22 | "Houve desvio?" e "Tempo parada" na folha do SAP | decisão | 🟢 | questão 70 | [ ] |
 | 23 | Mais de 3 executantes na folha do SAP | decisão | 🟢 | questão 71 | [ ] |
+| 24 | Execução compartilhada, etapa 1: participantes acompanham a execução | código | 🟢 | — | [x] 19/10/2026 |
+| 25 | Execução compartilhada, etapa 2: participantes agem (na hora ou por pedido de 2 min) | código | 🟢 | 24 | [x] 20/10/2026 |
+| 26 | Execução compartilhada, etapa 3: conferência do que foi feito sem sinal | código | 🟢 | 25 | [x] 20/10/2026 |
 
 **Ordem sugerida:** 0 → 1 → 2 → 3 → 7 → 4 → 5 → 6 → 8, com as 🟡 em paralelo quando houver folga. A digitalização (9 a 12) corre à parte, quando o app online já estiver de pé, ou antes, se a apresentação precisar dela.
 

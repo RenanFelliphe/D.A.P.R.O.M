@@ -39,6 +39,7 @@
 - [x] Do registro de funcionários: o alerta no sino quando a leitura diária falha e a reativação da conta na readmissão, com um clique no aviso ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seções 5.1 e 5.2).
 - [x] Os avisos da leitura no cartão da tela do SAP ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md), seção 5.3).
 - [x] **Avisos e e-mails:** o e-mail de todos os avisos, as preferências no perfil e o resumo diário ([avisos-e-emails.md](funcionalidades/avisos-e-emails.md)).
+- [x] **Execução compartilhada** (plano de 19/10/2026; as três etapas feitas até 20/10/2026: acompanhar, agir com pedido de 2 minutos e conferir o que foi feito sem sinal): todos os participantes acompanham a execução e agem sobre ela, com pedido de 2 minutos ao responsável e conferência do que foi feito sem sinal, em três etapas: [execucao-compartilhada.md](funcionalidades/execucao-compartilhada.md).
 - [ ] **Configurar o servidor de e-mail (SMTP):** é o único passo para os e-mails saírem; espera a empresa liberar a conta, o remetente e o SPF/DKIM do domínio (questão 68; seção 6 do [avisos-e-emails.md](funcionalidades/avisos-e-emails.md)).
 
 **Depende de terceiros** (seção 7.1): planilha de OS de 2025, formulário de inspeção, onde o SAP guarda o ciclo do plano, validade da assinatura desenhada, lista de materiais por serviço, critério de bloqueio dos modelos, a aprovação da empresa para enviar dados ao fornecedor de IA e o servidor de e-mail (SMTP).
