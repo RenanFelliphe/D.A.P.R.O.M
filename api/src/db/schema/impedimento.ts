@@ -6,6 +6,7 @@ import { planoPreventiva } from "./preventivas";
 import { leituraRh } from "./rh";
 import { importacao, os } from "./sap";
 import { atividade } from "./modelos-apr";
+import { solicitacaoConta } from "./solicitacao-conta";
 import { sugestaoMateriais } from "./sugestao-materiais";
 import { treinamentoServico } from "./treinamento-servico";
 import { equipe, usuario } from "./usuarios";
@@ -27,6 +28,7 @@ const COLUNAS_DO_ALVO: Record<AlvoDeAviso, readonly string[]> = {
   treinamento: ["treinamentoId"],
   sugestao: ["sugestaoMateriaisId"],
   servico: ["atividadeCodigo"],
+  solicitacao_conta: ["solicitacaoContaId"],
   nenhum: [],
 };
 
@@ -74,6 +76,8 @@ export const alerta = pgTable(
     sugestaoMateriaisId: uuid().references(() => sugestaoMateriais.id, { onDelete: "cascade" }),
     /** Só no aviso de que a lista de materiais de um serviço mudou (`materiais_atualizados`). */
     atividadeCodigo: text().references(() => atividade.codigo, { onDelete: "cascade" }),
+    /** Só no pedido de conta feito na tela de entrada (`conta_solicitada`). */
+    solicitacaoContaId: uuid().references(() => solicitacaoConta.id, { onDelete: "cascade" }),
     /** Quem recebe: ver `dominio/alertas.ts` (o supervisor da equipe, o representante no comando, os administradores, a própria pessoa). */
     destinatarioId: uuid()
       .notNull()
@@ -88,7 +92,7 @@ export const alerta = pgTable(
     check(
       "alerta_alvo",
       alvoCoerente(
-        { osId: t.osId, importacaoId: t.importacaoId, ausenciaId: t.ausenciaId, usuarioAlvoId: t.usuarioAlvoId, equipeId: t.equipeId, leituraRhId: t.leituraRhId, treinamentoId: t.treinamentoId, sugestaoMateriaisId: t.sugestaoMateriaisId, atividadeCodigo: t.atividadeCodigo },
+        { osId: t.osId, importacaoId: t.importacaoId, ausenciaId: t.ausenciaId, usuarioAlvoId: t.usuarioAlvoId, equipeId: t.equipeId, leituraRhId: t.leituraRhId, treinamentoId: t.treinamentoId, sugestaoMateriaisId: t.sugestaoMateriaisId, atividadeCodigo: t.atividadeCodigo, solicitacaoContaId: t.solicitacaoContaId },
         t.tipo,
       ),
     ),

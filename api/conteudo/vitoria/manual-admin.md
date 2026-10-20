@@ -15,6 +15,10 @@
 - Cadastros pendentes de liberação aparecem destacados; abra o perfil da pessoa para liberar ou recusar o acesso. Liberar,
   recusar, reprogramar e cancelar OS pedem a sua assinatura do perfil, que também é a primeira coisa a cadastrar no primeiro acesso.
 - Qualquer perfil pode ser o supervisor de uma equipe — é um campo da equipe, não um perfil à parte.
+- Quem trabalha na empresa e ainda não tem conta pode pedir uma na tela de entrada ("Ainda não tem uma conta? Solicite"),
+  com o nome, o e-mail e, se quiser, a equipe. O pedido chega a você no sino e no painel "Pedidos de conta", em Equipes e
+  usuários: "Cadastrar" abre o cadastro com o e-mail preenchido (a matrícula vem do registro de funcionários), e a conta
+  criada atende o pedido; "Descartar" serve para quem não é funcionário. Com a equipe, o supervisor dela também recebe. [usuarios]
 
 ## Modelos de APR
 
@@ -44,7 +48,7 @@
 
 - Os alertas avisam sobre bloqueios de APR, direito de recusa, lesão ou enfermidade na execução e outras pendências
   que precisam de atenção. [alertas]
-- Para o admin chegam também: cadastro feito por um supervisor aguardando a liberação, funcionário readmitido no
+- Para o admin chegam também: pedido de conta feito na tela de entrada, cadastro feito por um supervisor aguardando a liberação, funcionário readmitido no
   registro (com o botão "Reativar a conta" no próprio aviso: o sistema nunca devolve o acesso sozinho), equipe sem
   supervisor (o representante responde por ela até você escolher um), falha na leitura do SAP ou do registro de
   funcionários, PDF de OS que não saiu e a Vitória respondendo sem IA. [alertas]

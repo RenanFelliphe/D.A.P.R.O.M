@@ -19,6 +19,7 @@ import { responder } from "../http/resposta";
 import { booleanoDaConsulta, emailInstitucional, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
 import { assinaturaDoAto } from "../dominio/assinatura";
 import { apagarAvisosDaConta, avisarAdmins, criarAviso, resolverAvisos } from "../dominio/alertas";
+import { atenderSolicitacao } from "../dominio/solicitacao-conta";
 import { atualizarSupervisaoDasEquipes } from "../dominio/representacao";
 import { avisarMembroDesativado } from "../dominio/rh";
 import { senhaNova } from "./auth";
@@ -111,6 +112,8 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
       resumo: admin ? `Cadastrou o usuário ${nome} (${dados.perfil})` : `Cadastrou o técnico ${nome}, que aguarda a liberação`,
       detalhes: { matricula: funcionario.matricula, perfil: admin ? dados.perfil : "tecnico", equipe_id: equipeId },
     });
+    // O pedido de conta que a pessoa fez na tela de entrada fica atendido.
+    await atenderSolicitacao(deps.db, email, conta.id, eu.id, agora);
     // A equipe que ainda não tinha quem represente o supervisor ganha o primeiro técnico liberado (e, se está sem supervisor, ele assume).
     await atualizarSupervisaoDasEquipes(deps.db, agora);
     // A pessoa fica sabendo da conta (a senha provisória vem de quem a cadastrou); o cadastro do supervisor espera um admin liberar.

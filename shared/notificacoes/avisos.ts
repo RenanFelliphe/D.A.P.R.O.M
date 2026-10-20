@@ -73,6 +73,7 @@ export const TIPOS_DE_AVISO = [
   "cadastro_recusado",
   "membro_desativado",
   "funcionario_readmitido",
+  "conta_solicitada",
   // Equipe e sistema
   "equipe_sem_supervisor",
   "rh_leitura_falhou",
@@ -96,9 +97,10 @@ export type TipoDeAviso = (typeof TIPOS_DE_AVISO)[number];
  * - `treinamento`: `treinamento_id` (o treinamento de serviço);
  * - `sugestao`: `sugestao_materiais_id` (a sugestão ou contestação da lista de materiais de um serviço);
  * - `servico`: `atividade_codigo` (o serviço cuja lista de materiais mudou);
+ * - `solicitacao_conta`: `solicitacao_conta_id` (o pedido de conta feito na tela de entrada);
  * - `nenhum`: o aviso é do sistema todo (a Vitória sem IA).
  */
-export const ALVOS_DE_AVISO = ["os", "importacao", "ausencia", "equipe", "usuario", "leitura_rh", "treinamento", "sugestao", "servico", "nenhum"] as const;
+export const ALVOS_DE_AVISO = ["os", "importacao", "ausencia", "equipe", "usuario", "leitura_rh", "treinamento", "sugestao", "servico", "solicitacao_conta", "nenhum"] as const;
 export type AlvoDeAviso = (typeof ALVOS_DE_AVISO)[number];
 
 const alvoDe = (tipo: TipoDeAviso): AlvoDeAviso => {
@@ -127,6 +129,8 @@ const alvoDe = (tipo: TipoDeAviso): AlvoDeAviso => {
       return "treinamento";
     case "materiais_atualizados":
       return "servico";
+    case "conta_solicitada":
+      return "solicitacao_conta";
     case "vitoria_sem_ia":
       return "nenhum";
     default:
@@ -182,6 +186,7 @@ export const ROTULO_DO_AVISO: Record<TipoDeAviso, string> = {
   cadastro_recusado: "Cadastro recusado",
   membro_desativado: "Membro da equipe desativado",
   funcionario_readmitido: "Funcionário readmitido",
+  conta_solicitada: "Pedido de conta",
   equipe_sem_supervisor: "Equipe sem supervisor",
   rh_leitura_falhou: "Falha na leitura do registro de funcionários",
   vitoria_sem_ia: "Vitória sem IA",
@@ -262,6 +267,8 @@ export const CATEGORIA_DO_AVISO: Record<TipoDeAviso, CategoriaDeEmail | null> = 
   cadastro_recusado: "equipe",
   membro_desativado: "equipe",
   funcionario_readmitido: "sistema",
+  // O pedido de conta vai ao admin e a quem responde pela equipe escolhida (o supervisor não vê a categoria Sistema).
+  conta_solicitada: "equipe",
   equipe_sem_supervisor: "sistema",
   rh_leitura_falhou: "sistema",
   vitoria_sem_ia: "sistema",
@@ -293,7 +300,7 @@ export const DESCRICAO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
   os: "OS reservada para você ou tirada de você, assinatura final do supervisor na OS que você executou, OS aguardando a sua assinatura de supervisor, OS de apoio encerrada, inspeção com pendência, conflitos e execuções duplicadas.",
   preventivas: "Ciclo das preventivas próximo do vencimento ou vencido.",
   ausencias: "Pedidos, aprovações, recusas, alterações e retorno das ausências.",
-  equipe: "Representante que assume ou devolve a equipe, membro desativado, técnico que você cadastrou liberado ou recusado, e sugestões e contestações de materiais (a avaliar, aceitas ou recusadas), e a conferência da execução registrada sem sinal (aberta, a escolher, a assinar, com ressalva ou fechada por prazo).",
+  equipe: "Representante que assume ou devolve a equipe, membro desativado, técnico que você cadastrou liberado ou recusado, pedido de conta de quem ainda não tem uma, e sugestões e contestações de materiais (a avaliar, aceitas ou recusadas), e a conferência da execução registrada sem sinal (aberta, a escolher, a assinar, com ressalva ou fechada por prazo).",
   treinamentos: "Novo treinamento de serviço publicado e problema reportado num treinamento.",
   sistema: "Falha na leitura do SAP ou do registro de funcionários, cadastro aguardando liberação, funcionário readmitido, equipe sem supervisor, PDF de OS não gerado e a Vitória sem IA.",
   resumo_diario: "Um e-mail por dia, de manhã, com o que espera por você: OS aguardando ciência, pedidos de ausência, cadastros a liberar e OS reservadas.",
@@ -353,6 +360,8 @@ export function caminhoDoAviso(a: ReferenciasDoAviso): string {
     case "cadastro_recusado":
     case "membro_desativado":
       return "/app/usuarios";
+    case "conta_solicitada":
+      return "/app/usuarios#solicitacoes";
     case "apr_para_assinar":
       return a.osId ? `/app/os/${a.osId}/apr/aprovada` : "/app/lista";
     // A conferência da execução: a tela dela é da OS (a execução compartilhada, etapa 3).
