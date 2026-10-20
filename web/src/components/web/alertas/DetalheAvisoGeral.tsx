@@ -23,6 +23,12 @@ function tituloDoAviso(a: Alerta): string {
     case "treinamento_publicado":
     case "treinamento_problema":
       return a.treinamento_codigo ? `Treinamento do serviço ${a.treinamento_codigo}` : "Treinamento de serviço";
+    case "sugestao_materiais_nova":
+    case "contestacao_materiais_nova":
+    case "sugestao_materiais_aceita":
+    case "sugestao_materiais_recusada":
+    case "materiais_atualizados":
+      return a.servico_codigo ? `Materiais do serviço ${a.servico_codigo}` : "Materiais do serviço";
     default:
       return a.usuario_alvo_nome ?? rotuloDoAlerta(a);
   }
@@ -49,6 +55,15 @@ function atalhoDoAviso(a: Alerta, usuario: Usuario): { rotulo: string; href: str
       return a.treinamento_codigo && ehAdmin(usuario) ? { rotulo: "Ver os problemas reportados", href: rotas.app.treinamentoServico(a.treinamento_codigo, "problemas") } : null;
     case "treinamento_publicado":
       return a.treinamento_codigo ? { rotulo: "Jogar o treinamento", href: rotas.app.treinarServico(a.treinamento_codigo) } : null;
+    case "sugestao_materiais_nova":
+      return a.servico_codigo && a.sugestao_id ? { rotulo: "Avaliar a sugestão", href: rotas.app.sugestaoDeMateriais(a.servico_codigo, a.sugestao_id) } : null;
+    case "contestacao_materiais_nova":
+      return a.servico_codigo && a.sugestao_id ? { rotulo: "Avaliar a contestação", href: rotas.app.sugestaoDeMateriais(a.servico_codigo, a.sugestao_id) } : null;
+    case "sugestao_materiais_aceita":
+    case "sugestao_materiais_recusada":
+      return a.servico_codigo && a.sugestao_id ? { rotulo: "Abrir a sugestão", href: rotas.app.sugestaoDeMateriais(a.servico_codigo, a.sugestao_id) } : null;
+    case "materiais_atualizados":
+      return a.servico_codigo ? { rotulo: "Ver a lista do serviço", href: `${rotas.app.catalogo}?busca=${encodeURIComponent(a.servico_codigo)}` } : null;
     default:
       return null;
   }
@@ -68,6 +83,11 @@ const COMO_SEGUIR: Partial<Record<Alerta["tipo"], string>> = {
     "A Vitória continua respondendo, pelas sugestões fixas e pela busca no manual. O perfil dela mostra o provedor, o modelo e os limites; o limite do dia volta à meia-noite.",
   treinamento_problema: "Confira a fase no editor do treinamento, corrija se for o caso e marque o reporte como tratado.",
   treinamento_publicado: "O treinamento fica no catálogo de serviço, no serviço dele.",
+  sugestao_materiais_nova: "Veja o que muda na lista e aceite (com ou sem ajuste) ou recuse com o motivo. Você recebe porque a sua equipe é a que mais faz este serviço.",
+  contestacao_materiais_nova: "Leia o motivo. Para aceitar, a contestação precisa de uma lista nova (a da pessoa, se ela mandou uma, ou a sua); senão, recuse com o motivo.",
+  sugestao_materiais_aceita: "A lista do serviço já foi atualizada. Quem aceita e quem sugere ganham pontos, na regra Colaboração.",
+  sugestao_materiais_recusada: "Você pode enviar outra sugestão para o mesmo serviço quando quiser.",
+  materiais_atualizados: "A nova lista já aparece em Materiais recomendados, no detalhe da OS e no catálogo.",
   cadastro_liberado: "A pessoa já usa o sistema todo; no primeiro acesso, ela cadastra a assinatura.",
   cadastro_recusado: "O cadastro recusado não entra mais. O administrador pode excluí-lo para liberar o e-mail e a matrícula.",
 };

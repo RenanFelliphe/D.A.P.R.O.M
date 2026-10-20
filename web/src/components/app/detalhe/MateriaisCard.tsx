@@ -1,13 +1,18 @@
 import Link from "next/link";
+import { LinkButton } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
+import { BotaoEquipesDoServico } from "@/components/web/sugestao/BotaoEquipesDoServico";
 import { ListaDoServico } from "@/components/web/catalogo/ListaDoServico";
 import type { ServicoDaOs } from "@/lib/catalogo";
 import { rotas } from "@/lib/rotas";
 
 /**
  * O que levar para o campo: a lista do serviço do catálogo (a atividade da OS), com materiais, ferramentas e EPIs. A OS
- * sem atividade não tem serviço; aí valem as instruções do SAP.
+ * sem atividade não tem serviço; aí valem as instruções do SAP. `colaboracao`: quem não é admin pode sugerir uma lista ou contestar
+ * a recomendada (`"sugerir"`; o supervisor da equipe que mais faz o serviço avalia); o admin só vê as equipes do serviço (`"ver"`);
+ * no Campo de treino, nada disso (`null`: a API fictícia não conhece as sugestões).
  */
-export function MateriaisCard({ servico }: { servico: ServicoDaOs | null }) {
+export function MateriaisCard({ servico, colaboracao = null }: { servico: ServicoDaOs | null; colaboracao?: "sugerir" | "ver" | null }) {
   return (
     <div className="card stack g8" data-treino="os-materiais">
       <div className="row between" style={{ gap: 12, alignItems: "baseline" }}>
@@ -33,6 +38,23 @@ export function MateriaisCard({ servico }: { servico: ServicoDaOs | null }) {
           </span>
           <ListaDoServico materiais={servico.materiais} />
         </>
+      )}
+      {servico && colaboracao && (
+        <div className="row wrap g8" data-treino="os-materiais-sugerir">
+          {colaboracao === "sugerir" && (
+            <LinkButton variant="line" sm href={rotas.app.sugerirMateriais(servico.codigo, "sugestao")}>
+              <Icon name="pencil" size={13} />
+              Sugerir lista
+            </LinkButton>
+          )}
+          {colaboracao === "sugerir" && servico.materiais.length > 0 && (
+            <LinkButton variant="line" sm href={rotas.app.sugerirMateriais(servico.codigo, "contestacao")}>
+              <Icon name="alert" size={13} />
+              Contestar lista
+            </LinkButton>
+          )}
+          <BotaoEquipesDoServico codigo={servico.codigo} descricao={servico.descricao} sm />
+        </div>
       )}
     </div>
   );

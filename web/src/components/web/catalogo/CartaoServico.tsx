@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button, LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { BotaoEquipesDoServico } from "@/components/web/sugestao/BotaoEquipesDoServico";
 import { BotaoVerRanking } from "@/components/web/treinamento-servico/BotaoVerRanking";
 import { BotaoTreinar } from "@/components/web/treinamento-servico/jogo/BotaoTreinar";
 import { TreinamentoNoCartao } from "@/components/web/treinamento-servico/TreinamentoNoCartao";
@@ -17,14 +18,26 @@ import { ListaDoServico } from "./ListaDoServico";
  * Um serviço do catálogo: o código, a descrição e, só quando existem, "Ver materiais" (a lista do que o serviço leva para o
  * campo, que abre no próprio cartão), "Jogar treinamento" (o jogo numa janela) e "Ver ranking" (o ranking dele, também numa janela). Com treinamento publicado, o cartãozinho da
  * Vitória fica à vista. O admin edita a lista aqui mesmo e, em vez de jogar, abre o treinamento no editor (ou o cria).
+ * Quem não é admin também "Sugere lista" e "Contesta lista" (o supervisor da equipe que mais faz o serviço avalia), e todos veem
+ * as "Equipes do serviço".
  */
-export function CartaoServico({ servico, podeEditar, treinamento = null }: { servico: ServicoDoCatalogo; podeEditar: boolean; treinamento?: TreinamentoResumo | null }) {
+export function CartaoServico({
+  servico,
+  podeEditar,
+  treinamento = null,
+  colaboracao = true,
+}: {
+  servico: ServicoDoCatalogo;
+  podeEditar: boolean;
+  treinamento?: TreinamentoResumo | null;
+  /** Sugerir, contestar e ver as equipes: desligado no Campo de treino, onde a API fictícia não conhece as sugestões. */
+  colaboracao?: boolean;
+}) {
   const idLista = useId();
   const [editando, setEditando] = useState(false);
   const [verMateriais, setVerMateriais] = useState(false);
   const total = servico.materiais.length;
   const temMateriais = total > 0;
-  const temAcoes = temMateriais || Boolean(treinamento) || podeEditar;
 
   return (
     <section className="panel cartao-servico" aria-label={`Serviço ${servico.codigo}`}>
@@ -54,8 +67,7 @@ export function CartaoServico({ servico, podeEditar, treinamento = null }: { ser
       {editando ? (
         <EditorDoServico servico={servico} aoFechar={() => setEditando(false)} />
       ) : (
-        temAcoes && (
-          <>
+        <>
             <div className="cartao-servico-acoes">
               {temMateriais && (
                 <Button variant="line" sm aria-expanded={verMateriais} aria-controls={idLista} onClick={() => setVerMateriais((v) => !v)}>
@@ -80,14 +92,26 @@ export function CartaoServico({ servico, podeEditar, treinamento = null }: { ser
                   Criar treinamento
                 </LinkButton>
               )}
+              {colaboracao && <BotaoEquipesDoServico codigo={servico.codigo} descricao={servico.descricao} sm />}
+              {colaboracao && !podeEditar && (
+                <LinkButton variant="line" sm href={rotas.app.sugerirMateriais(servico.codigo, "sugestao")}>
+                  <Icon name="pencil" size={13} />
+                  Sugerir lista
+                </LinkButton>
+              )}
+              {colaboracao && !podeEditar && temMateriais && (
+                <LinkButton variant="line" sm href={rotas.app.sugerirMateriais(servico.codigo, "contestacao")}>
+                  <Icon name="alert" size={13} />
+                  Contestar lista
+                </LinkButton>
+              )}
             </div>
             {temMateriais && verMateriais && (
               <div id={idLista} className="cartao-servico-lista">
                 <ListaDoServico materiais={servico.materiais} />
               </div>
             )}
-          </>
-        )
+        </>
       )}
     </section>
   );

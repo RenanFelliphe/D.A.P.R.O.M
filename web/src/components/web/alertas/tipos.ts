@@ -16,11 +16,11 @@ export const ehDeCiclo = (a: Pick<Alerta, "tipo">) => a.tipo === "preventiva_pro
 
 /**
  * Os avisos que não são de OS, de importação, de ausência nem de representação: a conta de uma pessoa, a equipe sem supervisor,
- * a leitura do registro de funcionários, o treinamento e a Vitória. Têm o detalhe geral (`DetalheAvisoGeral`).
+ * a leitura do registro de funcionários, o treinamento, a lista de materiais de um serviço e a Vitória. Têm o detalhe geral (`DetalheAvisoGeral`).
  */
 export const ehAvisoGeral = (a: Pick<Alerta, "tipo">) => {
   const alvo = alvoDoAlerta(a);
-  return alvo === "usuario" || alvo === "leitura_rh" || alvo === "treinamento" || alvo === "nenhum" || a.tipo === "equipe_sem_supervisor";
+  return alvo === "usuario" || alvo === "leitura_rh" || alvo === "treinamento" || alvo === "sugestao" || alvo === "servico" || alvo === "nenhum" || a.tipo === "equipe_sem_supervisor";
 };
 
 /**
@@ -73,6 +73,12 @@ export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; u
     case "treinamento_publicado":
     case "treinamento_problema":
       return { icone: "trophy", urgente: false };
+    case "sugestao_materiais_nova":
+    case "contestacao_materiais_nova":
+    case "sugestao_materiais_aceita":
+    case "sugestao_materiais_recusada":
+    case "materiais_atualizados":
+      return { icone: "box", urgente: false };
     default:
       break;
   }
@@ -95,6 +101,8 @@ export const destinoDoAlerta = (a: Alerta) =>
     usuarioAlvoId: a.usuario_alvo_id,
     equipeAlvoId: a.equipe_alvo_id,
     treinamentoCodigo: a.treinamento_codigo,
+    sugestaoId: a.sugestao_id,
+    servicoCodigo: a.servico_codigo,
   });
 
 /** Quem decide sobre a OS (reprogramar e abrir OS de apoio) e marca os próprios alertas como lidos: o supervisor e o admin. */

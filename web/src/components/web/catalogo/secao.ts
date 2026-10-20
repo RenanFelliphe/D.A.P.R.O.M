@@ -9,4 +9,5 @@ export const editaCatalogo = (u: Pick<Usuario, "perfil">) => ehAdmin(u);
 export const abasDoCatalogo: AbaDaSecao[] = [
   { href: rotas.app.catalogo, rotulo: "Serviços", icone: "list" },
   { href: rotas.app.catalogoMateriais, rotulo: "Materiais", icone: "box" },
+  { href: rotas.app.sugestoesDeMateriais, rotulo: "Sugestões", icone: "pencil" },
 ];

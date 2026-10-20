@@ -7,6 +7,7 @@ import { editaCatalogo } from "@/components/web/catalogo/secao";
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
 import type { ListaDeServicos, Material } from "@/lib/catalogo";
 import { rotas } from "@/lib/rotas";
+import { emTreino } from "@/lib/treino-modo";
 import type { TreinamentoResumo } from "@/lib/treinamento-servico";
 
 export const metadata: Metadata = { title: "Catálogo de serviço" };
@@ -41,6 +42,7 @@ export default async function ServicosDoCatalogoPage({ searchParams }: { searchP
   const nomeDoMaterial = material?.materiais.find((m) => m.id === filtroDeMaterial)?.descricao;
   const treinamentoPorCodigo = new Map((treinamentos?.treinamentos ?? []).map((t) => [t.atividade_codigo, t]));
   const consulta = { busca, sem_materiais: semMateriais ? "true" : undefined, material_id: filtroDeMaterial };
+  const colaboracao = !(await emTreino());
 
   return (
     <>
@@ -72,7 +74,7 @@ export default async function ServicosDoCatalogoPage({ searchParams }: { searchP
       ) : (
         <div className="servicos-catalogo">
           {lista.servicos.map((s) => (
-            <CartaoServico key={s.codigo} servico={s} podeEditar={podeEditar} treinamento={treinamentoPorCodigo.get(s.codigo) ?? null} />
+            <CartaoServico key={s.codigo} servico={s} podeEditar={podeEditar} treinamento={treinamentoPorCodigo.get(s.codigo) ?? null} colaboracao={colaboracao} />
           ))}
         </div>
       )}

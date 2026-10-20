@@ -66,6 +66,12 @@ export const rotas = {
     treinamentoServico: (codigo: string, tela?: TelaDoTreinamento) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinamento${tela ? `/${tela}` : ""}`,
     /** A capa do treinamento de serviço (técnico, inclusive pendente); o jogo abre numa janela por cima. */
     treinarServico: (codigo: string) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinar`,
+    /** Sugestões e contestações da lista de materiais (todos os perfis; o admin só avalia): `?aba=avaliar` abre a fila de quem avalia. */
+    sugestoesDeMateriais: "/app/catalogo/sugestoes",
+    /** Enviar uma sugestão de lista ou a contestação da lista recomendada de um serviço (o admin edita a lista direto). */
+    sugerirMateriais: (codigo: string, tipo: "sugestao" | "contestacao") => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/materiais/sugerir?tipo=${tipo}`,
+    /** Uma sugestão ou contestação: o que muda na lista e, para quem avalia, aceitar, ajustar ou recusar. */
+    sugestaoDeMateriais: (codigo: string, id: string) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/materiais/sugestoes/${id}`,
     /**
      * Seção Gamificação, a mesma para todos os perfis (só o admin edita pontos, patentes e conquistas): Minha pontuação (técnico),
      * Ranking, Conquistas, Patentes e Como pontuar. `/app/gamificacao` sozinho abre a pontuação do técnico; o admin, que não

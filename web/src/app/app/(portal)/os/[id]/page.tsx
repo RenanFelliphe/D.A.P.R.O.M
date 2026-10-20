@@ -38,6 +38,7 @@ import { api, usuarioAtual } from "@/lib/api";
 import { dataHora } from "@/lib/formatar";
 import { aprAprovadaDisponivel, aprDeHoje, execucaoAberta, execucaoEncerrando, situacaoDaApr, type DetalheDaOs as DetalheDoCampo } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
+import { emTreino } from "@/lib/treino-modo";
 import { ehAdmin, ehSupervisor, equipesDoSupervisor, rotuloDoStatus, type Equipe, type Usuario } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Detalhe da OS" };
@@ -67,6 +68,8 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   const gestao = admin || ehSupervisor(usuario);
   // O admin é só gestão; todo técnico (o supervisor também) aplica APR e executa.
   const executa = !admin;
+  // Sugerir e contestar a lista de materiais: todo perfil menos o admin (que edita a lista no catálogo); no campo de treino, nada.
+  const colaboracao = (await emTreino()) ? null : admin ? "ver" : "sugerir";
 
   // As ações de campo e o card da APR exigida usam os tipos do técnico, que são um recorte do detalhe completo.
   const campo = detalhe as unknown as DetalheDoCampo;
@@ -133,7 +136,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
               <CicloDaOs osId={os.id} preventiva={os.tipo === "preventiva"} gestao={false} estilo="card" />
               <ChecklistDaOsCard perguntas={checklist} />
               <InstrucoesCard descricao={os.descricao} titulo={os.titulo} />
-              <MateriaisCard servico={servico ?? null} />
+              <MateriaisCard servico={servico ?? null} colaboracao={colaboracao} />
               <HistoricoAprs aprs={campo.aprs} execucoes={campo.execucoes} osId={os.id} />
             </>
           }
@@ -203,7 +206,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
               <DadosSap os={os} />
               <CicloDaOs osId={os.id} preventiva={os.tipo === "preventiva"} gestao estilo="panel" />
               <ChecklistDaOsCard perguntas={checklist} />
-              <MateriaisCard servico={servico ?? null} />
+              <MateriaisCard servico={servico ?? null} colaboracao={colaboracao} />
               {podeDecidir && (
                 <Recolhivel titulo="Reprogramar ou abrir OS de apoio" resumo={os.atrasada ? "OS atrasada" : rotuloDoStatus[os.status]} aberto={os.status === "pendente" || os.atrasada}>
                   <p className="muted">
