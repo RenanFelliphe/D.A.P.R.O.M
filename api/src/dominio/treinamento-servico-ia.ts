@@ -145,7 +145,7 @@ M linhas de fase do jogo (ao menos 3 fases; sem plano do administrador, de 3 a 1
 {"item":"fase","tipo":"verdadeiro_falso","afirmacao":"uma afirmação sobre o serviço","verdadeira":true,"explicacao":"...","origem":"..."}
 {"item":"fase","tipo":"caca_palavras","enunciado":"Encontre os termos do serviço","palavras":[{"palavra":"BLOQUEIO","pista":"definição curta"},{"palavra":"EPI","pista":"definição curta"}],"explicacao":"...","origem":"..."}
 {"item":"fase","tipo":"memoria","pares":[{"termo":"...","correspondente":"..."},{"termo":"...","correspondente":"..."}],"explicacao":"...","origem":"..."}
-{"item":"fase","tipo":"selecione","enunciado":"Toque em tudo o que este serviço usa","materiais":["M1","M2"],"quantidade_errados":3,"explicacao":"...","origem":"..."}
+{"item":"fase","tipo":"selecione","enunciado":"Toque em tudo o que este serviço usa","materiais":["M1","M2"],"quantidade_errados":6,"explicacao":"...","origem":"..."}
 {"item":"fase","tipo":"selecione","enunciado":"Selecione todos os ...","opcoes":[{"texto":"...","certa":true},{"texto":"...","certa":true},{"texto":"...","certa":false},{"texto":"...","certa":false}],"explicacao":"...","origem":"..."}
 {"item":"fase","tipo":"termo","palavras":[{"palavra":"RISCO","dica":"uma dica curta, sem a palavra"},{"palavra":"...","dica":"..."}],"explicacao":"...","origem":"..."}
 {"item":"fase","tipo":"desembaralhe","palavras":[{"palavra":"INSPEÇÃO","dica":"o que é a palavra, sem escrevê-la"},{"palavra":"...","dica":"..."}],"explicacao":"...","origem":"..."}
@@ -158,7 +158,7 @@ Regras do formato:
 - verdadeiro_falso: uma afirmação só; a falsa contradiz o texto (não é uma pegadinha de palavra). Misture verdadeiras e falsas.
 - caca_palavras: de 2 a 5 palavras que estão no texto, cada uma uma palavra só (sem espaço, hífen ou número), de 3 a 12 letras; a pista é uma definição curta (até 160 caracteres).
 - memoria: de 2 a 5 pares (termo e o que corresponde a ele: a função, a definição, a medida), cada lado até 80 caracteres.
-- selecione: de 4 a 12 opções, de 1 a 8 com "certa": true e ao menos uma errada. Ou, para "o que o serviço usa", em vez de opções: "materiais" com só os códigos da lista de materiais do serviço (de 1 a 10) e "quantidade_errados" de 1 a 5 (o sistema mistura itens de outros serviços). Não use "materiais" se o serviço não tiver materiais.
+- selecione: de 8 a 14 opções (quanto mais, melhor o jogo), de 2 a 8 com "certa": true e ao menos 3 erradas. Ou, para "o que o serviço usa", em vez de opções: "materiais" com só os códigos da lista de materiais do serviço (de 1 a 10) e "quantidade_errados" de 5 a 10 (o sistema mistura itens de outros serviços). Não use "materiais" se o serviço não tiver materiais.
 - termo: exatamente 10 palavras diferentes do texto, cada uma uma palavra só de 4 a 7 letras (sem contar acento), sem espaço; a cada partida o jogo sorteia uma. A dica é opcional.
 - desembaralhe: exatamente 10 palavras diferentes do texto, cada uma uma palavra só de 3 a 14 letras, sem espaço, e a dica de cada uma (o que ela é, sem escrevê-la); a cada partida o jogo sorteia uma.
 - Tamanhos: texto do passo até 600 caracteres; enunciado e situação até 400; opção, par e etapa até 160; consequência até 300; explicação até 400.
@@ -374,7 +374,7 @@ function converterFase(bruta: FaseIA, materiais: MaterialDoServico[], ctx: Conte
     const codigos = [...new Set((bruta.materiais ?? []).map((c) => c.trim().toUpperCase()))];
     const desconhecidos = codigos.filter((c) => !porCodigo.has(c));
     if (desconhecidos.length > 0) pendencias.push({ codigo: "material_fora_do_catalogo", mensagem: `A IA citou material fora da lista do serviço (${desconhecidos.slice(0, 5).join(", ")}), que foi tirado.` });
-    const errados = Math.min(10, Math.max(1, Math.round(bruta.quantidade_errados ?? 3)));
+    const errados = Math.min(15, Math.max(1, Math.round(bruta.quantidade_errados ?? 6)));
     candidata = { tipo: "selecione", enunciado: cortar(bruta.enunciado, 400), opcoes: [], materiais: { material_ids: codigos.flatMap((c) => porCodigo.get(c) ?? []).slice(0, 10), quantidade_errados: errados }, explicacao };
   } else if (bruta.tipo === "ligar") {
     candidata = { tipo: "ligar", pares: (bruta.pares ?? []).map((p) => ({ esquerda: cortar(p.esquerda, 160), direita: cortar(p.direita, 160) })), explicacao };

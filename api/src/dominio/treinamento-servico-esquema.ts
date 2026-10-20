@@ -113,18 +113,18 @@ export const esquemaFaseMemoria = z.object({
 
 /**
  * "Montar com os materiais do serviço": os materiais certos (do catálogo, de 1 a 10) e quantos itens de outros serviços o
- * servidor sorteia a cada partida para misturar (de 1 a 10). Era o antigo "Separar os itens" (migração `0033`).
+ * servidor sorteia a cada partida para misturar (de 1 a 15). Era o antigo "Separar os itens" (migração `0033`).
  */
 export const esquemaMateriaisDoSelecione = z.object({
   material_ids: z.array(uuid).min(1).max(10),
-  quantidade_errados: z.number().int().min(1).max(10),
+  quantidade_errados: z.number().int().min(1).max(15),
 });
 
 export const esquemaFaseSelecione = z.object({
   tipo: z.literal("selecione"),
   enunciado: textoCurto(400),
-  /** As opções escritas pelo admin (3 a 12; de 1 a 8 certas e ao menos uma errada). Vazia quando a fase usa `materiais`. */
-  opcoes: z.array(z.object({ texto: textoCurto(160), correta: z.boolean() })).max(12),
+  /** As opções escritas pelo admin (3 a 16; de 1 a 10 certas e ao menos uma errada). Vazia quando a fase usa `materiais`. */
+  opcoes: z.array(z.object({ texto: textoCurto(160), correta: z.boolean() })).max(16),
   materiais: esquemaMateriaisDoSelecione.nullable().optional(),
   explicacao: textoCurto(400),
   ia: metaIA,
@@ -193,9 +193,9 @@ export function problemaDaFase(f: FaseEntrada): { codigo: string; mensagem: stri
     if (f.opcoes.length > 0) return { codigo: "fase_selecione_mista", mensagem: "com os materiais do serviço, a fase não leva opções escritas" };
     if (new Set(f.materiais.material_ids).size !== f.materiais.material_ids.length) return { codigo: "fase_material_repetido", mensagem: "um material está repetido na lista de itens certos" };
   } else if (f.tipo === "selecione") {
-    if (f.opcoes.length < 3) return { codigo: "fase_selecione_opcoes", mensagem: "escreva de 3 a 12 opções" };
+    if (f.opcoes.length < 3) return { codigo: "fase_selecione_opcoes", mensagem: "escreva de 3 a 16 opções" };
     const certas = f.opcoes.filter((o) => o.correta).length;
-    if (certas < 1 || certas > 8) return { codigo: "fase_selecione_certas", mensagem: "marque de 1 a 8 opções certas" };
+    if (certas < 1 || certas > 10) return { codigo: "fase_selecione_certas", mensagem: "marque de 1 a 10 opções certas" };
     if (certas === f.opcoes.length) return { codigo: "fase_selecione_sem_errada", mensagem: "ao menos uma opção precisa ser errada" };
   }
   if (f.tipo === "termo" || f.tipo === "desembaralhe") {

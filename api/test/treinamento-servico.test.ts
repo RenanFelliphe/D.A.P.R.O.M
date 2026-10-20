@@ -477,6 +477,18 @@ describe("Treinamentos de serviço", () => {
     assert.equal(aberta.total_fases, 12);
   });
 
+  it("o catálogo lista primeiro os serviços com treinamento publicado (rascunho não conta)", async () => {
+    await novaAtividade("ORDCAT-A-SEM");
+    await novaAtividade("ORDCAT-B-RASCUNHO");
+    await obterRascunho("ORDCAT-B-RASCUNHO");
+    await criarEPublicar("ORDCAT-Z-COM");
+    const lista = await amb.esperar(200, "GET", "/catalogo/servicos", { como: tecnico, consulta: { busca: "ORDCAT" } });
+    assert.deepEqual(
+      lista.servicos.map((s: { codigo: string }) => s.codigo),
+      ["ORDCAT-Z-COM", "ORDCAT-A-SEM", "ORDCAT-B-RASCUNHO"],
+    );
+  });
+
   it("publicar exige as 10 palavras no Termo e no Desembaralhe", async () => {
     const codigo = "TRE-MINIJOGOS-BANCO";
     await novaAtividade(codigo);
@@ -500,7 +512,7 @@ describe("Treinamentos de serviço", () => {
     const selecione = (certas: boolean[]) => ({ tipo: "selecione", enunciado: "X", opcoes: certas.map((correta, i) => ({ texto: `Op ${i}`, correta })), explicacao: "x" });
     await recusar(selecione([false, false, false]), "fase_selecione_certas");
     await recusar(selecione([true, true, true]), "fase_selecione_sem_errada");
-    await recusar(selecione([...Array(9).fill(true), false]), "fase_selecione_certas");
+    await recusar(selecione([...Array(11).fill(true), false]), "fase_selecione_certas");
     const caca = (modo: string, palavras: unknown[]) => ({ tipo: "caca_palavras", enunciado: "X", modo, palavras, explicacao: "x" });
     await recusar(caca("palavras", [{ palavra: "Inspeção" }, { palavra: "INSPECAO" }]), "fase_palavra_repetida");
     await recusar(caca("pistas", [{ palavra: "Bloqueio", pista: "x" }, { palavra: "Epi" }]), "fase_sem_pista");

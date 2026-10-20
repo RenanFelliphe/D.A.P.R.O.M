@@ -111,10 +111,12 @@
 
 ## Catálogo de serviços
 
-- O catálogo lista os serviços da empresa com os materiais recomendados para cada um. [catalogo_servicos]
-- No cartão do serviço, "Ver materiais" mostra a lista do que ele leva para o campo, e "Jogar treinamento" abre o
-  treinamento (com o cartãozinho da Vitória à vista); cada botão só aparece quando existe. Quem já concluiu vê o selo
-  com as fases certas.
+- O catálogo lista os serviços da empresa com os materiais recomendados para cada um, em duas seções: "Com
+  treinamento" (os que têm o jogo de treinamento) primeiro e "Outros serviços" depois. [catalogo_servicos]
+- No cartão do serviço, "Equipes do serviço" e "Ver materiais" ficam lado a lado e, embaixo, "Jogar treinamento" (só
+  quando o serviço tem treinamento). "Ver materiais" abre a lista do que o serviço leva para o campo e, ali dentro,
+  "Sugerir lista" e "Contestar lista". O cartãozinho da Vitória, com "Ver ranking", aparece quando há treinamento;
+  quem já concluiu vê o selo com as fases certas.
 
 ## Treinamento de serviço
 
@@ -124,8 +126,12 @@
   [treinar_servico]
 - Cada fase vale até 10 pontos pelos acertos, e quanto mais rápido, mais vale (até 10 segundos, o valor cheio; o tempo
   aparece ao lado do tipo da fase). A nota é a soma das fases vezes o número de fases vezes 10.
-- Dá para voltar e avançar entre as fases, mesmo sem responder; a resposta confirmada não muda. Finalizar com fase
-  pendente pede confirmação: o que você já fez nela conta, o resto vale zero.
+- Dá para voltar e avançar entre as fases, mesmo sem responder; a resposta confirmada não muda. Avançar sem confirmar
+  a fase, recomeçar uma fase, jogar de novo e finalizar com fase pendente pedem confirmação: o que você já fez numa
+  fase não confirmada conta, o resto vale zero.
+- O placar do topo mostra também o tempo do jogo todo, e o resultado mostra o tempo total e tem o botão "Ver ranking".
+- No caça-palavras, as palavras ficam na linha, na coluna ou na diagonal e podem se cruzar. No Termo, toque numa casa
+  para escrever a letra nela, em qualquer ordem.
 - No cartão do serviço, "Ver ranking" mostra quem já concluiu aquele treinamento, pela melhor nota de cada um. Jogar de
   novo pode melhorar a sua nota no ranking, mas os pontos da gamificação valem só na primeira conclusão.
 - Sair no meio pede confirmação, e o jogo recomeça do início quando você voltar.

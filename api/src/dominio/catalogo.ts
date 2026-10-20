@@ -1,7 +1,17 @@
-import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { MATERIAL_CATEGORIAS, atividade, atividadeMaterial, material, sugestaoMateriais, sugestaoMateriaisItem, type MaterialCategoria } from "../db/schema";
+import {
+  MATERIAL_CATEGORIAS,
+  atividade,
+  atividadeMaterial,
+  material,
+  sugestaoMateriais,
+  sugestaoMateriaisItem,
+  treinamentoServico,
+  treinamentoServicoVersao,
+  type MaterialCategoria,
+} from "../db/schema";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
 import { contar, limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { textoObrigatorio, uuid } from "../http/validacao";
@@ -190,6 +200,11 @@ const listaMaterial = (materialId?: string) =>
   sql`exists (select 1 from atividade_material where atividade_material.atividade_codigo = atividade.codigo${materialId ? sql` and atividade_material.material_id = ${materialId}` : sql``})`;
 
 /** Os serviços (atividades) por código, cada um com a lista de materiais. */
+/** O serviço tem treinamento publicado (com os minijogos). */
+const comTreinamento = () =>
+  sql<boolean>`exists (select 1 from ${treinamentoServicoVersao} inner join ${treinamentoServico} on ${treinamentoServico.id} = ${treinamentoServicoVersao.treinamentoId} where ${treinamentoServico.atividadeCodigo} = ${atividade.codigo} and ${treinamentoServicoVersao.estado} = 'publicada')`;
+
+/** A lista do catálogo: primeiro os serviços com treinamento publicado, depois os outros, cada grupo pelo código (a web os mostra em duas seções). */
 export async function listarServicos(db: Db, f: FiltrosDeServicos) {
   const condicoes: (SQL | undefined)[] = [
     f.busca ? algum([atividade.codigo, atividade.descricao], f.busca, contem) : undefined,
@@ -199,7 +214,7 @@ export async function listarServicos(db: Db, f: FiltrosDeServicos) {
   const onde = and(...condicoes);
   const { limit, offset } = limiteEDeslocamento(f);
   const [linhas, total] = await Promise.all([
-    db.select().from(atividade).where(onde).orderBy(asc(atividade.codigo)).limit(limit).offset(offset),
+    db.select().from(atividade).where(onde).orderBy(desc(comTreinamento()), asc(atividade.codigo)).limit(limit).offset(offset),
     contar(db, atividade, onde),
   ]);
   const materiais = await materiaisDosServicos(db, linhas.map((l) => l.codigo));

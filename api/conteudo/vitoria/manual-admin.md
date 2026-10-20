@@ -67,8 +67,9 @@
   falso, caça-palavras, memória, selecione, desembaralhe e termo), cada um com uma frase do que é o jogo e a sua cor, que
   também aparece no jogo. "1 de cada" acrescenta uma fase de cada minijogo, em ordem aleatória. O jogo não tem limite de
   fases; para publicar, são ao menos 3. [treinamento_servico_editor]
-- No Selecione, a caixa "Montar com os materiais do serviço" troca as opções escritas pelos materiais do catálogo: você
-  marca os certos, e o sistema mistura itens de outros serviços, sorteados a cada partida. [treinamento_servico_editor]
+- O Selecione aceita de 3 a 16 opções escritas (de 1 a 10 certas). A caixa "Montar com os materiais do serviço" troca
+  as opções escritas pelos materiais do catálogo: você marca os certos, e o sistema mistura até 15 itens de outros
+  serviços, sorteados a cada partida. [treinamento_servico_editor]
 - Ao criar, você escolhe entre "Gerar com a Vitória" (para validar depois) e "Criar manualmente". Gerar monta a explicação
   e as fases a partir do texto do procedimento que você colar (o que o serviço usa, os passos na ordem, os cuidados e os
   números), usando só esse texto e os materiais do serviço no catálogo. A tela mostra como escrever o texto e um exemplo.
