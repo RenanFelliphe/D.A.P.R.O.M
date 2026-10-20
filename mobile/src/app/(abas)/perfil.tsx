@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -5,6 +6,7 @@ import Constants from "expo-constants";
 import { ehSupervisor, iniciaisDe, rotuloDoPerfil } from "@shared/api/tipos";
 import { useParaAvaliar } from "@/materiais/consultas";
 import { MinhaAssinatura } from "@/assinatura/MinhaAssinatura";
+import { CartaoParaConferir } from "@/conferencia/CartaoParaConferir";
 import { CartaoDeSincronizacao } from "@/offline/CartaoDeSincronizacao";
 import { useEstadoDaSincronizacao } from "@/offline/estado";
 import { useSincronizar } from "@/offline/SincronizacaoProvider";
@@ -26,6 +28,7 @@ import { Tela } from "@/ui/Tela";
  */
 export default function Perfil() {
   const router = useRouter();
+  const consultas = useQueryClient();
   const { eu, recarregarEu, sair } = useSessao();
   const [atualizando, setAtualizando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -43,7 +46,7 @@ export default function Perfil() {
   const atualizar = async () => {
     setAtualizando(true);
     try {
-      await recarregarEu();
+      await Promise.all([recarregarEu(), consultas.invalidateQueries({ queryKey: ["me", "conferencias"] })]);
     } finally {
       setAtualizando(false);
     }
@@ -83,6 +86,8 @@ export default function Perfil() {
       </Cartao>
 
       <MinhaAssinatura />
+
+      <CartaoParaConferir />
 
       {eu.equipe && u.perfil === "tecnico" ? <CartaoDeSincronizacao /> : null}
 

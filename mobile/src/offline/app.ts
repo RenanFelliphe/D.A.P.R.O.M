@@ -71,7 +71,7 @@ export const sincronizador = criarSincronizador({
   usuarioId: () => pessoaLogada?.id ?? null,
   enviarEvento: (evento) => cliente.chamar<RespostaEventos & { acesso_revogado?: boolean }>("/eventos", { corpo: { eventos: [evento] } }),
   subirArquivo: (a) => subirArquivoSemFila({ uri: a.uri, nome: a.nome, tipoMime: a.tipoMime }, a.tipo, a.id).then(() => undefined),
-  baixarSnapshot: () => cliente.chamar<SnapshotDaApi>("/sync/pull", { metodo: "POST", corpo: {} }),
+  baixarSnapshot: (fila) => cliente.chamar<SnapshotDaApi>("/sync/pull", { metodo: "POST", corpo: { fila } }),
   apagarArquivoLocal: apagarCopiaDaFila,
   conexao: conexaoDoAparelho,
   agora: () => new Date(),

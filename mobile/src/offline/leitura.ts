@@ -114,6 +114,7 @@ export function criarLeitura(banco: Banco, pessoa: () => PessoaLogada | null, ag
       fim: e.fim,
       resultado: e.resultado,
       encerramento_assinado_em: e.encerramento_assinado_em,
+      finalizada_por: e.finalizada_por ? { id: e.finalizada_por, ...pessoaDe(e.finalizada_por, usuarios) } : null,
       suspensao_motivo: e.suspensao_motivo,
       suspensao_complemento: e.suspensao_complemento,
       localizacao_inicio: posicao(e.inicio_latitude, e.inicio_longitude),

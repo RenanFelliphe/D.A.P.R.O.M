@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
+import type { ConferenciaDaOs } from "@shared/api/conferencia-execucao";
 import type { AprDaOs, ExecucaoDaOs, OsDetalhada } from "@shared/api/os-app";
 import { mensagemDoErro } from "@/api/erros";
 import { cores } from "@/tema/tema";
@@ -16,6 +17,8 @@ interface Props {
   usuarioId: string;
   aprs: AprDaOs[];
   execucoes: ExecucaoDaOs[];
+  /** As conferências da execução registrada sem sinal (`GET /os/{id}`). */
+  conferencias?: ConferenciaDaOs[];
   /** O rótulo da ausência de quem olha; o ausente só visualiza. */
   ausencia: string | null;
 }
@@ -25,11 +28,11 @@ interface Props {
  * lugar do botão. As telas de APR e execução chegam na pendência 2; até lá o botão leva a "em breve". O PDF da OS encerrada abre
  * no leitor do aparelho.
  */
-export function AcoesDaOs({ os, usuarioId, aprs, execucoes, ausencia }: Props) {
+export function AcoesDaOs({ os, usuarioId, aprs, execucoes, conferencias, ausencia }: Props) {
   const router = useRouter();
   const [abrindoPdf, setAbrindoPdf] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const decisao = decidirAcao({ os, usuarioId, aprs, execucoes, ausencia });
+  const decisao = decidirAcao({ os, usuarioId, aprs, execucoes, ausencia, conferencias });
 
   const abrirPdf = async () => {
     setErro(null);
@@ -58,9 +61,9 @@ export function AcoesDaOs({ os, usuarioId, aprs, execucoes, ausencia }: Props) {
           key={b.acao}
           titulo={b.titulo}
           variante={b.variante}
-          icone={b.acao === "abrir-pdf" ? "document-text-outline" : undefined}
+          icone={b.acao === "abrir-pdf" ? "document-text-outline" : b.acao === "abrir-conferencia" ? "git-compare-outline" : undefined}
           enviando={b.acao === "abrir-pdf" && abrindoPdf}
-          aoPressionar={() => (b.acao === "abrir-pdf" ? void abrirPdf() : irParaAcao(router, b.acao, os.id))}
+          aoPressionar={() => (b.acao === "abrir-pdf" ? void abrirPdf() : irParaAcao(router, b.acao, os.id, b.conferenciaId))}
         />
       ))}
     </Cartao>

@@ -89,6 +89,8 @@ export interface ExecucaoDaCopia {
   suspensao_motivo: string | null;
   suspensao_complemento: string | null;
   encerramento_assinado_em: string | null;
+  /** Quem encerrou, interrompeu ou suspendeu (execução compartilhada); ausente nas execuções anteriores: vale o responsável. */
+  finalizada_por?: string | null;
   inicio_latitude: number | null;
   inicio_longitude: number | null;
   fim_latitude: number | null;

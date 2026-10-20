@@ -4,6 +4,8 @@ import type { AprDaApi, ExecucaoDaApi } from "@shared/api/execucao-tempo";
 import type { OsStatus } from "@shared/api/tipos";
 import { cliente } from "@/api/api";
 import { leitura, lerDeOndeDer } from "@/offline/app";
+import { useSessao } from "@/sessao/SessaoProvider";
+import { intervaloDaLeitura } from "./intervalo-da-leitura";
 
 /** O que a tela de execução lê de `GET /os/{id}`: a OS, as execuções (com as pausas) e as APRs com as assinaturas. */
 export interface DetalheParaExecutar {
@@ -22,6 +24,8 @@ export interface DetalheParaExecutar {
 }
 
 export function useDetalheParaExecutar(id: string) {
+  const { eu } = useSessao();
+  const usuarioId = eu?.usuario.id;
   return useQuery({
     queryKey: ["os", id, "execucao"],
     queryFn: () =>
@@ -29,5 +33,6 @@ export function useDetalheParaExecutar(id: string) {
         () => cliente.chamar<DetalheParaExecutar>(`/os/${id}`),
         () => leitura.detalhe(id),
       ),
+    refetchInterval: (consulta) => (usuarioId && consulta.state.data ? intervaloDaLeitura(consulta.state.data.execucoes, usuarioId) : false),
   });
 }

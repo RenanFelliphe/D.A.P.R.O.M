@@ -132,17 +132,20 @@ function aplicar(estado: EstadoDaOs, ev: EventoDaFila): void {
       }
       return;
     }
+    // O participante que pede ao responsável (`pedido_aberto`) e fica na fila vale na hora no aparelho: a `api` o aplica direto (sem sinal).
+    case "pedido_aberto":
     case "execucao_encerrada":
     case "execucao_interrompida":
     case "execucao_suspensa": {
       const e = execucaoDe(p.execucao_id);
       if (!e || e.resultado !== null) return;
-      const fim = texto(p.fim) ?? ev.ocorridoEm;
+      const fim = texto(p.instante) ?? texto(p.fim) ?? ev.ocorridoEm;
       fecharPausaAberta(e, fim);
       e.fim = fim;
       e.fim_latitude = numero(p.latitude);
       e.fim_longitude = numero(p.longitude);
-      if (ev.tipo === "execucao_encerrada") e.resultado = "encerrada";
+      e.finalizada_por = ev.usuarioId;
+      if (ev.tipo === "execucao_encerrada" || (ev.tipo === "pedido_aberto" && p.tipo === "encerrar")) e.resultado = "encerrada";
       else if (ev.tipo === "execucao_interrompida") {
         e.resultado = "interrompida";
         e.motivo = texto(p.motivo);

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { MOTIVOS_DA_PAUSA, MOTIVOS_DA_SUSPENSAO } from "@shared/api/execucao-motivos";
 import type { Situacao } from "@shared/api/execucao-situacao";
+import { pedidoAberto } from "@shared/api/execucao-pedidos";
 import { participantesAtivos } from "@shared/api/execucao-tempo";
 import { comPosicao } from "@shared/api/localizacao";
 import { novoUuid } from "@shared/api/uuid";
@@ -20,6 +21,7 @@ import { JanelaDeFormulario } from "@/ui/JanelaDeFormulario";
 import { AvisoDeLocalizacao } from "./AvisoDeLocalizacao";
 import { FormularioInterromper } from "./FormularioInterromper";
 import { JanelaDeMotivo } from "./JanelaDeMotivo";
+import { PedidoParaResponder } from "./PedidoParaResponder";
 import { ResumoDoTempo } from "./ResumoDoTempo";
 import { useAgora } from "./useAgora";
 
@@ -33,6 +35,8 @@ interface EmAndamentoProps {
   titulo: string;
   local: string;
   situacao: Extract<Situacao, { tipo: "em_andamento" }>;
+  /** Quando a tela leu a execução pela última vez (ms): é daqui que a contagem do pedido de um participante desconta o tempo. */
+  atualizadoEm: number;
 }
 
 /** As quatro ações da execução, com o que cada uma faz (a explicação que o técnico vê junto dos botões). */
@@ -49,7 +53,7 @@ const ACOES = [
  * (obrigatório); encerrar abre a confirmação (o tempo para ali) e segue para o preenchimento e a assinatura. A localização é registrada ao
  * pausar, suspender, interromper e encerrar, sem bloquear o serviço se não houver.
  */
-export function EmAndamento({ osId, numeroOrdem, titulo, local, situacao }: EmAndamentoProps) {
+export function EmAndamento({ osId, numeroOrdem, titulo, local, situacao, atualizadoEm }: EmAndamentoProps) {
   const router = useRouter();
   const atualizarDepois = useAtualizarDepoisDoEvento();
   const { execucao, participantes } = situacao;
@@ -61,6 +65,8 @@ export function EmAndamento({ osId, numeroOrdem, titulo, local, situacao }: EmAn
   const [confirmandoCancelar, setConfirmandoCancelar] = useState(false);
 
   const pausaAberta = execucao.pausas.find((p) => !p.fim);
+  // Um participante pediu para encerrar ou suspender: o responsável tem 2 minutos para responder (sem resposta, é aprovado sozinho).
+  const pedido = pedidoAberto(execucao);
   const passouDoPrazo = agora - new Date(execucao.inicio).getTime() >= CANCELAR_ATE_MS;
   const podeCancelar = !passouDoPrazo && execucao.pausas.length === 0;
   const retomarInvalido = erro?.codigo === "continuar_invalido";
@@ -99,6 +105,7 @@ export function EmAndamento({ osId, numeroOrdem, titulo, local, situacao }: EmAn
   return (
     <View style={estilos.tela}>
       <ResumoDoTempo inicio={execucao.inicio} pausas={execucao.pausas} numeroPessoas={execucao.numero_pessoas} />
+      {pedido ? <PedidoParaResponder osId={osId} pedido={pedido} recebidoEm={atualizadoEm} /> : null}
 
       <View style={estilos.acoes}>
         {erro ? <Aviso tom="blq">{retomarInvalido ? "Faça uma APR nova para retomar. Suspenda esta execução e abra uma APR nova." : erro.mensagem}</Aviso> : null}
@@ -171,6 +178,7 @@ export function EmAndamento({ osId, numeroOrdem, titulo, local, situacao }: EmAn
         <Text style={estilos.texto}>{`${numeroOrdem ?? "—"} · ${titulo}`}</Text>
         <Text style={estilos.suave}>{`Local: ${local}`}</Text>
         <Text style={estilos.suave}>{`Participantes da APR: ${participantesAtivos(participantes).map((p) => p.nome).join(", ") || "—"}`}</Text>
+        <Text style={estilos.suave}>Os participantes também podem pausar, interromper e pedir para encerrar ou suspender: você é avisado e tem 2 minutos para responder um pedido.</Text>
       </Cartao>
 
       <Cartao>
@@ -186,7 +194,7 @@ export function EmAndamento({ osId, numeroOrdem, titulo, local, situacao }: EmAn
             </Text>
           </View>
         ))}
-        <Text style={estilos.suave}>Use Pausar para almoço, descanso ou uma espera: a pausa não entra no tempo líquido. Ao concluir a atividade, encerre: o tempo para na confirmação, e só o responsável assina o encerramento.</Text>
+        <Text style={estilos.suave}>Use Pausar para almoço, descanso ou uma espera: a pausa não entra no tempo líquido. Ao concluir a atividade, encerre: o tempo para na confirmação, e só quem encerrou assina o encerramento.</Text>
       </Cartao>
       <AvisoDeLocalizacao />
 

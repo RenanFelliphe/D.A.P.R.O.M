@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { definirSituacao } from "@shared/api/execucao-situacao";
 import type { RespostaComPontos } from "@shared/api/gamificacao";
 import { mensagemDoErro } from "@/api/erros";
+import { Acompanhando } from "@/execucao/Acompanhando";
 import { EmAndamento } from "@/execucao/EmAndamento";
 import { ExecucaoEncerrada } from "@/execucao/ExecucaoEncerrada";
 import { FormularioEncerrar } from "@/execucao/FormularioEncerrar";
@@ -64,14 +65,14 @@ export default function Execucao() {
   }
 
   const { os } = detalhe.data;
-  const emPausa = situacao.tipo === "em_andamento" && situacao.execucao.pausas.some((p) => !p.fim);
+  const emPausa = (situacao.tipo === "em_andamento" || situacao.tipo === "acompanhando") && situacao.execucao.pausas.some((p) => !p.fim);
   const voltarParaALista = <Botao titulo="Voltar à lista" variante="secundario" aoPressionar={() => router.dismissTo("/lista")} />;
   const voltarParaAOs = <Botao titulo="Voltar à OS" variante="secundario" aoPressionar={() => router.replace(rotas.os(id))} />;
 
   let corpo: React.ReactNode;
   if (assinada) corpo = <ExecucaoEncerrada osId={id} status="aguardando_supervisor" pontos={pontos} />;
   else if (situacao.tipo === "esquecida") corpo = <SuspenderEsquecida execucao={situacao.execucao} />;
-  else if (situacao.tipo === "em_andamento") corpo = <EmAndamento osId={id} numeroOrdem={os.numero_ordem} titulo={os.titulo} local={os.local_instalacao.codigo} situacao={situacao} />;
+  else if (situacao.tipo === "em_andamento") corpo = <EmAndamento osId={id} numeroOrdem={os.numero_ordem} titulo={os.titulo} local={os.local_instalacao.codigo} situacao={situacao} atualizadoEm={detalhe.dataUpdatedAt} />;
   else if (situacao.tipo === "encerrando") {
     corpo = (
       <FormularioEncerrar
@@ -95,12 +96,14 @@ export default function Execucao() {
         <Botao titulo={situacao.euFalto ? "Assinar a APR" : "Acompanhar as assinaturas"} aoPressionar={() => router.replace(rotas.aprovada(id))} />
       </>
     );
+  } else if (situacao.tipo === "acompanhando") {
+    corpo = <Acompanhando usuarioId={eu.usuario.id} osId={id} numeroOrdem={os.numero_ordem} titulo={os.titulo} local={os.local_instalacao.codigo} situacao={situacao} atualizadoEm={detalhe.dataUpdatedAt} />;
   } else if (situacao.tipo === "outra_pessoa") {
     corpo = (
       <>
         <Aviso tom="al" icone="people-outline">
           {situacao.encerrando
-            ? `${situacao.executor} encerrou esta OS e está preenchendo e assinando o encerramento. Só o responsável pela execução assina.`
+            ? `${situacao.executor} encerrou esta OS e está preenchendo e assinando o encerramento. Só quem encerrou a OS assina o encerramento.`
             : `Esta OS está em execução por ${situacao.executor}. Só quem iniciou a execução pode pausar, suspender ou encerrar.`}
         </Aviso>
         {voltarParaALista}
@@ -144,6 +147,7 @@ export default function Execucao() {
       <View style={estilos.cabecalho}>
         <Text style={estilos.ordem}>{`OS ${os.numero_ordem ?? "—"}`}</Text>
         {situacao.tipo === "em_andamento" && !assinada ? <Selo tom={emPausa ? "al" : "exe"}>{emPausa ? "Em pausa" : "Em execução"}</Selo> : null}
+        {situacao.tipo === "acompanhando" && !assinada ? <Selo tom={emPausa ? "al" : "exe"}>{emPausa ? "Em pausa" : "Em execução"}</Selo> : null}
         {!assinada && situacao.tipo === "encerrando" ? <Selo tom="al">Encerrando</Selo> : null}
         {assinada ? <Selo tom="al">Aguardando o supervisor</Selo> : null}
         {!assinada && situacao.tipo === "terminada" ? <Selo tom={situacao.status === "encerrada" ? "enc" : "al"}>{situacao.status === "encerrada" ? "Encerrada" : "Aguardando o supervisor"}</Selo> : null}

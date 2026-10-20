@@ -14,7 +14,8 @@
     "conferir:campo": "tsx scripts/conferir-campo.ts",
     "conferir:perfil": "tsx scripts/conferir-perfil.ts",
     "conferir:offline": "tsx scripts/conferir-offline.ts",
-    "conferir:sem-sinal": "tsx scripts/conferir-sem-sinal.ts"
+    "conferir:sem-sinal": "tsx scripts/conferir-sem-sinal.ts",
+    "conferir:conferencia": "tsx scripts/conferir-conferencia.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

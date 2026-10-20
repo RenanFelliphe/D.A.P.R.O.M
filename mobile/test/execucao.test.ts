@@ -3,10 +3,12 @@ import { describe, it } from "node:test";
 import { dadosDaInspecao, faltaObservacao } from "@shared/api/checklist-inspecao";
 import { comoEvidencia, pdfComoEvidencia } from "@shared/api/evidencias";
 import { complementoDoMotivo, faltaNoMotivo, MOTIVOS_DA_PAUSA, MOTIVOS_DA_SUSPENSAO } from "@shared/api/execucao-motivos";
-import { definirSituacao } from "@shared/api/execucao-situacao";
+import { contagemDoPedido, pedeAprovacaoDoResponsavel, pedidoAberto, quemEncerrou, restanteDoPedido, type PedidoDaApi } from "@shared/api/execucao-pedidos";
+import { definirSituacao, participaDaExecucao } from "@shared/api/execucao-situacao";
 import { calcularTempo, cronometro, horasMinutos, type AprDaApi, type ExecucaoAberta, type ExecucaoDaApi, type ParticipanteDaApr } from "@shared/api/execucao-tempo";
 import { arredondarPosicao, comPosicao } from "@shared/api/localizacao";
 import { comLimiteDeTempo } from "../src/campo/tempo-limite";
+import { intervaloDaLeitura } from "../src/execucao/intervalo-da-leitura";
 import { dataEHoraComoInstante, faltaNoFim, paraCampoDeData, paraCampoDeHora } from "../src/execucao/data-e-hora";
 import { rotaDaAcao, rotas } from "../src/os/rotas";
 
@@ -96,6 +98,36 @@ describe("situação da execução (a mesma regra da web)", () => {
     if (deOutro.tipo === "outra_pessoa") assert.equal(deOutro.encerrando, true);
   });
 
+  it("participante da APR acompanha a execução de outra pessoa, com as pausas e os participantes; quem não participa só vê o aviso", () => {
+    const deColega = execucao({ executor: { id: COLEGA, nome: "Colega", matricula: "2" }, pausas: [{ id: "p1", inicio: "2026-10-19T13:30:00Z", fim: null, motivo: "almoco" }] });
+    const s = situacao({ osStatus: "em_execucao", execucoes: [deColega], aprs: [apr("apr-1")] });
+    assert.equal(s.tipo, "acompanhando");
+    if (s.tipo === "acompanhando") {
+      assert.equal(s.execucao.id, "ex-1");
+      assert.equal(s.execucao.pausas.length, 1);
+      assert.deepEqual(s.participantes.map((p) => p.usuario_id), [EU, COLEGA]);
+    }
+    const forasteiro = situacao({ osStatus: "em_execucao", usuarioId: "u-forasteiro", execucoes: [deColega], aprs: [apr("apr-1")] });
+    assert.equal(forasteiro.tipo, "outra_pessoa");
+    const recusou = situacao({ osStatus: "em_execucao", execucoes: [deColega], aprs: [apr("apr-1", { participantes: [participante(EU, { recusou_em: hoje }), participante(COLEGA)] })] });
+    assert.equal(recusou.tipo, "outra_pessoa", "quem recusou a APR saiu dela e não acompanha");
+    assert.equal(situacao({ osStatus: "em_execucao", execucoes: [deColega], aprs: [] }).tipo, "outra_pessoa", "sem a APR na cópia, não dá para saber se participa");
+  });
+
+  it("a execução que eu iniciei continua em andamento, e o encerramento de outra pessoa continua sendo só espera", () => {
+    assert.equal(situacao({ osStatus: "em_execucao", execucoes: [execucao()], aprs: [apr("apr-1")] }).tipo, "em_andamento");
+    const parada = execucao({ executor: { id: COLEGA, nome: "Colega", matricula: "2" }, resultado: "encerrada", fim: "2026-10-19T14:00:00Z", encerramento_assinado_em: null });
+    assert.equal(situacao({ osStatus: "encerrando", execucoes: [parada], aprs: [apr("apr-1")] }).tipo, "outra_pessoa");
+  });
+
+  it("participaDaExecucao: só quem está na APR e não recusou", () => {
+    const aprs = [apr("apr-1", { participantes: [participante(EU), participante(COLEGA, { recusou_em: hoje })] })];
+    assert.equal(participaDaExecucao({ apr_id: "apr-1" }, aprs, EU), true);
+    assert.equal(participaDaExecucao({ apr_id: "apr-1" }, aprs, COLEGA), false);
+    assert.equal(participaDaExecucao({ apr_id: "apr-1" }, aprs, "u-forasteiro"), false);
+    assert.equal(participaDaExecucao({ apr_id: "apr-2" }, aprs, EU), false);
+  });
+
   it("execução de outra pessoa, OS terminada, cancelada, devolvida e reservada", () => {
     assert.equal(situacao({ osStatus: "em_execucao", execucoes: [execucao({ executor: { id: COLEGA, nome: "Colega", matricula: "2" } })] }).tipo, "outra_pessoa");
     assert.deepEqual(situacao({ osStatus: "aguardando_supervisor" }), { tipo: "terminada", status: "aguardando_supervisor" });
@@ -104,6 +136,58 @@ describe("situação da execução (a mesma regra da web)", () => {
     assert.equal(situacao({ osStatus: "devolvida" }).tipo, "devolvida");
     assert.deepEqual(situacao({ reservadaPara: { id: COLEGA, nome: "Colega" } }), { tipo: "reservada", responsavel: "Colega" });
     assert.equal(situacao({ reservadaPara: { id: EU, nome: "Eu" } }).tipo, "sem_apr", "quem tem a OS reservada para si segue o fluxo normal");
+  });
+});
+
+describe("execução compartilhada: quem encerrou assina, e o pedido ao responsável", () => {
+  const doColega = { id: COLEGA, nome: "Colega" };
+  const parada = (extra: Partial<ExecucaoDaApi> = {}) => execucao({ resultado: "encerrada", fim: "2026-10-19T14:00:00Z", encerramento_assinado_em: null, ...extra });
+
+  it("o encerramento é de quem encerrou: o participante que encerrou preenche e assina; o responsável só espera", () => {
+    const porColega = parada({ finalizada_por: doColega });
+    assert.deepEqual(quemEncerrou(porColega), doColega);
+    assert.equal(situacao({ osStatus: "encerrando", usuarioId: COLEGA, execucoes: [porColega], aprs: [apr("apr-1")] }).tipo, "encerrando");
+    const doResponsavel = situacao({ osStatus: "encerrando", usuarioId: EU, execucoes: [porColega], aprs: [apr("apr-1")] });
+    assert.equal(doResponsavel.tipo, "outra_pessoa");
+    if (doResponsavel.tipo === "outra_pessoa") assert.deepEqual([doResponsavel.executor, doResponsavel.encerrando], ["Colega", true]);
+    // Sem `finalizada_por` (execução anterior à funcionalidade), vale o responsável.
+    assert.deepEqual(quemEncerrou(parada()), { id: EU, nome: "Eu", matricula: "1" });
+    assert.equal(situacao({ osStatus: "encerrando", execucoes: [parada()], aprs: [apr("apr-1")] }).tipo, "encerrando");
+  });
+
+  it("o que o participante faz na hora e o que pede: só encerrar e suspender por motivo comum pedem a aprovação", () => {
+    assert.equal(pedeAprovacaoDoResponsavel("encerrar"), true);
+    assert.equal(pedeAprovacaoDoResponsavel("suspender", "fim_expediente"), true);
+    assert.equal(pedeAprovacaoDoResponsavel("suspender", "lesao"), false, "a saúde não espera");
+    assert.equal(pedeAprovacaoDoResponsavel("suspender", "enfermidade"), false);
+    for (const acao of ["pausar", "continuar", "interromper", "cancelar"] as const) assert.equal(pedeAprovacaoDoResponsavel(acao, "almoco"), false);
+  });
+
+  it("a contagem dos 2 minutos usa o que a api mediu, menos o tempo que passou no aparelho (o relógio dele não conta)", () => {
+    const pedido: PedidoDaApi = { id: "p1", tipo: "encerrar", estado: "aberto", solicitante: doColega, instante: hoje, motivo: null, complemento: null, criado_em: hoje, expira_em: hoje, decidido_em: null, decidido_por: null, motivo_recusa: null, apoios: [], restante_ms: 120_000 };
+    assert.equal(restanteDoPedido(pedido, 1_000_000, 1_000_000), 120_000);
+    assert.equal(restanteDoPedido(pedido, 1_000_000, 1_042_000), 78_000);
+    assert.equal(restanteDoPedido(pedido, 1_000_000, 1_500_000), 0, "nunca negativa");
+    assert.equal(restanteDoPedido(pedido, 1_000_000, 900_000), 120_000, "relógio que voltou não aumenta o prazo");
+    assert.equal(contagemDoPedido(120_000), "2:00");
+    assert.equal(contagemDoPedido(102_400), "1:43");
+    assert.equal(contagemDoPedido(0), "0:00");
+    assert.equal(pedidoAberto({ pedidos: [{ ...pedido, estado: "recusado" }, pedido] })?.id, "p1");
+    assert.equal(pedidoAberto({ pedidos: [{ ...pedido, estado: "aprovado_por_prazo" }] }), null);
+    assert.equal(pedidoAberto({}), null);
+  });
+
+  it("a execução é relida mais depressa quando há pedido aberto, a cada 5 s para o responsável e a cada 10 s para quem acompanha", () => {
+    const pedido = { id: "p1", estado: "aberto" } as PedidoDaApi;
+    const minha = execucao();
+    const deColega = execucao({ executor: { id: COLEGA, nome: "Colega", matricula: "2" } });
+    assert.equal(intervaloDaLeitura([minha], EU), 5_000);
+    assert.equal(intervaloDaLeitura([deColega], EU), 10_000);
+    assert.equal(intervaloDaLeitura([{ ...deColega, pedidos: [pedido] }], EU), 3_000);
+    assert.equal(intervaloDaLeitura([{ ...minha, pedidos: [pedido] }], EU), 3_000);
+    assert.equal(intervaloDaLeitura([parada()], EU), false, "a execução terminada e assinada pelo próprio responsável não pede releitura");
+    assert.equal(intervaloDaLeitura([parada({ executor: { id: COLEGA, nome: "Colega", matricula: "2" } })], EU), 10_000, "o encerramento de outra pessoa em preenchimento ainda muda");
+    assert.equal(intervaloDaLeitura([], EU), false);
   });
 });
 

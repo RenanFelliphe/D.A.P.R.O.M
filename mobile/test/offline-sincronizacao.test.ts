@@ -28,6 +28,8 @@ function servidorFalso() {
     erroDoArquivo: new Map<string, Error>(),
     revogar: false,
     pulls: 0,
+    /** O que o aparelho disse que ainda esperava na fila, por OS, em cada `POST /sync/pull`. */
+    filas: [] as { os_id: string; quantos: number }[][],
     snapshot: snapshotDe([osDe(1), osDe(2)]),
     jaVistos: new Set<string>(),
   };
@@ -54,8 +56,9 @@ function servidorFalso() {
       if (erro) throw erro;
       estado.arquivos.push(a.id);
     },
-    async baixarSnapshot() {
+    async baixarSnapshot(fila: { os_id: string; quantos: number }[] = []) {
       estado.pulls++;
+      estado.filas.push(fila);
       return estado.snapshot;
     },
   };
@@ -72,7 +75,7 @@ async function montar(opcoes: { conexao?: Conexao; usuarioId?: string | null } =
     usuarioId: () => (opcoes.usuarioId === undefined ? EU : opcoes.usuarioId),
     enviarEvento: (e) => servidor.enviarEvento(e as { id: string }),
     subirArquivo: (a) => servidor.subirArquivo(a),
-    baixarSnapshot: () => servidor.baixarSnapshot(),
+    baixarSnapshot: (fila) => servidor.baixarSnapshot(fila),
     apagarArquivoLocal: (uri) => void mudancas.apagados.push(uri),
     conexao: () => conexao,
     agora: () => relogio,
@@ -266,6 +269,21 @@ describe("o sincronizador: a cópia da equipe", () => {
     servidor.estado.adiar.clear();
     await sincronizador.sincronizar();
     assert.deepEqual((await lerTodasAsOs(banco)).map((o) => o.id), [OS_B]);
+  });
+
+  it("ao baixar a cópia, diz à `api` quantos eventos ainda esperam na fila, por OS (a conferência da execução só anda com a fila vazia)", async () => {
+    const { banco, servidor, sincronizador } = await montar();
+    await sincronizador.sincronizar();
+    assert.deepEqual(servidor.estado.filas.at(-1), [], "fila vazia");
+
+    await enfileirar(banco, "a1", OS_A, 10, "pausa_iniciada");
+    await enfileirar(banco, "a2", OS_A, 11, "pausa_encerrada");
+    await enfileirar(banco, "b1", OS_B, 12, "pausa_iniciada");
+    servidor.estado.adiar.set("a1", { codigo: "pausa_ausente", mensagem: "A pausa ainda não foi recebida" });
+    servidor.estado.adiar.set("b1", { codigo: "execucao_ausente", mensagem: "A execução ainda não foi recebida" });
+    await sincronizador.sincronizar();
+    const dita = servidor.estado.filas.at(-1)!.sort((a, b) => a.os_id.localeCompare(b.os_id));
+    assert.deepEqual(dita, [{ os_id: OS_A, quantos: 2 }, { os_id: OS_B, quantos: 1 }].sort((a, b) => a.os_id.localeCompare(b.os_id)), "o que a api adiou (e o que veio depois dele) continua na fila");
   });
 
   it("sem sinal não baixa a cópia, e a cópia antiga continua valendo", async () => {

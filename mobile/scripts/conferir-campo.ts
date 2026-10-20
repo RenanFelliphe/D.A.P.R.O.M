@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 import { adicionarDocumento, adicionarFoto, montarAvaliacao, montarPayload, novoRascunho, observar, perguntasDe, responder, type Avaliacao, type EscolhaDoModelo, type ModeloCompleto, type RascunhoApr, type Resposta } from "@shared/api/apr";
 import { dadosDaInspecao } from "@shared/api/checklist-inspecao";
 import { comoEvidencia, pdfComoEvidencia } from "@shared/api/evidencias";
+import { PRAZO_DO_PEDIDO_MS, pedidoAberto, type PedidoParaResponder } from "@shared/api/execucao-pedidos";
 import { definirSituacao } from "@shared/api/execucao-situacao";
 import { calcularTempo, type ExecucaoAberta } from "@shared/api/execucao-tempo";
 import { ErroDeEvento } from "@shared/api/eventos";
@@ -25,6 +26,7 @@ import { criarEnvio } from "../src/api/eventos";
 import { equipeDaApr } from "../src/apr/equipe";
 import type { ColegaDaEquipe } from "../src/apr/consultas";
 import type { DetalheParaExecutar } from "../src/execucao/consultas";
+import { intervaloDaLeitura } from "../src/execucao/intervalo-da-leitura";
 
 const API_URL = process.env.API_URL ?? "http://localhost:3399";
 const SENHA = "synqos123";
@@ -176,8 +178,10 @@ async function main() {
   assert.equal(atual.situacao.tipo, "em_andamento");
   assert.equal(atual.detalhe.execucoes.find((e) => e.id === execucaoId)?.localizacao_inicio?.latitude, posicao.latitude);
   ok("execução iniciada com a localização: a OS passa a 'em_execucao' e a situação é 'em_andamento'");
-  assert.equal((await situacaoDe(tais.conta, tais.eu.usuario.id, osA!.id)).situacao.tipo, "outra_pessoa");
-  ok("a colega vê a execução de outra pessoa (só quem iniciou age)");
+  const acompanhando = await situacaoDe(tais.conta, tais.eu.usuario.id, osA!.id);
+  assert.equal(acompanhando.situacao.tipo, "acompanhando");
+  assert.equal(acompanhando.situacao.tipo === "acompanhando" && acompanhando.situacao.execucao.executor.id, meuId);
+  ok("a colega, participante da APR, acompanha a execução de quem a iniciou (situação 'acompanhando')");
 
   const pausaId = novoUuid();
   await assert.rejects(tiago.conta.enviarEvento({ tipo: "pausa_iniciada", os_id: osA!.id, payload: { id: novoUuid(), execucao_id: execucaoId, inicio: new Date().toISOString(), motivo: "aguardando" } }), (e: unknown) => e instanceof ErroDeEvento);
@@ -187,6 +191,9 @@ async function main() {
   assert.ok(emPausa?.pausas.some((p) => p.id === pausaId && !p.fim && p.motivo === "aguardando" && p.complemento === "peça do almoxarifado"));
   assert.equal(calcularTempo(emPausa!.inicio, emPausa!.pausas, Date.now() + 3600_000).emPausa, true);
   ok("pausa com motivo: 'aguardando' sem o complemento é recusado; com ele, a pausa fica aberta com motivo e complemento");
+  const vistaPelaColega = await situacaoDe(tais.conta, tais.eu.usuario.id, osA!.id);
+  assert.ok(vistaPelaColega.situacao.tipo === "acompanhando" && vistaPelaColega.situacao.execucao.pausas.some((p) => p.id === pausaId && !p.fim && p.motivo === "aguardando"));
+  ok("a colega que acompanha vê a pausa aberta, com o motivo");
 
   await tiago.conta.enviarEvento({ tipo: "pausa_encerrada", os_id: osA!.id, payload: { pausa_id: pausaId, fim: new Date().toISOString() } });
   atual = await situacaoDe(tiago.conta, meuId, osA!.id);
@@ -241,6 +248,57 @@ async function main() {
   });
   assert.equal(interrompida.os.find((o) => o.id === osB!.id)?.status, "pendente");
   ok("interromper por risco: sem foto é recusado; com a foto, a OS fica pendente e o supervisor é avisado");
+
+  // =============================================== OS B de novo: execução compartilhada (a colega age, o responsável responde). A interrupção a deixou pendente; uma APR nova a libera.
+  const aprD = await aprovarApr(osB!.id);
+  await assinarComTodos(osB!.id, aprD);
+  const execD = novoUuid();
+  const taisId = tais.eu.usuario.id;
+  await tiago.conta.enviarEvento({ tipo: "execucao_iniciada", os_id: osB!.id, payload: { id: execD, apr_id: aprD, numero_pessoas: 2, inicio: new Date().toISOString() } });
+
+  const pausaD = novoUuid();
+  await tais.conta.enviarEvento({ tipo: "pausa_iniciada", os_id: osB!.id, payload: { id: pausaD, execucao_id: execD, inicio: new Date().toISOString(), motivo: "descanso" } });
+  const pausadaPorTais = await situacaoDe(tiago.conta, meuId, osB!.id);
+  assert.ok(pausadaPorTais.situacao.tipo === "em_andamento" && pausadaPorTais.situacao.execucao.pausas.some((p) => p.id === pausaD && !p.fim && p.iniciada_por?.id === taisId));
+  await tais.conta.enviarEvento({ tipo: "pausa_encerrada", os_id: osB!.id, payload: { pausa_id: pausaD, fim: new Date().toISOString() } });
+  ok("a colega pausa e retoma a execução do responsável na hora; a pausa guarda quem a fez");
+
+  await assert.rejects(
+    tais.conta.enviarEvento({ tipo: "execucao_encerrada", os_id: osB!.id, payload: { execucao_id: execD, fim: new Date().toISOString() } }),
+    (e: unknown) => e instanceof ErroDeEvento && e.codigo === "pedido_necessario",
+  );
+  const pedirD = async (tipo: "encerrar" | "suspender" = "encerrar") => {
+    const id = novoUuid();
+    await tais.conta.enviarEvento({ tipo: "pedido_aberto", os_id: osB!.id, payload: { id, execucao_id: execD, tipo, instante: new Date().toISOString(), ...(tipo === "suspender" ? { motivo: "clima" } : {}) } });
+    return id;
+  };
+  const primeiro = await pedirD();
+  const faixa = await tiago.conta.cliente.chamar<{ pedidos: PedidoParaResponder[] }>("/me/pedidos-abertos");
+  assert.deepEqual(faixa.pedidos.map((p) => [p.id, p.solicitante.nome, p.tipo]), [[primeiro, tais.eu.usuario.nome, "encerrar"]]);
+  assert.ok(faixa.pedidos[0]!.restante_ms > 0 && faixa.pedidos[0]!.restante_ms <= PRAZO_DO_PEDIDO_MS);
+  const vistaPelaColegaD = await situacaoDe(tais.conta, taisId, osB!.id);
+  assert.ok(vistaPelaColegaD.situacao.tipo === "acompanhando" && pedidoAberto(vistaPelaColegaD.situacao.execucao)?.id === primeiro);
+  assert.equal(intervaloDaLeitura(vistaPelaColegaD.detalhe.execucoes, taisId), 3_000, "com um pedido aberto, a tela relê mais depressa");
+  ok("a colega pede para encerrar: o responsável a vê na faixa (com o tempo que falta) e a colega vê o pedido aberto na execução");
+
+  await tiago.conta.enviarEvento({ tipo: "pedido_decidido", os_id: osB!.id, payload: { pedido_id: primeiro, decisao: "recusar", motivo: "Falta fechar a válvula" } });
+  const depoisDaRecusa = await situacaoDe(tais.conta, taisId, osB!.id);
+  assert.ok(depoisDaRecusa.situacao.tipo === "acompanhando" && pedidoAberto(depoisDaRecusa.situacao.execucao) === null);
+  assert.equal(depoisDaRecusa.detalhe.execucoes.find((e) => e.id === execD)?.pedidos?.[0]?.estado, "recusado");
+  ok("o responsável recusa com um motivo: a execução continua e o pedido fica registrado como recusado");
+
+  const segundo = await pedirD();
+  await tiago.conta.enviarEvento({ tipo: "pedido_decidido", os_id: osB!.id, payload: { pedido_id: segundo, decisao: "aprovar" } });
+  const encerradaPelaColega = await situacaoDe(tais.conta, taisId, osB!.id);
+  assert.equal(encerradaPelaColega.situacao.tipo, "encerrando", "quem encerrou preenche e assina o encerramento");
+  assert.equal((await situacaoDe(tiago.conta, meuId, osB!.id)).situacao.tipo, "outra_pessoa", "o responsável, que não encerrou, só espera");
+  await assert.rejects(
+    tiago.conta.enviarEvento({ tipo: "encerramento_assinado", os_id: osB!.id, payload: { execucao_id: execD } }),
+    (e: unknown) => e instanceof ErroDeEvento && e.codigo === "encerramento_de_outro",
+  );
+  const assinadoD = await tais.conta.enviarEvento({ tipo: "encerramento_assinado", os_id: osB!.id, payload: { execucao_id: execD, descricao_atividade: "Encerrada a pedido da equipe" } });
+  assert.equal(assinadoD.os.find((o) => o.id === osB!.id)?.status, "aguardando_supervisor");
+  ok("o responsável aprova: a colega encerra no instante do pedido, assina o encerramento e a OS segue para o supervisor");
 
   // =============================================== OS C: a APR bloqueada e a evidência dos reprovados
   let c = responderTudo(comecar(osC!.id), "nao");

@@ -43,7 +43,7 @@ export default function DetalheDaOs() {
     );
   }
 
-  const { os, servico, aprs, execucoes, checklist_inspecao } = detalhe.data;
+  const { os, servico, aprs, execucoes, checklist_inspecao, conferencias } = detalhe.data;
   const usuarioId = eu?.usuario.id ?? "";
   const atualizar = () => {
     void detalhe.refetch();
@@ -58,7 +58,7 @@ export default function DetalheDaOs() {
       <CabecalhoDaOs os={os} />
       <FaixasDaOs os={os} usuarioId={usuarioId} />
       <FaixaDeAssinaturas osId={os.id} />
-      <AcoesDaOs os={os} usuarioId={usuarioId} aprs={aprs} execucoes={execucoes} ausencia={eu?.ausencia?.rotulo ?? null} />
+      <AcoesDaOs os={os} usuarioId={usuarioId} aprs={aprs} execucoes={execucoes} conferencias={conferencias} ausencia={eu?.ausencia?.rotulo ?? null} />
       <AprExigidaCard aprs={aprs} status={os.status} />
       <LocalCard local={os.local_instalacao} />
       <DadosSapCard os={os} />

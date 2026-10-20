@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { ConferenciaDaOs } from "@shared/api/conferencia-execucao";
 import type { AprDaOs, ExecucaoDaOs, OsDetalhada, ParticipanteDaApr } from "@shared/api/os-app";
 import type { OsStatus } from "@shared/api/tipos";
 import { decidirAcao } from "../src/os/detalhe/acao";
@@ -72,7 +73,7 @@ const execucao = (executor: string, extra: Partial<ExecucaoDaOs> = {}): Execucao
   ...extra,
 });
 
-const decidir = (o: OsDetalhada, aprs: AprDaOs[] = [], execucoes: ExecucaoDaOs[] = [], ausencia: string | null = null) => decidirAcao({ os: o, usuarioId: EU, aprs, execucoes, ausencia });
+const decidir = (o: OsDetalhada, aprs: AprDaOs[] = [], execucoes: ExecucaoDaOs[] = [], ausencia: string | null = null, conferencias?: ConferenciaDaOs[]) => decidirAcao({ os: o, usuarioId: EU, aprs, execucoes, ausencia, conferencias });
 const botoes = (d: ReturnType<typeof decidir>) => d.botoes.map((b) => `${b.acao}:${b.titulo}:${b.variante}`);
 
 describe("botão de ação do detalhe da OS, por situação", () => {
@@ -136,6 +137,14 @@ describe("botão de ação do detalhe da OS, por situação", () => {
     assert.match(outro.avisos[0]!.texto, /por Colega Silva/);
   });
 
+  it("em execução por outra pessoa, mas eu participo da APR dela: Acompanhar a execução", () => {
+    const aprDaExecucao = apr([participante(EU, { assinada_em: agora }), participante(COLEGA, { assinada_em: agora })]);
+    const d = decidir(os("em_execucao"), [aprDaExecucao], [execucao(COLEGA)]);
+    assert.deepEqual(botoes(d), ["acompanhar-execucao:Acompanhar a execução:primario"]);
+    const recusei = decidir(os("em_execucao"), [apr([participante(EU, { recusou_em: agora }), participante(COLEGA, { assinada_em: agora })])], [execucao(COLEGA)]);
+    assert.deepEqual(recusei.botoes, [], "quem recusou a APR não acompanha");
+  });
+
   it("encerrando: quem executou preenche e assina; os demais só veem o aviso", () => {
     const meu = decidir(os("encerrando"), [], [execucao(EU, { resultado: "encerrada", fim: agora, encerramento_assinado_em: null })]);
     assert.deepEqual(botoes(meu), ["preencher-encerramento:Preencher e assinar o encerramento:primario"]);
@@ -172,5 +181,57 @@ describe("botão de ação do detalhe da OS, por situação", () => {
     assert.deepEqual(aberta.botoes, []);
     assert.match(aberta.avisos[0]!.titulo ?? "", /Ausente até 25\/10\/2026/);
     assert.deepEqual(botoes(decidir(os("encerrada", { pdf_pronto: true }), [], [], "Ausente até 25/10/2026")), ["abrir-pdf:Abrir o PDF da OS:primario"]);
+  });
+
+  describe("a conferência da execução na OS", () => {
+    const conferencia = (extra: Partial<ConferenciaDaOs> = {}): ConferenciaDaOs => ({ id: "c-1", execucao_id: "ex-1", estado: "aguardando_responsavel", tipo: "com_divergencia", ...extra });
+
+    it("OS sem conferência: nada muda", () => {
+      assert.deepEqual(botoes(decidir(os("aguardando_supervisor"), [], [], null, [])), []);
+      assert.equal(decidir(os("aguardando_supervisor"), [], [], null, undefined).avisos.length, 1);
+    });
+
+    it("conferência em aberto numa OS sem outra ação: o botão principal abre a conferência, com o estado no aviso", () => {
+      const d = decidir(os("aguardando_supervisor"), [], [], null, [conferencia()]);
+      assert.deepEqual(botoes(d), ["abrir-conferencia:Abrir a conferência da execução:primario"]);
+      assert.equal(d.botoes[0]!.conferenciaId, "c-1");
+      const aviso = d.avisos.at(-1)!;
+      assert.equal(aviso.tom, "al");
+      assert.match(aviso.titulo ?? "", /esperando a escolha do responsável/);
+      assert.match(aviso.texto, /supervisor assina a OS por último/);
+    });
+
+    it("com outra ação na OS, a conferência vira o botão secundário e não tira o botão de campo", () => {
+      const d = decidir(os("liberada"), [], [], null, [conferencia({ estado: "aguardando_sincronizacao", tipo: null })]);
+      assert.deepEqual(botoes(d), ["iniciar-apr:Nova APR:primario", "abrir-conferencia:Abrir a conferência da execução:secundario"]);
+      assert.match(d.avisos.at(-1)!.titulo ?? "", /esperando todos sincronizarem/);
+    });
+
+    it("conferência concluída ou fechada: só Ver, em tom de resultado", () => {
+      const concluida = decidir(os("encerrada", { pdf_pronto: true }), [], [], null, [conferencia({ estado: "concluida" })]);
+      assert.deepEqual(botoes(concluida), ["abrir-pdf:Abrir o PDF da OS:primario", "abrir-conferencia:Ver a conferência da execução:secundario"]);
+      assert.equal(concluida.avisos.at(-1)!.tom, "ok");
+      const fechada = decidir(os("encerrada", { pdf_pronto: true }), [], [], null, [conferencia({ estado: "fechada_sem_todos" })]);
+      assert.equal(fechada.avisos.at(-1)!.tom, "info");
+    });
+
+    it("assinaturas do resumo: o aviso diz que falta a ciência; com divergência, a assinatura", () => {
+      assert.match(decidir(os("aguardando_supervisor"), [], [], null, [conferencia({ estado: "aguardando_assinaturas", tipo: "resumo" })]).avisos.at(-1)!.texto, /ciência/);
+      assert.match(decidir(os("aguardando_supervisor"), [], [], null, [conferencia({ estado: "aguardando_assinaturas" })]).avisos.at(-1)!.texto, /assinatura/);
+    });
+
+    it("duas conferências (uma por execução): o botão abre a que ainda anda, e as duas aparecem nos avisos", () => {
+      const velha = conferencia({ id: "c-velha", estado: "aguardando_assinaturas" });
+      const concluida = conferencia({ id: "c-nova", estado: "concluida" });
+      const d = decidir(os("aguardando_supervisor"), [], [], null, [velha, concluida]);
+      assert.equal(d.botoes.find((b) => b.acao === "abrir-conferencia")!.conferenciaId, "c-velha");
+      assert.equal(d.avisos.length, 3);
+    });
+
+    it("o ausente também vê a conferência (só consulta), sem perder o aviso da ausência", () => {
+      const d = decidir(os("liberada"), [], [], "Ausente até 25/10/2026", [conferencia()]);
+      assert.match(d.avisos[0]!.titulo ?? "", /Ausente até/);
+      assert.deepEqual(botoes(d), ["abrir-conferencia:Abrir a conferência da execução:primario"]);
+    });
   });
 });

@@ -67,6 +67,20 @@ describe("a projeção das ações pendentes sobre a cópia", () => {
     assert.ok(p.aprs[0]!.participantes.every((x) => !x.assinada_em));
   });
 
+  it("o participante que encerra ou suspende na fila (pedido_aberto sem sinal) vale na hora no aparelho, e quem encerrou é ele", () => {
+    const base = { os: { ...O, status: "em_execucao" as const }, aprs: [aprDe(O.id, APR)], execucoes: [execucaoDe(O.id, EXEC, APR, { executor_id: COLEGA })] };
+    const encerra = ev("pedido_aberto", O.id, { id: uuidDe(950), execucao_id: EXEC, tipo: "encerrar", instante: "2026-10-19T14:00:00.000Z", latitude: -20.4, longitude: -40.4 }, "2026-10-19T14:05:00.000Z");
+    const p = projetar(base, [encerra]);
+    assert.equal(p.execucoes[0]!.resultado, "encerrada");
+    assert.equal(p.execucoes[0]!.fim, "2026-10-19T14:00:00.000Z", "o fim é o instante do clique");
+    assert.equal(p.execucoes[0]!.finalizada_por, EU);
+    assert.equal(p.os.status, "encerrando");
+    const suspende = ev("pedido_aberto", O.id, { id: uuidDe(951), execucao_id: EXEC, tipo: "suspender", instante: "2026-10-19T14:00:00.000Z", motivo: "clima" }, "2026-10-19T14:05:00.000Z");
+    const s = projetar(base, [suspende]);
+    assert.deepEqual([s.execucoes[0]!.resultado, s.execucoes[0]!.suspensao_motivo, s.execucoes[0]!.finalizada_por], ["suspensa", "clima", EU]);
+    assert.equal(s.os.status, "pendente");
+  });
+
   it("segue o caminho inteiro: APR, execução, pausa, encerrar, assinar o encerramento, com o status de cada passo", () => {
     const eventos = [
       aprSemSinal(),

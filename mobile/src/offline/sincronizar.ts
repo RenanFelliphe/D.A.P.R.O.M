@@ -33,8 +33,11 @@ export interface Dependencias {
   enviarEvento(evento: { id: string; tipo: string; os_id: string | null; payload: Record<string, unknown>; ocorrido_em: string }): Promise<RespostaEventos & { acesso_revogado?: boolean }>;
   /** `PUT /arquivos/{id}`. */
   subirArquivo(arquivo: ArquivoDaFila): Promise<void>;
-  /** `POST /sync/pull`. */
-  baixarSnapshot(): Promise<SnapshotDaApi>;
+  /**
+   * `POST /sync/pull`. `fila` diz quantos eventos ainda esperam na fila, por OS: a `api` só dá a sincronização por feita, para a conferência
+   * da execução (execução compartilhada, etapa 3), quando a fila daquela OS está vazia.
+   */
+  baixarSnapshot(fila: { os_id: string; quantos: number }[]): Promise<SnapshotDaApi>;
   /** Apaga a cópia local de um arquivo já enviado. */
   apagarArquivoLocal(uri: string): void;
   conexao(): Conexao;
@@ -193,9 +196,15 @@ export function criarSincronizador(d: Dependencias) {
 
   async function baixarCopia(): Promise<void> {
     const usuarioId = exigirUsuario();
-    const snapshot = await d.baixarSnapshot();
+    const pendentes = await eventosPendentes(d.banco, usuarioId);
+    const porOs = new Map<string, number>();
+    for (const e of pendentes) {
+      const osId = osDoEvento(e);
+      if (osId) porOs.set(osId, (porOs.get(osId) ?? 0) + 1);
+    }
+    const snapshot = await d.baixarSnapshot([...porOs].map(([os_id, quantos]) => ({ os_id, quantos })));
     // O que ainda espera na fila não pode sumir da cópia: a OS fica como estava.
-    const manter = new Set((await eventosPendentes(d.banco, usuarioId)).map(osDoEvento).filter((id): id is string => id !== null));
+    const manter = new Set(porOs.keys());
     await substituirCopia(d.banco, usuarioId, snapshot, manter, d.agora());
   }
 

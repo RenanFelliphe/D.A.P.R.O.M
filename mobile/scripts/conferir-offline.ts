@@ -60,7 +60,7 @@ async function aparelho(email: string) {
     usuarioId: () => eu.usuario.id,
     enviarEvento: (e) => cliente.chamar<RespostaEventos & { acesso_revogado?: boolean }>("/eventos", { corpo: { eventos: [e] } }),
     subirArquivo: (a) => direto.enviarArquivo({ uri: a.uri, nome: a.nome, tipoMime: a.tipoMime }, a.tipo, a.id).then(() => undefined),
-    baixarSnapshot: () => cliente.chamar<SnapshotDaApi>("/sync/pull", { metodo: "POST", corpo: {} }),
+    baixarSnapshot: (fila) => cliente.chamar<SnapshotDaApi>("/sync/pull", { metodo: "POST", corpo: { fila } }),
     apagarArquivoLocal: () => undefined,
     conexao: () => conexao,
     agora: () => new Date(),

@@ -1,5 +1,9 @@
+import type { ConferenciaDaOs } from "@shared/api/conferencia-execucao";
+import { quemEncerrou } from "@shared/api/execucao-pedidos";
+import { participaDaExecucao } from "@shared/api/execucao-situacao";
 import { dataHora, hora } from "@shared/api/formatar";
 import { aprAprovadaDisponivel, aprDeHoje, execucaoAberta, execucaoEncerrando, reservadaParaOutro, situacaoDaApr, type AprDaOs, type ExecucaoDaOs, type OsDetalhada } from "@shared/api/os-app";
+import { avisoDaConferenciaNaOs, conferenciaEmAberto, conferenciaPadrao } from "../../conferencia/regras";
 import type { TomDoAviso } from "@/tema/tema";
 import type { AcaoDeCampo } from "../rotas";
 
@@ -12,6 +16,8 @@ export interface AvisoDeAcao {
 export interface BotaoDeAcao {
   /** `abrir-pdf` abre o PDF da OS encerrada; as demais levam à tela de campo (pendência 2). */
   acao: AcaoDeCampo | "abrir-pdf";
+  /** Só em `abrir-conferencia`: a conferência que a tela abre (a OS pode ter uma por execução). */
+  conferenciaId?: string;
   titulo: string;
   variante: "primario" | "secundario";
 }
@@ -30,6 +36,8 @@ interface Entrada {
   execucoes: ExecucaoDaOs[];
   /** O rótulo da ausência de quem olha ("Ausente até 03/11/2026"), ou `null`. O ausente só visualiza. */
   ausencia: string | null;
+  /** As conferências da execução registrada sem sinal em aparelhos diferentes (`GET /os/{id}`); a OS que nunca teve uma não traz nenhuma. */
+  conferencias?: ConferenciaDaOs[];
 }
 
 const nomes = (ps: { nome: string }[]) => ps.map((p) => p.nome).join(", ");
@@ -38,7 +46,24 @@ const nomes = (ps: { nome: string }[]) => ps.map((p) => p.nome).join(", ");
  * O que o técnico pode fazer agora na OS, conforme o estado dela, as APRs de hoje e as execuções. É a única regra do painel de
  * ação do app: o botão certo para cada situação, ou o motivo no lugar do botão para quem não pode agir.
  */
-export function decidirAcao({ os, usuarioId, aprs, execucoes, ausencia }: Entrada): DecisaoDeAcao {
+export function decidirAcao(entrada: Entrada): DecisaoDeAcao {
+  return comConferencia(decidirAcaoDoCampo(entrada), entrada.conferencias);
+}
+
+/**
+ * A conferência da execução vale em qualquer estado da OS (ela nasce quando a execução termina e acompanha a OS até o supervisor assinar):
+ * um aviso por conferência, com o estado, e um botão para a tela dela. O botão é o principal só quando a OS não tem outra ação.
+ */
+function comConferencia(base: DecisaoDeAcao, conferencias: ConferenciaDaOs[] | undefined): DecisaoDeAcao {
+  const alvo = conferenciaPadrao(conferencias);
+  if (!conferencias || !alvo) return base;
+  const avisos = conferencias.map<AvisoDeAcao>((c) => avisoDaConferenciaNaOs(c));
+  const variante = base.botoes.length === 0 && conferenciaEmAberto(alvo) ? "primario" : "secundario";
+  const botao: BotaoDeAcao = { acao: "abrir-conferencia", titulo: conferenciaEmAberto(alvo) ? "Abrir a conferência da execução" : "Ver a conferência da execução", variante, conferenciaId: alvo.id };
+  return { ...base, avisos: [...base.avisos, ...avisos], botoes: [...base.botoes, botao] };
+}
+
+function decidirAcaoDoCampo({ os, usuarioId, aprs, execucoes, ausencia }: Entrada): DecisaoDeAcao {
   const aberta = execucaoAberta(execucoes);
   const osEmAberto = !["encerrada", "cancelada", "devolvida", "encerrando", "aguardando_supervisor"].includes(os.status);
 
@@ -59,14 +84,15 @@ export function decidirAcao({ os, usuarioId, aprs, execucoes, ausencia }: Entrad
           texto: `${aberta ? ` por ${aberta.executor.nome}, desde ${dataHora(aberta.inicio)}` : ""}. Não dá para iniciar outra APR ou execução enquanto ela não for encerrada, suspensa ou interrompida.`,
         },
       ],
-      botoes: [],
+      // Quem participa da APR da execução acompanha o andamento dela.
+      botoes: aberta && participaDaExecucao(aberta, aprs, usuarioId) ? [{ acao: "acompanhar-execucao", titulo: "Acompanhar a execução", variante: "primario" }] : [],
     };
   }
 
   // O tempo parou ("Encerrar OS"), mas o responsável ainda não preencheu e assinou o encerramento.
   if (os.status === "encerrando") {
     const encerrando = execucaoEncerrando(execucoes);
-    if (encerrando?.executor.id === usuarioId) {
+    if (encerrando && quemEncerrou(encerrando).id === usuarioId) {
       return {
         avisos: [{ tom: "al", titulo: "Você encerrou a OS: falta preencher e assinar o encerramento.", texto: "O tempo já parou; o preenchimento não conta nele." }],
         botoes: [{ acao: "preencher-encerramento", titulo: "Preencher e assinar o encerramento", variante: "primario" }],
@@ -76,8 +102,8 @@ export function decidirAcao({ os, usuarioId, aprs, execucoes, ausencia }: Entrad
       avisos: [
         {
           tom: "info",
-          titulo: `${encerrando ? `${encerrando.executor.nome} encerrou a OS` : "A OS foi encerrada"} e está preenchendo e assinando o encerramento.`,
-          texto: "Só o responsável pela execução assina. Depois, a OS segue para o supervisor.",
+          titulo: `${encerrando ? `${quemEncerrou(encerrando).nome} encerrou a OS` : "A OS foi encerrada"} e está preenchendo e assinando o encerramento.`,
+          texto: "Só quem encerrou a OS assina o encerramento. Depois, a OS segue para o supervisor.",
         },
       ],
       botoes: [],
