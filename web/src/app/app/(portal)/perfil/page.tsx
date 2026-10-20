@@ -3,12 +3,14 @@ import { CabecalhoPagina, Colunas } from "@/components/app/AppChrome";
 import { MinhasAusencias } from "@/components/ausencia/MinhasAusencias";
 import { LinhaHistorico, type ExecucaoDoHistorico } from "@/components/app/perfil/LinhaHistorico";
 import { MinhaAssinatura } from "@/components/app/perfil/MinhaAssinatura";
+import { ParaConferir } from "@/components/app/perfil/ParaConferir";
 import { PreferenciasDeEmail } from "@/components/app/perfil/PreferenciasDeEmail";
 import { TrocarSenha } from "@/components/app/perfil/TrocarSenha";
 import { Screen } from "@/components/ui/Screen";
 import { CartaoDaMinhaPontuacao } from "@/components/web/gamificacao/BlocosDoPerfil";
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
 import type { Ausencia } from "@/lib/ausencia";
+import type { ConferenciaResumo } from "@/lib/conferencia";
 import { data } from "@/lib/formatar";
 import { ehAdmin, rotuloDoPerfil } from "@/lib/tipos";
 
@@ -25,6 +27,8 @@ export default async function PerfilPage() {
   const historico = executa ? (await api<{ execucoes: ExecucaoDoHistorico[] }>("/me/historico")).execucoes : null;
   // As minhas ausências; no campo de treino a rota não existe (404) e a seção não aparece.
   const ausencias = executa ? (await apiOuNulo<{ ausencias: Ausencia[] }>("/ausencias", { consulta: { usuario_id: usuario.id, tamanho: 50 } }))?.ausencias ?? null : null;
+  // As conferências da execução em aberto (o que a equipe registrou sem sinal); no campo de treino a rota não existe e o cartão não aparece.
+  const conferencias = executa ? ((await apiOuNulo<{ conferencias: ConferenciaResumo[] }>("/me/conferencias").catch(() => null))?.conferencias ?? []) : [];
   // Só o supervisor titular registra a própria ausência; o representante no comando pede, como qualquer técnico.
   const titular = (usuario.equipes_supervisionadas ?? []).some((e) => !(usuario.equipes_representadas ?? []).some((r) => r.id === e.id));
   // O técnico pede a quem responde pela equipe: o supervisor ou, na equipe sem supervisor, o representante. Sem equipe, sem
@@ -65,6 +69,7 @@ export default async function PerfilPage() {
       <Colunas
         principal={
           <>
+            <ParaConferir conferencias={conferencias} agora={new Date()} />
             <section className="stack g8">
               <h2>Meus dados</h2>
               <div className="card">

@@ -1,0 +1,307 @@
+/* Conferência da execução (execucao-compartilhada.md, etapa 3): o que a equipe registrou sem sinal em aparelhos diferentes vira um
+   registro certo. A trilha de etapas, as diferenças lado a lado, a escolha de cada versão e a lateral de participantes e ações. */
+
+.cf-pagina {
+  gap: 16px
+}
+
+.cf-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0
+}
+
+/* ===== Trilha de etapas ===== */
+
+.cf-etapas {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none
+}
+
+.cf-etapas li {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--ink4);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background .2s ease, border-color .2s ease, color .2s ease
+}
+
+.cf-etapas li > span:last-child {
+  overflow-wrap: anywhere
+}
+
+.cf-etapas .cf-numero {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--chip);
+  font-size: 12px
+}
+
+.cf-etapas li.atual {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+  color: var(--brand-ink)
+}
+
+.cf-etapas li.atual .cf-numero {
+  background: var(--brand);
+  color: #fff
+}
+
+.cf-etapas li.feita {
+  border-color: #B7DBC2;
+  background: var(--enc-bg);
+  color: var(--enc)
+}
+
+.cf-etapas li.feita .cf-numero {
+  background: var(--enc);
+  color: #fff
+}
+
+/* ===== Diferenças campo a campo ===== */
+
+.cf-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  animation: cf-entrar .28s ease both
+}
+
+.cf-campo.divergente {
+  border-color: var(--al-bd);
+  background: #FFFDF2
+}
+
+.cf-campo-cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px
+}
+
+.cf-campo-cab h3 {
+  font-size: 15px;
+  font-weight: 600
+}
+
+.cf-opcoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px
+}
+
+.cf-opcao {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface2);
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease
+}
+
+.cf-opcao.marcada {
+  border-color: var(--brand);
+  background: var(--brand-bg);
+  box-shadow: 0 0 0 1px var(--brand)
+}
+
+.cf-opcao.descartada {
+  border-style: dashed
+}
+
+.cf-opcao-autor {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink3);
+  overflow-wrap: anywhere
+}
+
+.cf-opcao-valor {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere
+}
+
+.cf-opcao-selos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 22px
+}
+
+.cf-opcao .btn {
+  margin-top: auto;
+  align-self: stretch
+}
+
+.cf-confere {
+  display: grid;
+  grid-template-columns: minmax(110px, 160px) 1fr auto;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line2)
+}
+
+.cf-confere:last-child {
+  border-bottom: 0
+}
+
+.cf-confere > strong {
+  font-size: 13.5px
+}
+
+.cf-confere > span {
+  overflow-wrap: anywhere
+}
+
+.cf-resultado {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--enc-bg);
+  color: var(--enc);
+  font-size: 13.5px
+}
+
+.cf-resultado strong {
+  font-size: 14.5px
+}
+
+.cf-confirmacao {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none
+}
+
+.cf-confirmacao li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  background: var(--surface2);
+  font-size: 13.5px
+}
+
+/* ===== Lateral: participantes, versões e prazos ===== */
+
+.cf-pessoa {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line2)
+}
+
+.cf-pessoa:last-child {
+  border-bottom: 0
+}
+
+.cf-pessoa-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px
+}
+
+.cf-ressalva {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--al-bd);
+  border-radius: 0 8px 8px 0;
+  background: var(--al-bg);
+  color: var(--al);
+  font-size: 13.5px;
+  overflow-wrap: anywhere
+}
+
+.cf-versao {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line2);
+  font-size: 13.5px
+}
+
+.cf-versao:last-child {
+  border-bottom: 0
+}
+
+.cf-vitoria {
+  animation: cf-entrar .3s ease both
+}
+
+@keyframes cf-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(6px)
+  }
+
+  to {
+    opacity: 1;
+    transform: none
+  }
+}
+
+@media (max-width: 767px) {
+  .cf-etapas {
+    flex-direction: column
+  }
+
+  .cf-confere {
+    grid-template-columns: 1fr
+  }
+
+  .cf-opcoes {
+    grid-template-columns: 1fr
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-campo,
+  .cf-vitoria {
+    animation: none
+  }
+
+  .cf-etapas li,
+  .cf-opcao {
+    transition: none
+  }
+}

@@ -2,15 +2,20 @@ import { PainelAcoes } from "@/components/app/AppChrome";
 import { LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import { quemEncerrou } from "@/lib/execucao-pedidos";
 import { dataHora, hora } from "@/lib/formatar";
 import { reservadaParaOutro, situacaoDaApr, type AprDaOs, type ExecucaoDaOs, type OsDetalhada } from "@/lib/os-app";
 import { rotas, urlDoPdf } from "@/lib/rotas";
+import type { ConferenciaDaOs } from "@/lib/conferencia";
 import { BotaoApr } from "./BotaoApr";
+import { ConferenciaDaOsCard } from "./ConferenciaDaOsCard";
 
 interface AcoesDaOsProps {
   os: OsDetalhada;
   usuarioId: string;
   execucaoAberta: ExecucaoDaOs | null;
+  /** O técnico participa da APR da execução em andamento (de outra pessoa): ele a acompanha. */
+  acompanhaExecucao?: boolean;
   /** A execução cujo tempo parou ("Encerrar OS") e que espera o preenchimento e a assinatura do responsável (a OS está `encerrando`). */
   execucaoEncerrando?: ExecucaoDaOs | null;
   /** APR aprovada de hoje, de que o técnico participa, que ainda serve e não amparou uma execução (assinada ou não por todos). */
@@ -21,10 +26,24 @@ interface AcoesDaOsProps {
   aprInviavel?: AprDaOs | null;
   /** O ausente só visualiza: o selo "Ausente até DD/MM/AAAA" quando quem olha está ausente, e as ações de campo somem. */
   ausencia?: string | null;
+  /** As conferências da execução da OS (`GET /os/{id}`): quando há, o painel traz o aviso com o estado e o botão da tela. */
+  conferencias?: ConferenciaDaOs[];
 }
 
-/** Painel lateral do detalhe: o que o técnico pode fazer agora, conforme o estado da OS. */
-export function AcoesDaOs({ os, usuarioId, execucaoAberta, execucaoEncerrando = null, aprDisponivel, aprDeOutros, aprInviavel = null, ausencia = null }: AcoesDaOsProps) {
+/**
+ * Painel lateral do detalhe: o que o técnico pode fazer agora, conforme o estado da OS e, abaixo, o aviso da conferência da execução
+ * (quando a equipe registrou parte do serviço sem sinal, em aparelhos diferentes) com o botão para abri-la.
+ */
+export function AcoesDaOs(props: AcoesDaOsProps) {
+  return (
+    <>
+      <AcoesPorEstado {...props} />
+      <ConferenciaDaOsCard osId={props.os.id} conferencias={props.conferencias} />
+    </>
+  );
+}
+
+function AcoesPorEstado({ os, usuarioId, execucaoAberta, acompanhaExecucao = false, execucaoEncerrando = null, aprDisponivel, aprDeOutros, aprInviavel = null, ausencia = null }: AcoesDaOsProps) {
   const aberta = os.status !== "encerrada" && os.status !== "cancelada" && os.status !== "devolvida" && os.status !== "encerrando" && os.status !== "aguardando_supervisor";
   // O ausente não aplica APR nem executa: só consulta (a OS dele em execução foi suspensa quando a ausência começou).
   if (ausencia && aberta) {
@@ -58,13 +77,19 @@ export function AcoesDaOs({ os, usuarioId, execucaoAberta, execucaoEncerrando = 
             ou execução enquanto ela não for encerrada, suspensa ou interrompida.
           </Notice>
         )}
+        {!minha && acompanhaExecucao && (
+          <LinkButton variant="p" block href={rotas.app.execucao(os.id)}>
+            <Icon name="eye" size={18} />
+            Acompanhar execução
+          </LinkButton>
+        )}
       </PainelAcoes>
     );
   }
 
   // O tempo parou ("Encerrar OS"), mas o responsável ainda não preencheu e assinou o encerramento.
   if (os.status === "encerrando") {
-    const minha = execucaoEncerrando?.executor.id === usuarioId;
+    const minha = execucaoEncerrando ? quemEncerrou(execucaoEncerrando).id === usuarioId : false;
     return (
       <PainelAcoes>
         {minha ? (
@@ -79,8 +104,8 @@ export function AcoesDaOs({ os, usuarioId, execucaoAberta, execucaoEncerrando = 
           </>
         ) : (
           <Notice tone="info" icon="user">
-            <strong>{execucaoEncerrando ? `${execucaoEncerrando.executor.nome} encerrou a OS` : "A OS foi encerrada"} e está preenchendo e assinando o encerramento.</strong> Só o
-            responsável pela execução assina. Depois, a OS segue para o supervisor.
+            <strong>{execucaoEncerrando ? `${quemEncerrou(execucaoEncerrando).nome} encerrou a OS` : "A OS foi encerrada"} e está preenchendo e assinando o encerramento.</strong> Só
+            quem encerrou a OS assina o encerramento. Depois, a OS segue para o supervisor.
           </Notice>
         )}
       </PainelAcoes>

@@ -8,6 +8,7 @@ import { AvisoDeLocalizacao } from "@/components/app/execucao/AvisoDeLocalizacao
 import { FormularioInterromper } from "@/components/app/execucao/FormularioInterromper";
 import { JanelaDeMotivo } from "@/components/app/execucao/JanelaDeMotivo";
 import { MOTIVOS_DA_PAUSA, MOTIVOS_DA_SUSPENSAO } from "@/components/app/execucao/motivos";
+import { PedidoParaResponder } from "@/components/app/execucao/PedidoParaResponder";
 import { ResumoTempo } from "@/components/app/execucao/ResumoTempo";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
@@ -15,6 +16,7 @@ import { JanelaSobreposta } from "@/components/ui/JanelaSobreposta";
 import { ErroDeEnvio } from "@/components/ui/useFormulario";
 import { Notice } from "@/components/ui/Notice";
 import { enviarEvento, novoId } from "@/lib/cliente-api";
+import { pedidoAberto } from "@/lib/execucao-pedidos";
 import { comPosicao, obterPosicao } from "@/lib/geolocalizacao";
 import { rotas } from "@/lib/rotas";
 import { useMinhaAssinatura } from "@/state/minha-assinatura";
@@ -61,6 +63,8 @@ export function ExecucaoEmAndamento({ os, situacao }: Props) {
   const assinaturaPath = useMinhaAssinatura();
 
   const pausaAberta = execucao.pausas.find((p) => !p.fim);
+  // Um participante pediu para encerrar ou suspender: o responsável tem 2 minutos para responder (sem resposta, é aprovado sozinho).
+  const pedido = pedidoAberto(execucao);
   const passouDoPrazo = agora === null || agora - new Date(execucao.inicio).getTime() >= CANCELAR_ATE_MS;
   const podeCancelar = !passouDoPrazo && execucao.pausas.length === 0;
   const retomarInvalido = erro?.codigo === "continuar_invalido";
@@ -105,6 +109,7 @@ export function ExecucaoEmAndamento({ os, situacao }: Props) {
       <FormularioInterromper osId={os.id} execucaoId={execucao.id} onCancelar={() => abrir("painel")} />
     ) : (
       <div className="panel stack g12">
+        {pedido && <PedidoParaResponder key={pedido.id} osId={os.id} pedido={pedido} />}
         <h2>Atividade em andamento</h2>
         <div className="stack g6">
           <span className="lbl">Ordem</span>
@@ -115,6 +120,7 @@ export function ExecucaoEmAndamento({ os, situacao }: Props) {
           <span>{os.local}</span>
           <span className="lbl">Participantes da APR</span>
           <span>{participantesAtivos(participantes).map((p) => p.nome).join(", ") || "—"}</span>
+          <span className="small">Os participantes também podem pausar, interromper e pedir para encerrar ou suspender: você é avisado e tem 2 minutos para responder um pedido.</span>
         </div>
         <div className="stack g6">
           <span className="lbl">O que cada botão faz</span>
@@ -133,7 +139,7 @@ export function ExecucaoEmAndamento({ os, situacao }: Props) {
         </div>
         <p className="small">
           Use <strong>Pausar</strong> para almoço, descanso ou uma espera: a pausa não entra no tempo líquido. Ao concluir a atividade, <strong>encerre</strong>: o tempo
-          para na confirmação, e só o responsável assina o encerramento.
+          para na confirmação, e só quem encerrou assina o encerramento.
         </p>
         <AvisoDeLocalizacao />
       </div>

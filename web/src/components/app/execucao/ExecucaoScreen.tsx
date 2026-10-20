@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { CabecalhoPagina } from "@/components/app/AppChrome";
+import { AtualizarSozinha } from "@/components/app/execucao/AtualizarSozinha";
+import { ExecucaoAcompanhando } from "@/components/app/execucao/ExecucaoAcompanhando";
 import { ExecucaoEmAndamento } from "@/components/app/execucao/ExecucaoEmAndamento";
 import { ExecucaoEncerrada } from "@/components/app/execucao/ExecucaoEncerrada";
 import { FormularioEncerrar } from "@/components/app/execucao/FormularioEncerrar";
 import { IniciarExecucao } from "@/components/app/execucao/IniciarExecucao";
 import { SuspenderEsquecida } from "@/components/app/execucao/SuspenderEsquecida";
 import type { Situacao } from "@/components/app/execucao/situacao";
+import { pedidoAberto } from "@/lib/execucao-pedidos";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Notice";
@@ -18,17 +21,23 @@ import { rotas } from "@/lib/rotas";
 
 interface ExecucaoScreenProps {
   os: { id: string; numero_ordem: string | null; titulo: string; local: string };
+  usuarioId: string;
   situacao: Situacao;
   /** O checklist de inspeção do plano da OS preventiva, pedido no encerramento (vazio quando a OS não tem). */
   checklist?: PerguntaDoChecklist[];
 }
 
 /** Execução da OS: escolhe o que mostrar conforme a situação que a `api` informa (ver `situacao.ts`). */
-export function ExecucaoScreen({ os, situacao, checklist = [] }: ExecucaoScreenProps) {
+export function ExecucaoScreen({ os, usuarioId, situacao, checklist = [] }: ExecucaoScreenProps) {
   /** O responsável acabou de assinar o encerramento: a tela final, com os pontos, vale até a página atualizar. */
   const [assinada, setAssinada] = useState(false);
   const [pontos, setPontos] = useState<RespostaComPontos | null>(null);
-  const emPausa = situacao.tipo === "em_andamento" && situacao.execucao.pausas.some((p) => !p.fim);
+  const emPausa = (situacao.tipo === "em_andamento" || situacao.tipo === "acompanhando") && situacao.execucao.pausas.some((p) => !p.fim);
+  // Execução compartilhada: a tela relê a execução sozinha, para o responsável ver as pausas e os pedidos dos participantes, e para quem
+  // acompanha ver o andamento e o encerramento. Com um pedido aberto, mais depressa: o responsável tem 2 minutos para responder.
+  const comPedido = (situacao.tipo === "em_andamento" || situacao.tipo === "acompanhando") && pedidoAberto(situacao.execucao) !== null;
+  const acompanha = !assinada && (situacao.tipo === "acompanhando" || situacao.tipo === "outra_pessoa" || situacao.tipo === "em_andamento");
+  const releituraMs = comPedido ? 3_000 : situacao.tipo === "em_andamento" ? 5_000 : 10_000;
 
   let corpo;
   if (assinada) corpo = <ExecucaoEncerrada osId={os.id} status="aguardando_supervisor" pontos={pontos} />;
@@ -59,13 +68,14 @@ export function ExecucaoScreen({ os, situacao, checklist = [] }: ExecucaoScreenP
         </LinkButton>
       </div>
     );
+  else if (situacao.tipo === "acompanhando") corpo = <ExecucaoAcompanhando os={os} usuarioId={usuarioId} situacao={situacao} />;
   else if (situacao.tipo === "outra_pessoa")
     corpo = (
       <div className="panel stack g12" style={{ maxWidth: 560 }}>
         <Notice tone="al" icon="users">
           {situacao.encerrando ? (
             <>
-              <strong>{situacao.executor}</strong> encerrou esta OS e está preenchendo e assinando o encerramento. Só o responsável pela execução assina.
+              <strong>{situacao.executor}</strong> encerrou esta OS e está preenchendo e assinando o encerramento. Só quem encerrou a OS assina o encerramento.
             </>
           ) : (
             <>
@@ -135,7 +145,7 @@ export function ExecucaoScreen({ os, situacao, checklist = [] }: ExecucaoScreenP
           <span className="mono" style={{ fontSize: 15, fontWeight: 600 }}>
             OS {os.numero_ordem ?? "—"}
           </span>
-          {situacao.tipo === "em_andamento" && <Badge tone={emPausa ? "al" : "exe"}>{emPausa ? "Em pausa" : "Em execução"}</Badge>}
+          {(situacao.tipo === "em_andamento" || situacao.tipo === "acompanhando") && <Badge tone={emPausa ? "al" : "exe"}>{emPausa ? "Em pausa" : "Em execução"}</Badge>}
           {!assinada && situacao.tipo === "encerrando" && <Badge tone="al">Encerrando</Badge>}
           {assinada && <Badge tone="al">Aguardando o supervisor</Badge>}
           {!assinada && situacao.tipo === "terminada" && <Badge tone={situacao.status === "encerrada" ? "enc" : "al"}>{situacao.status === "encerrada" ? "Encerrada" : "Aguardando o supervisor"}</Badge>}
@@ -145,6 +155,7 @@ export function ExecucaoScreen({ os, situacao, checklist = [] }: ExecucaoScreenP
           {os.titulo} · {os.local}
         </span>
       </CabecalhoPagina>
+      {acompanha && <AtualizarSozinha cadaMs={releituraMs} />}
       {corpo}
     </Screen>
   );

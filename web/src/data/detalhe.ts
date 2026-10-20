@@ -1,8 +1,10 @@
 import "server-only";
 
+import type { PedidoDaApi } from "@/lib/execucao-pedidos";
 import { api, apiOuNulo } from "@/lib/api";
 import type { ServicoDaOs } from "@/lib/catalogo";
 import type { PerguntaDoChecklist } from "@/lib/checklist-inspecao";
+import type { ConferenciaDaOs } from "@/lib/conferencia";
 import type { Posicao } from "@/lib/geolocalizacao";
 import type { DevolucaoDaOs } from "@/lib/os-app";
 import type { DocumentoDeEvidencia, OsStatus, Paginacao, ResponsavelDaOs } from "@/lib/tipos";
@@ -126,6 +128,9 @@ export interface PausaDaExecucao {
   /** O que ou quem (em `aguardando`) ou a descrição (em `outro`). */
   complemento: string | null;
   localizacao: LocalizacaoDaOs | null;
+  /** Quem pausou e quem retomou (qualquer participante da APR pode); nulos nas pausas anteriores: vale o responsável. */
+  iniciada_por?: { id: string; nome: string } | null;
+  encerrada_por?: { id: string; nome: string } | null;
 }
 
 export interface FotoDeEvidencia {
@@ -199,6 +204,10 @@ export interface ExecucaoDaOs {
   suspensao_complemento: string | null;
   /** Quando o responsável assinou o encerramento; nulo na `encerrada` = a OS está `encerrando`. */
   encerramento_assinado_em: string | null;
+  /** Quem encerrou, interrompeu ou suspendeu (e, se encerrou, assina o encerramento); nulo nas execuções anteriores: vale o responsável. */
+  finalizada_por?: { id: string; nome: string } | null;
+  /** Os pedidos de participantes ao responsável (encerrar ou suspender), do mais antigo ao mais novo. */
+  pedidos?: PedidoDaApi[];
   /** Onde a pessoa estava ao iniciar e ao terminar (encerrar, suspender ou interromper). */
   localizacao_inicio: LocalizacaoDaOs | null;
   localizacao_fim: LocalizacaoDaOs | null;
@@ -250,6 +259,8 @@ export interface DetalheDaOs {
   alertas: AlertaDaOs[];
   reprogramacoes: ReprogramacaoDaOs[];
   linha_do_tempo: EventoDaLinhaDoTempo[];
+  /** A conferência do que a equipe registrou sem sinal em aparelhos diferentes, da mais antiga à mais nova; o Campo de treino não a traz. */
+  conferencias?: ConferenciaDaOs[];
 }
 
 /** `GET /os/{id}`; `null` quando a OS não existe ou é de outra equipe (a `api` responde 404). */

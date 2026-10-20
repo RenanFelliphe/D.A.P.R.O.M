@@ -8,7 +8,8 @@ import { Field, ligarAoErro } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { ErroDeEnvio, useFormulario } from "@/components/ui/useFormulario";
 import { JanelaModal } from "@/components/web/JanelaModal";
-import { chamar } from "@/lib/cliente-api";
+import { ErroCliente, chamar } from "@/lib/cliente-api";
+import { AVISO_DA_ASSINATURA_FINAL_ESPERA, CODIGO_CONFERENCIA_PENDENTE } from "@/lib/conferencia";
 import { textoDosPontosGanhos, type RespostaComPontos } from "@/lib/gamificacao";
 import { urlDoRelatorio } from "@/lib/rotas";
 import { useMinhaAssinatura } from "@/state/minha-assinatura";
@@ -72,7 +73,16 @@ export function BotaoCiencia({ osId }: { osId: string }) {
   const [etapa, setEtapa] = useState<"fechada" | "relatorio" | "assinatura">("fechada");
 
   async function assinar() {
-    const resposta = await chamar<RespostaDaAssinaturaFinal>("POST", `/os/${osId}/ciencia`);
+    let resposta: RespostaDaAssinaturaFinal;
+    try {
+      resposta = await chamar<RespostaDaAssinaturaFinal>("POST", `/os/${osId}/ciencia`);
+    } catch (e) {
+      // A conferência da execução abriu ou ainda não comparou as versões (a tela foi aberta antes): diz o que fazer, em vez da mensagem solta da api.
+      if (e instanceof ErroCliente && e.codigo === CODIGO_CONFERENCIA_PENDENTE) {
+        throw new ErroCliente(e.status, e.codigo, `${AVISO_DA_ASSINATURA_FINAL_ESPERA} Recarregue a página e abra a conferência.`);
+      }
+      throw e;
+    }
     // Assinar até 72 h depois do encerramento pontua o supervisor.
     const pontos = textoDosPontosGanhos(resposta);
     exibirAviso(pontos ? `OS concluída · ${pontos}` : "OS concluída");

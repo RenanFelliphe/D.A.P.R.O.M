@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Colunas } from "@/components/app/AppChrome";
 import { FaixaDeAssinaturas } from "@/components/app/FaixaDeAssinaturas";
+import { FaixaDeConferencias } from "@/components/app/FaixaDeConferencias";
 import { AcoesDaOs } from "@/components/app/detalhe/AcoesDaOs";
 import { AprExigidaCard } from "@/components/app/detalhe/AprExigidaCard";
 import { ChecklistDaOsCard } from "@/components/app/detalhe/ChecklistDaOsCard";
@@ -23,6 +24,7 @@ import { BotaoCritico } from "@/components/web/detalhe/BotaoCritico";
 import { AtribuicaoDaOs } from "@/components/web/detalhe/AtribuicaoDaOs";
 import { CancelarOs } from "@/components/web/detalhe/CancelarOs";
 import { CienciaSupervisor } from "@/components/web/detalhe/CienciaSupervisor";
+import { ConferenciaDaExecucao } from "@/components/web/detalhe/ConferenciaDaExecucao";
 import { DadosSap } from "@/components/web/detalhe/DadosSap";
 import { DetalheCabecalho } from "@/components/web/detalhe/DetalheCabecalho";
 import { DevolverOs } from "@/components/web/detalhe/DevolverOs";
@@ -36,6 +38,7 @@ import { CicloDaOs } from "@/components/web/preventivas/CicloDaOs";
 import { carregarDetalhe, carregarHistorico } from "@/data/detalhe";
 import { api, usuarioAtual } from "@/lib/api";
 import { dataHora } from "@/lib/formatar";
+import { participaDaExecucao } from "@/components/app/execucao/situacao";
 import { aprAprovadaDisponivel, aprDeHoje, execucaoAberta, execucaoEncerrando, situacaoDaApr, type DetalheDaOs as DetalheDoCampo } from "@/lib/os-app";
 import { rotas } from "@/lib/rotas";
 import { emTreino } from "@/lib/treino-modo";
@@ -79,16 +82,20 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   const painelDeCampo = executa && (
     <>
       <FaixaDeAssinaturas osId={os.id} />
+      <FaixaDeConferencias osId={os.id} />
       <AprExigidaCard aprs={campo.aprs} status={os.status} />
       <AcoesDaOs
         os={campo.os}
         usuarioId={usuario.id}
         execucaoAberta={aberta}
+        acompanhaExecucao={Boolean(aberta) && aberta!.executor.id !== usuario.id && participaDaExecucao(aberta!, campo.aprs, usuario.id)}
         execucaoEncerrando={execucaoEncerrando(campo.execucoes)}
         aprDisponivel={aprAprovadaDisponivel(campo.aprs, campo.execucoes, usuario.id)}
         aprDeOutros={aprAprovadaDisponivel(campo.aprs, campo.execucoes)}
         aprInviavel={aprDoDia && situacaoDaApr(aprDoDia).inviavel ? aprDoDia : null}
         ausencia={ausencia?.rotulo ?? null}
+        // Na gestão a conferência tem o painel próprio, no resumo da OS; o técnico a vê aqui, na lateral.
+        conferencias={gestao ? undefined : detalhe.conferencias}
       />
     </>
   );
@@ -203,6 +210,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           {aba === "resumo" && (
             <>
               {os.em_papel && <ExecucaoEmPapel papel={os.em_papel} />}
+              <ConferenciaDaExecucao osId={os.id} conferencias={detalhe.conferencias} />
               <DadosSap os={os} />
               <CicloDaOs osId={os.id} preventiva={os.tipo === "preventiva"} gestao estilo="panel" />
               <ChecklistDaOsCard perguntas={checklist} />
@@ -250,7 +258,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           {podeDevolver && <DevolverOs osId={os.id} />}
           {admin && <BotaoCritico localId={os.local_instalacao.id} critico={os.local_instalacao.critico} />}
           <DocumentoOs os={os} podeVerRelatorio={podeVerRelatorio} />
-          <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs && !ausente} />
+          <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs && !ausente} conferencias={detalhe.conferencias} />
           <BaixaSap os={os} podeExportar={admin} />
         </aside>
       </div>

@@ -35,6 +35,21 @@ export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; u
       return { icone: "shield", urgente: true };
     case "lesao_ou_enfermidade":
       return { icone: "alert", urgente: true };
+    case "pedido_de_acao":
+      return { icone: "clock", urgente: true };
+    case "pedido_decidido":
+      return { icone: "check", urgente: false };
+    case "acao_de_participante":
+      return { icone: "users", urgente: false };
+    // A conferência da execução: escolher a versão certa, a cobrança de quem falta e o prazo esgotado pedem atenção; o resto informa.
+    case "conferencia_para_decidir":
+    case "conferencia_cobranca":
+    case "conferencia_tempo_esgotado":
+      return { icone: "checks", urgente: true };
+    case "conferencia_aberta":
+    case "conferencia_para_assinar":
+    case "conferencia_ressalva":
+      return { icone: "checks", urgente: false };
     case "apr_para_assinar":
       return { icone: "clip", urgente: false };
     case "os_para_assinar":

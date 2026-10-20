@@ -30,6 +30,8 @@ export const rotas = {
     bloqueio: (id: string) => `/app/os/${id}/apr/bloqueio`,
     aprovada: (id: string) => `/app/os/${id}/apr/aprovada`,
     execucao: (id: string) => `/app/os/${id}/execucao`,
+    /** A conferência do que a equipe registrou sem sinal, em aparelhos diferentes (`id` da OS); `conferenciaId` abre uma em especial (os avisos levam sem ele). */
+    conferencia: (id: string, conferenciaId?: string) => `/app/os/${id}/conferencia${conferenciaId ? `?c=${conferenciaId}` : ""}`,
     perfil: "/app/perfil",
     /** Perfil de outra pessoa (aberto pela busca). */
     perfilDe: (id: string) => `/app/perfil/${id}`,

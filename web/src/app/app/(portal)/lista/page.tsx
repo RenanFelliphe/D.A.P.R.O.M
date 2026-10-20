@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FaixaDeAssinaturas } from "@/components/app/FaixaDeAssinaturas";
+import { FaixaDeConferencias } from "@/components/app/FaixaDeConferencias";
 import { AtualizacaoAutomatica } from "@/components/ui/AtualizacaoAutomatica";
 import { Screen } from "@/components/ui/Screen";
 import { CabecalhoSecaoOs } from "@/components/web/os/CabecalhoSecaoOs";
@@ -21,6 +22,7 @@ export default async function ListaPage({ searchParams }: PageProps<"/app/lista"
     <Screen>
       {gestao ? <CabecalhoSecaoOs /> : <h1>OS da equipe</h1>}
       <FaixaDeAssinaturas />
+      <FaixaDeConferencias />
       <PaginaQuadro searchParams={searchParams} />
       <AtualizacaoAutomatica />
     </Screen>

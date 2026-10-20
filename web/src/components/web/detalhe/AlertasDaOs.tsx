@@ -2,9 +2,11 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Panel } from "@/components/web/Panel";
 import type { AlertaDaOs, ReprogramacaoDaOs } from "@/data/detalhe";
+import { rotuloDoTipo } from "@/components/web/alertas/tipos";
 import { dataDoDia, dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 
+/** Rótulos curtos desta lista; o que não está aqui (a conferência da execução, por exemplo) vem de `rotuloDoTipo`, o texto único de `shared`. */
 const rotuloDoAlerta: Record<string, string> = {
   bloqueio: "Impedimento",
   conflito_planejamento: "Conflito de planejamento",
@@ -13,6 +15,9 @@ const rotuloDoAlerta: Record<string, string> = {
   preventiva_proxima: "Preventiva: ciclo próximo",
   preventiva_vencida: "Preventiva: ciclo vencido",
   inspecao_com_pendencia: "Inspeção com pendência",
+  pedido_de_acao: "Pedido de um participante",
+  pedido_decidido: "Resposta a um pedido",
+  acao_de_participante: "Ação de um participante",
   apr_para_assinar: "APR aguardando assinatura",
   direito_de_recusa: "Direito de recusa na APR",
   lesao_ou_enfermidade: "Lesão ou enfermidade",
@@ -20,7 +25,7 @@ const rotuloDoAlerta: Record<string, string> = {
 };
 
 /** Impedimento e os avisos de segurança do trabalho (recusa, lesão ou enfermidade) em vermelho; os demais em âmbar. */
-const TIPOS_CRITICOS = ["bloqueio", "direito_de_recusa", "lesao_ou_enfermidade"];
+const TIPOS_CRITICOS = ["bloqueio", "direito_de_recusa", "lesao_ou_enfermidade", "conferencia_para_decidir", "conferencia_cobranca", "conferencia_tempo_esgotado"];
 
 /** Alertas gerados para esta OS (com o destinatário) e as reprogramações feitas nela. */
 export function AlertasDaOs({ alertas, reprogramacoes }: { alertas: AlertaDaOs[]; reprogramacoes: ReprogramacaoDaOs[] }) {
@@ -35,7 +40,7 @@ export function AlertasDaOs({ alertas, reprogramacoes }: { alertas: AlertaDaOs[]
             {alertas.map((a) => (
               <div key={a.id} className="stack g4" style={{ paddingBottom: 8, borderBottom: "1px solid var(--line2)" }}>
                 <div className="row between g8">
-                  <Badge tone={TIPOS_CRITICOS.includes(a.tipo) ? "blq" : "al"}>{rotuloDoAlerta[a.tipo] ?? a.tipo}</Badge>
+                  <Badge tone={TIPOS_CRITICOS.includes(a.tipo) ? "blq" : "al"}>{rotuloDoAlerta[a.tipo] ?? (rotuloDoTipo as Record<string, string>)[a.tipo] ?? a.tipo}</Badge>
                   <span className="small">{dataHora(a.criado_em)}</span>
                 </div>
                 <span style={{ fontSize: 13.5 }}>{a.detalhe}</span>

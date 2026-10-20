@@ -5,6 +5,7 @@ import { Panel } from "@/components/web/Panel";
 import type { ExecucaoDaOs } from "@/data/detalhe";
 import { itensDaInspecao } from "@/lib/checklist-inspecao";
 import { dataHora, duracao, hora } from "@/lib/formatar";
+import { ROTULO_DO_ESTADO_DO_PEDIDO, ROTULO_DO_PEDIDO } from "@/lib/execucao-pedidos";
 import { descreverMotivo, ehMotivoDeSaude, rotuloDoMotivoDaSuspensao } from "@/lib/motivos-de-parada";
 import { ChecklistDaExecucao } from "./ChecklistDaExecucao";
 import { FotosDaEvidencia } from "./FotosDaEvidencia";
@@ -62,7 +63,37 @@ function ExecucaoCartao({ execucao: e, numero, total }: { execucao: ExecucaoDaOs
         <Medida rotulo="Pessoas" valor={String(e.numero_pessoas)} />
       </div>
 
-      <PausasDaExecucao pausas={e.pausas} />
+      <PausasDaExecucao pausas={e.pausas} executorId={e.executor.id} />
+
+      {e.finalizada_por && e.finalizada_por.id !== e.executor.id && e.resultado && (
+        <p style={{ fontSize: 14.5 }}>
+          <strong>{e.resultado === "encerrada" ? "Encerrada" : e.resultado === "suspensa" ? "Suspensa" : "Interrompida"} por {e.finalizada_por.nome}</strong>, participante da APR
+          {e.resultado === "encerrada" ? "; quem encerra assina o encerramento." : "."}
+        </p>
+      )}
+
+      {e.pedidos && e.pedidos.length > 0 && (
+        <div className="stack g8" style={{ fontSize: 13.5 }}>
+          <div className="small" style={rotuloMedida}>
+            Pedidos de participantes ao responsável
+          </div>
+          {e.pedidos.map((p) => (
+            <div key={p.id} className="stack g4" style={{ paddingBottom: 8, borderBottom: "1px solid var(--line2)" }}>
+              <span>
+                <span className="mono">{hora(p.criado_em)}</span> · <strong>{p.solicitante.nome}</strong> pediu para {ROTULO_DO_PEDIDO[p.tipo]}
+                {p.tipo === "suspender" && ` (${descreverMotivo(rotuloDoMotivoDaSuspensao, p.motivo, p.complemento)})`}
+              </span>
+              <span className="small">
+                {ROTULO_DO_ESTADO_DO_PEDIDO[p.estado]}
+                {p.decidido_por && ` (${p.decidido_por.nome})`}
+                {p.decidido_em && ` · ${hora(p.decidido_em)}`}
+                {p.motivo_recusa && `: “${p.motivo_recusa}”`}
+                {p.apoios.length > 0 && ` · apoiado por ${p.apoios.map((a) => a.nome).join(", ")}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {e.resultado === "suspensa" && (
         <div>
