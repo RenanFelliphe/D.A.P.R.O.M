@@ -1,10 +1,11 @@
 import { StyleSheet, Text, View } from "react-native";
-import { alertaUrgente, referenciaDoAlerta, rotuloDoAlerta, type Alerta } from "@shared/api/alertas";
+import { alertaUrgente, rotuloDoAlerta, type Alerta } from "@shared/api/alertas";
 import { dataHora } from "@shared/api/formatar";
 import { cores, espaco, raio } from "@/tema/tema";
 import { Cartao } from "@/ui/Cartao";
 import { Icone } from "@/ui/Icone";
 import { destinoDoAvisoNoApp } from "./destino";
+import { iconeDoAviso, referenciaNoApp } from "./referencia";
 
 /**
  * Um aviso do sino: o tipo, a que ele se refere (a OS, a ausência), o detalhe e quando chegou. O não lido vem em destaque, com um ponto;
@@ -13,12 +14,12 @@ import { destinoDoAvisoNoApp } from "./destino";
 export function CartaoDeAviso({ aviso, aoAbrir }: { aviso: Alerta; aoAbrir: () => void }) {
   const urgente = alertaUrgente(aviso);
   const naoLido = aviso.lido_em === null;
-  const referencia = referenciaDoAlerta(aviso);
+  const referencia = referenciaNoApp(aviso);
   const leva = destinoDoAvisoNoApp(aviso) !== null;
   return (
     <Cartao aoPressionar={aoAbrir} rotulo={`${naoLido ? "Não lido: " : ""}${rotuloDoAlerta(aviso)}`} estilo={[urgente && estilos.urgente, naoLido && estilos.naoLido]}>
       <View style={estilos.topo}>
-        <Icone nome={urgente ? "warning-outline" : "notifications-outline"} tamanho={20} cor={urgente ? cores.perigo : cores.marca} />
+        <Icone nome={iconeDoAviso(aviso, urgente)} tamanho={20} cor={urgente ? cores.perigo : cores.marca} />
         <Text style={[estilos.tipo, naoLido && estilos.forte, urgente && { color: cores.perigo }]}>{rotuloDoAlerta(aviso)}</Text>
         {naoLido ? <View accessibilityLabel="Não lido" style={estilos.ponto} /> : null}
       </View>

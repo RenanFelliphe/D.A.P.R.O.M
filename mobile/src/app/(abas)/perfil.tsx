@@ -2,7 +2,8 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
-import { iniciaisDe, rotuloDoPerfil } from "@shared/api/tipos";
+import { ehSupervisor, iniciaisDe, rotuloDoPerfil } from "@shared/api/tipos";
+import { useParaAvaliar } from "@/materiais/consultas";
 import { MinhaAssinatura } from "@/assinatura/MinhaAssinatura";
 import { CartaoDeSincronizacao } from "@/offline/CartaoDeSincronizacao";
 import { useEstadoDaSincronizacao } from "@/offline/estado";
@@ -33,6 +34,7 @@ export default function Perfil() {
   const [semSair, setSemSair] = useState<string | null>(null);
   const { pendentes } = useEstadoDaSincronizacao();
   const sincronizar = useSincronizar();
+  const paraAvaliar = useParaAvaliar(eu ? ehSupervisor(eu.usuario) : false);
 
   if (!eu) return <Carregando />;
   const u = eu.usuario;
@@ -85,6 +87,7 @@ export default function Perfil() {
       {eu.equipe && u.perfil === "tecnico" ? <CartaoDeSincronizacao /> : null}
 
       <LinhaDeNavegacao icone="calendar-outline" titulo="Minhas ausências" detalhe="Pedir, acompanhar e confirmar o retorno" aoPressionar={() => router.push("/ausencias")} />
+      <LinhaDeNavegacao icone="list-outline" titulo="Sugestões de materiais" detalhe="Sugerir e contestar as listas recomendadas dos serviços" selo={paraAvaliar.data ?? 0} aoPressionar={() => router.push("/materiais")} />
       <LinhaDeNavegacao icone="document-text-outline" titulo="OS que encerrei" detalhe="Os últimos 60 dias, com o PDF" aoPressionar={() => router.push("/historico")} />
       <LinhaDeNavegacao icone="mail-outline" titulo="Preferências de e-mail" detalhe="Quais avisos também vão para o seu e-mail" aoPressionar={() => router.push("/emails")} />
       <LinhaDeNavegacao icone="key-outline" titulo="Trocar a senha" aoPressionar={() => router.push("/senha")} />

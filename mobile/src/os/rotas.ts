@@ -17,6 +17,9 @@ export const rotas = {
 
 export const rotaDaOs = rotas.os;
 
+/** Sugerir ou contestar a lista de materiais de um serviço (`/materiais/nova`); o código do serviço vai como parâmetro, sem montar a URL à mão. */
+export const rotaDaNovaSugestaoDeMateriais = (atividade: string, tipo: "sugestao" | "contestacao"): Href => ({ pathname: "/materiais/nova", params: { atividade, tipo } }) as Href;
+
 /** A tela de cada ação do detalhe da OS. */
 export const rotaDaAcao = (acao: AcaoDeCampo, osId: string): Href => {
   switch (acao) {

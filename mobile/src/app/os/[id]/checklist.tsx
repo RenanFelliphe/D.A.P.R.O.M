@@ -250,7 +250,7 @@ function ChecklistDaApr({ osId, rotulo, usuario, equipe, servico }: ChecklistDaA
           aoValidar={validar}
           semAssinatura={semAssinatura.length}
           semSinal={semSinal}
-          materiais={servico && servico.materiais.length > 0 ? <MateriaisCard servico={servico} /> : null}
+          materiais={servico && servico.materiais.length > 0 ? <MateriaisCard servico={servico} sugestao={false} /> : null}
           assinaturas={<AssinaturasFaltando semAssinatura={semAssinatura} usuarioId={usuarioId} aoRetirar={(retirado) => atualizar((atual) => retirarParticipante(atual, retirado))} />}
         />
       ) : (

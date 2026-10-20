@@ -1,11 +1,17 @@
 import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { dataDoDia } from "@shared/api/formatar";
 import { porCategoria, quantidadeDoItem, tituloDaCategoria, type ServicoDaOs } from "@shared/api/catalogo";
 import type { PerguntaDoChecklist } from "@shared/api/checklist-inspecao";
 import type { LocalDaOs, OsDetalhada } from "@shared/api/os-app";
+import { useConexao } from "@/estado/conexao";
+import { MENSAGEM_SEM_SINAL } from "@/materiais/erros";
+import { rotaDaNovaSugestaoDeMateriais } from "@/os/rotas";
+import { useSessao } from "@/sessao/SessaoProvider";
 import { cores, espaco } from "@/tema/tema";
+import { mostrarAviso } from "@/ui/AvisoRapido";
 import { Botao } from "@/ui/Botao";
 import { Cartao, TituloDeCartao } from "@/ui/Cartao";
 import { Icone } from "@/ui/Icone";
@@ -88,8 +94,21 @@ export function ChecklistDaOsCard({ perguntas }: { perguntas: PerguntaDoChecklis
   );
 }
 
-/** O que levar para o campo: materiais, ferramentas e EPIs do serviço do catálogo. Só consulta. */
-export function MateriaisCard({ servico }: { servico: ServicoDaOs | null }) {
+/**
+ * O que levar para o campo: materiais, ferramentas e EPIs do serviço do catálogo. A lista é só consulta, mas quem a usa pode sugerir
+ * uma lista melhor ou contestar a atual (o administrador edita a lista direto no catálogo, e quem está ausente só consulta). A
+ * sugestão pede sinal: ela não entra na fila do aparelho. `sugestao={false}` esconde os botões (a tela do checklist da APR, no meio do preenchimento).
+ */
+export function MateriaisCard({ servico, sugestao = true }: { servico: ServicoDaOs | null; sugestao?: boolean }) {
+  const router = useRouter();
+  const { eu } = useSessao();
+  const semSinal = useConexao() === "offline";
+  const podeSugerir = sugestao && servico !== null && eu !== undefined && eu.usuario.perfil !== "admin" && !eu.ausencia;
+  const sugerir = (tipo: "sugestao" | "contestacao") => {
+    if (!servico) return;
+    if (semSinal) return mostrarAviso(MENSAGEM_SEM_SINAL);
+    router.push(rotaDaNovaSugestaoDeMateriais(servico.codigo, tipo));
+  };
   return (
     <Cartao>
       <TituloDeCartao>Materiais recomendados</TituloDeCartao>
@@ -117,6 +136,12 @@ export function MateriaisCard({ servico }: { servico: ServicoDaOs | null }) {
           ))}
         </>
       )}
+      {podeSugerir ? (
+        <View style={estilos.sugerir}>
+          <Botao titulo="Sugerir lista" icone="create-outline" variante="secundario" aoPressionar={() => sugerir("sugestao")} />
+          <Botao titulo="Contestar lista" icone="flag-outline" variante="secundario" aoPressionar={() => sugerir("contestacao")} />
+        </View>
+      ) : null}
     </Cartao>
   );
 }
@@ -157,4 +182,5 @@ const estilos = StyleSheet.create({
   material: { flexDirection: "row", alignItems: "flex-start", gap: espaco.s, paddingVertical: 6, borderTopWidth: 1, borderTopColor: cores.linha2 },
   quantidade: { fontSize: 13, color: cores.tinta3, textAlign: "right", maxWidth: 110 },
   conteudo: { gap: espaco.m, marginTop: espaco.s },
+  sugerir: { gap: espaco.s, marginTop: espaco.s },
 });
