@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import {
   ALVO_DO_AVISO,
@@ -10,7 +10,7 @@ import {
   ROTULO_DO_AVISO,
   type CategoriaDeEmail,
 } from "../../../shared/notificacoes/avisos";
-import { alerta, apr, aprResposta, atividade, ausencia, equipe, evidencia, execucao, itemModeloApr, localInstalacao, os, treinamentoServico, usuario } from "../db/schema";
+import { alerta, apr, aprResposta, atividade, ausencia, equipe, evidencia, execucao, itemModeloApr, localInstalacao, os, sugestaoMateriais, treinamentoServico, usuario } from "../db/schema";
 import type { Deps } from "../deps";
 import { bucketDaEvidencia } from "../dominio/evidencias";
 import { escaparHtml, montarEmail, type PartesDoEmail } from "./email-modelo";
@@ -174,6 +174,7 @@ async function conteudoDoAviso(deps: Deps, a: LinhaAlerta): Promise<{ assunto: s
       ausenciaEquipeId: ausencia.equipeId,
       treinamentoCodigo: treinamentoServico.atividadeCodigo,
       servicoDescricao: atividade.descricao,
+      sugestaoServico: sugestaoMateriais.atividadeCodigo,
     })
     .from(alerta)
     .leftJoin(os, eq(os.id, alerta.osId))
@@ -182,7 +183,8 @@ async function conteudoDoAviso(deps: Deps, a: LinhaAlerta): Promise<{ assunto: s
     .leftJoin(alvoDoAviso, eq(alvoDoAviso.id, alerta.usuarioAlvoId))
     .leftJoin(ausencia, eq(ausencia.id, alerta.ausenciaId))
     .leftJoin(treinamentoServico, eq(treinamentoServico.id, alerta.treinamentoId))
-    .leftJoin(atividade, eq(atividade.codigo, treinamentoServico.atividadeCodigo))
+    .leftJoin(sugestaoMateriais, eq(sugestaoMateriais.id, alerta.sugestaoMateriaisId))
+    .leftJoin(atividade, eq(atividade.codigo, sql`coalesce(${treinamentoServico.atividadeCodigo}, ${sugestaoMateriais.atividadeCodigo}, ${alerta.atividadeCodigo})`))
     .where(eq(alerta.id, a.id));
   const [equipeAlvo] = a.equipeId ? await db.select({ nome: equipe.nome }).from(equipe).where(eq(equipe.id, a.equipeId)) : [];
 
@@ -205,6 +207,9 @@ async function conteudoDoAviso(deps: Deps, a: LinhaAlerta): Promise<{ assunto: s
     const servico = r.servicoDescricao ? `${r.treinamentoCodigo} · ${r.servicoDescricao}` : r.treinamentoCodigo;
     sufixo = ` — ${r.servicoDescricao ?? r.treinamentoCodigo}`;
     itens.push({ rotulo: "Serviço", valor: servico });
+  } else if (alvo === "sugestao" && r?.sugestaoServico) {
+    sufixo = ` — ${r.servicoDescricao ?? r.sugestaoServico}`;
+    itens.push({ rotulo: "Serviço", valor: r.servicoDescricao ? `${r.sugestaoServico} · ${r.servicoDescricao}` : r.sugestaoServico });
   }
   itens.push({ rotulo: "Registrado em", valor: dataHoraBr(a.criadoEm) });
 
@@ -217,6 +222,8 @@ async function conteudoDoAviso(deps: Deps, a: LinhaAlerta): Promise<{ assunto: s
     usuarioAlvoId: a.usuarioAlvoId,
     equipeAlvoId: a.equipeId,
     treinamentoCodigo: r?.treinamentoCodigo ?? null,
+    sugestaoId: a.sugestaoMateriaisId,
+    servicoCodigo: r?.sugestaoServico ?? a.atividadeCodigo,
   });
   // Quem teve o acesso recusado não entra mais: não há o que abrir.
   const botao = a.tipo === "acesso_recusado" ? undefined : { texto: a.tipo === "conta_criada" || a.tipo === "senha_redefinida" ? "Entrar no SYNQ OS" : "Abrir no SYNQ OS", url: `${deps.config.painelUrl}${caminho}` };

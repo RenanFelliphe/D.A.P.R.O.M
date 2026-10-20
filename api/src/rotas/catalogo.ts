@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Deps } from "../deps";
 import { MATERIAL_CATEGORIAS } from "../db/schema";
 import { diferencas, registrarAuditoria } from "../dominio/auditoria";
+import { avisarListaAtualizada } from "../dominio/sugestao-materiais";
 import {
   criarMaterial,
   editarMaterial,
@@ -127,8 +128,10 @@ export function rotasCatalogo(deps: Deps, { autenticar, exigirPerfil }: Autentic
   r.put("/catalogo/servicos/:codigo{.+}", autenticar(), soAdmin, async (c) => {
     const codigo = codigoDoServico(c.req.param("codigo"));
     const dados = await lerCorpo(c, esquemaMateriaisDoServico);
-    const { servico, mudou, antes, depois } = await salvarMateriaisDoServico(deps.db, codigo, dados);
+    const { servico, mudou, antes, depois, itensAntes, itensDepois } = await salvarMateriaisDoServico(deps.db, codigo, dados);
     if (mudou) {
+      // Todos os que fazem o serviço sabem que a lista mudou (o admin que mexeu já sabe).
+      await avisarListaAtualizada(deps.db, { codigo, antes: itensAntes, depois: itensDepois, excluir: [c.get("usuario").id], agora: deps.agora() });
       await registrarAuditoria(deps.db, c.get("usuario"), {
         entidade: "atividade",
         verbo: "materiais",

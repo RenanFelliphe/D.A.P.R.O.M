@@ -17,7 +17,7 @@ export interface DescricaoDaRegra {
   limite: string;
 }
 
-export const GRUPOS_DE_REGRAS = ["Principais", "Bônus da OS", "Boas-vindas", "Treinamentos", "Supervisor", "Conquistas"] as const;
+export const GRUPOS_DE_REGRAS = ["Principais", "Bônus da OS", "Boas-vindas", "Treinamentos", "Supervisor", "Colaboração", "Conquistas"] as const;
 export type GrupoDeRegras = (typeof GRUPOS_DE_REGRAS)[number];
 
 export const REGRAS: Record<RegraCodigo, DescricaoDaRegra> = {
@@ -157,6 +157,24 @@ export const REGRAS: Record<RegraCodigo, DescricaoDaRegra> = {
     quando: "Ao definir o intervalo de um plano que estava sem.",
     limite: "Uma por plano.",
   },
+  sugestao_materiais_aceita: {
+    nome: "Sugestão de materiais aceita",
+    descricao: "Ter a sugestão (ou a contestação) da lista de materiais de um serviço aceita pelo supervisor.",
+    pontos: 30,
+    grupo: "Colaboração",
+    quem: "A pessoa que enviou a sugestão ou a contestação.",
+    quando: "Quando o supervisor da equipe que mais faz o serviço aceita, com ou sem ajuste. Enviar não pontua: só a aceitação.",
+    limite: "Uma por pessoa e serviço a cada 30 dias (as aceitas dentro do prazo atualizam a lista, mas só a primeira pontua).",
+  },
+  sugestao_materiais_avaliada: {
+    nome: "Sugestão de materiais avaliada",
+    descricao: "Avaliar (aceitar ou recusar) a sugestão ou a contestação da lista de materiais de um serviço.",
+    pontos: 3,
+    grupo: "Colaboração",
+    quem: "O supervisor que avaliou.",
+    quando: "Ao aceitar ou recusar. Quem recusa também ganha: o ponto é por responder, não por aprovar.",
+    limite: "Uma por sugestão.",
+  },
   conquista_obtida: {
     nome: "Conquista obtida",
     descricao: "Ganhar um troféu. O valor vem de cada conquista.",
@@ -185,6 +203,8 @@ export const ORDEM_DAS_REGRAS: RegraCodigo[] = [
   "treinamento_servico_fases",
   "ciencia_no_prazo",
   "intervalo_definido",
+  "sugestao_materiais_aceita",
+  "sugestao_materiais_avaliada",
   "conquista_obtida",
 ];
 
@@ -200,6 +220,7 @@ export const NAO_PONTUAM: { o_que: string; por_que: string }[] = [
   { o_que: "Ciência depois de 72 horas", por_que: "O ponto é pela ciência em dia." },
   { o_que: "Entrar no sistema todo dia", por_que: "Não é trabalho." },
   { o_que: "Checklist de inspeção da preventiva", por_que: "Ele é obrigatório para encerrar a OS, então um bônus pontuaria o encerramento duas vezes. O incentivo às preventivas está na tarefa \"Preventiva concluída\"." },
+  { o_que: "Enviar a sugestão ou a contestação de materiais", por_que: "Premiaria enviar muita coisa, boa ou não. Os pontos vêm quando o supervisor aceita." },
   { o_que: "Ações do administrador", por_que: "O administrador não joga: não pontua e não aparece no ranking." },
 ];
 

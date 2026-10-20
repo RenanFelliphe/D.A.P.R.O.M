@@ -50,6 +50,8 @@ export interface DadosDoAviso {
   equipeId?: string;
   leituraRhId?: string;
   treinamentoId?: string;
+  sugestaoMateriaisId?: string;
+  atividadeCodigo?: string;
   /** Fica só no sino, mesmo que o tipo tenha e-mail (a falha de importação que se repete). */
   semEmail?: boolean;
 }
@@ -77,6 +79,8 @@ export async function criarAviso(db: Db, destinatarios: Iterable<string>, dados:
         equipeId: dados.equipeId ?? null,
         leituraRhId: dados.leituraRhId ?? null,
         treinamentoId: dados.treinamentoId ?? null,
+        sugestaoMateriaisId: dados.sugestaoMateriaisId ?? null,
+        atividadeCodigo: dados.atividadeCodigo ?? null,
         ...(dados.agora ? { criadoEm: dados.agora } : {}),
       })
       .returning({ id: alerta.id });

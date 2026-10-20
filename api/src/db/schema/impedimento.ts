@@ -5,6 +5,8 @@ import { emLista, instante } from "./comum";
 import { planoPreventiva } from "./preventivas";
 import { leituraRh } from "./rh";
 import { importacao, os } from "./sap";
+import { atividade } from "./modelos-apr";
+import { sugestaoMateriais } from "./sugestao-materiais";
 import { treinamentoServico } from "./treinamento-servico";
 import { equipe, usuario } from "./usuarios";
 import { ausencia } from "./ausencia";
@@ -23,6 +25,8 @@ const COLUNAS_DO_ALVO: Record<AlvoDeAviso, readonly string[]> = {
   usuario: ["usuarioAlvoId"],
   leitura_rh: ["leituraRhId"],
   treinamento: ["treinamentoId"],
+  sugestao: ["sugestaoMateriaisId"],
+  servico: ["atividadeCodigo"],
   nenhum: [],
 };
 
@@ -66,6 +70,10 @@ export const alerta = pgTable(
     leituraRhId: uuid().references(() => leituraRh.id),
     /** Só nos avisos do treinamento de serviço (`treinamento_*`). */
     treinamentoId: uuid().references(() => treinamentoServico.id),
+    /** Nos avisos da sugestão ou contestação da lista de materiais (`sugestao_materiais_*`, `contestacao_materiais_nova`). */
+    sugestaoMateriaisId: uuid().references(() => sugestaoMateriais.id, { onDelete: "cascade" }),
+    /** Só no aviso de que a lista de materiais de um serviço mudou (`materiais_atualizados`). */
+    atividadeCodigo: text().references(() => atividade.codigo, { onDelete: "cascade" }),
     /** Quem recebe: ver `dominio/alertas.ts` (o supervisor da equipe, o representante no comando, os administradores, a própria pessoa). */
     destinatarioId: uuid()
       .notNull()
@@ -80,7 +88,7 @@ export const alerta = pgTable(
     check(
       "alerta_alvo",
       alvoCoerente(
-        { osId: t.osId, importacaoId: t.importacaoId, ausenciaId: t.ausenciaId, usuarioAlvoId: t.usuarioAlvoId, equipeId: t.equipeId, leituraRhId: t.leituraRhId, treinamentoId: t.treinamentoId },
+        { osId: t.osId, importacaoId: t.importacaoId, ausenciaId: t.ausenciaId, usuarioAlvoId: t.usuarioAlvoId, equipeId: t.equipeId, leituraRhId: t.leituraRhId, treinamentoId: t.treinamentoId, sugestaoMateriaisId: t.sugestaoMateriaisId, atividadeCodigo: t.atividadeCodigo },
         t.tipo,
       ),
     ),

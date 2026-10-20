@@ -40,9 +40,9 @@ describe("Gamificação: conquistas (seção 7)", () => {
     const patentes = await c.amb.esperar(200, "GET", "/gamificacao/patentes", { como: c.supervisor });
     assert.deepEqual(patentes.patentes.map((p: any) => [p.nome, p.pontos_necessarios, p.cor]), [["Bronze", 0, "#CD7F32"], ["Prata", 300, "#A8A9AD"], ["Ouro", 1500, "#D4AF37"], ["Platina", 3000, "#9DB4C0"], ["Diamante", 5000, "#4FC3F7"]]);
     const regras = await c.amb.esperar(200, "GET", "/gamificacao/regras", { como: c.supervisor });
-    // 14 da seção 2.1 + treinamento_servico_concluido (5) e treinamento_servico_fases (1), da seção 13 do gameficacao.md.
-    assert.equal(regras.regras.length, 16);
-    assert.deepEqual(regras.regras.map((r: any) => r.pontos), [10, 10, 5, 10, 5, 5, 5, 5, 5, 5, 10, 5, 1, 3, 3, 0]);
+    // 14 da seção 2.1 + treinamento_servico_concluido (5) e treinamento_servico_fases (1), da seção 13 do gameficacao.md, + as 2 de colaboração (30 e 3), do sugestao-de-materiais.md.
+    assert.equal(regras.regras.length, 18);
+    assert.deepEqual(regras.regras.map((r: any) => r.pontos), [10, 10, 5, 10, 5, 5, 5, 5, 5, 5, 10, 5, 1, 3, 3, 30, 3, 0]);
   });
 
   it("a primeira APR concede 'Primeiro passo' (25 pontos), com aviso pendente até a pessoa ver; não é dada duas vezes", async () => {

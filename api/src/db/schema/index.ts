@@ -15,4 +15,5 @@ export * from "./rh";
 export * from "./sap-simulado";
 export * from "./ausencia";
 export * from "./treinamento-servico";
+export * from "./sugestao-materiais";
 export * from "./vitoria";

@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "../db/conexao";
-import { MATERIAL_CATEGORIAS, atividade, atividadeMaterial, material, type MaterialCategoria } from "../db/schema";
+import { MATERIAL_CATEGORIAS, atividade, atividadeMaterial, material, sugestaoMateriais, sugestaoMateriaisItem, type MaterialCategoria } from "../db/schema";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
 import { contar, limiteEDeslocamento, type Paginacao } from "../http/paginacao";
 import { textoObrigatorio, uuid } from "../http/validacao";
@@ -126,6 +126,13 @@ export async function editarMaterial(db: Db, id: string, m: MaterialEntrada) {
 export async function excluirMaterial(db: Db, id: string) {
   const [atual] = await db.select({ descricao: material.descricao, codigo: material.codigo, servicosTotal: servicosDoMaterial }).from(material).where(eq(material.id, id));
   if (!atual) throw naoEncontrado("Material não encontrado");
+  const [pendente] = await db
+    .select({ id: sugestaoMateriais.id })
+    .from(sugestaoMateriaisItem)
+    .innerJoin(sugestaoMateriais, eq(sugestaoMateriais.id, sugestaoMateriaisItem.sugestaoId))
+    .where(and(eq(sugestaoMateriaisItem.materialId, id), eq(sugestaoMateriais.estado, "pendente")))
+    .limit(1);
+  if (pendente) throw conflito("material_em_sugestao", `"${atual.descricao}" está numa sugestão de materiais aguardando avaliação e não pode ser excluído agora.`);
   if (atual.servicosTotal > 0) {
     throw conflito(
       "material_em_uso",
@@ -253,6 +260,6 @@ export async function salvarMateriaisDoServico(db: Db, codigo: string, entrada: 
     const depois = atuais.map(rotuloDoItem);
     const mudou = JSON.stringify(anteriores.map(({ materialId, quantidade, observacao }) => [materialId, quantidade, observacao])) !==
       JSON.stringify(atuais.map(({ materialId, quantidade, observacao }) => [materialId, quantidade, observacao]));
-    return { servico: { ...servico, materiais: atuais }, mudou, antes, depois };
+    return { servico: { ...servico, materiais: atuais }, mudou, antes, depois, itensAntes: anteriores, itensDepois: atuais };
   });
 }

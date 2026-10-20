@@ -27,6 +27,8 @@ export const REGRA_CODIGOS = [
   "conquista_obtida",
   "treinamento_servico_concluido",
   "treinamento_servico_fases",
+  "sugestao_materiais_aceita",
+  "sugestao_materiais_avaliada",
 ] as const;
 export type RegraCodigo = (typeof REGRA_CODIGOS)[number];
 

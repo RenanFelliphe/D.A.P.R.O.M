@@ -20,6 +20,14 @@ export const AVISOS_DE_AUSENCIA = [
   "ausencia_cancelada",
 ] as const;
 
+/** Os avisos da sugestão e da contestação da lista de materiais de um serviço: apontam para a sugestão. */
+export const AVISOS_DE_SUGESTAO_DE_MATERIAIS = [
+  "sugestao_materiais_nova",
+  "contestacao_materiais_nova",
+  "sugestao_materiais_aceita",
+  "sugestao_materiais_recusada",
+] as const;
+
 /** Os avisos de que o representante assumiu a equipe ou de que o supervisor voltou: apontam para a equipe. */
 export const AVISOS_DE_REPRESENTACAO = ["representacao_iniciada", "representacao_encerrada"] as const;
 
@@ -60,6 +68,9 @@ export const TIPOS_DE_AVISO = [
   "vitoria_sem_ia",
   "treinamento_publicado",
   "treinamento_problema",
+  // Lista de materiais do serviço
+  ...AVISOS_DE_SUGESTAO_DE_MATERIAIS,
+  "materiais_atualizados",
 ] as const;
 export type TipoDeAviso = (typeof TIPOS_DE_AVISO)[number];
 
@@ -72,14 +83,17 @@ export type TipoDeAviso = (typeof TIPOS_DE_AVISO)[number];
  * - `usuario`: `usuario_alvo_id` (a conta de quem se fala);
  * - `leitura_rh`: `leitura_rh_id` (a leitura do registro de funcionários que falhou);
  * - `treinamento`: `treinamento_id` (o treinamento de serviço);
+ * - `sugestao`: `sugestao_materiais_id` (a sugestão ou contestação da lista de materiais de um serviço);
+ * - `servico`: `atividade_codigo` (o serviço cuja lista de materiais mudou);
  * - `nenhum`: o aviso é do sistema todo (a Vitória sem IA).
  */
-export const ALVOS_DE_AVISO = ["os", "importacao", "ausencia", "equipe", "usuario", "leitura_rh", "treinamento", "nenhum"] as const;
+export const ALVOS_DE_AVISO = ["os", "importacao", "ausencia", "equipe", "usuario", "leitura_rh", "treinamento", "sugestao", "servico", "nenhum"] as const;
 export type AlvoDeAviso = (typeof ALVOS_DE_AVISO)[number];
 
 const alvoDe = (tipo: TipoDeAviso): AlvoDeAviso => {
   if ((AVISOS_DE_AUSENCIA as readonly string[]).includes(tipo)) return "ausencia";
   if ((AVISOS_DE_REPRESENTACAO as readonly string[]).includes(tipo)) return "equipe";
+  if ((AVISOS_DE_SUGESTAO_DE_MATERIAIS as readonly string[]).includes(tipo)) return "sugestao";
   switch (tipo) {
     case "falha_importacao":
       return "importacao";
@@ -100,6 +114,8 @@ const alvoDe = (tipo: TipoDeAviso): AlvoDeAviso => {
     case "treinamento_publicado":
     case "treinamento_problema":
       return "treinamento";
+    case "materiais_atualizados":
+      return "servico";
     case "vitoria_sem_ia":
       return "nenhum";
     default:
@@ -151,6 +167,11 @@ export const ROTULO_DO_AVISO: Record<TipoDeAviso, string> = {
   vitoria_sem_ia: "Vitória sem IA",
   treinamento_publicado: "Novo treinamento",
   treinamento_problema: "Problema em treinamento",
+  sugestao_materiais_nova: "Sugestão de materiais para avaliar",
+  contestacao_materiais_nova: "Contestação de materiais para avaliar",
+  sugestao_materiais_aceita: "Sua sugestão de materiais foi aceita",
+  sugestao_materiais_recusada: "Sua sugestão de materiais foi recusada",
+  materiais_atualizados: "Materiais do serviço atualizados",
 };
 
 // ---- E-mail ------------------------------------------------------------------------------------------------------
@@ -215,6 +236,12 @@ export const CATEGORIA_DO_AVISO: Record<TipoDeAviso, CategoriaDeEmail | null> = 
   vitoria_sem_ia: "sistema",
   treinamento_publicado: "treinamentos",
   treinamento_problema: "treinamentos",
+  // A sugestão a avaliar e a resposta ao autor vão por e-mail (categoria Equipe); a lista que mudou fica só no sino: avisa muita gente.
+  sugestao_materiais_nova: "equipe",
+  contestacao_materiais_nova: "equipe",
+  sugestao_materiais_aceita: "equipe",
+  sugestao_materiais_recusada: "equipe",
+  materiais_atualizados: null,
 };
 
 export const ROTULO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
@@ -235,7 +262,7 @@ export const DESCRICAO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
   os: "OS reservada para você ou tirada de você, assinatura final do supervisor na OS que você executou, OS aguardando a sua assinatura de supervisor, OS de apoio encerrada, inspeção com pendência, conflitos e execuções duplicadas.",
   preventivas: "Ciclo das preventivas próximo do vencimento ou vencido.",
   ausencias: "Pedidos, aprovações, recusas, alterações e retorno das ausências.",
-  equipe: "Representante que assume ou devolve a equipe, membro desativado e técnico que você cadastrou liberado ou recusado.",
+  equipe: "Representante que assume ou devolve a equipe, membro desativado, técnico que você cadastrou liberado ou recusado, e sugestões e contestações de materiais (a avaliar, aceitas ou recusadas).",
   treinamentos: "Novo treinamento de serviço publicado e problema reportado num treinamento.",
   sistema: "Falha na leitura do SAP ou do registro de funcionários, cadastro aguardando liberação, funcionário readmitido, equipe sem supervisor, PDF de OS não gerado e a Vitória sem IA.",
   resumo_diario: "Um e-mail por dia, de manhã, com o que espera por você: OS aguardando ciência, pedidos de ausência, cadastros a liberar e OS reservadas.",
@@ -268,6 +295,9 @@ export interface ReferenciasDoAviso {
   equipeAlvoId: string | null;
   /** O código do serviço do treinamento (`treinamento_*`). */
   treinamentoCodigo: string | null;
+  /** A sugestão de materiais (`sugestao_materiais_*`, `contestacao_materiais_nova`) e o código do serviço dela; no `materiais_atualizados`, só o código. */
+  sugestaoId: string | null;
+  servicoCodigo: string | null;
 }
 
 /** O endereço da tela de alertas da gestão, já com o aviso aberto. */
@@ -298,6 +328,15 @@ export function caminhoDoAviso(a: ReferenciasDoAviso): string {
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinar` : "/app/catalogo/servicos";
     case "treinamento_problema":
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento/problemas` : "/app/catalogo/servicos";
+    case "sugestao_materiais_nova":
+    case "contestacao_materiais_nova":
+    case "sugestao_materiais_aceita":
+    case "sugestao_materiais_recusada":
+      return a.servicoCodigo && a.sugestaoId
+        ? `/app/catalogo/servicos/${encodeURIComponent(a.servicoCodigo)}/materiais/sugestoes/${a.sugestaoId}`
+        : "/app/catalogo/sugestoes";
+    case "materiais_atualizados":
+      return a.servicoCodigo ? `/app/catalogo?busca=${encodeURIComponent(a.servicoCodigo)}` : "/app/catalogo";
     case "falha_importacao":
       return "/web/os/importacao";
     case "pdf_os_falhou":

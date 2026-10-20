@@ -1,7 +1,7 @@
 import { and, desc, eq, isNotNull, isNull, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "../db/conexao";
-import { alerta, ausencia, equipe, importacao, os, treinamentoServico, usuario, type AlertaTipo } from "../db/schema";
+import { alerta, ausencia, equipe, importacao, os, sugestaoMateriais, treinamentoServico, usuario, type AlertaTipo } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { naoEncontrado } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
@@ -45,6 +45,9 @@ const colunas = {
   /** Nos avisos do treinamento de serviço (`treinamento_*`): o treinamento e o código do serviço (o endereço da tela). */
   treinamentoId: alerta.treinamentoId,
   treinamentoCodigo: treinamentoServico.atividadeCodigo,
+  /** Nos avisos da lista de materiais: a sugestão (ou só o serviço, em `materiais_atualizados`) e o código do serviço (o endereço da tela). */
+  sugestaoId: alerta.sugestaoMateriaisId,
+  servicoCodigo: sql<string | null>`coalesce(${sugestaoMateriais.atividadeCodigo}, ${alerta.atividadeCodigo})`,
   detalhe: alerta.detalhe,
   emailEnviadoEm: alerta.emailEnviadoEm,
   lidoEm: alerta.lidoEm,
@@ -74,6 +77,7 @@ export async function listarAlertas(db: Db, eu: UsuarioAutenticado, filtros: Pag
     .leftJoin(ausencia, eq(ausencia.id, alerta.ausenciaId))
     .leftJoin(equipeDoAviso, eq(equipeDoAviso.id, alerta.equipeId))
     .leftJoin(treinamentoServico, eq(treinamentoServico.id, alerta.treinamentoId))
+    .leftJoin(sugestaoMateriais, eq(sugestaoMateriais.id, alerta.sugestaoMateriaisId))
     .where(onde)
     .orderBy(desc(alerta.criadoEm), desc(alerta.id))
     .limit(limit)

@@ -39,6 +39,9 @@ export interface Alerta {
   /** O treinamento de serviço (`treinamento_*`) e o código do serviço dele. */
   treinamento_id: string | null;
   treinamento_codigo: string | null;
+  /** A sugestão ou contestação da lista de materiais (`sugestao_materiais_*`, `contestacao_materiais_nova`) e o código do serviço; `materiais_atualizados` traz só o código. */
+  sugestao_id: string | null;
+  servico_codigo: string | null;
   detalhe: string;
   email_enviado_em: string | null;
   lido_em: string | null;
@@ -47,7 +50,7 @@ export interface Alerta {
 
 export const rotuloDoTipo: Record<TipoDeAlerta, string> = ROTULO_DO_AVISO;
 
-/** A que o aviso aponta: a OS, a importação, a ausência, a equipe, a conta de uma pessoa, a leitura do registro, o treinamento ou nada. */
+/** A que o aviso aponta: a OS, a importação, a ausência, a equipe, a conta de uma pessoa, a leitura do registro, o treinamento, a sugestão ou o serviço da lista de materiais, ou nada. */
 export const alvoDoAlerta = (a: Pick<Alerta, "tipo">): AlvoDeAviso => ALVO_DO_AVISO[a.tipo];
 
 /** Alerta da representação da equipe (o representante assumiu ou devolveu o comando): não tem OS e leva à equipe. */
@@ -85,6 +88,10 @@ export function referenciaDoAlerta(a: Alerta): { codigo: string | null; texto: s
       return { codigo: null, texto: "Registro de funcionários" };
     case "treinamento":
       return { codigo: a.treinamento_codigo, texto: "Treinamento de serviço" };
+    case "sugestao":
+      return { codigo: a.servico_codigo, texto: a.tipo === "contestacao_materiais_nova" ? "Contestação de materiais" : "Sugestão de materiais" };
+    case "servico":
+      return { codigo: a.servico_codigo, texto: "Materiais do serviço" };
     case "nenhum":
       return { codigo: null, texto: "Vitória" };
     default:
