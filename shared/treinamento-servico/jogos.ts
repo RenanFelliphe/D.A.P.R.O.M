@@ -41,23 +41,21 @@ export function letrasDaPalavra(palavra: string): string[] {
 export type Celula = [linha: number, coluna: number];
 
 /**
- * As células entre o início e o fim de uma marcação, em linha reta, sempre da esquerda para a direita ou de cima para
- * baixo (as palavras só ficam assim). Diagonal ou fora da grade devolve `null`.
+ * As células entre o início e o fim de uma marcação, em linha reta, na ordem em que a palavra se lê (as palavras só ficam
+ * assim): na linha, da esquerda para a direita; na coluna, de cima para baixo; nas duas diagonais, da esquerda para a
+ * direita (descendo ou subindo). Tanto faz marcar do começo para o fim ou ao contrário. Linha torta ou fora da grade
+ * devolve `null`.
  */
 export function celulasEntre(inicio: Celula, fim: Celula, tamanho: number): Celula[] | null {
-  const [l1, c1] = inicio;
-  const [l2, c2] = fim;
   const dentro = (n: number) => Number.isInteger(n) && n >= 0 && n < tamanho;
-  if (![l1, c1, l2, c2].every(dentro)) return null;
-  if (l1 === l2) {
-    const [de, ate] = c1 <= c2 ? [c1, c2] : [c2, c1];
-    return Array.from({ length: ate - de + 1 }, (_, k) => [l1, de + k] as Celula);
-  }
-  if (c1 === c2) {
-    const [de, ate] = l1 <= l2 ? [l1, l2] : [l2, l1];
-    return Array.from({ length: ate - de + 1 }, (_, k) => [de + k, c1] as Celula);
-  }
-  return null;
+  if (![...inicio, ...fim].every(dentro)) return null;
+  // Começa pela ponta da esquerda (na coluna, pela de cima).
+  const [[l1, c1], [l2, c2]] = inicio[1] < fim[1] || (inicio[1] === fim[1] && inicio[0] <= fim[0]) ? [inicio, fim] : [fim, inicio];
+  const passoL = Math.sign(l2 - l1);
+  const passoC = Math.sign(c2 - c1);
+  const tamanhoDaLinha = Math.max(Math.abs(l2 - l1), c2 - c1) + 1;
+  if (passoL !== 0 && passoC !== 0 && Math.abs(l2 - l1) !== c2 - c1) return null;
+  return Array.from({ length: tamanhoDaLinha }, (_, k) => [l1 + passoL * k, c1 + passoC * k] as Celula);
 }
 
 // ---- Termo -------------------------------------------------------------------------------------------------------------

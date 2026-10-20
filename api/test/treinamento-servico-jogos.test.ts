@@ -4,8 +4,8 @@ import { embaralharLetras, ladoDaGrade, mesaDaMemoria, montarGrade, palavrasAcha
 import { celulasEntre, chaveDaPalavra, codificarTermo, coresDoPalpite, decodificarTermo, letrasDaGrade, letrasDaPalavra } from "../../shared/treinamento-servico/jogos";
 
 /**
- * As peças dos minijogos que não dependem do banco: a grade do caça-palavras (só horizontal e vertical, sempre com todas
- * as palavras), a partida da memória refeita no servidor e as letras do "desembaralhe" nunca já na ordem certa.
+ * As peças dos minijogos que não dependem do banco: a grade do caça-palavras (na linha, na coluna e na diagonal, com
+ * palavras se cruzando e sempre com todas), a partida da memória refeita no servidor e as letras do "desembaralhe" nunca já na ordem certa.
  */
 describe("Treinamentos de serviço — peças dos minijogos", () => {
   it("letras da grade: maiúsculas sem acento; peças do desembaralhe: com acento", () => {
@@ -14,7 +14,7 @@ describe("Treinamentos de serviço — peças dos minijogos", () => {
     assert.equal(chaveDaPalavra("Inspeção"), chaveDaPalavra("INSPECAO"), "a impressão não depende do acento nem da caixa");
   });
 
-  it("células entre dois pontos: só em linha reta, em qualquer sentido de toque", () => {
+  it("células entre dois pontos: em linha reta (linha, coluna ou diagonal), em qualquer sentido de toque", () => {
     assert.deepEqual(celulasEntre([2, 5], [2, 3], 8), [
       [2, 3],
       [2, 4],
@@ -25,12 +25,24 @@ describe("Treinamentos de serviço — peças dos minijogos", () => {
       [1, 1],
       [2, 1],
     ]);
-    assert.equal(celulasEntre([0, 0], [2, 2], 8), null, "diagonal não vale");
+    assert.deepEqual(celulasEntre([2, 2], [0, 0], 8), [
+      [0, 0],
+      [1, 1],
+      [2, 2],
+    ], "diagonal descendo, lida da esquerda para a direita");
+    assert.deepEqual(celulasEntre([0, 2], [2, 0], 8), [
+      [2, 0],
+      [1, 1],
+      [0, 2],
+    ], "diagonal subindo, lida da esquerda para a direita");
+    assert.equal(celulasEntre([0, 0], [1, 2], 8), null, "linha torta não vale");
     assert.equal(celulasEntre([0, 0], [0, 8], 8), null, "fora da grade");
   });
 
-  it("a grade traz todas as palavras na posição gravada, só na horizontal ou na vertical", () => {
+  it("a grade traz todas as palavras na posição gravada, na linha, na coluna ou na diagonal, e cruzando", () => {
     const palavras = ["Bloqueio", "EPI", "Inspeção", "Segurança", "Etiqueta"];
+    let diagonais = 0;
+    let cruzadas = 0;
     for (let rodada = 0; rodada < 200; rodada++) {
       const { linhas, posicoes } = montarGrade(palavras);
       const lado = ladoDaGrade(palavras);
@@ -38,28 +50,34 @@ describe("Treinamentos de serviço — peças dos minijogos", () => {
       assert.ok(linhas.every((l) => l.length === lado && /^[A-Z]+$/.test(l)));
       palavras.forEach((p, i) => {
         const { inicio, fim } = posicoes[i]!;
-        assert.ok(inicio[0] === fim[0] || inicio[1] === fim[1], "nunca na diagonal");
-        assert.ok(inicio[0] <= fim[0] && inicio[1] <= fim[1], "da esquerda para a direita ou de cima para baixo");
+        const diagonal = inicio[0] !== fim[0] && inicio[1] !== fim[1];
+        if (diagonal) diagonais++;
+        assert.ok(inicio[1] < fim[1] || (inicio[1] === fim[1] && inicio[0] < fim[0]), "da esquerda para a direita ou, na coluna, de cima para baixo");
         const lido = celulasEntre(inicio, fim, lado)!.map(([l, c]) => linhas[l]![c]).join("");
         assert.equal(lido, letrasDaGrade(p));
       });
+      const casas = posicoes.flatMap((p) => celulasEntre(p.inicio, p.fim, lado)!.map(([l, c]) => `${l}:${c}`));
+      if (new Set(casas).size < casas.length) cruzadas++;
       assert.equal(palavrasAchadas(linhas, palavras, posicoes).size, palavras.length);
     }
+    assert.ok(diagonais > 0, "alguma palavra na diagonal");
+    assert.ok(cruzadas > 150, `palavras se cruzando quase sempre (${cruzadas} de 200)`);
   });
 
   it("5 palavras de 12 letras sempre cabem", () => {
     const palavras = ["ABCDEFGHIJKL", "MNOPQRSTUVWX", "ZYXWVUTSRQPO", "LKJIHGFEDCBA", "QWERTYUIOPAS"];
     for (let rodada = 0; rodada < 50; rodada++) {
       const { linhas, posicoes } = montarGrade(palavras);
-      assert.equal(linhas.length, 12);
+      assert.equal(linhas.length, 14);
       assert.equal(palavrasAchadas(linhas, palavras, posicoes).size, 5);
     }
   });
 
-  it("marcação que não forma palavra, ou na diagonal, não conta", () => {
-    const linhas = ["EPIX", "XXXX", "XXXX", "XXXX"];
+  it("marcação que não forma palavra, ou torta, não conta; na diagonal, conta", () => {
+    const linhas = ["EPIX", "XPXX", "XXIX", "XXXX"];
     assert.equal(palavrasAchadas(linhas, ["EPI"], [{ inicio: [0, 0], fim: [0, 3] }]).size, 0);
-    assert.equal(palavrasAchadas(linhas, ["EPI"], [{ inicio: [0, 0], fim: [2, 2] }]).size, 0);
+    assert.equal(palavrasAchadas(linhas, ["EPI"], [{ inicio: [0, 0], fim: [1, 2] }]).size, 0);
+    assert.equal(palavrasAchadas(linhas, ["EPI"], [{ inicio: [2, 2], fim: [0, 0] }]).size, 1, "na diagonal, de trás para a frente");
     assert.equal(palavrasAchadas(linhas, ["EPI"], [{ inicio: [0, 2], fim: [0, 0] }]).size, 1, "tocar do fim para o começo também vale");
   });
 
