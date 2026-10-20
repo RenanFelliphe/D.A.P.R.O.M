@@ -23,7 +23,7 @@ export const useSom = () => useContext(ContextoDoSom);
 /**
  * Atalhos de teclado de uma tela do jogo (setas na explicação, 1 a 4 e Enter nas fases). Não roubam a tecla de um campo de
  * texto (o reporte de problema) nem de um botão que não é escolha do jogo (fechar, reportar): só dos marcados com
- * `data-escolha` ou de fora de qualquer botão.
+ * `data-escolha` ou de fora de qualquer botão. Com uma caixa de confirmação aberta, ficam parados.
  */
 export function useTecla(mapa: Record<string, (() => void) | undefined>, ativo = true) {
   const atual = useRef(mapa);
@@ -38,6 +38,7 @@ export function useTecla(mapa: Record<string, (() => void) | undefined>, ativo =
       const alvo = e.target as HTMLElement | null;
       if (alvo?.closest("input, textarea, select, [contenteditable='true']")) return;
       if (alvo?.closest("button, a") && !alvo.closest("[data-escolha]")) return;
+      if (document.querySelector(".ts-jogo [role='alertdialog']")) return;
       const acao = atual.current[e.key.length === 1 ? e.key.toLowerCase() : e.key];
       if (!acao) return;
       e.preventDefault();

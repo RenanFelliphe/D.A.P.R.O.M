@@ -359,7 +359,7 @@ function EditorCacaPalavras({ fase, aoMudar, explicacao }: { fase: Extract<Fase,
       />
       <Lista
         titulo="Palavras"
-        dica={`De ${LIMITES.palavrasMin} a ${LIMITES.palavrasMax} palavras de ${LIMITES.palavraDaGradeMin} a ${LIMITES.palavraDaGradeMax} letras, uma palavra só cada. Na grade, ficam só na horizontal ou na vertical, sem acento.`}
+        dica={`De ${LIMITES.palavrasMin} a ${LIMITES.palavrasMax} palavras de ${LIMITES.palavraDaGradeMin} a ${LIMITES.palavraDaGradeMax} letras, uma palavra só cada. Na grade, ficam na linha, na coluna ou na diagonal, podendo se cruzar, sem acento.`}
         rotuloAdicionar="Adicionar palavra"
         podeAdicionar={fase.palavras.length < LIMITES.palavrasMax}
         aoAdicionar={() => aoMudar({ ...fase, palavras: [...fase.palavras, { palavra: "", pista: "" }] })}
@@ -466,7 +466,7 @@ function EditorSelecione({
   function alternarMateriais(ligar: boolean) {
     if (ligar) {
       guardado.current.opcoes = fase.opcoes;
-      const materiais = guardado.current.materiais ?? { material_ids: materiaisDoServico.slice(0, LIMITES.materiaisMax).map((m) => m.id), quantidade_errados: 3 };
+      const materiais = guardado.current.materiais ?? { material_ids: materiaisDoServico.slice(0, LIMITES.materiaisMax).map((m) => m.id), quantidade_errados: 6 };
       aoMudar({ ...fase, opcoes: [], materiais });
     } else {
       guardado.current.materiais = fase.materiais ?? null;

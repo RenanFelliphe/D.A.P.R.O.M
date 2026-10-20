@@ -23,14 +23,18 @@ import {
   type ResultadoDaResposta,
 } from "@/lib/treinamento-servico";
 import { VitoriaNaCena } from "../vitoria/VitoriaNaCena";
+import { useConfirmacao } from "./confirmacao";
 import { AberturaDaFase, Explosao, useSom, useTecla } from "./efeitos";
 
 const LETRAS = ["A", "B", "C", "D"];
 const FRASES_CERTA = ["Isso mesmo!", "Mandou bem!", "Certinho!", "Perfeito!"];
 const FRASES_ERRADA = ["Não foi dessa vez.", "Quase!", "Não é bem assim.", "Essa pegou!"];
 
-/** Estado visual de uma opção: escolhida antes de confirmar e, depois da correção, certa, errada, faltou ou apagada. */
-type Estado = "marcada" | "certa" | "errada" | "faltou" | "apagada" | undefined;
+/**
+ * Estado visual de uma opção: escolhida antes de confirmar (e a outra, em cinza, no verdadeiro ou falso) e, depois da
+ * correção, certa, errada, faltou ou apagada.
+ */
+type Estado = "marcada" | "desmarcada" | "certa" | "errada" | "faltou" | "apagada" | undefined;
 
 interface FaseDoJogoProps {
   fase: FaseParaJogar;
@@ -82,6 +86,18 @@ interface PropsDoTipo<F> {
 const campo = <T,>(inicial: Inicial, nome: string): T | undefined => (inicial?.[nome] as T | undefined) ?? undefined;
 
 const atraso = (i: number) => ({ "--i": i }) as CSSProperties;
+
+/** "Recomeçar" (ou "Desfazer tudo") de uma fase: pede confirmação antes de limpar o que a pessoa já pôs. */
+function useRecomecarFase() {
+  const confirmar = useConfirmacao();
+  return (limpar: () => void) =>
+    confirmar({
+      titulo: "Recomeçar esta fase?",
+      texto: "Tudo o que você já pôs nesta fase sai, e você monta de novo. O tempo da fase continua contando.",
+      confirmar: "Recomeçar a fase",
+      aoConfirmar: limpar,
+    });
+}
 
 /**
  * Uma fase do jogo (seção 3.3 do `vitoria.md`), de um dos 10 minijogos; `data-jogo` dá a cor e o fundo de cada um. A
@@ -448,6 +464,7 @@ function useLinhas(area: RefObject<HTMLDivElement | null>, esquerda: RefObject<(
 
 function Ligar({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, corpoRef }: PropsDoTipo<Extract<FaseParaJogar, { tipo: "ligar" }>>) {
   const { tocar } = useSom();
+  const recomecar = useRecomecarFase();
   const [pares, setPares] = useState<{ esquerda: number; direita: number }[]>(() => campo<{ esquerda: number; direita: number }[]>(inicial, "pares") ?? []);
   const [escolhida, setEscolhida] = useState<number | null>(null);
   const area = useRef<HTMLDivElement>(null);
@@ -529,7 +546,7 @@ function Ligar({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, cor
           )}
         </span>
         {pares.length > 0 && (
-          <Button variant="ghost" sm onClick={() => setPares([])} disabled={ocupado}>
+          <Button variant="ghost" sm onClick={() => recomecar(() => setPares([]))} disabled={ocupado}>
             Desfazer tudo
           </Button>
         )}
@@ -596,6 +613,7 @@ function Ligar({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, cor
 
 function PorEmOrdem({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, corpoRef }: PropsDoTipo<Extract<FaseParaJogar, { tipo: "ordem" }>>) {
   const { tocar } = useSom();
+  const recomecar = useRecomecarFase();
   const [sequencia, setSequencia] = useState<number[]>(() => campo<number[]>(inicial, "sequencia") ?? []);
   const usados = new Set(sequencia);
   const travado = Boolean(retorno) || ocupado;
@@ -663,7 +681,7 @@ function PorEmOrdem({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape
           <Button variant="ghost" sm onClick={() => tirar(sequencia.length - 1)} disabled={ocupado}>
             Desfazer a última
           </Button>
-          <Button variant="ghost" sm onClick={() => setSequencia([])} disabled={ocupado}>
+          <Button variant="ghost" sm onClick={() => recomecar(() => setSequencia([]))} disabled={ocupado}>
             Recomeçar
           </Button>
         </div>
@@ -687,8 +705,9 @@ function VerdadeiroFalso({ fase, retorno, ocupado, aoResponder, inicial, topo, r
   }
   useTecla({ v: () => escolher(true), f: () => escolher(false), "1": () => escolher(true), "2": () => escolher(false) }, !travado);
 
+  // Escolhida uma carta, a outra fica em cinza (continua dando para trocar até confirmar).
   function estadoDa(valor: boolean): Estado {
-    if (!retorno) return escolha === valor ? "marcada" : undefined;
+    if (!retorno) return escolha === null ? undefined : escolha === valor ? "marcada" : "desmarcada";
     if (valor === gabarito) return "certa";
     return escolha === valor ? "errada" : "apagada";
   }
@@ -783,7 +802,7 @@ function CacaPalavras({ fase, retorno, ocupado, aoResponder, inicial, topo, roda
     }
     const linha = celulasEntre(inicio, celula, lado);
     if (!linha || linha.length < 2) {
-      // Diagonal ou a mesma letra: recomeça a marcação daqui (ou cancela, se tocou na mesma).
+      // Fora da linha reta ou a mesma letra: recomeça a marcação daqui (ou cancela, se tocou na mesma).
       setInicio(chaveDaCelula(inicio) === chaveDaCelula(celula) ? null : celula);
       return;
     }
@@ -873,7 +892,7 @@ function CacaPalavras({ fase, retorno, ocupado, aoResponder, inicial, topo, roda
           })}
         </ul>
       </div>
-      {!retorno && <p className="ts-caca-dica">{inicio ? "Agora toque na última letra da palavra (na mesma linha ou coluna)." : "Toque na primeira letra de uma palavra."}</p>}
+      {!retorno && <p className="ts-caca-dica">{inicio ? "Agora toque na última letra da palavra, em linha reta: na linha, na coluna ou na diagonal." : "Toque na primeira letra de uma palavra. Elas podem estar na linha, na coluna ou na diagonal, e se cruzar."}</p>}
     </Corpo>
   );
 }
@@ -1051,6 +1070,7 @@ const teclaDaLetra = (letra: string) => letra.normalize("NFD").replace(/[̀-ͯ]/
 
 function Desembaralhe({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, corpoRef }: PropsDoTipo<Extract<FaseParaJogar, { tipo: "desembaralhe" }>>) {
   const { tocar } = useSom();
+  const recomecar = useRecomecarFase();
   const [sequencia, setSequencia] = useState<number[]>(() => campo<number[]>(inicial, "letras") ?? []);
   const usadas = new Set(sequencia);
   const travado = Boolean(retorno) || ocupado;
@@ -1110,8 +1130,9 @@ function Desembaralhe({ fase, retorno, ocupado, aoResponder, inicial, topo, roda
       )}
       {!retorno && (
         <div className="ts-des-monte" role="group" aria-label="Letras embaralhadas">
+          {/* A letra já posta fica no lugar, em cinza, para ver o que ainda falta usar. */}
           {fase.letras.map((letra, i) => (
-            <button key={i} type="button" className="ts-des-peca" data-usada={usadas.has(i) || undefined} data-escolha style={atraso(i)} disabled={travado || usadas.has(i)} onClick={() => por(i)} aria-label={letra}>
+            <button key={i} type="button" className="ts-des-peca" data-usada={usadas.has(i) || undefined} data-escolha style={atraso(i)} disabled={travado || usadas.has(i)} onClick={() => por(i)} aria-label={usadas.has(i) ? `${letra}, já usada` : letra}>
               {letra}
             </button>
           ))}
@@ -1122,7 +1143,7 @@ function Desembaralhe({ fase, retorno, ocupado, aoResponder, inicial, topo, roda
           <Button variant="ghost" sm onClick={() => tirar(sequencia.length - 1)} disabled={ocupado}>
             Apagar a última
           </Button>
-          <Button variant="ghost" sm onClick={() => setSequencia([])} disabled={ocupado}>
+          <Button variant="ghost" sm onClick={() => recomecar(() => setSequencia([]))} disabled={ocupado}>
             Recomeçar
           </Button>
         </div>
@@ -1136,40 +1157,66 @@ function Desembaralhe({ fase, retorno, ocupado, aoResponder, inicial, topo, roda
 const TECLADO_DO_TERMO = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 const PESO_DA_COR: Record<CorDoTermo, number> = { ausente: 1, presente: 2, certa: 3 };
 
+/**
+ * O Termo: a linha da vez tem uma casa escolhida (o cursor). A letra digitada entra nela e o cursor pula para a próxima
+ * casa vazia; tocar numa casa (ou as setas) escolhe onde escrever, para montar a palavra fora de ordem.
+ */
 function Termo({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, corpoRef }: PropsDoTipo<Extract<FaseParaJogar, { tipo: "termo" }>>) {
   const { tocar, vibrar } = useSom();
   const segredo = decodificarTermo(fase.codigo);
   const [palpites, setPalpites] = useState<string[]>(() => campo<string[]>(inicial, "palpites") ?? []);
-  const [atual, setAtual] = useState("");
+  const vazia = () => Array<string>(fase.letras).fill("");
+  const [atual, setAtual] = useState<string[]>(vazia);
+  const [cursor, setCursor] = useState(0);
   const [curto, setCurto] = useState(false);
   const acertou = palpites.includes(segredo);
   const acabou = acertou || palpites.length >= fase.tentativas;
   const travado = Boolean(retorno) || ocupado || acabou;
 
   function digitar(letra: string) {
-    if (travado || atual.length >= fase.letras) return;
+    if (travado) return;
     tocar("toque");
-    setAtual((a) => a + letra);
+    const nova = atual.map((x, k) => (k === cursor ? letra : x));
+    setAtual(nova);
+    // A próxima casa vazia à direita; sem nenhuma, a primeira vazia antes; tudo cheio, a casa seguinte.
+    const depois = nova.findIndex((x, k) => k > cursor && !x);
+    const antes = nova.findIndex((x) => !x);
+    setCursor(depois >= 0 ? depois : antes >= 0 ? antes : Math.min(cursor + 1, fase.letras - 1));
   }
   function apagar() {
     if (travado) return;
-    setAtual((a) => a.slice(0, -1));
+    // Apaga a letra da casa escolhida; se ela já está vazia, a da casa anterior.
+    const alvo = atual[cursor] ? cursor : Math.max(0, cursor - 1);
+    setAtual((a) => a.map((x, k) => (k === alvo ? "" : x)));
+    setCursor(alvo);
+  }
+  function mover(passo: number) {
+    if (travado) return;
+    setCursor((c) => Math.min(fase.letras - 1, Math.max(0, c + passo)));
+  }
+  function escolherCasa(k: number) {
+    if (travado) return;
+    tocar("toque");
+    setCursor(k);
   }
   function enviar() {
     if (travado) return;
-    if (atual.length < fase.letras) {
+    if (atual.some((x) => !x)) {
       vibrar(40);
       setCurto(true);
       window.setTimeout(() => setCurto(false), 450);
+      setCursor(atual.findIndex((x) => !x));
       return;
     }
-    tocar(atual === segredo ? "estrela" : "pagina");
-    setPalpites((p) => [...p, atual]);
-    setAtual("");
+    const palpite = atual.join("");
+    tocar(palpite === segredo ? "estrela" : "pagina");
+    setPalpites((p) => [...p, palpite]);
+    setAtual(vazia());
+    setCursor(0);
   }
 
-  // Teclado físico: letras (com acento vira a letra sem acento), Backspace apaga e Enter tenta a palavra.
-  const atalhos: Record<string, () => void> = { Backspace: apagar, Enter: enviar };
+  // Teclado físico: letras (com acento vira a letra sem acento), setas mudam a casa, Backspace apaga e Enter tenta a palavra.
+  const atalhos: Record<string, () => void> = { Backspace: apagar, Enter: enviar, ArrowLeft: () => mover(-1), ArrowRight: () => mover(1) };
   for (const letra of "abcdefghijklmnopqrstuvwxyzáàâãéêíóôõúüç") atalhos[letra] = () => digitar(letrasDaGrade(letra));
   useTecla(atalhos, !travado);
 
@@ -1184,9 +1231,9 @@ function Termo({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, cor
   }
 
   const linhas = Array.from({ length: fase.tentativas }, (_, i) => {
-    if (i < palpites.length) return { letras: palpites[i]!, cores: coresDoPalpite(palpites[i]!, segredo), atual: false };
+    if (i < palpites.length) return { letras: [...palpites[i]!], cores: coresDoPalpite(palpites[i]!, segredo), atual: false };
     if (i === palpites.length && !acabou) return { letras: atual, cores: null, atual: true };
-    return { letras: "", cores: null, atual: false };
+    return { letras: [] as string[], cores: null, atual: false };
   });
   const restantes = fase.tentativas - palpites.length;
 
@@ -1226,6 +1273,24 @@ function Termo({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, cor
             {Array.from({ length: fase.letras }, (_, k) => {
               const letra = linha.letras[k] ?? "";
               const cor = linha.cores?.[k];
+              if (linha.atual && !travado) {
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    role="gridcell"
+                    className="ts-termo-casa"
+                    data-cheia={letra ? "" : undefined}
+                    data-cursor={k === cursor ? "" : undefined}
+                    data-escolha
+                    aria-selected={k === cursor}
+                    aria-label={`Casa ${k + 1}: ${letra || "vazia"}${k === cursor ? ", escolhida" : ""}`}
+                    onClick={() => escolherCasa(k)}
+                  >
+                    {letra}
+                  </button>
+                );
+              }
               return (
                 <span
                   key={k}
@@ -1243,6 +1308,7 @@ function Termo({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, cor
           </div>
         ))}
       </div>
+      {!travado && <p className="ts-termo-ajuda">Toque numa casa para escrever nela, em qualquer ordem.</p>}
       {!retorno && (
         <div className="ts-termo-teclado" aria-label="Teclado">
           {TECLADO_DO_TERMO.map((fileira, f) => (

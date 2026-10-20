@@ -438,6 +438,18 @@
   animation: ts-pop .35s ease-out;
 }
 
+/* A carta não escolhida fica em cinza (ainda dá para trocar até confirmar). */
+.ts-vf-carta[data-estado="desmarcada"] {
+  box-shadow: 0 5px 0 #9CA3AF;
+  opacity: .6;
+  filter: grayscale(1);
+}
+
+.ts-vf-carta[data-estado="desmarcada"]:hover:not([disabled]) {
+  opacity: .85;
+  filter: grayscale(.4);
+}
+
 .ts-vf-carta[data-estado="certa"] {
   box-shadow: 0 7px 0 var(--cor), 0 0 0 6px color-mix(in srgb, var(--jg-certo) 35%, transparent);
   animation: ts-acerto .5s ease-out;
@@ -513,7 +525,7 @@
   display: grid;
   gap: 3px;
   width: 100%;
-  max-width: 480px;
+  max-width: 540px;
   margin: 0 auto;
   touch-action: manipulation;
   user-select: none;
@@ -537,7 +549,7 @@
   box-shadow: 0 1px 0 #DDE7CC;
   color: #1F2A12;
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  font-size: clamp(12px, 2.6vw, 18px);
+  font-size: clamp(11px, 2.4vw, 17px);
   font-weight: 800;
   cursor: pointer;
   transition: background .12s, color .12s, transform .12s;
@@ -1096,9 +1108,11 @@
   transform: translateY(3px);
 }
 
+/* A letra já posta continua no monte, em cinza: dá para ver o que ainda falta usar. */
 .ts-des-peca[data-usada] {
-  opacity: .18;
-  box-shadow: none;
+  box-shadow: 0 2px 0 #9CA3AF;
+  opacity: .5;
+  filter: grayscale(1);
   cursor: default;
 }
 
@@ -1222,6 +1236,36 @@
 .ts-termo-casa[data-cheia] {
   border-color: #9CA3AF;
   animation: ts-pop .15s ease-out;
+}
+
+/* A linha da vez: cada casa é um botão, e a escolhida (onde a próxima letra entra) brilha em amarelo. */
+button.ts-termo-casa {
+  padding: 0;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+button.ts-termo-casa:hover {
+  border-color: #D1D5DB;
+}
+
+.ts-termo-casa[data-cursor] {
+  border-color: #FBBF24;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, .35);
+  animation: ts-termo-cursor 1.2s ease-in-out infinite;
+}
+
+@keyframes ts-termo-cursor {
+  50% {
+    box-shadow: 0 0 0 5px rgba(251, 191, 36, .18);
+  }
+}
+
+.ts-termo-ajuda {
+  color: var(--ink3);
+  font-size: 12.5px;
+  text-align: center;
 }
 
 .ts-termo-casa[data-cor] {
@@ -1410,6 +1454,25 @@
   text-align: center;
 }
 
+.ts-resultado-tempo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ink2);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* O alvo de "Ver ranking" no rodapé do resultado. */
+.ts-resultado-ranking-ancora {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  scroll-margin-top: 12px;
+  outline: none;
+}
+
 .ts-resultado-recorde {
   display: flex;
   align-items: center;
@@ -1526,7 +1589,8 @@
 
   .ts-caca-celula[data-inicio],
   .ts-des-vagas li[data-proxima],
-  .ts-termo-casa[data-cor] {
+  .ts-termo-casa[data-cor],
+  .ts-termo-casa[data-cursor] {
     animation: none;
   }
 }

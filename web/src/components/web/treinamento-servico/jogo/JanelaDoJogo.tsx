@@ -1,15 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/vitoria/Avatar";
 import { chamar, ErroCliente } from "@/lib/cliente-api";
 import { cx } from "@/lib/cx";
 import { movimentoReduzido } from "@/lib/reacao-vitoria";
 import { guardarSomLigado, somLigadoSalvo, tocarSom, vibrar, type SomDoJogo } from "@/lib/sons-do-jogo";
-import type { PassoExplicacao, RankingDoTreinamento, ResultadoDaConclusao, ResultadoDaResposta, TentativaAberta } from "@/lib/treinamento-servico";
+import { formatarTempo, type PassoExplicacao, type RankingDoTreinamento, type ResultadoDaConclusao, type ResultadoDaResposta, type TentativaAberta } from "@/lib/treinamento-servico";
 import { CapaDoJogo } from "./CapaDoJogo";
+import { CaixaDeConfirmacao, ProvedorDaConfirmacao, type PedidoDeConfirmacao } from "./confirmacao";
 import { ContagemRegressiva, DURACAO_DA_CONTAGEM_MS, ProvedorDoSom } from "./efeitos";
 import { ExplicacaoDoJogo } from "./ExplicacaoDoJogo";
 import { FaseDoJogo } from "./FaseDoJogo";
@@ -55,7 +55,8 @@ function sequenciaAte(retornos: (ResultadoDaResposta | null)[], ultima: number) 
  * a passagem para o jogo com a contagem, Parte 2 (as fases) e o resultado. O topo é o placar: a trilha das duas partes, os
  * pontos, os acertos e a sequência de acertos. Dá para voltar e avançar entre as fases sem responder; finalizar com fase
  * pendente pede confirmação (seção 12 do `treinamentos-de-servico.md`). Tem som (desligável) e vibração no celular. Ocupa a
- * tela inteira no celular e no celular deitado. Sair no meio pede confirmação.
+ * tela inteira no celular e no celular deitado. Sair no meio, avançar sem confirmar a fase, recomeçar uma fase e jogar de
+ * novo pedem confirmação (seção 13); o placar mostra o tempo do jogo todo.
  */
 export function JanelaDoJogo(p: JanelaDoJogoProps) {
   const dialogo = useRef<HTMLDialogElement>(null);
@@ -75,6 +76,10 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
   const [abertura, setAbertura] = useState(false);
   /** "Finalizar" com fases sem resposta: pede confirmação antes. */
   const [confirmandoFim, setConfirmandoFim] = useState(false);
+  /** A confirmação pedida por uma tela (avançar sem confirmar, recomeçar a fase, jogar de novo...). */
+  const [pedido, setPedido] = useState<PedidoDeConfirmacao | null>(null);
+  /** O relógio do jogo todo: de "Começar o jogo" até finalizar (só para quem joga ver quanto está levando). */
+  const [relogio, setRelogio] = useState<{ inicio: number; fim: number | null } | null>(null);
   /** As chamadas da tentativa saem em fila, na ordem (entrar, progresso, responder, concluir): o cronômetro depende dela. */
   const fila = useRef<Promise<unknown>>(Promise.resolve());
   /** O progresso ainda não enviado (espera a pessoa parar de mexer um instante). */
@@ -131,6 +136,20 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
     else fechar();
   }
 
+  /** Esc: fecha a caixa de confirmação aberta; sem nenhuma, pergunta se quer sair. */
+  function aoEsc() {
+    if (pedido) setPedido(null);
+    else if (confirmandoFim) setConfirmandoFim(false);
+    else if (saindo) setSaindo(false);
+    else pedirParaFechar();
+  }
+
+  function confirmarPedido() {
+    const atual = pedido;
+    setPedido(null);
+    atual?.aoConfirmar();
+  }
+
   function irParaPasso(n: number) {
     if (etapa === "explicacao" && n !== passo) tocar("pagina");
     setPasso(n);
@@ -147,7 +166,19 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
     vistas.current = new Set();
     setResultado(null);
     setRanking(null);
+    setRelogio(null);
     volta();
+  }
+
+  /** "Jogar de novo" e "Rever a explicação" no resultado: uma partida nova, depois de confirmar. */
+  function pedirNovaRodada(volta: () => void, explicacao: boolean) {
+    setPedido({
+      titulo: explicacao ? "Rever a explicação?" : "Jogar de novo?",
+      texto: `O resultado desta partida já está registrado; no ranking vale a sua melhor nota. ${explicacao ? "Depois da explicação, o jogo começa do zero, com as fases embaralhadas de novo." : "O jogo começa do zero, com as fases embaralhadas de novo."}`,
+      confirmar: explicacao ? "Rever a explicação" : "Jogar de novo",
+      voltar: "Ficar no resultado",
+      aoConfirmar: () => novaRodada(volta),
+    });
   }
 
   /** Põe uma chamada da tentativa na fila; as de apoio (entrar, progresso) não interrompem o jogo se falharem. */
@@ -208,6 +239,7 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
       setTempos(aberta.fases.map(() => 0));
       vistas.current = new Set();
       setResultado(null);
+      setRelogio({ inicio: Date.now(), fim: null });
       setEtapa("fase");
       irParaFase(aberta, 0);
     } catch (e) {
@@ -254,13 +286,26 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
     irParaFase(tentativa, faseAtual - 1);
   }
 
-  /** Avançar (mesmo sem responder) ou, na última fase, finalizar; com fases sem resposta, pede confirmação antes. */
+  /** Avançar (mesmo sem responder) ou, na última fase, finalizar; sem confirmar a fase, pede confirmação antes. */
   function avancar() {
     if (!tentativa) return;
     setErro(null);
     if (faseAtual + 1 < tentativa.fases.length) {
-      tocar("pagina");
-      irParaFase(tentativa, faseAtual + 1);
+      const seguir = () => {
+        tocar("pagina");
+        irParaFase(tentativa, faseAtual + 1);
+      };
+      if (retornos[faseAtual]) seguir();
+      else
+        setPedido({
+          titulo: "Avançar sem confirmar?",
+          texto: respostas[faseAtual]
+            ? "Esta fase ainda não foi confirmada. O que você já fez nela fica guardado: dá para voltar e confirmar antes de finalizar; se não voltar, conta só o que já fez."
+            : "Esta fase fica sem resposta por enquanto. Dá para voltar a ela antes de finalizar; se não voltar, ela vale zero.",
+          confirmar: "Avançar mesmo assim",
+          voltar: "Ficar nesta fase",
+          aoConfirmar: seguir,
+        });
       return;
     }
     if (retornos.some((r) => !r)) setConfirmandoFim(true);
@@ -275,6 +320,7 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
     setOcupado(true);
     try {
       const r = await enfileirar(() => chamar<ResultadoDaConclusao>("POST", `/treinamentos/tentativas/${tentativa.tentativa_id}/concluir`));
+      setRelogio((atual) => atual && { ...atual, fim: atual.fim ?? Date.now() });
       setResultado(r);
       setConclusoes((n) => n + 1);
       setEtapa("resultado");
@@ -304,10 +350,11 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
       onCancel={(e) => {
         // Esc: no meio do treinamento, pergunta antes de sair (o `cancel` fecharia a janela sozinho).
         e.preventDefault();
-        pedirParaFechar();
+        aoEsc();
       }}
     >
       <ProvedorDoSom value={som}>
+      <ProvedorDaConfirmacao value={setPedido}>
         <div className="ts-jogo-topo">
           <header className="ts-jogo-cab">
             <span className="ts-jogo-avatar" aria-hidden="true">
@@ -319,6 +366,7 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
             </div>
             {comPlacar && (
               <div className="ts-placar" aria-label="Placar">
+                {relogio && <TempoDoJogo inicio={relogio.inicio} fim={relogio.fim} />}
                 <span className="ts-placar-item" title="Pontos das fases respondidas (antes do multiplicador final)">
                   <Icon name="trophy" size={13} />
                   <span key={pontosAteAqui} className="ts-placar-valor">
@@ -406,56 +454,61 @@ export function JanelaDoJogo(p: JanelaDoJogoProps) {
             pontua={p.pontua}
             ranking={ranking}
             jaConcluiu={Boolean(p.jaConcluiu) || conclusoes > 1}
-            aoJogarDeNovo={() => novaRodada(() => setEtapa("intervalo"))}
-            aoReverExplicacao={temExplicacao ? () => novaRodada(() => irParaPasso(0)) : null}
+            tempoTotalMs={relogio?.fim ? relogio.fim - relogio.inicio : null}
+            aoJogarDeNovo={() => pedirNovaRodada(() => setEtapa("intervalo"), false)}
+            aoReverExplicacao={temExplicacao ? () => pedirNovaRodada(() => irParaPasso(0), true) : null}
             aoFechar={fechar}
           />
         )}
 
         {contando && <ContagemRegressiva />}
 
+        {pedido && <CaixaDeConfirmacao titulo={pedido.titulo} texto={pedido.texto} confirmar={pedido.confirmar} voltar={pedido.voltar} aoConfirmar={confirmarPedido} aoVoltar={() => setPedido(null)} />}
+
         {confirmandoFim && tentativa && (
-          <div className="ts-sair" role="alertdialog" aria-modal="true" aria-labelledby={`${idTitulo}-fim`}>
-            <div className="ts-sair-caixa">
-              <h3 id={`${idTitulo}-fim`}>Finalizar o treinamento?</h3>
-              <p className="muted">
-                {(() => {
-                  const faltam = retornos.filter((r) => !r).length;
-                  return `${faltam === 1 ? "Falta 1 fase" : `Faltam ${faltam} fases`} sem confirmar. O que você já fez nelas conta; o resto vale zero.`;
-                })()}
-              </p>
-              <div className="row g8 wrap">
-                <Button variant="p" onClick={() => setConfirmandoFim(false)} autoFocus>
-                  Voltar ao jogo
-                </Button>
-                <Button variant="line" onClick={() => void finalizar()} disabled={ocupado}>
-                  Finalizar mesmo assim
-                </Button>
-              </div>
-            </div>
-          </div>
+          <CaixaDeConfirmacao
+            titulo="Finalizar o treinamento?"
+            texto={(() => {
+              const faltam = retornos.filter((r) => !r).length;
+              return `${faltam === 1 ? "Falta 1 fase" : `Faltam ${faltam} fases`} sem confirmar. O que você já fez nelas conta; o resto vale zero.`;
+            })()}
+            confirmar="Finalizar mesmo assim"
+            ocupado={ocupado}
+            aoConfirmar={() => void finalizar()}
+            aoVoltar={() => setConfirmandoFim(false)}
+          />
         )}
 
         {saindo && (
-          <div className="ts-sair" role="alertdialog" aria-modal="true" aria-labelledby={`${idTitulo}-sair`}>
-            <div className="ts-sair-caixa">
-              <h3 id={`${idTitulo}-sair`}>Sair do treinamento?</h3>
-              <p className="muted">
-                {etapa === "fase" ? "As respostas que você já deu continuam valendo. Ao voltar, o jogo recomeça do início." : "Você pode voltar quando quiser; o treinamento recomeça pela capa."}
-              </p>
-              <div className="row g8 wrap">
-                <Button variant="p" onClick={() => setSaindo(false)} autoFocus>
-                  Continuar treinando
-                </Button>
-                <Button variant="line" onClick={fechar}>
-                  Sair
-                </Button>
-              </div>
-            </div>
-          </div>
+          <CaixaDeConfirmacao
+            titulo="Sair do treinamento?"
+            texto={etapa === "fase" ? "As respostas que você já deu continuam valendo. Ao voltar, o jogo recomeça do início." : "Você pode voltar quando quiser; o treinamento recomeça pela capa."}
+            confirmar="Sair"
+            voltar="Continuar treinando"
+            aoConfirmar={fechar}
+            aoVoltar={() => setSaindo(false)}
+          />
         )}
+      </ProvedorDaConfirmacao>
       </ProvedorDoSom>
     </dialog>
+  );
+}
+
+/** O tempo do jogo todo, no placar: conta desde "Começar o jogo" e para ao finalizar. */
+function TempoDoJogo({ inicio, fim }: { inicio: number; fim: number | null }) {
+  const [agora, setAgora] = useState(() => Date.now());
+  useEffect(() => {
+    if (fim) return;
+    const id = window.setInterval(() => setAgora(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [fim]);
+  const ms = (fim ?? agora) - inicio;
+  return (
+    <span className="ts-placar-item ts-placar-tempo" title="Tempo do jogo todo" aria-label={`Tempo do jogo todo: ${formatarTempo(ms)}`}>
+      <Icon name="clock" size={13} />
+      {formatarTempo(ms)}
+    </span>
   );
 }
 

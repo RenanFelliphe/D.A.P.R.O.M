@@ -43,10 +43,10 @@ export const LIMITES = {
   paresMax: 5,
   etapasMin: 2,
   etapasMax: 6,
-  /** Selecione com os materiais do serviço: de 1 a 10 materiais certos e de 1 a 10 itens de outros serviços sorteados. */
+  /** Selecione com os materiais do serviço: de 1 a 10 materiais certos e de 1 a 15 itens de outros serviços sorteados. */
   materiaisMin: 1,
   materiaisMax: 10,
-  erradosMax: 10,
+  erradosMax: 15,
   /** Caça-palavras: de 2 a 5 palavras, de 3 a 12 letras cada (sem contar acento). */
   palavrasMin: 2,
   palavrasMax: 5,
@@ -55,10 +55,10 @@ export const LIMITES = {
   pista: 160,
   /** Memória: de 2 a 5 pares, cada carta com até 80 caracteres. */
   carta: 80,
-  /** Selecione: de 3 a 12 opções, de 1 a 8 certas e ao menos uma errada. */
+  /** Selecione: de 3 a 16 opções, de 1 a 10 certas e ao menos uma errada. */
   selecioneMin: 3,
-  selecioneMax: 12,
-  selecioneCertasMax: 8,
+  selecioneMax: 16,
+  selecioneCertasMax: 10,
   /** Desembaralhe: palavras de 3 a 14 letras. */
   palavraMin: 3,
   palavraMax: 14,
@@ -227,7 +227,7 @@ export const TIPOS_DE_FASE: InfoDoTipoDeFase[] = [
     rotulo: "Caça-palavras",
     icone: "caca",
     frase: "Encontre os termos do serviço escondidos na grade.",
-    descricao: "Achar de 2 a 5 termos do serviço numa grade de letras, só na horizontal ou na vertical. As palavras aparecem ou só as pistas.",
+    descricao: "Achar de 2 a 5 termos do serviço numa grade de letras, na linha, na coluna ou na diagonal, às vezes se cruzando. As palavras aparecem ou só as pistas.",
     instrucao: "Toque na primeira e na última letra de cada palavra.",
   },
   {
@@ -260,7 +260,7 @@ export const TIPOS_DE_FASE: InfoDoTipoDeFase[] = [
     icone: "termo",
     frase: "Descubra a palavra secreta pelas cores das letras.",
     descricao: "Descobrir uma palavra secreta de 4 a 7 letras com letras + 1 tentativas; as cores mostram as letras certas, no lugar errado ou fora.",
-    instrucao: "Digite uma palavra e confirme. Verde: letra no lugar certo; amarelo: em outro lugar; cinza: não tem.",
+    instrucao: "Digite uma palavra e confirme; toque numa casa para escrever nela. Verde: letra no lugar certo; amarelo: em outro lugar; cinza: não tem.",
   },
 ];
 
@@ -626,7 +626,7 @@ export function faseEmBranco(tipo: TipoDeFase): Fase {
     case "memoria":
       return { tipo: "memoria", pares: [{ termo: "", correspondente: "" }, { termo: "", correspondente: "" }, { termo: "", correspondente: "" }], explicacao: "" };
     case "selecione":
-      return { tipo: "selecione", enunciado: "", opcoes: [{ texto: "", correta: true }, { texto: "", correta: true }, { texto: "", correta: false }, { texto: "", correta: false }], explicacao: "" };
+      return { tipo: "selecione", enunciado: "", opcoes: [true, true, true, false, false, false, false, false].map((correta) => ({ texto: "", correta })), explicacao: "" };
     case "desembaralhe":
       return { tipo: "desembaralhe", palavras: [{ palavra: "", dica: "" }, { palavra: "", dica: "" }, { palavra: "", dica: "" }], explicacao: "" };
     case "termo":

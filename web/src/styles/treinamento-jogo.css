@@ -148,6 +148,10 @@
   color: #FFF3C4;
 }
 
+.ts-placar-tempo .i {
+  color: #fff;
+}
+
 .ts-jogo-botao {
   display: grid;
   flex: none;
@@ -2146,6 +2150,12 @@
 
   .ts-placar-item {
     padding: 0 8px;
+  }
+
+  /* No jogo, o placar (com o tempo do jogo todo) precisa do espaço do avatar. */
+  .ts-jogo[data-etapa="fase"] .ts-jogo-avatar,
+  .ts-jogo[data-etapa="resultado"] .ts-jogo-avatar {
+    display: none;
   }
 
   .ts-ligar {

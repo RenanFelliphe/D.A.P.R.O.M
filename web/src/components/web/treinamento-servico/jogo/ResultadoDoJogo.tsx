@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useRef, type CSSProperties } from "react";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { PontosGanhos } from "@/components/web/gamificacao/PontosGanhos";
@@ -25,6 +25,8 @@ interface ResultadoDoJogoProps {
   ranking: Ranking | "carregando" | "erro" | null;
   /** Já tinha concluído antes desta tentativa: refazer não pontua na gamificação, e a tela explica por quê. */
   jaConcluiu: boolean;
+  /** O tempo do jogo todo, de "Começar o jogo" até finalizar (o mesmo do placar). */
+  tempoTotalMs: number | null;
   aoJogarDeNovo: () => void;
   aoReverExplicacao: (() => void) | null;
   aoFechar: () => void;
@@ -71,10 +73,11 @@ function MelhorNota({ nota, anterior }: { nota: number; anterior: number | null 
 
 /**
  * O fim do treinamento: as estrelas (pelas fases certas), a Vitória comemorando, a nota (seção 12 do
- * `treinamentos-de-servico.md`), os pontos da gamificação (só no jogo de verdade, na primeira vez), o
- * ranking do treinamento (só no jogo de verdade) e cada fase.
+ * `treinamentos-de-servico.md`), o tempo do jogo todo, os pontos da gamificação (só no jogo de verdade, na primeira vez),
+ * o ranking do treinamento (só no jogo de verdade, com o atalho "Ver ranking" no rodapé) e cada fase.
  */
-export function ResultadoDoJogo({ resultado, fases, pontua, ranking, jaConcluiu, aoJogarDeNovo, aoReverExplicacao, aoFechar }: ResultadoDoJogoProps) {
+export function ResultadoDoJogo({ resultado, fases, pontua, ranking, jaConcluiu, tempoTotalMs, aoJogarDeNovo, aoReverExplicacao, aoFechar }: ResultadoDoJogoProps) {
+  const corpo = useRef<HTMLDivElement>(null);
   const { fases_certas: certas, total_fases: total } = resultado;
   const estrelas = estrelasDaNota(certas, total);
   const gabaritou = estrelas === 3;
@@ -87,9 +90,17 @@ export function ResultadoDoJogo({ resultado, fases, pontua, ranking, jaConcluiu,
 
   useTecla({ Enter: aoJogarDeNovo });
 
+  /** Rola até o ranking (ou o aviso de que ele está carregando) e leva o foco para lá. */
+  function verRanking() {
+    const alvo = corpo.current?.querySelector<HTMLElement>("[data-ranking]");
+    if (!alvo) return;
+    alvo.scrollIntoView({ behavior: "smooth", block: "start" });
+    alvo.focus({ preventScroll: true });
+  }
+
   return (
     <div className="ts-tela">
-      <div className="ts-jogo-corpo ts-resultado" data-estrelas={estrelas}>
+      <div ref={corpo} className="ts-jogo-corpo ts-resultado" data-estrelas={estrelas}>
         <div className="ts-confetes" aria-hidden="true">
           {Array.from({ length: gabaritou ? 40 : 26 }, (_, i) => (
             <i key={i} style={{ "--i": i % 26, "--x": `${(i * 37) % 100}%` } as CSSProperties} />
@@ -108,6 +119,12 @@ export function ResultadoDoJogo({ resultado, fases, pontua, ranking, jaConcluiu,
         <p className="ts-resultado-conta">
           {certas} de {total} {total === 1 ? "fase certa" : "fases certas"} · a soma dos pontos das fases × ({total} fases × 10)
         </p>
+        {tempoTotalMs !== null && (
+          <p className="ts-resultado-tempo">
+            <Icon name="clock" size={13} />
+            Tempo do jogo todo: <strong>{formatarTempo(tempoTotalMs)}</strong>
+          </p>
+        )}
         {pontua && <MelhorNota nota={resultado.nota} anterior={resultado.melhor_anterior} />}
         {pontua ? (
           resultado.pontos_ganhos > 0 ? (
@@ -125,20 +142,20 @@ export function ResultadoDoJogo({ resultado, fases, pontua, ranking, jaConcluiu,
           </p>
         )}
         {ranking === "carregando" ? (
-          <p className="ts-resultado-nota" role="status">
+          <p className="ts-resultado-nota" role="status" data-ranking tabIndex={-1}>
             <Icon name="trophy" size={13} />
             Carregando o ranking…
           </p>
         ) : ranking === "erro" ? (
-          <p className="ts-resultado-nota" role="status">
+          <p className="ts-resultado-nota" role="status" data-ranking tabIndex={-1}>
             <Icon name="info" size={13} />
             Não foi possível carregar o ranking agora; ele também aparece na página do treinamento.
           </p>
         ) : (
           ranking && (
-            <>
+            <div className="ts-resultado-ranking-ancora" data-ranking tabIndex={-1}>
               <RankingDoTreinamento ranking={ranking} className="ts-resultado-ranking" />
-            </>
+            </div>
           )
         )}
         <ol className="ts-resultado-fases" aria-label="Fases">
@@ -179,6 +196,12 @@ export function ResultadoDoJogo({ resultado, fases, pontua, ranking, jaConcluiu,
           Fechar
         </Button>
         <span className="ts-rodape-espaco" />
+        {ranking && (
+          <Button variant="line" onClick={verRanking} aria-label="Ver o ranking deste treinamento">
+            <Icon name="trophy" size={16} />
+            <span className="ts-so-largo">Ver ranking</span>
+          </Button>
+        )}
         {aoReverExplicacao && (
           <Button variant="line" onClick={aoReverExplicacao}>
             <span className="ts-so-largo">Rever a explicação</span>
