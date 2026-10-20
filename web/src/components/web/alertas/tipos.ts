@@ -16,11 +16,11 @@ export const ehDeCiclo = (a: Pick<Alerta, "tipo">) => a.tipo === "preventiva_pro
 
 /**
  * Os avisos que não são de OS, de importação, de ausência nem de representação: a conta de uma pessoa, a equipe sem supervisor,
- * a leitura do registro de funcionários, o treinamento, a lista de materiais de um serviço e a Vitória. Têm o detalhe geral (`DetalheAvisoGeral`).
+ * a leitura do registro de funcionários, o treinamento, a lista de materiais de um serviço, o pedido de conta e a Vitória. Têm o detalhe geral (`DetalheAvisoGeral`).
  */
 export const ehAvisoGeral = (a: Pick<Alerta, "tipo">) => {
   const alvo = alvoDoAlerta(a);
-  return alvo === "usuario" || alvo === "leitura_rh" || alvo === "treinamento" || alvo === "sugestao" || alvo === "servico" || alvo === "nenhum" || a.tipo === "equipe_sem_supervisor";
+  return alvo === "usuario" || alvo === "leitura_rh" || alvo === "treinamento" || alvo === "sugestao" || alvo === "servico" || alvo === "solicitacao_conta" || alvo === "nenhum" || a.tipo === "equipe_sem_supervisor";
 };
 
 /**
@@ -80,6 +80,7 @@ export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; u
     case "cadastro_recusado":
     case "membro_desativado":
     case "funcionario_readmitido":
+    case "conta_solicitada":
       return { icone: "user", urgente: false };
     case "senha_redefinida":
       return { icone: "lock", urgente: false };

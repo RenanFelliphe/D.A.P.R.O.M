@@ -51,6 +51,8 @@ interface FormularioUsuarioProps {
   equipes: OpcaoEquipe[];
   /** Supervisor: só cadastra técnicos, na equipe do setor, e a conta nasce pendente. Não edita ninguém. */
   modo?: ModoUsuarios;
+  /** O e-mail já preenchido na consulta ao registro (o cadastro aberto por um pedido de conta). */
+  emailInicial?: string;
   aoConcluir: () => void;
 }
 
@@ -335,12 +337,12 @@ function ConfirmacaoDoCadastro({
  * escolhe nada disso: cadastra técnico, na equipe do setor, e vê a senha provisória (só desta vez) e o aviso de que o acesso geral
  * espera a liberação de um administrador. A edição (só do admin) muda o perfil e a equipe; o resto vem do registro.
  */
-export function FormularioUsuario({ usuario, equipes, modo = "admin", aoConcluir }: FormularioUsuarioProps) {
+export function FormularioUsuario({ usuario, equipes, modo = "admin", emailInicial, aoConcluir }: FormularioUsuarioProps) {
   const exibirAviso = useToast();
   const supervisor = modo === "supervisor";
   const [previa, setPrevia] = useState<PreviaDoCadastro | null>(null);
   /** O que foi consultado (já normalizado): volta preenchido quando a pessoa "Volta" da etapa 2. */
-  const [consultado, setConsultado] = useState({ matricula: "", email: "" });
+  const [consultado, setConsultado] = useState({ matricula: "", email: emailInicial ?? "" });
   const [criado, setCriado] = useState<{ nome: string; email: string; senha: string } | null>(null);
 
   if (criado) {

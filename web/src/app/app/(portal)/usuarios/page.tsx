@@ -5,6 +5,7 @@ import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
 import { CabecalhoUsuarios } from "@/components/web/usuarios/CabecalhoUsuarios";
 import { ListaEquipes } from "@/components/web/usuarios/ListaEquipes";
+import { PainelPedidosDeConta, type PedidoDeConta } from "@/components/web/usuarios/PainelPedidosDeConta";
 import { PainelPendentes } from "@/components/web/usuarios/PainelPendentes";
 import { ListaPerfis } from "@/components/web/usuarios/ListaPerfis";
 import { TabelaUsuarios } from "@/components/web/usuarios/TabelaUsuarios";
@@ -51,7 +52,7 @@ async function VisaoDoAdmin({ params }: { params: Consulta }) {
   const filtros = { equipe_id: um(params.equipe_id) || undefined, perfil: um(params.perfil) || undefined, ativo: um(params.ativo) || undefined, liberacao: um(params.liberacao) || undefined, busca: um(params.busca)?.trim() || undefined };
   const pagina = Math.max(1, Number.parseInt(um(params.pagina) ?? "1", 10) || 1);
 
-  const [lista, equipesApi, supervisores, pendentes, registro] = await Promise.all([
+  const [lista, equipesApi, supervisores, pendentes, registro, pedidos] = await Promise.all([
     api<{ usuarios: Usuario[] } & Paginacao>("/usuarios", { consulta: { ...filtros, pagina, tamanho: TAMANHO } }),
     api<{ equipes: Equipe[] }>("/equipes", { consulta: { tamanho: 200 } }),
     api<{ usuarios: Usuario[] }>("/usuarios", { consulta: { ativo: true, tamanho: 200 } }),
@@ -59,6 +60,8 @@ async function VisaoDoAdmin({ params }: { params: Consulta }) {
     filtros.liberacao === "pendente" ? null : api<{ usuarios: Usuario[] } & Paginacao>("/usuarios", { consulta: { liberacao: "pendente", tamanho: 20 } }),
     // A última leitura do registro de funcionários; sem ela a tela segue (o cartão só não aparece).
     api<SincronizacaoDoRegistro>("/rh/sincronizacao").catch(() => null),
+    // Os pedidos de conta da tela de entrada; sem eles a tela segue (o painel só não aparece).
+    api<{ solicitacoes: PedidoDeConta[] }>("/solicitacoes-conta").catch(() => null),
   ]);
   const nomes = new Map([...supervisores.usuarios, ...(pendentes?.usuarios ?? [])].map((u) => [u.id, u.nome]));
   // quantos técnicos ativos cada equipe tem (`total` de uma página de tamanho 1)
@@ -73,6 +76,7 @@ async function VisaoDoAdmin({ params }: { params: Consulta }) {
   return (
     <Screen>
       <CabecalhoUsuarios equipes={opcoesDeEquipe} />
+      {pedidos && <PainelPedidosDeConta pedidos={pedidos.solicitacoes} equipes={opcoesDeEquipe} />}
       {pendentes && <PainelPendentes pendentes={pendentes.usuarios} total={pendentes.total} equipes={opcoesDeEquipe} nomes={nomes} />}
       {registro && <CartaoRegistro inicial={registro} />}
       <TabelaUsuarios usuarios={lista.usuarios} equipes={opcoesDeEquipe} filtros={filtros} pagina={lista.pagina} tamanho={lista.tamanho} total={lista.total} />
@@ -94,10 +98,11 @@ async function VisaoDoSupervisor({ params, usuario }: { params: Consulta; usuari
 
   const minhas = new Set(usuario.equipes_supervisionadas?.map((e) => e.id));
   const daSupervisao = { minha_supervisao: true, perfil: "tecnico" } as const;
-  const [lista, pendentes, equipesApi] = await Promise.all([
+  const [lista, pendentes, equipesApi, pedidos] = await Promise.all([
     api<{ usuarios: Usuario[] } & Paginacao>("/usuarios", { consulta: { ...daSupervisao, ...filtros, pagina, tamanho: TAMANHO } }),
     api<Paginacao>("/usuarios", { consulta: { ...daSupervisao, liberacao: "pendente", tamanho: 1 } }),
     api<{ equipes: Equipe[] }>("/equipes", { consulta: { tamanho: 200 } }),
+    api<{ solicitacoes: PedidoDeConta[] }>("/solicitacoes-conta").catch(() => null),
   ]);
   const equipesDele = equipesApi.equipes.filter((e) => minhas.has(e.id));
   const opcoesDeEquipe = equipesDele.map((e) => ({ id: e.id, nome: e.nome }));
@@ -113,6 +118,7 @@ async function VisaoDoSupervisor({ params, usuario }: { params: Consulta; usuari
   return (
     <Screen>
       <CabecalhoUsuarios equipes={opcoesDeEquipe} modo="supervisor" />
+      {pedidos && <PainelPedidosDeConta pedidos={pedidos.solicitacoes} equipes={opcoesDeEquipe} modo="supervisor" />}
       {pendentes.total > 0 && (
         <p className="small" role="status">
           {`${pendentes.total} ${pendentes.total === 1 ? "cadastro aguarda" : "cadastros aguardam"} a liberação de um administrador.`}

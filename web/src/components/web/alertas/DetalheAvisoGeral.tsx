@@ -39,6 +39,8 @@ function atalhoDoAviso(a: Alerta, usuario: Usuario): { rotulo: string; href: str
   switch (a.tipo) {
     case "cadastro_pendente":
       return { rotulo: "Abrir os cadastros pendentes", href: `${rotas.app.usuarios}?liberacao=pendente` };
+    case "conta_solicitada":
+      return { rotulo: "Abrir os pedidos de conta", href: `${rotas.app.usuarios}#solicitacoes` };
     case "funcionario_readmitido":
     case "membro_desativado":
     case "cadastro_liberado":
