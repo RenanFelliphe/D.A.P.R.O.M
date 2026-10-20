@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Avatar } from "@/components/vitoria/Avatar";
@@ -5,10 +6,10 @@ import type { TreinamentoResumo } from "@/lib/treinamento-servico";
 
 /**
  * O cartãozinho da Vitória no cartão do serviço: só aparece quando o serviço tem treinamento publicado. Para quem treina,
- * diz o que é e se já concluiu; para o admin, a versão no ar. O botão de jogar (ou de abrir no editor) fica no rodapé do
- * cartão, ao lado de "Ver materiais".
+ * diz o que é e se já concluiu; para o admin, a versão no ar. `acao` vai à direita ("Ver ranking"). O botão de jogar (ou
+ * de abrir no editor) fica no rodapé do cartão, embaixo de "Ver materiais".
  */
-export function TreinamentoNoCartao({ treinamento, admin }: { treinamento: TreinamentoResumo; admin: boolean }) {
+export function TreinamentoNoCartao({ treinamento, admin, acao }: { treinamento: TreinamentoResumo; admin: boolean; acao?: ReactNode }) {
   const fases = `${treinamento.total_fases} ${treinamento.total_fases === 1 ? "fase" : "fases"}`;
   return (
     <div className="ts-aba-cartao">
@@ -26,6 +27,7 @@ export function TreinamentoNoCartao({ treinamento, admin }: { treinamento: Trein
         ) : (
           <Badge tone="brand">Novo</Badge>
         ))}
+      {acao}
     </div>
   );
 }

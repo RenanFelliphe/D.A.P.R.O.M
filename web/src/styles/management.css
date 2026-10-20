@@ -1879,6 +1879,32 @@ details.excluidos > summary {
   align-items: start
 }
 
+/* As duas seções da aba Serviços: "Com treinamento" e "Outros serviços". */
+.servicos-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 12px
+}
+
+.servicos-grupo + .servicos-grupo {
+  margin-top: 12px
+}
+
+.servicos-grupo-cab {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line2)
+}
+
+.servicos-grupo-cab h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px
+}
+
 /* O cartão é um contêiner: o editor da lista se ajusta à largura do cartão (a coluna da grade), não à da janela. */
 .cartao-servico {
   container-type: inline-size;
@@ -1923,14 +1949,38 @@ details.excluidos > summary {
   height: 34px
 }
 
-/* "Ver materiais", "Jogar treinamento" e "Ver ranking" lado a lado, dividindo a largura; um só ocupa a linha toda. */
+/*
+ * "Equipes do serviço" e "Ver materiais" em duas colunas fixas (abrir os materiais não tira nenhum dos dois do lugar); o
+ * painel dos materiais e o treinamento embaixo, na linha toda. Sem "Equipes do serviço", "Ver materiais" ocupa a linha.
+ */
 .cartao-servico-acoes {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px
 }
 
 .cartao-servico-acoes > .btn {
+  min-width: 0;
+  padding: 0 12px
+}
+
+.cartao-servico-acoes > .cartao-servico-largo,
+.cartao-servico-acoes > .cartao-servico-treinar,
+.cartao-servico-acoes > .cartao-servico-lista {
+  grid-column: 1 / -1
+}
+
+/* Dentro do painel de "Ver materiais": sugerir e contestar a lista. */
+.cartao-servico-colaborar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line2)
+}
+
+.cartao-servico-colaborar > .btn {
   flex: 1 1 150px
 }
 

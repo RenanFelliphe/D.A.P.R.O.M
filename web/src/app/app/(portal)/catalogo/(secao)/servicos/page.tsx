@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { PaginacaoLista } from "@/components/web/PaginacaoLista";
 import { CartaoServico } from "@/components/web/catalogo/CartaoServico";
 import { editaCatalogo } from "@/components/web/catalogo/secao";
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
-import type { ListaDeServicos, Material } from "@/lib/catalogo";
+import type { ListaDeServicos, Material, ServicoDoCatalogo } from "@/lib/catalogo";
 import { rotas } from "@/lib/rotas";
 import { emTreino } from "@/lib/treino-modo";
 import type { TreinamentoResumo } from "@/lib/treinamento-servico";
@@ -16,9 +18,27 @@ const um = (valor: string | string[] | undefined) => (Array.isArray(valor) ? val
 const TAMANHO = 24;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Uma seção da lista de serviços ("Com treinamento" ou "Outros serviços"); sem serviço nesta página, não aparece. */
+function GrupoDeServicos({ titulo, icone, descricao, servicos, cartao }: { titulo: string; icone: IconName; descricao: string; servicos: ServicoDoCatalogo[]; cartao: (s: ServicoDoCatalogo) => ReactNode }) {
+  if (servicos.length === 0) return null;
+  return (
+    <section className="servicos-grupo" aria-label={titulo}>
+      <div className="servicos-grupo-cab">
+        <h2>
+          <Icon name={icone} size={16} />
+          {titulo}
+        </h2>
+        <span className="small muted">{descricao}</span>
+      </div>
+      <div className="servicos-catalogo">{servicos.map(cartao)}</div>
+    </section>
+  );
+}
+
 /**
  * Aba Serviços: cada serviço é uma atividade do plano de manutenção (a mesma que escolhe o modelo de APR) com o que ele
  * usa. A OS mostra essa lista no detalhe. Filtros: busca, "só sem materiais" e um material (vindo da aba Materiais).
+ * Em duas seções: primeiro os serviços com treinamento (os minijogos), depois os outros.
  */
 export default async function ServicosDoCatalogoPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const params = await searchParams;
@@ -43,6 +63,12 @@ export default async function ServicosDoCatalogoPage({ searchParams }: { searchP
   const treinamentoPorCodigo = new Map((treinamentos?.treinamentos ?? []).map((t) => [t.atividade_codigo, t]));
   const consulta = { busca, sem_materiais: semMateriais ? "true" : undefined, material_id: filtroDeMaterial };
   const colaboracao = !(await emTreino());
+  // A `api` lista primeiro os serviços com treinamento publicado; na página, cada grupo ganha a sua seção.
+  const comTreinamento = lista.servicos.filter((s) => treinamentoPorCodigo.has(s.codigo));
+  const outros = lista.servicos.filter((s) => !treinamentoPorCodigo.has(s.codigo));
+  const cartao = (s: ServicoDoCatalogo) => (
+    <CartaoServico key={s.codigo} servico={s} podeEditar={podeEditar} treinamento={treinamentoPorCodigo.get(s.codigo) ?? null} colaboracao={colaboracao} />
+  );
 
   return (
     <>
@@ -71,12 +97,13 @@ export default async function ServicosDoCatalogoPage({ searchParams }: { searchP
       </form>
       {lista.servicos.length === 0 ? (
         <p className="muted">{semMateriais ? "Todos os serviços já têm materiais." : "Nenhum serviço encontrado."}</p>
+      ) : treinamentoPorCodigo.size === 0 ? (
+        <div className="servicos-catalogo">{lista.servicos.map(cartao)}</div>
       ) : (
-        <div className="servicos-catalogo">
-          {lista.servicos.map((s) => (
-            <CartaoServico key={s.codigo} servico={s} podeEditar={podeEditar} treinamento={treinamentoPorCodigo.get(s.codigo) ?? null} colaboracao={colaboracao} />
-          ))}
-        </div>
+        <>
+          <GrupoDeServicos titulo="Com treinamento" icone="trophy" descricao="Serviços com o jogo de treinamento: os minijogos do procedimento e o ranking de quem já jogou." servicos={comTreinamento} cartao={cartao} />
+          <GrupoDeServicos titulo="Outros serviços" icone="box" descricao="Serviços ainda sem treinamento." servicos={outros} cartao={cartao} />
+        </>
       )}
       <PaginacaoLista caminho={rotas.app.catalogo} consulta={consulta} pagina={lista.pagina} tamanho={lista.tamanho} total={lista.total} />
     </>
