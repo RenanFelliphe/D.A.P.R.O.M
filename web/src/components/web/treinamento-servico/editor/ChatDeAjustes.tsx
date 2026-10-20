@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
-import { Notice } from "@/components/ui/Notice";
 import { Avatar } from "@/components/vitoria/Avatar";
+import { AvisoDeFalhaDaIA } from "./AvisoDeFalhaDaIA";
 import { CarregandoComVitoria } from "./CarregandoComVitoria";
 import type { RascunhoIA } from "./useRascunhoIA";
 
@@ -56,11 +56,7 @@ export function ChatDeAjustes({ ia, desabilitado }: { ia: RascunhoIA; desabilita
           </li>
         )}
       </ul>
-      {erro && (
-        <Notice tone="blq" icon="alert" role="alert">
-          {erro}
-        </Notice>
-      )}
+      {erro && <AvisoDeFalhaDaIA falha={erro} compacto />}
       {!trabalhando && situacao.pode_ajustar && conversa.length === 0 && (
         <div className="ts-sugestoes" aria-label="Sugestões de pedido">
           {SUGESTOES.map((s) => (

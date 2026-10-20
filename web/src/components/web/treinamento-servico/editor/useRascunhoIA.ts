@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { chamarEmStream, ErroCliente } from "@/lib/cliente-api";
 import type { PedidoDoPlano, ProgressoDaIA, ResultadoDaIA, SituacaoIA } from "@/lib/treinamento-servico";
+import type { FalhaDaIA } from "./falhaDaIA";
 
 export interface MensagemDoChatIA {
   de: "admin" | "vitoria";
@@ -25,7 +26,7 @@ export function useRascunhoIA(codigo: string, situacaoInicial: SituacaoIA, { sal
   const [progresso, setProgresso] = useState<ProgressoDaIA | null>(null);
   const [trabalhando, setTrabalhando] = useState(false);
   const [inicio, setInicio] = useState<number | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<FalhaDaIA | null>(null);
   const [conversa, setConversa] = useState<MensagemDoChatIA[]>([]);
 
   async function chamarIA(acao: "gerar" | "ajustar", corpo: object, pedidoNoChat: string | null) {
@@ -50,12 +51,12 @@ export function useRascunhoIA(codigo: string, situacaoInicial: SituacaoIA, { sal
           aoConcluir(resultado);
         } else if (evento.event === "erro") {
           terminou = true;
-          setErro((dados as { mensagem: string }).mensagem);
+          setErro(dados as FalhaDaIA);
         }
       });
-      if (!terminou) setErro("A conexão caiu antes do fim. Se a Vitória terminou, o rascunho já está gravado: recarregue a página.");
+      if (!terminou) setErro({ codigo: "conexao", mensagem: "A conexão caiu antes do fim. Se a Vitória terminou, o rascunho já está gravado: recarregue a página." });
     } catch (e) {
-      setErro(e instanceof ErroCliente ? e.message : "Não foi possível falar com o servidor agora.");
+      setErro(e instanceof ErroCliente ? { codigo: e.codigo, mensagem: e.message } : { codigo: "conexao", mensagem: "Não foi possível falar com o servidor do SYNQ OS agora." });
     } finally {
       setTrabalhando(false);
     }

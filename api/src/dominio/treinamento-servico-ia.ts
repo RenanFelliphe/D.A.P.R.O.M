@@ -5,6 +5,7 @@ import { PALAVRAS_DO_BANCO, SO_LETRAS, TETO_DE_FASES, letrasDaGrade, letrasDaPal
 import { atividade, atividadeMaterial, material, treinamentoServicoVersao } from "../db/schema";
 import type { Deps } from "../deps";
 import { conflito, ErroApi, invalido, naoEncontrado } from "../http/erros";
+import { erroDaIAParaAdmin } from "./ia-falhas";
 import { IAIndisponivel, type BlocoDeMensagem, type PedidoDeTexto } from "../servicos/ia";
 import { obterOuCriarRascunho, rascunhoDoTreinamento, rascunhoParaEditor, treinamentoDoCodigo, versaoPublicadaDoTreinamento, type RascunhoDoEditor } from "./treinamento-servico";
 import {
@@ -36,7 +37,7 @@ import {
  *   Só a chamada que deu certo e foi gravada conta.
  */
 
-type DepsDaIA = Pick<Deps, "db" | "ia" | "config">;
+type DepsDaIA = Pick<Deps, "db" | "ia" | "config" | "agora">;
 
 /**
  * O padrão do módulo de IA é 60 s; a geração leva minutos. Na conferência contra o Gemini gratuito (17/10/2026), o modelo
@@ -682,9 +683,12 @@ export async function executarRascunhoIA(deps: DepsDaIA, chamada: ChamadaDeRascu
       for (const objeto of leitor.alimentar(pedaco.texto)) receber(objeto);
     }
   } catch (erro) {
-    if (erro instanceof IAIndisponivel) console.warn(`Rascunho de treinamento: IA indisponível (${erro.message})`);
-    else console.error("Rascunho de treinamento: a IA falhou de um jeito inesperado", erro);
-    throw new ErroApi(503, "ia_indisponivel", "A IA não respondeu agora. Tente de novo em instantes ou siga no editor; nada foi gravado.");
+    if (erro instanceof IAIndisponivel) {
+      console.warn(`Rascunho de treinamento: IA indisponível (${erro.motivo}: ${erro.message})`);
+      throw erroDaIAParaAdmin(erro, deps.config.ia, deps.agora(), "Siga no editor; nada foi gravado.");
+    }
+    console.error("Rascunho de treinamento: erro do SYNQ OS ao ler a resposta da IA", erro);
+    throw new ErroApi(500, "erro_interno", "Erro interno do SYNQ OS ao ler a resposta da IA (não é a IA nem a cota). Tente de novo; se repetir, avise o suporte. Nada foi gravado.");
   }
   descartados += leitor.invalidos;
 

@@ -1,4 +1,4 @@
-import { IAIndisponivel, RespostaIAInvalida, type ModeloLogico, type PedacoDeTexto, type PedidoDeTexto, type ProvedorIA } from "./tipos";
+import { falhaDeRede, IAIndisponivel, motivoDoStatus, RespostaIAInvalida, type ModeloLogico, type PedacoDeTexto, type PedidoDeTexto, type ProvedorIA } from "./tipos";
 
 const URL_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const TEMPO_LIMITE_MS = 60_000;
@@ -7,6 +7,13 @@ const TEMPO_LIMITE_MS = 60_000;
  * resposta curta pode sair vazia (`finishReason: MAX_TOKENS`). O limite que a configuração fala é o da resposta visível.
  */
 const MARGEM_DE_PENSAMENTO = 4096;
+/**
+ * Erros passageiros do lado do Google ("This model is currently experiencing high demand", 503): repete o pedido depois
+ * dessas esperas antes de desistir, e por fim passa para o modelo reserva (`GEMINI_MODELO_RESERVA`), que costuma estar
+ * livre quando o principal está lotado. O 429 (cota) fica de fora: a cota diária do gratuito não volta em segundos.
+ */
+const STATUS_PASSAGEIROS = new Set([500, 502, 503, 504]);
+const ESPERAS_PADRAO_MS = [2_000, 5_000];
 
 /**
  * Implementação do módulo de IA para a API do Gemini (Google): `fetch` nativo contra `generateContent`, com streaming SSE
@@ -21,6 +28,8 @@ export class ProvedorIAGemini implements ProvedorIA {
     private readonly modelos: Record<ModeloLogico, string>,
     private readonly maxTokensPadrao: number,
     private readonly buscar: typeof fetch = fetch,
+    private readonly esperasMs: number[] = ESPERAS_PADRAO_MS,
+    private readonly modeloReserva = "",
   ) {}
 
   disponivel(): boolean {
@@ -51,29 +60,54 @@ export class ProvedorIAGemini implements ProvedorIA {
   }
 
   private async requisitar(pedido: PedidoDeTexto, streaming: boolean): Promise<Response> {
-    if (!this.apiKey) throw new IAIndisponivel("GEMINI_API_KEY não configurada");
+    if (!this.apiKey) throw new IAIndisponivel("GEMINI_API_KEY não configurada", { motivo: "chave" });
     const metodo = streaming ? "streamGenerateContent?alt=sse" : "generateContent";
-    let resposta: Response;
+    const principal = this.modelos[pedido.modelo];
+    const modelos = this.modeloReserva && this.modeloReserva !== principal ? [principal, this.modeloReserva] : [principal];
+    for (const [i, modelo] of modelos.entries()) {
+      const ultimo = i === modelos.length - 1;
+      for (let tentativa = 0; ; tentativa++) {
+        const resposta = await this.requisitarUmaVez(pedido, modelo, metodo);
+        if (resposta.ok || !STATUS_PASSAGEIROS.has(resposta.status)) return this.conferirStatus(resposta);
+        const espera = this.esperasMs[tentativa];
+        if (espera === undefined) {
+          if (ultimo) return this.conferirStatus(resposta);
+          await resposta.body?.cancel().catch(() => undefined);
+          console.warn(`Gemini: ${modelo} segue respondendo ${resposta.status}; passando para o reserva ${modelos[i + 1]}`);
+          break;
+        }
+        await resposta.body?.cancel().catch(() => undefined);
+        console.warn(`Gemini: ${modelo} respondeu ${resposta.status}; tentando de novo em ${espera / 1000} s`);
+        await new Promise((pronto) => setTimeout(pronto, espera));
+      }
+    }
+    throw new IAIndisponivel("Gemini sem modelo para tentar");
+  }
+
+  private async requisitarUmaVez(pedido: PedidoDeTexto, modelo: string, metodo: string): Promise<Response> {
     try {
-      resposta = await this.buscar(`${URL_BASE}/${encodeURIComponent(this.modelos[pedido.modelo])}:${metodo}`, {
+      return await this.buscar(`${URL_BASE}/${encodeURIComponent(modelo)}:${metodo}`, {
         method: "POST",
         headers: { "x-goog-api-key": this.apiKey, "content-type": "application/json" },
         body: JSON.stringify(this.corpo(pedido)),
         signal: AbortSignal.timeout(pedido.tempoLimiteMs ?? TEMPO_LIMITE_MS),
       });
     } catch (erro) {
-      throw new IAIndisponivel(`Gemini inacessível: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro });
+      throw falhaDeRede("Gemini", erro);
     }
+  }
+
+  private async conferirStatus(resposta: Response): Promise<Response> {
     if (!resposta.ok) {
       const detalhe = await resposta.text().catch(() => "");
-      throw new IAIndisponivel(`Gemini respondeu ${resposta.status}${detalhe ? `: ${detalhe.slice(0, 300)}` : ""}`);
+      throw new IAIndisponivel(`Gemini respondeu ${resposta.status}${detalhe ? `: ${detalhe.slice(0, 300)}` : ""}`, motivoDoStatus(resposta.status, detalhe));
     }
     return resposta;
   }
 
   /** O texto de uma resposta (ou de um pedaço do streaming), sem as partes de "pensamento"; lança se o pedido foi bloqueado. */
   private textoDe(corpo: any): { texto: string; encerramento: string | undefined } {
-    if (corpo?.error) throw new IAIndisponivel(`Gemini respondeu com erro: ${corpo.error.message ?? "erro desconhecido"}`);
+    if (corpo?.error) throw new IAIndisponivel(`Gemini respondeu com erro: ${corpo.error.message ?? "erro desconhecido"}`, motivoDoStatus(Number(corpo.error.code) || 0, JSON.stringify(corpo.error)));
     const bloqueio = corpo?.promptFeedback?.blockReason;
     if (bloqueio) throw new RespostaIAInvalida(`Gemini bloqueou o pedido: ${bloqueio}`);
     const candidato = corpo?.candidates?.[0];
@@ -124,7 +158,7 @@ export class ProvedorIAGemini implements ProvedorIA {
       }
     } catch (erro) {
       if (erro instanceof IAIndisponivel || erro instanceof RespostaIAInvalida) throw erro;
-      throw new IAIndisponivel(`Falha ao ler o streaming do Gemini: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro });
+      throw new IAIndisponivel(`Falha ao ler o streaming do Gemini: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro, motivo: "rede" });
     }
   }
 }

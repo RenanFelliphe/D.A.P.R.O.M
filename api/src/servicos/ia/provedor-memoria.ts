@@ -7,6 +7,8 @@ import { IAIndisponivel, type PedacoDeTexto, type PedidoDeTexto, type ProvedorIA
 export class ProvedorIAEmMemoria implements ProvedorIA {
   respostas: string[] = [];
   falhar = false;
+  /** Falha da próxima chamada (cota, servidor lotado…), para conferir a mensagem de cada origem; vale uma vez. */
+  proximaFalha: IAIndisponivel | null = null;
   chamadas: PedidoDeTexto[] = [];
 
   disponivel(): boolean {
@@ -16,6 +18,9 @@ export class ProvedorIAEmMemoria implements ProvedorIA {
   async conversar(pedido: PedidoDeTexto): Promise<string> {
     this.chamadas.push(pedido);
     if (this.falhar) throw new IAIndisponivel("IA em memória: falha simulada");
+    const falha = this.proximaFalha;
+    this.proximaFalha = null;
+    if (falha) throw falha;
     const resposta = this.respostas.shift();
     if (resposta === undefined) throw new IAIndisponivel("IA em memória: nenhuma resposta programada");
     return resposta;

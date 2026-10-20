@@ -9,7 +9,8 @@ import type { Deps } from "../deps";
 import type { ExpressaoVitoria } from "./treinamento-servico-esquema";
 import { contar, type limiteEDeslocamento } from "../http/paginacao";
 import { naoEncontrado } from "../http/erros";
-import { IAIndisponivel, type BlocoDeMensagem, type PedidoDeTexto } from "../servicos/ia";
+import { IAIndisponivel, type BlocoDeMensagem, type MotivoDaFalhaIA, type PedidoDeTexto } from "../servicos/ia";
+import { proximaRenovacaoDoGemini } from "./ia-falhas";
 import { blocoDeDatas } from "./vitoria-datas";
 import { buscarNoManual, manualDoPerfil } from "./vitoria-manual";
 import { diaDe, inicioDoDia, somarDias } from "./tempo";
@@ -326,7 +327,7 @@ export async function sobreAVitoria(deps: Pick<Deps, "db" | "ia" | "config" | "a
 // ---- Diagnóstico (admin) -------------------------------------------------------------------------------------------
 
 /** O resultado da última chamada à IA feita por esta api; fica na memória do processo (zera ao reiniciar) e só serve ao diagnóstico. */
-let ultimaChamadaIA: { em: Date; ok: boolean; erro?: string } | null = null;
+let ultimaChamadaIA: { em: Date; ok: boolean; erro?: string; motivo?: MotivoDaFalhaIA } | null = null;
 
 export type EstadoDaVitoria = "ativa" | "sem_chave" | "limite_do_dia" | "fornecedor_com_problema";
 
@@ -356,15 +357,6 @@ export interface DiagnosticoDaVitoria {
   limites: { porConversa: number; porContaDia: number };
   ultimaChamada: { em: string; ok: boolean; erro: string | null } | null;
   hoje: { respondidas: number; naoSei: number; comIa: number; semIa: number };
-}
-
-const MINUTO_MS = 60_000;
-
-/** Quando a cota diária do Gemini renova: meia-noite do Pacífico (4h de Brasília no horário de verão americano, 5h fora dele). */
-function proximaRenovacaoDoGemini(agora: Date): Date {
-  const formatar = (opcoes: Intl.DateTimeFormatOptions) => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "America/Los_Angeles", hourCycle: "h23", ...opcoes }).format(agora));
-  const minutosAteMeiaNoite = (24 - formatar({ hour: "2-digit" })) * 60 - formatar({ minute: "2-digit" });
-  return new Date(agora.getTime() + minutosAteMeiaNoite * MINUTO_MS);
 }
 
 const horaBr = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" }).format(d);
@@ -406,12 +398,23 @@ export async function diagnosticoDaVitoria(deps: Pick<Deps, "db" | "ia" | "confi
     porque = `O projeto já usou as ${limite} respostas com IA permitidas por dia (VITORIA_LIMITE_GLOBAL_DIA). Até lá ela responde pelo manual.`;
     volta = `À meia-noite (${horaBr(meiaNoite)} de Brasília), quando o contador do dia zera.`;
   } else if (falhou) {
-    const cota = /\b429\b|quota|RESOURCE_EXHAUSTED|rate.?limit/i.test(falhou.erro ?? "");
+    const cota = falhou.motivo === "cota";
+    const porMinuto = falhou.motivo === "limite_por_minuto";
     estado = "fornecedor_com_problema";
-    titulo = cota ? "Sem IA: a cota do fornecedor acabou" : "Sem IA: o fornecedor falhou";
+    titulo = cota
+      ? "Sem IA: a cota do fornecedor acabou"
+      : porMinuto
+        ? "Sem IA: pedidos demais por minuto"
+        : falhou.motivo === "sobrecarga"
+          ? "Sem IA: o servidor do fornecedor está lotado"
+          : falhou.motivo === "chave"
+            ? "Sem IA: a chave foi recusada"
+            : "Sem IA: o fornecedor falhou";
     porque = cota
-      ? `O ${nomeDoProvedor} recusou a última pergunta por cota ou excesso de pedidos (ainda havia ${restantes} respostas do limite da Vitória). Ela responde pelo manual.`
-      : `A última chamada à IA falhou: ${falhou.erro}. Ela responde pelo manual até uma chamada dar certo.`;
+      ? `O ${nomeDoProvedor} recusou a última pergunta porque a cota do dia acabou (ainda havia ${restantes} respostas do limite da Vitória). Ela responde pelo manual.`
+      : porMinuto
+        ? `O ${nomeDoProvedor} recusou a última pergunta por excesso de pedidos em pouco tempo (limite por minuto, não a cota do dia). Ela responde pelo manual.`
+        : `A última chamada à IA falhou: ${falhou.erro}. Ela responde pelo manual até uma chamada dar certo.`;
     volta =
       cota && config.ia.provedor === "gemini"
         ? `A cota diária do Gemini renova à meia-noite do Pacífico (${horaBr(proximaRenovacaoDoGemini(agora))} de Brasília); a próxima pergunta já testa se voltou.`
@@ -506,7 +509,7 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
     bruto = await ia.conversar(montarPedido(pedido.perfil, pedido.tela, pedido.contexto, pedido.historico, pedido.mensagem, dia));
     ultimaChamadaIA = { em: agora(), ok: true };
   } catch (erro) {
-    ultimaChamadaIA = { em: agora(), ok: false, erro: erro instanceof Error ? erro.message.slice(0, 300) : "erro desconhecido" };
+    ultimaChamadaIA = { em: agora(), ok: false, erro: erro instanceof Error ? erro.message.slice(0, 300) : "erro desconhecido", motivo: erro instanceof IAIndisponivel ? erro.motivo : undefined };
     // Rede fora do ar, chave inválida, HTTP ruim ou qualquer outra falha do fornecedor: cai no fallback, nunca num 500
     // (a resposta da rota já pode estar em streaming, sem mais como virar um erro HTTP).
     if (erro instanceof IAIndisponivel) console.warn(`Vitória: IA indisponível, respondendo sem IA (${erro.message})`);

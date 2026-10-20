@@ -49,6 +49,7 @@ const esquemaIA = z.object({
   GEMINI_MODELO_VITORIA: z.string().default("gemini-3.8-flash"),
   GEMINI_MODELO_RASCUNHO: z.string().default("gemini-3.8-flash"),
   GEMINI_MODELO_DIGITALIZACAO: z.string().default("gemini-3.8-flash"),
+  GEMINI_MODELO_RESERVA: z.string().trim().default("gemini-3.5-flash-lite"),
 });
 
 export interface Config {
@@ -86,6 +87,8 @@ export interface Config {
     ligada: boolean;
     /** Nome real do modelo do provedor escolhido para cada uso lógico (`ProvedorIA`); troca sem mudar código. */
     modelos: { vitoria: string; rascunho: string; digitalizacao: string };
+    /** Só no Gemini: o modelo que assume quando o principal segue lotado (503) depois das novas tentativas; vazio desliga. */
+    modeloReserva?: string;
   };
   /** Limites de uso da Vitória (preenchidos já nesta fase; só passam a valer quando a rota dela existir). */
   vitoria: {
@@ -114,6 +117,7 @@ export function lerConfigIA(env: NodeJS.ProcessEnv = process.env): Config["ia"] 
       apiKey: e.GEMINI_API_KEY,
       ligada: Boolean(e.GEMINI_API_KEY),
       modelos: { vitoria: e.GEMINI_MODELO_VITORIA, rascunho: e.GEMINI_MODELO_RASCUNHO, digitalizacao: e.GEMINI_MODELO_DIGITALIZACAO },
+      modeloReserva: e.GEMINI_MODELO_RESERVA,
     };
   }
   return {

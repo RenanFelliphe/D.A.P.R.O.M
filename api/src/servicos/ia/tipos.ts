@@ -51,8 +51,46 @@ export interface ProvedorIA {
   conversarEmStreaming(pedido: PedidoDeTexto): AsyncIterable<PedacoDeTexto>;
 }
 
+/**
+ * Por que a IA não respondeu, para o admin saber de quem é o problema:
+ * - `cota`: a cota do dia (Gemini gratuito) ou o crédito (Anthropic) acabou; só volta quando renovar ou recarregar.
+ * - `limite_por_minuto`: pedidos demais em pouco tempo; volta em segundos (`esperarSegundos`, quando o fornecedor diz).
+ * - `sobrecarga`: o servidor do fornecedor está lotado ou com erro interno (5xx), mesmo depois das novas tentativas.
+ * - `chave`: sem chave configurada, ou o fornecedor recusou a chave.
+ * - `rede`: não foi possível falar com o fornecedor (rede fora do ar ou tempo esgotado).
+ * - `fornecedor`: outra recusa do fornecedor (pedido rejeitado, resposta quebrada).
+ */
+export type MotivoDaFalhaIA = "cota" | "limite_por_minuto" | "sobrecarga" | "chave" | "rede" | "fornecedor";
+
 /** Rede fora do ar, chave ausente ou HTTP ruim: quem chama deve cair num fallback sem IA, nunca propagar um 500. */
-export class IAIndisponivel extends Error {}
+export class IAIndisponivel extends Error {
+  readonly motivo: MotivoDaFalhaIA;
+  readonly esperarSegundos: number | null;
+
+  constructor(mensagem: string, opcoes: { cause?: unknown; motivo?: MotivoDaFalhaIA; esperarSegundos?: number | null } = {}) {
+    super(mensagem, opcoes.cause === undefined ? undefined : { cause: opcoes.cause });
+    this.motivo = opcoes.motivo ?? "fornecedor";
+    this.esperarSegundos = opcoes.esperarSegundos ?? null;
+  }
+}
+
+/**
+ * Classifica uma resposta HTTP ruim do fornecedor. O 429 do Gemini diz no `quotaId` se a cota é do dia ("PerDay") ou do
+ * minuto, e no `RetryInfo` quanto esperar; o da Anthropic é sempre por minuto. A Anthropic avisa o crédito esgotado num 400.
+ */
+export function motivoDoStatus(status: number, corpo: string): { motivo: MotivoDaFalhaIA; esperarSegundos: number | null } {
+  const espera = /"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/.exec(corpo) ?? /retry in (\d+(?:\.\d+)?)\s*s/i.exec(corpo);
+  const esperarSegundos = espera ? Math.ceil(Number(espera[1])) : null;
+  if (status === 429) return { motivo: /PerDay|per.day|daily/i.test(corpo) ? "cota" : "limite_por_minuto", esperarSegundos };
+  if (/credit balance|billing|insufficient.?quota/i.test(corpo)) return { motivo: "cota", esperarSegundos: null };
+  if (status === 401 || status === 403 || /API_KEY_INVALID|API key not valid|invalid x-api-key/i.test(corpo)) return { motivo: "chave", esperarSegundos: null };
+  if (status >= 500) return { motivo: "sobrecarga", esperarSegundos: null };
+  return { motivo: "fornecedor", esperarSegundos: null };
+}
+
+/** Rede fora do ar ou tempo esgotado (`AbortSignal.timeout`) viram o mesmo motivo: o fornecedor não foi alcançado. */
+export const falhaDeRede = (fornecedor: string, erro: unknown) =>
+  new IAIndisponivel(`${fornecedor} inacessível: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro, motivo: "rede" });
 
 /** A resposta do modelo saiu fora do formato esperado (ex.: não respeitou o `schemaDeSaida`). */
 export class RespostaIAInvalida extends Error {}

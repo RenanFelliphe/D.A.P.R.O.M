@@ -143,8 +143,71 @@ describe("ProvedorIAGemini", () => {
   it("HTTP ruim (chave inválida, cota esgotada) vira IAIndisponivel com o status", async () => {
     for (const status of [400, 403, 429, 503]) {
       const { buscar } = buscaFalsa([json({ error: { message: "ruim" } }, status)]);
-      await assert.rejects(() => new ProvedorIAGemini("chave", MODELOS, 1024, buscar).conversar(PEDIDO), (erro: Error) => erro instanceof IAIndisponivel && erro.message.includes(String(status)));
+      await assert.rejects(() => new ProvedorIAGemini("chave", MODELOS, 1024, buscar, []).conversar(PEDIDO), (erro: Error) => erro instanceof IAIndisponivel && erro.message.includes(String(status)));
     }
+  });
+
+  it("modelo sobrecarregado (503) tenta de novo e segue; cota (429) e chave ruim não repetem", async () => {
+    const sobrecarga = json({ error: { code: 503, message: "This model is currently experiencing high demand." } }, 503);
+    const comRepeticao = buscaFalsa([sobrecarga, sobrecarga, json(candidato("Voltei"))]);
+    assert.equal(await new ProvedorIAGemini("chave", MODELOS, 1024, comRepeticao.buscar, [0, 0]).conversar(PEDIDO), "Voltei");
+    assert.equal(comRepeticao.chamadas.length, 3);
+
+    const semFolego = buscaFalsa([sobrecarga, sobrecarga, sobrecarga]);
+    await assert.rejects(() => new ProvedorIAGemini("chave", MODELOS, 1024, semFolego.buscar, [0, 0]).conversarEmStreaming(PEDIDO)[Symbol.asyncIterator]().next(), (erro: Error) => erro instanceof IAIndisponivel && erro.message.includes("503"));
+    assert.equal(semFolego.chamadas.length, 3);
+
+    for (const status of [400, 429]) {
+      const { buscar, chamadas } = buscaFalsa([json({ error: { message: "ruim" } }, status)]);
+      await assert.rejects(() => new ProvedorIAGemini("chave", MODELOS, 1024, buscar, [0, 0], "gemini-reserva").conversar(PEDIDO), IAIndisponivel);
+      assert.equal(chamadas.length, 1);
+    }
+  });
+
+  it("classifica a falha: cota do dia, limite por minuto (com a espera), lotado e chave recusada", async () => {
+    const cota429 = (quotaId: string) =>
+      json(
+        {
+          error: {
+            code: 429,
+            message: "You exceeded your current quota. Please retry in 37.6s.",
+            status: "RESOURCE_EXHAUSTED",
+            details: [
+              { "@type": "type.googleapis.com/google.rpc.QuotaFailure", violations: [{ quotaId }] },
+              { "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "37s" },
+            ],
+          },
+        },
+        429,
+      );
+    const casos: Array<[() => Response, string, number | null]> = [
+      [cota429("GenerateRequestsPerDayPerProjectPerModel-FreeTier"), "cota", 37],
+      [cota429("GenerateRequestsPerMinutePerProjectPerModel-FreeTier"), "limite_por_minuto", 37],
+      [json({ error: { code: 503, message: "high demand", status: "UNAVAILABLE" } }, 503), "sobrecarga", null],
+      [json({ error: { code: 400, message: "API key not valid.", details: [{ reason: "API_KEY_INVALID" }] } }, 400), "chave", null],
+      [json({ error: { code: 400, message: "Invalid argument" } }, 400), "fornecedor", null],
+    ];
+    for (const [resposta, motivo, espera] of casos) {
+      const { buscar } = buscaFalsa([resposta]);
+      await assert.rejects(
+        () => new ProvedorIAGemini("chave", MODELOS, 1024, buscar, []).conversar(PEDIDO),
+        (erro: Error) => erro instanceof IAIndisponivel && erro.motivo === motivo && erro.esperarSegundos === espera,
+      );
+    }
+    const rede = (async () => {
+      throw new TypeError("fetch failed");
+    }) as typeof fetch;
+    await assert.rejects(() => new ProvedorIAGemini("chave", MODELOS, 1024, rede).conversar(PEDIDO), (erro: Error) => erro instanceof IAIndisponivel && erro.motivo === "rede");
+  });
+
+  it("modelo principal lotado depois das novas tentativas passa para o modelo reserva", async () => {
+    const sobrecarga = json({ error: { code: 503, message: "high demand" } }, 503);
+    const { buscar, chamadas } = buscaFalsa([sobrecarga, sobrecarga, json(candidato("Pelo reserva"))]);
+    assert.equal(await new ProvedorIAGemini("chave", MODELOS, 1024, buscar, [0], "gemini-reserva").conversar(PEDIDO), "Pelo reserva");
+    assert.deepEqual(
+      chamadas.map((c) => c.url.split("/models/")[1]),
+      ["gemini-vitoria:generateContent", "gemini-vitoria:generateContent", "gemini-reserva:generateContent"],
+    );
   });
 
   it("rede fora do ar vira IAIndisponivel", async () => {

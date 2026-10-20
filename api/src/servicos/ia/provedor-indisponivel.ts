@@ -12,10 +12,10 @@ export class ProvedorIAIndisponivel implements ProvedorIA {
   }
 
   async conversar(_pedido: PedidoDeTexto): Promise<string> {
-    throw new IAIndisponivel("IA desligada: nenhuma chave de IA configurada");
+    throw new IAIndisponivel("IA desligada: nenhuma chave de IA configurada", { motivo: "chave" });
   }
 
   conversarEmStreaming(_pedido: PedidoDeTexto): AsyncIterable<PedacoDeTexto> {
-    throw new IAIndisponivel("IA desligada: nenhuma chave de IA configurada");
+    throw new IAIndisponivel("IA desligada: nenhuma chave de IA configurada", { motivo: "chave" });
   }
 }

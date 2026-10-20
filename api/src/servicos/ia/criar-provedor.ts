@@ -11,6 +11,6 @@ import type { ProvedorIA } from "./tipos";
 export function criarProvedorIA(ia: Config["ia"], maxTokensPadrao: number): ProvedorIA {
   if (!ia.ligada) return new ProvedorIAIndisponivel();
   return ia.provedor === "gemini"
-    ? new ProvedorIAGemini(ia.apiKey, ia.modelos, maxTokensPadrao)
+    ? new ProvedorIAGemini(ia.apiKey, ia.modelos, maxTokensPadrao, fetch, undefined, ia.modeloReserva)
     : new ProvedorIAAnthropic(ia.apiKey, ia.modelos, maxTokensPadrao);
 }

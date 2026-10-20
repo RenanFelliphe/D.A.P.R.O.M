@@ -12,6 +12,7 @@ import { rotas } from "@/lib/rotas";
 import { LIMITES, type RascunhoComIA, type ResultadoDaIA } from "@/lib/treinamento-servico";
 import { EXEMPLO_DE_PROCEDIMENTO, ORIENTACOES_DO_PROCEDIMENTO } from "@/lib/treinamento-servico-exemplo";
 import { VitoriaNaCena } from "../vitoria/VitoriaNaCena";
+import { AvisoDeFalhaDaIA } from "./AvisoDeFalhaDaIA";
 import { CarregandoComVitoria } from "./CarregandoComVitoria";
 import { PlanoDoJogo, planoPadrao, type Plano } from "./PlanoDoJogo";
 import { useRascunhoIA } from "./useRascunhoIA";
@@ -198,12 +199,7 @@ export function GerarComVitoria({ codigo, rascunho, materiais }: GerarComVitoria
           </div>
           <PlanoDoJogo plano={plano} aoMudar={setPlano} temMateriais={materiais.length > 0} />
 
-          {ia.erro && (
-            <VitoriaNaCena chave={`erro-${ia.erro}`} reacao="errada" tamanho={72} tom="erro">
-              <strong className="ts-balao-titulo">Não deu certo desta vez</strong>
-              <p>{ia.erro}</p>
-            </VitoriaNaCena>
-          )}
+          {ia.erro && <AvisoDeFalhaDaIA falha={ia.erro} />}
 
           {confirmando ? (
             <Notice tone="al" icon="alert">

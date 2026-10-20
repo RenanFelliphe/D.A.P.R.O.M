@@ -4,6 +4,7 @@ import { after, before, describe, it } from "node:test";
 import { and, eq } from "drizzle-orm";
 import { atividade, atividadeMaterial, auditoria, material } from "../src/db/schema";
 import { LeitorDeObjetosJson } from "../src/dominio/treinamento-servico-ia";
+import { IAIndisponivel } from "../src/servicos/ia";
 import { criarAmbiente, configDeTeste, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
@@ -334,8 +335,23 @@ describe("Treinamentos de serviço — rascunho pela IA", () => {
 
     // Sem resposta programada: a IA "cai" no meio, depois que a resposta já é streaming.
     const caiu = await chamarIA(codigo, "gerar", { texto: TEXTO });
-    assert.equal(caiu.erro.codigo, "ia_indisponivel");
+    assert.equal(caiu.erro.codigo, "ia_falhou");
     assert.equal(caiu.final, undefined);
+
+    // Cada origem da falha tem o seu código e diz ao admin de quem é o problema.
+    const origens: Array<[IAIndisponivel, string, RegExp]> = [
+      [new IAIndisponivel("429", { motivo: "cota" }), "ia_sem_cota", /acabou/],
+      [new IAIndisponivel("429", { motivo: "limite_por_minuto", esperarSegundos: 37 }), "ia_limite_por_minuto", /37 s/],
+      [new IAIndisponivel("503", { motivo: "sobrecarga" }), "ia_sobrecarregada", /não é um problema do SYNQ OS/],
+      [new IAIndisponivel("403", { motivo: "chave" }), "ia_chave_recusada", /chave/],
+      [new IAIndisponivel("fetch failed", { motivo: "rede" }), "ia_inacessivel", /não conseguiu falar/],
+    ];
+    for (const [falha, codigoDoErro, mensagem] of origens) {
+      amb.ia.proximaFalha = falha;
+      const r = await chamarIA(codigo, "gerar", { texto: TEXTO });
+      assert.equal(r.erro.codigo, codigoDoErro);
+      assert.match(r.erro.mensagem, mensagem);
+    }
 
     amb.ia.respostas.push("Desculpe, não consigo ajudar com isso.");
     const lixo = await chamarIA(codigo, "gerar", { texto: TEXTO });

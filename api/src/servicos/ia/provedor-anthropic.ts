@@ -1,4 +1,4 @@
-import { IAIndisponivel, RespostaIAInvalida, type BlocoDeMensagem, type ModeloLogico, type PedacoDeTexto, type PedidoDeTexto, type ProvedorIA } from "./tipos";
+import { falhaDeRede, IAIndisponivel, motivoDoStatus, RespostaIAInvalida, type BlocoDeMensagem, type ModeloLogico, type PedacoDeTexto, type PedidoDeTexto, type ProvedorIA } from "./tipos";
 
 const URL_MENSAGENS = "https://api.anthropic.com/v1/messages";
 const VERSAO_ANTHROPIC = "2023-06-01";
@@ -50,7 +50,7 @@ export class ProvedorIAAnthropic implements ProvedorIA {
   }
 
   private async requisitar(pedido: PedidoDeTexto, streaming: boolean): Promise<Response> {
-    if (!this.apiKey) throw new IAIndisponivel("ANTHROPIC_API_KEY não configurada");
+    if (!this.apiKey) throw new IAIndisponivel("ANTHROPIC_API_KEY não configurada", { motivo: "chave" });
     let resposta: Response;
     try {
       resposta = await this.buscar(URL_MENSAGENS, {
@@ -60,11 +60,11 @@ export class ProvedorIAAnthropic implements ProvedorIA {
         signal: AbortSignal.timeout(pedido.tempoLimiteMs ?? TEMPO_LIMITE_MS),
       });
     } catch (erro) {
-      throw new IAIndisponivel(`Anthropic inacessível: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro });
+      throw falhaDeRede("Anthropic", erro);
     }
     if (!resposta.ok) {
       const detalhe = await resposta.text().catch(() => "");
-      throw new IAIndisponivel(`Anthropic respondeu ${resposta.status}${detalhe ? `: ${detalhe.slice(0, 300)}` : ""}`);
+      throw new IAIndisponivel(`Anthropic respondeu ${resposta.status}${detalhe ? `: ${detalhe.slice(0, 300)}` : ""}`, motivoDoStatus(resposta.status, detalhe));
     }
     return resposta;
   }
@@ -108,13 +108,14 @@ export class ProvedorIAAnthropic implements ProvedorIA {
           if (evento?.type === "content_block_delta" && evento.delta?.type === "text_delta" && typeof evento.delta.text === "string") {
             yield { texto: evento.delta.text };
           } else if (evento?.type === "error") {
-            throw new IAIndisponivel(`Anthropic interrompeu o streaming: ${evento.error?.message ?? "erro desconhecido"}`);
+            const motivo = evento.error?.type === "overloaded_error" || evento.error?.type === "api_error" ? "sobrecarga" : evento.error?.type === "rate_limit_error" ? "limite_por_minuto" : "fornecedor";
+            throw new IAIndisponivel(`Anthropic interrompeu o streaming: ${evento.error?.message ?? "erro desconhecido"}`, { motivo });
           }
         }
       }
     } catch (erro) {
       if (erro instanceof IAIndisponivel) throw erro;
-      throw new IAIndisponivel(`Falha ao ler o streaming da Anthropic: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro });
+      throw new IAIndisponivel(`Falha ao ler o streaming da Anthropic: ${erro instanceof Error ? erro.message : String(erro)}`, { cause: erro, motivo: "rede" });
     }
   }
 }
