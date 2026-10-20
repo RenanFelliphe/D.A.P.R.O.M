@@ -2,7 +2,7 @@
 
 > O jogo por serviço do catálogo (seção 3 do [vitoria.md](vitoria.md)): o admin cria manualmente uma explicação em passos (narrada pela Vitória) e um jogo de 3 a 10 fases, publica com termo e assinatura, e o técnico (inclusive quem aguarda liberação) joga e pontua. Esta rodada é 100% sem IA: nenhuma rota, coluna ou botão de geração por IA entra agora — é a Fase 1 do plano de implementação da Vitória, que funciona sozinha (seção 8 do vitoria.md).
 >
-> **Situação:** implementado na `api` e na `web` em 16/10/2026. As seções 1 a 9 descrevem os 5 tipos originais; os minijogos, o "1 de cada", o fim do limite de fases e a troca do "Separar os itens" pelo Selecione com os materiais do serviço estão nas seções 10 e 11. O rascunho pela IA (seção 3.6 do vitoria.md) entrou em 17/10/2026, sobre este editor: o que foi feito está na seção 3.9 do [vitoria.md](vitoria.md), e o resumo, na seção 7 abaixo. As telas da `web` foram refeitas do zero em 18/10/2026 (seção 8): a seção 4 descreve as de 16/10 e fica como histórico. O ranking de cada treinamento entrou no mesmo dia (seção 9), e também os 6 minijogos e o "Ver ranking" no cartão (seção 10). A nota do treinamento (acertos, tempo e fases), a navegação entre as fases e o ranking pela melhor nota estão na seção 12.
+> **Situação:** implementado na `api` e na `web` em 16/10/2026. As seções 1 a 9 descrevem os 5 tipos originais; os minijogos, o "1 de cada", o fim do limite de fases e a troca do "Separar os itens" pelo Selecione com os materiais do serviço estão nas seções 10 e 11. O rascunho pela IA (seção 3.6 do vitoria.md) entrou em 17/10/2026, sobre este editor: o que foi feito está na seção 3.9 do [vitoria.md](vitoria.md), e o resumo, na seção 7 abaixo. As telas da `web` foram refeitas do zero em 18/10/2026 (seção 8): a seção 4 descreve as de 16/10 e fica como histórico. O ranking de cada treinamento entrou no mesmo dia (seção 9), e também os 6 minijogos e o "Ver ranking" no cartão (seção 10). A nota do treinamento (acertos, tempo e fases), a navegação entre as fases e o ranking pela melhor nota estão na seção 12. As melhorias de 20/10/2026 (caça-palavras na diagonal, mais opções no Selecione, Termo com casas escolhidas, confirmações, tempo do jogo todo, serviços em duas seções e o Campo de treino que abria em localhost) estão na seção 13.
 >
 > Fontes: [vitoria.md](vitoria.md) (seção 3) e [gameficacao.md](gameficacao.md) (seção 13), já decididos; o código em `api/src/db/schema/treinamento-servico.ts`, `api/src/dominio/treinamento-servico*.ts`, `api/src/rotas/treinamentos.ts` e `web/src/components/web/treinamento-servico/`.
 
@@ -174,7 +174,7 @@ Os tipos de fase passaram de 5 para 11, e todos são tratados como minijogos, no
 | Tipo | Como funciona | Certa quando | Limites | Visual |
 |---|---|---|---|---|
 | Verdadeiro ou falso | uma afirmação; duas cartas, "Verdadeiro" e "Falso" | escolheu a carta certa | afirmação até 400 caracteres | rosa; a afirmação numa placa com aspas e duas cartas grandes (verde e vermelha) |
-| Caça-palavras | tocar na primeira e na última letra de cada palavra; o jogo reconhece a palavra na hora | achou todas | 2 a 5 palavras de 3 a 12 letras, uma palavra só cada; só na horizontal (esquerda→direita) ou na vertical (cima→baixo), nunca na diagonal; grade de 8 a 12 | verde-limão; papel quadriculado e a lista com as palavras riscadas ao achar |
+| Caça-palavras | tocar na primeira e na última letra de cada palavra; o jogo reconhece a palavra na hora | achou todas | 2 a 5 palavras de 3 a 12 letras, uma palavra só cada; só na horizontal (esquerda→direita) ou na vertical (cima→baixo), nunca na diagonal; grade de 8 a 12 (desde 20/10/2026, também na diagonal, se cruzando, numa grade de 10 a 14: seção 13) | verde-limão; papel quadriculado e a lista com as palavras riscadas ao achar |
 | Memória | virar duas cartas por vez e formar os pares (termo e o que corresponde) | formou todos os pares errando no máximo uma vez por par | 2 a 5 pares (4 a 10 cartas), cada carta até 80 caracteres | roxo; mesa de feltro e cartas que viram em 3D |
 | Selecione | marcar tudo o que atende ao pedido (várias certas) | marcou todas as certas e nenhuma errada | 3 a 12 opções, 1 a 8 certas e ao menos uma errada | verde-esmeralda; prancheta com caixas de marcar |
 | Desembaralhe | uma palavra com as letras embaralhadas e a dica dela; tocar nas letras na ordem | formou a palavra | banco de 10 palavras (3 a 14 letras, com o acento), cada uma com a sua dica; cada partida sorteia uma | dourado; peças de letra de madeira e as casas da palavra |
@@ -295,3 +295,64 @@ As regras de negócio "Pontuação e navegação dos treinamentos gamificados" (
 - `api`: `treinamento-servico.ts` (correção com acertos, cronômetro, entrar, progresso, responder e concluir), `treinamento-servico-ranking.ts` (melhor nota) e as rotas novas em `treinamentos.ts`.
 - `web`: `JanelaDoJogo.tsx` (navegação, fila das chamadas, progresso), `FaseDoJogo.tsx` (cronômetro, rodapé com Voltar e Avançar, cada minijogo começando da resposta guardada), `ResultadoDoJogo.tsx` e `RankingDoTreinamento.tsx`.
 - Testes: um caso da nota (tempo por faixas, o cronômetro pausando e continuando entre visitas, acerto parcial ao finalizar, resposta travada, tempo cobrado sem o aviso de entrada, melhor nota anterior, gamificação só na primeira) e um da `0035`; os de antes ajustados (resposta travada e ranking pela melhor nota). `tsc` da `api` e da `web` e `eslint` da `web` limpos. A conferência visual ainda não foi feita.
+
+## 13. Melhorias nos minijogos, confirmações, tempo do jogo e serviços em duas seções (20/10/2026)
+
+Pedidos de ajuste depois de jogar a demonstração.
+
+### 13.1 Minijogos
+
+| Minijogo | O que mudou |
+|---|---|
+| Caça-palavras | As palavras ficam na linha (→), na coluna (↓) ou numa das diagonais (↘ e ↗), sempre lidas da esquerda para a direita (na coluna, de cima para baixo). Cada palavra cruza outra na mesma letra sempre que algum lugar permite (só palavra de outra direção, e nunca inteira por cima de outra) e vai, de preferência, na direção menos usada até ali, para a grade misturar linha, coluna e diagonal. A grade cresceu: 3 a mais que a maior palavra, entre 10 e 14 (era 2 a mais, entre 8 e 12). Marcar do fim para o começo continua valendo. |
+| Selecione | Mais opções: de 3 a 16 escritas (era 12), de 1 a 10 certas (era 8); com os materiais do serviço, até 15 itens de outros serviços (era 10). A fase nova no editor já vem com 8 opções em branco (3 certas), o Selecione com materiais começa com 6 intrusos (eram 3), e a Vitória é pedida a montar de 8 a 14 opções (de 2 a 8 certas, ao menos 3 erradas) ou de 5 a 10 intrusos. Treinamentos já publicados não mudam até o admin editar. |
+| Termo | A linha da vez tem uma casa escolhida (amarela): a letra digitada entra nela, e a escolha pula para a próxima casa vazia. Tocar numa casa (ou as setas ← e →) escolhe onde escrever, para montar a palavra fora de ordem; Backspace apaga a da casa escolhida (ou a anterior, se ela estiver vazia). Enviar com casa vazia sacode a linha e leva a escolha para a primeira vazia. |
+| Verdadeiro ou falso | Escolhida uma carta, a outra fica em cinza (ainda dá para trocar até confirmar). |
+| Desembaralhe | A letra já posta continua no monte, em cinza (antes quase sumia), para ver o que ainda falta usar. |
+
+- **Sem migração:** a regra da linha reta (`celulasEntre`, em `shared/treinamento-servico/jogos.ts`) passou a aceitar as diagonais, o que só amplia: as grades gravadas nas tentativas abertas (só linha e coluna) continuam corrigindo igual.
+
+### 13.2 Confirmações
+
+Toda ação que avança sem concluir ou desfaz o que a pessoa já fez pede confirmação numa caixa por cima do jogo (a mesma de "Sair do treinamento?"; o foco começa em desistir e Esc fecha a caixa):
+
+- **Avançar sem confirmar a fase** ("Avançar sem confirmar?"): explica que o progresso fica guardado e que dá para voltar; sem nada feito, que a fase vale zero se não voltar. Depois da correção, "Continuar" segue sem perguntar.
+- **Recomeçar uma fase:** "Recomeçar" do Pôr em ordem e do Desembaralhe e "Desfazer tudo" do Ligar ("Recomeçar esta fase?"). "Desfazer a última" e "Apagar a última" não perguntam.
+- **Recomeçar o jogo todo:** "Jogar de novo" e "Rever a explicação" no resultado (inclusive o Enter), que abrem uma partida nova.
+- **Como antes:** finalizar com fase pendente e sair no meio.
+
+### 13.3 Tempo do jogo todo e "Ver ranking" no resultado
+
+- **O placar do topo ganhou o tempo do jogo todo,** de "Começar o jogo" até finalizar (para no resultado). É o relógio do navegador, só para quem joga acompanhar; a nota continua usando o tempo de cada fase, contado pelo servidor (seção 12.2). No celular estreito, o avatar do topo sai durante o jogo para caber o placar.
+- **O resultado mostra o tempo total** embaixo da conta da nota e tem o botão **"Ver ranking"** no rodapé (só o ícone no celular), que rola até o ranking do treinamento e leva o foco para ele. No teste do admin, que não tem ranking, o botão não aparece.
+
+### 13.4 Serviços em duas seções
+
+- A aba Serviços do catálogo mostra **"Com treinamento"** (serviços com treinamento publicado, os que têm minijogos) e, depois, **"Outros serviços"**. Rascunho não conta.
+- A `api` (`GET /catalogo/servicos`) passou a listar primeiro os serviços com treinamento publicado e depois os outros, cada grupo pelo código, para a paginação respeitar os grupos: a página que tem os dois mostra as duas seções. Sem nenhum treinamento publicado (ou no Campo de treino, cuja API fictícia não tem treinamentos), a lista aparece como antes, sem seções.
+
+### 13.5 Campo de treino abrindo em localhost
+
+- **Causa:** as rotas `/app/treino/entrar` e `/app/treino/sair` montavam o redirecionamento com `new URL("/app/lista", req.url)`. Atrás do proxy da hospedagem, o `req.url` de uma rota do servidor traz o endereço interno do Next (`http://localhost:3000`), e o navegador era mandado para lá.
+- **Correção:** as duas rotas redirecionam com o caminho relativo (`Location: /app/lista?treino=...`, `web/src/lib/redirecionar.ts`), e o navegador fica no domínio em que está. O `proxy.ts` não tinha o problema: o Next já torna relativo o redirecionamento que ele devolve para o mesmo endereço.
+
+### 13.6 Código e conferência
+
+- `shared/treinamento-servico/jogos.ts` (`celulasEntre` com as diagonais); `api`: `treinamento-servico-jogos.ts` (`montarGrade`, `ladoDaGrade`), `treinamento-servico-esquema.ts` e `treinamento-servico-ia.ts` (limites e pedido do Selecione), `catalogo.ts` (ordem da lista); manuais da Vitória (técnico e admin).
+- `web`: `jogo/confirmacao.tsx` (a caixa e o pedido de confirmação), `JanelaDoJogo.tsx` (confirmações, tempo do jogo), `FaseDoJogo.tsx` (Termo, verdadeiro ou falso, recomeçar), `ResultadoDoJogo.tsx` (tempo total e "Ver ranking"), `efeitos.tsx` (atalhos parados com a caixa aberta), `lib/treinamento-servico.ts` (limites e textos), `catalogo/(secao)/servicos/page.tsx` (as duas seções), `app/treino/entrar` e `sair` e `lib/redirecionar.ts`; estilos em `treinamento-minijogos.css`, `treinamento-jogo.css` e `management.css`.
+- Testes: a grade com diagonais e cruzamentos (em 200 grades, alguma palavra na diagonal e cruzamento em mais de 150), as células na diagonal nos dois sentidos e a linha torta recusada, 5 palavras de 12 letras numa grade de 14, o limite novo de certas do Selecione e a ordem do catálogo (publicado primeiro; rascunho não conta). Os 56 testes de catálogo e treinamentos passam; `tsc` da `api` e da `web` e `eslint` da `web` limpos. A conferência visual ainda não foi feita, nem a do Campo de treino no domínio oficial (depende do deploy).
+
+### 13.7 O rodapé do cartão do serviço
+
+Pedido no mesmo dia, depois da seção 13.4:
+
+```
+[ Equipes do serviço ] [ Ver materiais ]
+[           Jogar treinamento          ]
+```
+
+- **"Ver materiais" sempre aparece**, no lugar onde ficava "Sugerir lista", e não muda de lugar ao abrir: os dois botões de cima ficam em duas colunas fixas, o texto continua "Ver materiais" (só a seta vira; "Ocultar materiais", mais largo, empurrava o botão para outra linha) e o painel aparece entre as duas linhas, em cima do botão do treinamento. Ele traz a lista (ou "Nenhum material na lista deste serviço ainda.") e, embaixo, **"Sugerir lista" e "Contestar lista"** (esta só com materiais; nenhum dos dois para o admin nem no Campo de treino).
+- **"Jogar treinamento"** ocupa a linha de baixo inteira (só com treinamento publicado). Para o admin, no mesmo lugar, "Abrir treinamento" ou "Criar treinamento".
+- **"Ver ranking"** saiu do rodapé e foi para o cartãozinho da Vitória, à direita, que só aparece com treinamento publicado.
+- No Campo de treino, sem "Equipes do serviço", "Ver materiais" ocupa a primeira linha sozinho.
+- Código: `CartaoServico.tsx`, `TreinamentoNoCartao.tsx` (a ação à direita) e `management.css` (`cartao-servico-treinar`, `cartao-servico-colaborar`). `tsc` e `eslint` da `web` limpos; a conferência visual ainda não foi feita.

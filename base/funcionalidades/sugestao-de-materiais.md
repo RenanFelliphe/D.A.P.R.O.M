@@ -101,7 +101,7 @@ Tudo em `/sugestoes-materiais` ([`rotas/sugestoes-materiais.ts`](../../api/src/r
 
 Tudo em `/app/catalogo`, o mesmo para todos os perfis (a seção Catálogo de serviço já é de todos).
 
-- **Cartão do serviço** (Catálogo › Serviços): botões "Sugerir lista" e "Contestar lista" (não aparecem para o admin), "Equipes do serviço" (janela com a lista e a responsável em destaque) e o selo da equipe responsável.
+- **Cartão do serviço** (Catálogo › Serviços): botões "Sugerir lista" e "Contestar lista" (não aparecem para o admin), "Equipes do serviço" (janela com a lista e a responsável em destaque) e o selo da equipe responsável. Desde 20/10/2026, "Sugerir lista" e "Contestar lista" ficam dentro do painel de "Ver materiais" (seção 13.7 do [treinamentos-de-servico.md](treinamentos-de-servico.md)).
 - **Detalhe da OS:** o cartão "Materiais recomendados" ganha "Sugerir lista" e "Contestar".
 - **Sugerir lista** (`/app/catalogo/servicos/{codigo}/materiais/sugerir?tipo=`): em etapas (a lista; o motivo; a revisão com a diferença) e diz para qual equipe a sugestão vai.
 - **Avaliar** (`/app/catalogo/servicos/{codigo}/materiais/sugestoes/{id}`): o autor, o motivo, a diferença, a lista base e a de agora; "Aceitar", "Ajustar e aceitar" (editor da lista) e "Recusar" (motivo). O autor vê o estado e pode retirar.
