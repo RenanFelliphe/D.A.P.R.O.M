@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useDialogo } from "@/components/treino/useDialogo";
 import { Icon } from "@/components/ui/Icon";
 import { cx } from "@/lib/cx";
@@ -20,12 +21,16 @@ interface JanelaSobrepostaProps {
  * Janela modal das telas de campo. Não usa a `<dialog>` nativa (como `JanelaModal`) porque ela sobe para a camada do topo e
  * deixa o resto da página inerte: o tutorial do treino, que aponta para dentro da janela, ficaria por baixo e sem clique.
  * Prende o foco, fecha com Esc e trava a rolagem como diálogo modal. Monte só quando for abrir.
+ *
+ * Vai para o `body` (portal): dentro de um elemento com `container-type` (o cartão do serviço no catálogo), o `position:
+ * fixed` do fundo ficaria preso a ele, e a janela abriria do tamanho do cartão.
  */
 export function JanelaSobreposta({ titulo, aoFechar, className, dataTreino, children }: JanelaSobrepostaProps) {
   const raiz = useDialogo<HTMLDivElement>(aoFechar);
   const idTitulo = useId();
 
-  return (
+  if (typeof document === "undefined") return null;
+  return createPortal(
     <div
       className="janela-fundo"
       onClick={(evento) => {
@@ -41,6 +46,7 @@ export function JanelaSobreposta({ titulo, aoFechar, className, dataTreino, chil
         </div>
         <div className="dlg-corpo">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
