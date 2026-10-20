@@ -179,6 +179,7 @@ As rotas só existem com `RH_SIMULADO=true` e ficam em `/rh-simulado`.
 | `GET /rh-simulado/gestao/funcionarios` `?busca&pagina&tamanho` | Lista com `total` e, em cada funcionário, `conta_no_synq_os` (perfil, equipe e se está ativa) ou `null`. |
 | `GET /rh-simulado/gestao/catalogo` | Setores, cargos por setor e a próxima matrícula livre. |
 | `POST /rh-simulado/gestao/funcionarios` | Cria um funcionário (manual) → `201`. |
+| `POST /rh-simulado/gestao/funcionarios/rapido` `{nome, email, centro_trabalho?}` | Criação rápida (20/10/2026, seção 13.1) → `201` `{funcionario}`. |
 | `POST /rh-simulado/gestao/funcionarios/aleatorios` `{lotes: [{quantidade, centro_trabalho?, cargo?, situacao?}]}` | Gera em lotes → `201` `{criados}`. No máximo 200 por envio. |
 | `PATCH /rh-simulado/gestao/funcionarios/{matricula}` | Edita. A matrícula não muda. Passar para desligado dispara o aviso. |
 | `DELETE /rh-simulado/gestao/funcionarios/{matricula}` | Exclui (seção 6.3). |
@@ -203,7 +204,7 @@ As rotas só existem com `RH_SIMULADO=true` e ficam em `/rh-simulado`.
 A tela fica em `/simulador/funcionarios`, na web, fora da casca do SYNQ OS. Tem cabeçalho próprio ("Sistemas da empresa · simulados"), com abas Funcionários e Ordens do SAP, e um link de volta ao SYNQ OS. Só o admin acessa.
 
 - **Contador:** total de funcionários, com a divisão por situação.
-- **"Novo funcionário"** (e não "novo usuário", para não confundir com os usuários do SYNQ OS): abre um menu com duas opções, e cada uma abre uma janela.
+- **"Novo funcionário"** (e não "novo usuário", para não confundir com os usuários do SYNQ OS): abre um menu com duas opções, e cada uma abre uma janela. Desde 20/10/2026 são três, com a **Rápido** primeiro (seção 13.1).
   - **Manual:** todos os campos. A matrícula vem sugerida, e setor e cargo são escolhidos em listas.
   - **Aleatório:** linhas de quantidade, setor, cargo e situação, com o botão "Adicionar linha". Assim, "10 mecânicos e 5 eletricistas" sai num envio só.
 - **Busca** por nome, e-mail ou matrícula, e paginação.
@@ -313,3 +314,14 @@ O que foi feito segue as seções acima. Estes pontos, que o desenho deixava abe
 - **Tela:** o cabeçalho "Sistemas da empresa · simulados" tem as abas Funcionários e Ordens do SAP. A tabela, a barra de ações em massa, o botão com menu de criação e a janela "ver mais" estão em `web/src/components/simulador` e são os mesmos da tela do SAP. O cartão de sincronização é o mesmo da tela de usuários do admin.
 - **Carga:** `pnpm rh:carga-inicial` (`api/scripts/carregar-registro-rh.ts`) para o banco publicado; no modo local e na demonstração a carga é automática.
 - **Testes:** `api/test/rh.test.ts` (cadastro, desligamento e leitura diária), `api/test/rh-simulado.test.ts` (contrato, gestão, gerador e carga), além dos testes de usuários, liberação e auditoria, que passaram a cadastrar o funcionário no registro em memória antes do `POST /usuarios`.
+
+### 13.1 Criação rápida (20/10/2026)
+
+A terceira opção de "Novo funcionário", a primeira do menu: **Rápido**, para criar alguém sem preencher o cadastro inteiro.
+
+- **O que se informa:** o nome completo, o e-mail institucional e, opcionalmente, a **equipe** do SYNQ OS. A lista mostra os setores que têm equipe (o nome da equipe e o centro de trabalho); sem escolha, o setor é sorteado entre todos, inclusive os que não têm equipe.
+- **O que o sistema sorteia:** o mesmo do gerador aleatório (seção 6.3): a próxima matrícula livre, o cargo entre os do setor, CREA só nos cargos de engenharia, as datas de admissão e nascimento, o telefone, o gestor (um ativo do mesmo setor, se houver) e a lotação. A situação é sempre "ativo".
+- **Rota:** `POST /rh-simulado/gestao/funcionarios/rapido` `{nome, email, centro_trabalho?}` → `201` `{funcionario}`. Só o admin. E-mail já usado no registro: `409 email_duplicado`; setor fora do catálogo: `422 setor_inexistente`; sem nome ou e-mail: `422`.
+- **Na tela:** a janela "Novo funcionário (rápido)" e, ao criar, o aviso traz a matrícula, o cargo e o setor sorteados (a matrícula e o e-mail são o que o cadastro no SYNQ OS pede).
+- **Código:** `criarRapido` e `esquemaCriacaoRapida` em `api/src/dominio/rh-simulado.ts` (reaproveita `gerarFuncionarios` e troca o nome e o e-mail), a rota em `api/src/rotas/rh-simulado.ts` e `web/src/components/simulador/funcionarios/FormularioRapido.tsx`.
+- **Testes:** 3 casos novos em `api/test/rh-simulado.test.ts` (só nome e e-mail, com o setor escolhido e as recusas); os 28 do simulador passam, e o `tsc` da `api` e da `web` e o `eslint` da `web` estão limpos. A conferência visual ainda não foi feita.

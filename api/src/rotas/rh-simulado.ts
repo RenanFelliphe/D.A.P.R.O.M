@@ -6,7 +6,9 @@ import {
   catalogoDoSimulador,
   criarAleatorios,
   criarFuncionario,
+  criarRapido,
   editarFuncionario,
+  esquemaCriacaoRapida,
   esquemaEdicaoFuncionario,
   esquemaEmMassa,
   esquemaLotes,
@@ -95,6 +97,12 @@ export function rotasRhSimulado(deps: Deps, { autenticar, exigirPerfil }: Autent
   r.post("/gestao/funcionarios", ...admin, async (c) => {
     const dados = await lerCorpo(c, esquemaNovoFuncionario);
     return responder(c, { funcionario: await criarFuncionario(deps.db, dados, deps.agora()) }, 201);
+  });
+
+  // Criação rápida: nome, e-mail e, opcionalmente, o setor; o resto é sorteado.
+  r.post("/gestao/funcionarios/rapido", ...admin, async (c) => {
+    const dados = await lerCorpo(c, esquemaCriacaoRapida);
+    return responder(c, { funcionario: await criarRapido(deps.db, dados, deps.agora()) }, 201);
   });
 
   r.post("/gestao/funcionarios/aleatorios", ...admin, async (c) => {

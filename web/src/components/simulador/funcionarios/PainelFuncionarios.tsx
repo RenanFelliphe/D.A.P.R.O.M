@@ -17,11 +17,12 @@ import { rotas } from "@/lib/rotas";
 import { useToast } from "@/state/toast";
 import { FormularioAleatorio } from "./FormularioAleatorio";
 import { FormularioFuncionario } from "./FormularioFuncionario";
+import { FormularioRapido } from "./FormularioRapido";
 import { JanelaEmMassa } from "./JanelaEmMassa";
 import type { AcaoEmMassa, CatalogoDeFuncionarios, Funcionario, ListaDeFuncionarios } from "./tipos";
 import { VerMaisFuncionario } from "./VerMaisFuncionario";
 
-type Janela = { tipo: "manual" } | { tipo: "aleatorio" } | { tipo: "editar"; f: Funcionario } | { tipo: "excluir"; f: Funcionario } | { tipo: "ver"; f: Funcionario } | { tipo: "massa"; acao: AcaoEmMassa } | null;
+type Janela = { tipo: "rapido" } | { tipo: "manual" } | { tipo: "aleatorio" } | { tipo: "editar"; f: Funcionario } | { tipo: "excluir"; f: Funcionario } | { tipo: "ver"; f: Funcionario } | { tipo: "massa"; acao: AcaoEmMassa } | null;
 
 interface PainelFuncionariosProps {
   lista: ListaDeFuncionarios;
@@ -32,7 +33,7 @@ interface PainelFuncionariosProps {
 }
 
 /**
- * A tabela do simulador de funcionários: busca, "Novo funcionário" (manual ou aleatório), seleção com ações em massa (mudar setor,
+ * A tabela do simulador de funcionários: busca, "Novo funcionário" (rápido, manual ou aleatório), seleção com ações em massa (mudar setor,
  * mudar situação e excluir), "ver mais", editar e excluir. Tudo vai para `/rh-simulado/gestao/...`; o que o SYNQ OS faz com cada mudança
  * (o aviso de desligamento, por exemplo) acontece do lado dele.
  */
@@ -114,6 +115,7 @@ export function PainelFuncionarios({ lista, catalogo, busca, nomesDeEquipe }: Pa
         <BotaoComMenu
           rotulo="Novo funcionário"
           opcoes={[
+            { rotulo: "Rápido", descricao: "Só o nome, o e-mail e, se quiser, a equipe; o resto é sorteado", aoClicar: () => setJanela({ tipo: "rapido" }) },
             { rotulo: "Manual", descricao: "Preencher todos os campos", aoClicar: () => setJanela({ tipo: "manual" }) },
             { rotulo: "Aleatório", descricao: "Gerar vários de uma vez, por setor e cargo", aoClicar: () => setJanela({ tipo: "aleatorio" }) },
           ]}
@@ -179,6 +181,11 @@ export function PainelFuncionarios({ lista, catalogo, busca, nomesDeEquipe }: Pa
 
       <PaginacaoLista caminho={rotas.simulador.funcionarios} consulta={{ busca }} pagina={lista.pagina} tamanho={lista.tamanho} total={lista.total} />
 
+      {janela?.tipo === "rapido" && (
+        <JanelaModal titulo="Novo funcionário (rápido)" aoFechar={() => fechar()}>
+          <FormularioRapido catalogo={catalogo} aoConcluir={() => fechar()} />
+        </JanelaModal>
+      )}
       {janela?.tipo === "manual" && (
         <JanelaModal titulo="Novo funcionário" aoFechar={() => fechar()} className="dlg-larga">
           <FormularioFuncionario catalogo={catalogo} aoConcluir={() => fechar()} />

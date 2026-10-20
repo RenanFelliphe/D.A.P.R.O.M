@@ -313,6 +313,33 @@ export async function criarAleatorios(db: Db, lotes: LoteAleatorio[], agora: Dat
   return novos.length;
 }
 
+export const esquemaCriacaoRapida = z.object({
+  nome: textoObrigatorio,
+  email: emailInstitucional,
+  /** O setor (na tela, a equipe do SYNQ OS que tem esse centro de trabalho); sem ele, o setor é sorteado. */
+  centro_trabalho: z.string().trim().min(1).nullable().optional(),
+});
+
+/**
+ * Criação rápida: só o nome, o e-mail e, se quiser, o setor; o resto sai do gerador, como no aleatório (a próxima matrícula
+ * livre, o cargo do setor, CREA só na engenharia, datas, telefone, gestor, lotação e situação "ativo").
+ */
+export async function criarRapido(db: Db, dados: z.infer<typeof esquemaCriacaoRapida>, agora: Date, sorteio?: () => number): Promise<Linha> {
+  await exigirEmailLivre(db, dados.email);
+  const [gerado] = gerarFuncionarios([{ quantidade: 1, ...(dados.centro_trabalho ? { centro_trabalho: dados.centro_trabalho } : {}) }], {
+    ...(sorteio ? { sorteio } : {}),
+    matriculaInicial: Number(await proximaMatricula(db)),
+    emailsEmUso: new Set(),
+    gestoresPorCentro: await gestoresPorCentro(db),
+    hoje: agora,
+  });
+  const [criado] = await db
+    .insert(funcionarioSimulado)
+    .values({ ...gerado!, nome: dados.nome, email: dados.email, criadoEm: agora, alteradoEm: agora })
+    .returning();
+  return criado!;
+}
+
 /** Edita (a matrícula não muda). `virouDesligado` diz se a edição fez o funcionário passar a desligado, que dispara o aviso. */
 export async function editarFuncionario(db: Db, matricula: string, dados: z.infer<typeof esquemaEdicaoFuncionario>, agora: Date): Promise<{ funcionario: Linha; virouDesligado: boolean }> {
   const [atual] = await db.select().from(funcionarioSimulado).where(eq(funcionarioSimulado.matricula, matricula));

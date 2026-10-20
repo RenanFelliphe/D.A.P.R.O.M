@@ -42,7 +42,7 @@ Luva de vaqueta e Óculos de segurança incolor.
 3. Ligue o detector portátil de gases e faça a leitura do ambiente ao redor da válvula antes de começar.
 4. Identifique a válvula pela placa (tag) e confira se é a mesma indicada na OS.
 5. Faça a inspeção visual: procure corrosão, vazamento aparente, haste empenada e falta de lacre.
-6. Teste a manobra: abra e feche a válvula por completo, devagar, observando se o curso é suave e sem travamento.
+6. Teste a manobra: abra e feche a válvula por completo, devagar, observando se o curso é suave e sem travamento._
 7. Se houver vazamento pela haste ou pelo corpo, isole o trecho conforme o procedimento da ES Gás antes de abrir a válvula.
 8. Na troca da vedação, substitua as peças pelo kit de vedação para válvula esfera 2", sem reaproveitar anéis antigos.
 9. Lubrifique a haste e as partes móveis com vaselina industrial, sem excesso.

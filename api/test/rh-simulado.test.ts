@@ -141,6 +141,47 @@ describe("Simulador do registro de funcionários", () => {
     });
   });
 
+  describe("criação rápida", () => {
+    const rapido = (json: unknown) => amb.req("POST", "/rh-simulado/gestao/funcionarios/rapido", { como: admin, json });
+
+    it("só com nome e e-mail: a matrícula é a próxima livre e o resto é sorteado (cargo do setor, CREA só na engenharia, ativo)", async () => {
+      const proxima = (await amb.esperar(200, "GET", "/rh-simulado/gestao/catalogo", { como: admin })).proxima_matricula;
+      const r = await rapido({ nome: "Rápida Sem Setor", email: "Rapida.Sem@Empresa.com.br" });
+      assert.equal(r.status, 201);
+      const f = r.corpo.funcionario;
+      assert.equal(f.matricula, proxima);
+      assert.equal(f.nome, "Rápida Sem Setor");
+      assert.equal(f.email, "rapida.sem@empresa.com.br");
+      assert.equal(f.situacao, "ativo");
+      const setor = SETORES.find((s) => s.centro === f.centro_trabalho);
+      assert.ok(setor, "setor do catálogo");
+      assert.equal(f.setor, setor!.nome);
+      assert.ok(setor!.cargos.includes(f.cargo));
+      assert.equal(Boolean(f.registro_profissional), cargoDeEngenharia(f.cargo));
+      assert.ok(f.data_admissao && f.data_nascimento && f.telefone && f.lotacao);
+      assert.equal((await contrato(`/funcionarios/${f.matricula}`)).status, 200, "o SYNQ OS já consegue consultar");
+    });
+
+    it("com o setor escolhido, fica nele", async () => {
+      const r = await rapido({ nome: "Rápida Instrumentação", email: "rapida.instrum@empresa.com.br", centro_trabalho: "INSTRUM" });
+      assert.equal(r.status, 201);
+      assert.equal(r.corpo.funcionario.centro_trabalho, "INSTRUM");
+      assert.ok(SETORES.find((s) => s.centro === "INSTRUM")!.cargos.includes(r.corpo.funcionario.cargo));
+    });
+
+    it("recusa e-mail repetido (409), setor fora do catálogo e corpo incompleto (422) e quem não é admin (403)", async () => {
+      const repetido = await rapido({ nome: "Outra", email: "RAPIDA.SEM@empresa.com.br" });
+      assert.equal(repetido.status, 409);
+      assert.equal(repetido.corpo.erro.codigo, "email_duplicado");
+      const setor = await rapido({ nome: "Outra", email: "outra.rapida@empresa.com.br", centro_trabalho: "XXX" });
+      assert.equal(setor.status, 422);
+      assert.equal(setor.corpo.erro.codigo, "setor_inexistente");
+      assert.equal((await rapido({ nome: "Sem e-mail" })).status, 422);
+      assert.equal((await rapido({ email: "sem.nome@empresa.com.br" })).status, 422);
+      assert.equal((await amb.req("POST", "/rh-simulado/gestao/funcionarios/rapido", { como: tecnico, json: { nome: "X", email: "x.y@empresa.com.br" } })).status, 403);
+    });
+  });
+
   describe("catálogo", () => {
     it("traz os setores com os cargos, quais têm equipe no SYNQ OS e a próxima matrícula livre (a maior numérica mais um)", async () => {
       const amb2 = await criarAmbiente();
