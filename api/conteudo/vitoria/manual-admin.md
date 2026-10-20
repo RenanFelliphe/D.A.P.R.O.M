@@ -54,7 +54,9 @@
 
 ## Catálogo de serviços e materiais
 
-- O catálogo de serviços lista os materiais recomendados de cada um; só o admin edita essa lista. [catalogo_servicos]
+- O catálogo de serviços lista os materiais recomendados de cada um; só o admin edita essa lista, por "Editar lista"
+  (ou "Adicionar materiais", sem nenhum) dentro de "Ver materiais", no cartão do serviço; o editor abre numa
+  janela. [catalogo_servicos]
 - O cadastro de materiais fica numa tela própria, com a categoria (ferramenta, EPI, consumível). [catalogo_materiais]
 
 ## Treinamentos de serviço

@@ -115,7 +115,7 @@
   treinamento" (os que têm o jogo de treinamento) primeiro e "Outros serviços" depois. [catalogo_servicos]
 - No cartão do serviço, "Equipes do serviço" e "Ver materiais" ficam lado a lado e, embaixo, "Jogar treinamento" (só
   quando o serviço tem treinamento). "Ver materiais" abre a lista do que o serviço leva para o campo e, ali dentro,
-  "Sugerir lista" e "Contestar lista". O cartãozinho da Vitória, com "Ver ranking", aparece quando há treinamento;
+  "Sugerir lista" e "Contestar lista", que abrem numa janela, sem sair do catálogo. O cartãozinho da Vitória, com "Ver ranking", aparece quando há treinamento;
   quem já concluiu vê o selo com as fases certas.
 
 ## Treinamento de serviço
