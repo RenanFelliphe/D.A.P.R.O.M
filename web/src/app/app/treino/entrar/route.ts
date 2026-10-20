@@ -1,4 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
+import { redirecionarNoPainel } from "@/lib/redirecionar";
 import { rotas } from "@/lib/rotas";
 import { COOKIE_ACESSO, apiUrl, chegouPorHttps, opcoesDoCookie } from "@/lib/sessao-comum";
 import { COOKIE_TREINO_ADIADO } from "@/lib/treino-comum";
@@ -22,13 +23,10 @@ async function ehAdmin(token: string | undefined) {
  * (`?modo=direcionado|livre`) segue na URL para o navegador guardá-la; sem ela, a lista abre a escolha.
  */
 export async function GET(req: NextRequest) {
-  if (await ehAdmin(req.cookies.get(COOKIE_ACESSO)?.value)) return NextResponse.redirect(new URL(rotas.app.lista, req.url));
+  if (await ehAdmin(req.cookies.get(COOKIE_ACESSO)?.value)) return redirecionarNoPainel(rotas.app.lista);
 
   const modo = req.nextUrl.searchParams.get("modo");
-  const destino = new URL(rotas.app.lista, req.url);
-  destino.searchParams.set("treino", modo === "direcionado" || modo === "livre" ? modo : "escolher");
-
-  const resposta = NextResponse.redirect(destino);
+  const resposta = redirecionarNoPainel(rotas.app.lista, { treino: modo === "direcionado" || modo === "livre" ? modo : "escolher" });
   resposta.cookies.set(COOKIE_TREINO, "1", opcoesDoCookie(undefined, chegouPorHttps(req.headers, req.nextUrl)));
   // Quem entra no treino não precisa das boas-vindas do sistema real ao voltar.
   resposta.cookies.set(COOKIE_TREINO_ADIADO, "1", { sameSite: "lax", path: "/" });
