@@ -2,146 +2,221 @@
 
 **APR e Ordens de Manutenção sem papel.**
 
-SYNQ OS é uma proposta de digitalização do fluxo de Ordens de Manutenção (OM/OS) e Análises Preliminares de Risco (APR), do planejamento à execução em campo. A solução foi concebida para combinar uma experiência móvel para equipes operacionais com um painel web para gestão, mantendo o histórico, as evidências e as assinaturas associados a cada atividade.
+SYNQ OS digitaliza o fluxo de Ordens de Manutenção (OM/OS) e Análises Preliminares de Risco (APR), do planejamento à execução em campo. Junta um aplicativo Android para as equipes de campo e um painel web para a gestão, com o histórico, as evidências e as assinaturas guardados em cada atividade.
 
-> **Estado atual:** o repositório tem a `api` (rotas, regras, banco, PDF e tarefas, testada) e o `web` (área do técnico e painel de gestão, ligados à `api`), além das especificações e dos materiais de referência. O aplicativo `mobile` (React Native, com o modo offline) ainda não foi iniciado. Nada aqui roda com dados reais da empresa: o SAP é simulado e o desenvolvimento usa só dados fictícios.
+> **Estado atual (20/10/2026):** as três aplicações existem e conversam entre si. A `api` tem as rotas, as regras, o banco, o PDF e as tarefas, com testes. O `web` tem a área do técnico e o painel de gestão. O `mobile` (Expo, Android) faz o caminho inteiro online e guarda o trabalho sem sinal numa fila local. **O app ainda não foi visto rodando num aparelho:** até aqui foi validado só pelo código. O andamento do MVP está em [pendencias.md](./pendencias.md). Nada aqui usa dados reais da empresa: o SAP e o registro de funcionários são simulados, e o desenvolvimento usa só dados fictícios.
 
 ## Contexto e objetivo
 
-O processo que motivou o projeto depende de ordens impressas, formulários APR preenchidos em papel e posterior digitalização. Isso aumenta o retrabalho, dificulta auditorias e o acompanhamento das atividades e não oferece uma barreira digital confiável contra o início de um serviço sem análise de risco aprovada.
+Hoje o processo depende de ordens impressas e de APRs preenchidas em papel e digitalizadas depois. Isso gera retrabalho e dificulta as auditorias e o acompanhamento das atividades. Também não há uma barreira digital confiável que impeça começar um serviço sem a análise de risco aprovada.
 
-O objetivo é apoiar a operação para que cada OS tenha sua própria APR, a execução só comece após a aprovação dos requisitos de segurança, e os dados produzidos em campo possam ser rastreados, consultados e apresentados em um registro digital. O sistema complementa o SAP: a geração e a gestão oficial das ordens permanecem nele.
+O objetivo é que cada OS tenha sua própria APR e que a execução só comece depois de aprovados os requisitos de segurança. Os dados produzidos em campo devem poder ser rastreados, consultados e apresentados num registro digital. O sistema complementa o SAP: a geração e a gestão oficial das ordens continuam nele.
 
-## Fluxo operacional especificado
+## Fluxo operacional
 
-1. **Receber a OS:** as ordens são originadas no SAP e chegam à plataforma por uma API de leitura ou, como alternativa, por arquivo: a planilha exportada ou o PDF da OS impresso pelo SAP, conferido campo a campo antes de registrar. A plataforma não cria OS por iniciativa do usuário: a única que nasce nela é a OS de apoio, aberta pelo supervisor da equipe ou pelo admin a partir de um impedimento e ligada à OS original. A equipe indicada na ordem é usada para apresentar os participantes; os dados de atribuição não são recriados manualmente.
-2. **Analisar os riscos:** antes de executar, a equipe realiza uma APR nova, exclusiva para aquela OS e para aquela tentativa. As respostas não são copiadas nem pré-preenchidas a partir de outra APR. O técnico escolhe o modelo a cada APR, entre os modelos publicados: o sistema lê a OS e recomenda o que mais combina, mas não escolhe por ele, porque o mesmo serviço pode pedir APRs diferentes conforme a situação no local. Os modelos e a orientação de cada um são cadastrados pelo admin com o que a Segurança do Trabalho define. A equipe marca os riscos que existem na atividade, e só as medidas desses riscos são respondidas.
-3. **Validar a APR:** o checklist é respondido por inteiro antes da validação. A APR exige ao menos 2 participantes (ninguém trabalha sozinho). Respostas reprovadas em itens eliminatórios impedem a execução, mas o técnico não sabe quais itens são eliminatórios (só o admin, que edita o modelo, vê isso): o sistema valida as respostas depois que tudo foi respondido e só então mostra o que reprovou. Todos os itens reprovados devem ser documentados, com foto quando se tratar de um obstáculo físico ou justificativa em texto quando a evidência visual não for adequada, como no direito de recusa.
-4. **Manter a OS pendente quando houver impedimento:** a APR bloqueada é preservada no histórico, a OS continua pendente e o supervisor é avisado. A equipe pode retomar a OS com uma APR totalmente nova, sem duplicar a ordem nem depender de reprogramação prévia.
-5. **Assinar a APR e registrar a execução:** depois de aprovada, a APR é assinada por todos os participantes, cada um na própria conta e só nesse momento; quem não concorda exerce o direito de recusa e sai da APR. Com todas as assinaturas, a execução começa. Ela registra horários, quantidade de pessoas, descrição do serviço, pausas (com motivo obrigatório), localização e evidências. Pausar uma atividade por intervalo é diferente de suspendê-la (também com motivo obrigatório) e de interrompê-la por risco; cada nova retomada da OS exige uma nova APR.
-6. **Encerrar e documentar:** o encerramento tem dois passos. Quem executa clica em "Encerrar OS" e, depois de uma confirmação, o tempo para; em seguida preenche a descrição e as fotos (opcionais) e o responsável assina. O supervisor da equipe lê o relatório da execução e assina por último; só então a OS está concluída. O registro é o PDF da OS, que reproduz a APR e a folha da OS do SAP como são; tempos, pausas, localização e fotos ficam no relatório da execução, à parte, para o supervisor e o admin. A baixa no SAP é por planilha.
+1. **Receber a OS:** as ordens nascem no SAP e chegam à plataforma pela leitura da API (a cada 15 minutos, ou no "Ler agora") ou por arquivo:
+   - a planilha exportada;
+   - o PDF da OS impresso pelo SAP, conferido campo a campo antes de registrar.
 
-## O que a demonstração apresenta
+   A plataforma não cria OS por iniciativa do usuário. A única que nasce nela é a OS de apoio, aberta pelo supervisor da equipe ou pelo admin a partir de um impedimento e ligada à OS original. A equipe vem do centro de trabalho da ordem. O supervisor pode reservar a OS a uma pessoa da equipe ou devolvê-la ao SAP com uma justificativa, se a ordem tiver erro.
+2. **Analisar os riscos:** antes de executar, a equipe faz uma APR nova, só daquela OS e daquela tentativa, sem respostas copiadas de outra APR. O técnico escolhe o modelo a cada APR, entre os publicados. O sistema lê a OS e recomenda um, mas não escolhe por ele: o mesmo serviço pode pedir APRs diferentes conforme a situação no local. A equipe marca os riscos que existem na atividade, e só as medidas desses riscos são respondidas.
+3. **Validar a APR:** o checklist é respondido por inteiro antes da validação, e a APR exige ao menos 2 participantes. O técnico não sabe quais itens são eliminatórios; só o admin, que edita o modelo, vê isso. O servidor valida as respostas depois que tudo foi respondido e só então mostra o que reprovou. Cada item reprovado é documentado com foto, texto ou PDF, conforme o modelo pede.
+4. **Manter a OS pendente quando houver impedimento:** a APR bloqueada fica no histórico, a OS continua pendente e o supervisor é avisado. Qualquer pessoa da equipe pode retomar a OS com uma APR totalmente nova, sem duplicar a ordem nem esperar reprogramação.
+5. **Assinar a APR e executar:** aprovada, a APR é assinada por todos os participantes, cada um na própria conta; quem não concorda exerce o direito de recusa e sai da APR. Com todas as assinaturas, a execução começa e registra:
+   - horários e quantidade de pessoas;
+   - pausas e suspensões, com motivo obrigatório;
+   - interrupção por risco, com motivo, foto e assinatura;
+   - localização e evidências.
 
-A aplicação `web` reúne as telas de campo, de gestão e do documento:
+   Todos os participantes acompanham a execução e podem agir sobre ela. Encerrar e suspender por outro motivo viram um pedido de 2 minutos ao responsável. Cada nova retomada da OS exige uma APR nova.
+6. **Encerrar e documentar:** o encerramento tem dois passos.
+   1. Quem executa clica em "Encerrar OS" e confirma, e o tempo para.
+   2. Depois preenche a descrição, as fotos (opcionais) e o checklist de inspeção, quando for preventiva, e assina.
 
-### Experiência de campo (referência Android)
+   O supervisor da equipe lê o relatório da execução e assina por último; só então a OS está concluída e sai o PDF da OS. O PDF reproduz a APR e a folha da OS do SAP como são. Tempos, pausas, localização e fotos ficam no relatório da execução, à parte. A baixa no SAP é por planilha.
 
-- Entrada ilustrativa e informação de que o acesso offline temporário é uma contingência, não o modo normal.
-- Lista de OS da equipe com filtros por status e detalhes de atividade, local, criticidade, prioridade, equipamento e materiais.
-- Abertura de APR vinculada a uma OS, escolha do modelo pelo técnico (com a recomendação do sistema), seleção dos participantes e indicação do responsável.
-- Checklist de 18 itens demonstrativos, respondido por completo e validado somente ao final; todas as perguntas têm a mesma aparência, sem marcar o que é eliminatório ou alerta.
-- Justificativa e evidência fotográfica dos itens reprovados, pedidas só depois da validação, tela de APR bloqueada e tela de APR aprovada.
-- Assinatura da APR por cada participante, na própria conta, com o direito de recusa, antes de iniciar a execução.
-- Tela de execução com pausa (com motivo), suspensão, interrupção por risco, encerramento em dois passos, descrição opcional e evidências.
-- Perfil com histórico de OS e assinatura cadastrada de exemplo.
-- Fila de sincronização ilustrativa.
+## O que o sistema faz hoje
 
-### Painel de gestão (referência web)
+### No campo (app Android e área do técnico na web)
 
-- Quadro de OS por estado, com indicadores, filtros e criticidade.
-- Detalhe e histórico da ordem, alertas de impedimento e acompanhamento de OS de apoio.
-- Assinatura final do supervisor, depois da leitura do relatório da execução.
-- Telas ilustrativas para importação do SAP, indicadores/exportação, modelos de APR e administração de equipes e usuários.
+- Entrada pelo e-mail institucional, troca da senha provisória e assinatura cadastrada no perfil antes de qualquer outra coisa. Quem ainda não tem conta pode pedir uma na tela de entrada.
+- Lista das OS da equipe, com a reserva ("Reservada para você"), e detalhe com:
+  - local e mapa;
+  - materiais recomendados do serviço;
+  - ciclo da preventiva;
+  - histórico do local e do equipamento.
+- APR em etapas, com a recomendação do modelo, o checklist sem marcar o que é eliminatório, a validação no servidor, a evidência dos itens reprovados e a assinatura de cada participante (ou a recusa).
+- Execução com cronômetro, pausa, suspensão, interrupção por risco, cancelamento por engano (até 10 minutos), localização e encerramento em dois passos.
+- Execução compartilhada: os participantes acompanham e agem; o que foi feito sem sinal em aparelhos diferentes é conferido depois.
+- **Modo offline no app:**
+  - cópia da equipe e fila em SQLite;
+  - entrada sem sinal por até 7 dias desde a última confirmação do servidor;
+  - aviso "Sem conexão — N registros pendentes";
+  - envio com o app fechado.
+- Perfil com histórico, ausências, preferências de e-mail, avisos, pontos da gamificação e a Vitória, a assistente do sistema.
+
+### Na gestão (web)
+
+- Quadro de OS por estado, com indicadores, filtros, busca, alertas de impedimento e acompanhamento das OS de apoio.
+- Assinatura final do supervisor, depois de ler o relatório da execução, e planilha de baixa no SAP (Encerradas, Sem ordem SAP, Impedimentos e Devolvidas).
+- Importação de OS pelo SAP simulado, pela planilha, pelo PDF da OS e pela digitalização de OS e APRs antigas em papel (leitura por IA, conferida antes de registrar).
+- Modelos de APR com versões e orientação de cada modelo, catálogo de serviço com os materiais recomendados, ciclo das preventivas e o checklist de inspeção de cada plano.
+- Equipes e usuários:
+  - o supervisor cadastra e o admin libera;
+  - o cadastro passa pelo registro de funcionários simulado;
+  - ausências, com o representante da equipe que assume quando o supervisor se ausenta;
+  - pedidos de conta.
+- Cinco dashboards, trilha de auditoria e avisos no sino e por e-mail (o e-mail depende do servidor SMTP).
+- Gamificação: pontos por tarefa, temporadas, ranking, patentes e conquistas. A segurança nunca custa pontos.
+- Treinamentos de serviço (minijogos com a narração da Vitória), criados pelo admin ou por supervisores, com rascunho pela IA. Antes de publicar, o treinamento é validado pelos supervisores das equipes que mais fazem o serviço.
+- Sugestão e contestação da lista de materiais de um serviço, avaliada pelo supervisor da equipe que mais o faz.
+- Controle da IA: o admin liga e desliga cada função de IA (chatbot, criação de jogos, recomendação de modelo de APR e digitalização) e autoriza, assinando, a leitura de dados reais.
 
 ### Documento
 
-- O PDF da OS, com a APR e a folha da OS do SAP como o papel, e o relatório da execução, em documento à parte.
-
-**As telas são uma demonstração de fluxo e interface, não módulos funcionais conectados.** A importação, sincronização, notificações, login, armazenamento de fotos, edição de modelos, geração/baixa de documentos e indicadores reais não são executados por serviços de backend neste repositório. Interações como câmera e algumas exportações são representadas visualmente ou por mensagens de demonstração.
+- O PDF da OS, com a APR e a folha da OS do SAP como o papel, gerado depois da assinatura do supervisor. O relatório da execução sai em documento à parte.
 
 ## Regras de negócio centrais
 
 - A relação é **uma OS para uma APR por tentativa de execução**; não se reutiliza uma APR entre ordens.
-- O técnico escolhe o modelo de cada APR; o sistema só recomenda um, pela leitura da OS, e nunca o aplica sozinho.
+- O técnico escolhe o modelo de cada APR; o sistema só recomenda um e nunca o aplica sozinho.
 - Só as medidas dos riscos que a equipe marca na APR são respondidas.
-- O checklist completo é analisado antes de se decidir se a atividade pode prosseguir.
-- Alertas não eliminatórios são registrados, mas não bloqueiam automaticamente a OS. O técnico não é avisado de qual resposta é alerta nem de qual é eliminatória.
-- APRs bloqueadas e tentativas anteriores permanecem no histórico da OS.
-- A OS pendente pode ser retomada por alguém da equipe mediante uma APR nova.
-- A execução só é liberada após uma APR aprovada e assinada por todos os participantes; quem executa é responsável pelo encerramento.
-- A APR exige ao menos 2 participantes. Cada um assina na própria conta, só no começo (a assinatura de todos não se repete no fim), e quem não concorda recusa e sai da APR (direito de recusa, com motivo obrigatório). Se restarem menos de 2, ou se quem recusou foi o responsável, é preciso uma APR nova.
-- Pausa, suspensão e interrupção por risco são situações diferentes. A pausa e a suspensão exigem um motivo (e a descrição, quando o motivo é "aguardando" ou "outro"); lesão e enfermidade avisam o supervisor na hora, no sino e por e-mail.
-- A localização é gravada no início, na pausa, na suspensão, na interrupção e no encerramento; sem GPS o serviço não é bloqueado e fica "sem localização".
-- O encerramento tem dois passos: o clique em "Encerrar OS" (com confirmação), em que o tempo para, e o preenchimento com a assinatura do responsável. Descrição e fotos são opcionais; a foto da interrupção por risco continua obrigatória.
-- Depois do responsável, o supervisor assina por último (mesmo que tenha participado do serviço), depois de ler o relatório da execução. A OS passa por `encerrando` e `aguardando_supervisor` e só fica `encerrada` (concluída) com essa assinatura; o PDF só sai depois dela.
-- O sistema é online e atende todos os perfis, no app e na web. O modo offline é um recurso adicional para o campo sem sinal: os dados produzidos offline devem ser sincronizados sem descartar registros, e conflitos de planejamento devem gerar alertas.
-- O protótipo e os testes de demonstração devem usar somente dados fictícios.
+- O checklist completo é analisado antes de se decidir se a atividade pode prosseguir. Alertas não eliminatórios são registrados, mas não bloqueiam a OS, e o técnico não é avisado de qual resposta é alerta nem de qual é eliminatória.
+- APRs bloqueadas e tentativas anteriores permanecem no histórico da OS, e a OS pendente pode ser retomada por alguém da equipe com uma APR nova.
+- A execução só é liberada depois de uma APR aprovada e assinada por todos os participantes.
+- A APR exige ao menos 2 participantes. Cada um assina na própria conta, só no começo, e quem não concorda recusa e sai da APR (com motivo obrigatório). Se restarem menos de 2, ou se quem recusou foi o responsável, é preciso uma APR nova.
+- Pausa, suspensão e interrupção por risco são situações diferentes. A pausa e a suspensão exigem um motivo; lesão e enfermidade avisam o supervisor na hora.
+- A localização é gravada no início, na pausa, na suspensão, na interrupção e no encerramento. Sem GPS, o serviço não é bloqueado e fica "sem localização".
+- O supervisor assina por último (mesmo que tenha participado do serviço), depois de ler o relatório da execução. A OS passa por `encerrando` e `aguardando_supervisor` e só fica `encerrada` com essa assinatura; o PDF só sai depois dela.
+- O sistema é online e atende todos os perfis, no app e na web. O modo offline é uma contingência para o campo sem sinal: os dados produzidos sem sinal sobem sem descartar registros (`POST /eventos` é idempotente), e conflitos geram alertas.
+- O protótipo e os testes de demonstração usam somente dados fictícios.
 
-## Arquitetura prevista
+## Arquitetura
 
-A arquitetura abaixo é a direção registrada na especificação; **não está implementada neste repositório**:
-
-| Componente planejado | Tecnologia | Responsabilidade |
+| Componente | Tecnologia | Responsabilidade |
 |---|---|---|
-| Aplicativo de campo para Android (`mobile`) | React Native, com armazenamento local SQLite | APR e execução em campo, com modo offline de contingência |
-| Painel web (`web`) | Next.js (React + TypeScript) | Planejamento, gestão, modelos, indicadores e exportações |
-| API (`api`) | Node.js com TypeScript | Regras de negócio, autorização, integrações, sincronização, PDF e e-mail |
-| Persistência e serviços gerenciados | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso mediado pela API |
-| Implantação | Coolify e Docker | Deploy das aplicações do monorepo |
+| Aplicativo de campo (`mobile`) | React Native com Expo (SDK 58), SQLite, armazenamento seguro, câmera e localização | APR e execução em campo, com o modo offline de contingência |
+| Painel web (`web`) | Next.js (React + TypeScript), React Hook Form e Zod | Campo no navegador, planejamento, gestão, modelos, indicadores e exportações |
+| API (`api`) | Node.js com TypeScript (Hono e Drizzle) | Regras de negócio, autorização, integrações, sincronização, PDF, e-mail, tarefas e IA |
+| Código comum (`shared`) | TypeScript | Contratos da `api` usados pela `web` e pelo `mobile`, Vitória, avisos, treinamentos e funções de IA |
+| Persistência | Supabase: PostgreSQL, Auth e Storage | Banco, autenticação e arquivos; acesso sempre pela `api` |
+| IA | Claude (padrão) ou Gemini gratuito, só na demonstração (`IA_PROVEDOR`) | Vitória, rascunho dos treinamentos, recomendação de modelo de APR e digitalização |
+| Implantação | Docker (Coolify) | `api` e `web` têm Dockerfile e sobem juntas pelo `docker-compose.yml`; o Dockerfile do `mobile` gera o APK assinado |
 
-O monorepo tem as pastas `api`, `web` e `mobile`; `api` e `web` já têm Dockerfile e sobem juntos pelo `docker-compose.yml`, e o `mobile` tem o Dockerfile que **gera o APK** (não é publicado; ver [mobile/README.md](./mobile/README.md#gerar-o-apk)). A leitura do SAP e o registro de funcionários são simulados na própria `api`, com dados fictícios, para mostrar o fluxo final funcionando dentro da empresa. A planilha e o PDF da OS continuam sendo alternativas de leitura.
+A leitura do SAP e o registro de funcionários são simulados na própria `api`, com dados fictícios, para mostrar o fluxo final funcionando dentro da empresa. A planilha e o PDF da OS continuam sendo outras formas de entrada. O banco tem 45 migrações (`0000` a `0044`).
 
-A escrita/baixa da OS no SAP por API está fora do escopo definido: o encerramento deve poder ser exportado para baixa manual. MFA/SSO corporativo e associação de dispositivos também permanecem como decisões a validar antes de uma implantação real.
+A escrita ou baixa da OS no SAP por API está fora do escopo: o encerramento é exportado por planilha para a baixa manual. O login corporativo (conta Microsoft com segundo fator), a assinatura com validade jurídica e o vínculo do aparelho com o usuário são decisões a validar antes de uma implantação real.
 
 ## Executar
 
-Sem Supabase nem Docker, a `api` tem um modo local (banco, autenticação e arquivos em memória, SAP simulado, usuários de exemplo com a senha `synqos123`):
+Sem Supabase nem Docker, a `api` tem um modo local: banco, autenticação e arquivos em memória, SAP e registro de funcionários simulados, e contas de exemplo com a senha `synqos123`.
 
 ```bash
 cd api && pnpm install && pnpm dev:local    # http://localhost:3333
-cd web && pnpm install && pnpm dev          # http://localhost:3000, abre na tela de entrada (e-mail institucional: `tiago.tecnico@empresa.com.br` para um técnico, `sandra.supervisora@empresa.com.br` para um técnico que supervisiona uma equipe ou `ana.administradora@empresa.com.br` para o admin)
+cd web && pnpm install && pnpm dev          # http://localhost:3000, abre na tela de entrada
 ```
 
-A área do técnico fica em `/app/*` e o painel de gestão em `/web/*`; o perfil define o que cada pessoa vê. Só há dois perfis, `tecnico` e `admin`: o supervisor não é perfil, é o técnico que a equipe aponta, e faz tudo o que o técnico faz mais a gestão da(s) equipe(s) que supervisiona; o admin cuida só da plataforma (importação de OS, modelos de APR, usuários e equipes) e não executa OS. A Segurança do Trabalho não usa o sistema: define o critério de bloqueio da APR, e o admin o cadastra no editor. Detalhes em [web/README.md](./web/README.md) e [api/README.md](./api/README.md).
+Contas de exemplo (e-mail institucional):
+
+- `tiago.tecnico@empresa.com.br`: técnico;
+- `sandra.supervisora@empresa.com.br`: técnica que supervisiona uma equipe;
+- `admin@empresa.com.br`: admin.
+
+O app aponta para a `api` por `EXPO_PUBLIC_API_URL` e roda pelo *development build* (`pnpm android` na pasta `mobile`; não roda no Expo Go). Detalhes em [mobile/README.md](./mobile/README.md).
+
+Campo e gestão ficam em `/app/*`; as telas só de gestão ficam em `/web/*`. O perfil define o que cada pessoa vê. Só há dois perfis, `tecnico` e `admin`:
+
+- o supervisor não é perfil: é a pessoa que a equipe aponta, e faz tudo o que o técnico faz mais a gestão da(s) equipe(s) que supervisiona;
+- o admin cuida da plataforma (importação de OS, modelos de APR, usuários, equipes e IA) e não executa OS;
+- a Segurança do Trabalho não usa o sistema: define o critério de bloqueio da APR, e o admin o cadastra no editor.
+
+Detalhes em [web/README.md](./web/README.md) e [api/README.md](./api/README.md).
 
 ### Com Docker (`api` + `web`)
 
-A `api` precisa de um Supabase (Postgres, Auth e Storage), na nuvem ou local. Copie `.env.example` para `.env`, preencha as quatro variáveis obrigatórias e suba:
+A `api` precisa de um Supabase (Postgres, Auth e Storage), na nuvem ou local. Copie `.env.example` para `.env`, preencha as variáveis obrigatórias e suba:
 
 ```bash
 cp .env.example .env
 docker compose up --build   # api em http://localhost:3333 (GET /saude), web em http://localhost:3000
 ```
 
-A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta, e os simuladores do SAP e do registro de funcionários já vêm ligados (as telas deles ficam em `/simulador`, só para o admin). Detalhes e a lista de rotas em [api/README.md](./api/README.md). O `mobile` não entra no compose: o APK sai do `mobile/Dockerfile` (`pnpm apk` na pasta `mobile`, com o Docker), ver [mobile/README.md](./mobile/README.md#gerar-o-apk).
+A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta. Os simuladores do SAP e do registro de funcionários já vêm ligados; as telas deles ficam em `/simulador`, só para o admin. O `mobile` não entra no compose: o APK sai do `mobile/Dockerfile` (`pnpm apk` na pasta `mobile`), ver [mobile/README.md](./mobile/README.md#gerar-o-apk).
 
 ## Estrutura do repositório
 
 ```text
 .
 ├── README.md
-├── DesignDoc.md
-├── api/                        # Backend (rotas, regras, banco, PDF e tarefas), com Dockerfile
+├── DesignDoc.md                # Definições e visão do produto
+├── pendencias.md               # Guia do MVP: o que falta e o que já foi feito
+├── funcionalidades.md          # Mapa das funcionalidades essenciais e extras
 ├── docker-compose.yml          # Sobe api e web no desenvolvimento
 ├── .env.example                # Variáveis da api para o compose
-├── web/                        # Telas do painel e do técnico em Next.js + React + TypeScript, com Dockerfile
-├── mobile/                     # Aplicativo de campo (Expo, Android), com o Dockerfile que gera o APK
+├── api/                        # Backend (rotas, regras, banco, PDF, tarefas e IA), com Dockerfile
+├── web/                        # Painel e área do técnico em Next.js, com Dockerfile
+├── mobile/                     # App de campo (Expo, Android), com o Dockerfile que gera o APK
+├── shared/                     # Código comum à api, à web e ao mobile
+├── funcionalidades/            # Plano do app mobile (mobile.md)
+├── vitoria/                    # Imagens e briefing de design da Vitória
 └── base/
     ├── .design/
     │   ├── especificacao.md    # Escopo, regras, contratos e decisões técnicas
     │   └── pontos-a-validar.md # Questões e decisões pendentes
+    ├── funcionalidades/        # Um arquivo por demanda (decisões e implementação)
     ├── apr-examples/           # Planilhas-modelo de APR usadas como referência
     ├── os-examples/            # Exemplos de documentos de OS
     ├── contexto/               # Contexto da sessão de especificação
     └── reunioes/               # Transcrições e resumo das correções
 ```
 
-As oito planilhas de referência de APR correspondem aos modelos de operação, instrumentação, operação/manutenção, construção de rede de distribuição de gás natural, conversão de clientes, trabalho em altura e espaço confinado, inspeção de rede e movimentação de almoxarifado. Os modelos oficiais e seu conteúdo devem ser definidos e homologados pela área de Segurança do Trabalho e cadastrados no sistema pelo admin.
+As oito planilhas de referência de APR correspondem aos modelos de:
+
+- operação;
+- instrumentação;
+- operação/manutenção;
+- construção de rede de distribuição de gás natural;
+- conversão de clientes;
+- trabalho em altura e espaço confinado;
+- inspeção de rede;
+- movimentação de almoxarifado.
+
+Os modelos oficiais e o conteúdo deles são definidos e homologados pela Segurança do Trabalho e cadastrados no sistema pelo admin.
 
 ## Documentação de referência
 
-- [DesignDoc.md](./DesignDoc.md) — definições e visão do produto.
-- [funcionalidades.md](./funcionalidades.md) — o que está pronto das funcionalidades essenciais e das extras, e o que fazer a seguir.
-- [vitoria.md](./vitoria.md) — a Vitória (assistente do sistema), os treinamentos de serviço e a digitalização de OS antigas, todos com apoio da IA: decisões, custos e plano de implementação.
-- [Especificação funcional e técnica](./base/.design/especificacao.md) — escopo, regras de negócio, arquitetura proposta, contratos e decisões.
-- [Pontos a validar](./base/.design/pontos-a-validar.md) — questões que ainda dependem de confirmação.
-- [Correções da Reunião 3](./funcionalidades/correcoes-da-reuniao-3.md) — o que foi implementado em 18/10/2026 (assinaturas, execução, relatório e PDF) e, no [resumo](./base/reunioes/correcoes-reuniao-3-resumo.md), o que a reunião decidiu.
-- [Resumo das correções da reunião 2](./base/reunioes/correcoes-reuniao-2-resumo.md) — decisões recentes sobre APR, execução, integração e stack.
-- [Materiais de APR](./base/apr-examples/) e [exemplos de OS](./base/os-examples/) — referências de processo e formato.
+- [DesignDoc.md](./DesignDoc.md): definições e visão do produto.
+- [pendencias.md](./pendencias.md): o que falta para concluir o MVP, item a item.
+- [funcionalidades.md](./funcionalidades.md): mapa do que está pronto, com um arquivo por demanda em [base/funcionalidades/](./base/funcionalidades/).
+- [Plano do app mobile](./funcionalidades/mobile.md): as 20 etapas do app e do modo offline.
+- [Vitória](./base/funcionalidades/vitoria.md): a assistente, os treinamentos de serviço e a digitalização de OS antigas, com apoio da IA. O [controle da IA](./base/funcionalidades/controle-da-ia.md) e a [validação dos treinamentos](./base/funcionalidades/validacao-de-treinamento.md) estão em arquivos próprios.
+- [Gamificação](./base/funcionalidades/gameficacao.md): pontos, patentes, temporadas e conquistas.
+- [Execução compartilhada](./base/funcionalidades/execucao-compartilhada.md): acompanhar, agir e conferir o que foi feito sem sinal.
+- [Especificação funcional e técnica](./base/.design/especificacao.md): escopo, regras de negócio, arquitetura, contratos e decisões.
+- [Pontos a validar](./base/.design/pontos-a-validar.md) e [Questoes.md](./Questoes.md): questões que ainda dependem de confirmação.
+- [Correções da Reunião 3](./base/funcionalidades/correcoes-da-reuniao-3.md): o que foi implementado em 18/10/2026. O que a reunião decidiu está no [resumo](./base/reunioes/correcoes-reuniao-3-resumo.md).
+- [Resumo das correções da Reunião 2](./base/reunioes/correcoes-reuniao-2-resumo.md): decisões sobre APR, execução, integração e stack.
+- [Materiais de APR](./base/apr-examples/) e [exemplos de OS](./base/os-examples/): referências de processo e formato.
 
 ## Limites e próximos passos
 
-Para avançar do protótipo para um piloto, ainda será necessário implementar e validar as três aplicações, contratos e API simulada do SAP, autenticação e permissões, envio idempotente dos eventos de campo (base do modo offline e da fila local), persistência de evidências, geração real do PDF, notificações, exportação de encerramentos e testes do fluxo de ponta a ponta. A integração real e as decisões de segurança corporativa devem ser confirmadas com as áreas responsáveis; dados reais não devem ser conectados ao protótipo atual. Planejado para a próxima entrega, ainda não pronto: cadastro de técnicos pelo supervisor na própria equipe, com liberação pelo admin, e tela de treinamento com dados fictícios no primeiro login dos técnicos (a importação de OS pelo supervisor foi adiada).
+O que ainda falta para o MVP e a apresentação (a lista completa está em [pendencias.md](./pendencias.md)):
 
-Funcionalidades sugeridas para depois do MVP — como digitalização de documentos antigos, acompanhamento do intervalo entre ciclos preventivos, chatbot e gamificação — não fazem parte da demonstração nem do escopo prioritário atual. Quatro ideias dessa lista foram feitas em 13/10/2026: o catálogo de serviço (os materiais de cada serviço, no detalhe da OS), a evidência em PDF, o intervalo entre ciclos das preventivas (a contagem até o próximo ciclo de cada plano, com alertas, sem criar OS) e a gamificação (pontos por tarefa, patentes e ranking por temporada, conquistas e anonimato, calculados no servidor; a segurança nunca custa pontos); ver [funcionalidades.md](./funcionalidades.md) e [gameficacao.md](./gameficacao.md). O chatbot (a Vitória), os treinamentos de serviço e a digitalização de OS antigas, com apoio da IA, foram desenhados em 14/10/2026; a Vitória e os treinamentos, com o rascunho pela IA, foram implementados em 16 e 17/10/2026, e a digitalização segue não iniciada; ver [vitoria.md](./vitoria.md).
+- **Ver o app num aparelho:** montar o APK pelo Dockerfile, instalar e testar o caminho ler OS → APR → executar → PDF, inclusive em modo avião. Até aqui o app foi validado pelo `tsc`, pelo ESLint, pelos testes e por scripts contra a `api` local.
+- **Rodar a bateria de perguntas da Vitória na IA real** e testar com a IA de verdade a digitalização da APR em papel e a recomendação de modelo.
+- **Configurar o servidor de e-mail (SMTP):** sem ele, os avisos ficam só no sino.
+- **Decisões em aberto:**
+  - o supervisor devolver a OS ao responsável em vez de assinar;
+  - a equipe com só uma pessoa disponível (a APR pede 2);
+  - os campos "Houve desvio?" e "Tempo parada" na folha do SAP;
+  - mais de 3 executantes na folha do SAP.
+- **Dependem de terceiros:**
+  - a planilha de OS de 2025;
+  - o critério de bloqueio dos modelos (a carga atual é provisória);
+  - a lista real de materiais por serviço;
+  - onde o SAP guarda o ciclo das preventivas;
+  - a assinatura com validade jurídica;
+  - o login corporativo;
+  - a aprovação para enviar dados ao fornecedor de IA.
+
+Dados reais não devem ser conectados ao protótipo atual.
