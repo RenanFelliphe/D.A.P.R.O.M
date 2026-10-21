@@ -34,8 +34,9 @@ export function HoraDoJogo({ fases, temExplicacao, ocupado, erro, aoComecar, aoR
         <h2 className="ts-intervalo-titulo">Agora é a sua vez!</h2>
         <VitoriaNaCena chave="intervalo" reacao="atencao" tamanho={130} empilhada>
           <p>
-            São {fases === 1 ? "1 fase" : `${fases} fases`}. Cada uma vale até 10 pontos pelos acertos, e <strong>quanto mais rápido, mais vale</strong>: até 10
-            segundos, o valor cheio. Dá para voltar e avançar; a resposta confirmada não muda, e eu mostro o que era certo e por quê.
+            São {fases === 1 ? "1 fase" : `${fases} fases`}. Cada uma vale até 10 pontos pelos acertos, e <strong>quanto mais rápido, mais vale</strong>: cada
+            jogo tem o seu tempo para valer o cheio, e passou dele o valor vai caindo, até a metade. Dá para voltar e avançar; a resposta confirmada não muda, e
+            eu mostro o que era certo e por quê.
           </p>
         </VitoriaNaCena>
         <ul className="ts-intervalo-tipos" aria-label="Tipos de fase">

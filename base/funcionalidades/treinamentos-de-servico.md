@@ -175,10 +175,10 @@ Os tipos de fase passaram de 5 para 11, e todos são tratados como minijogos, no
 |---|---|---|---|---|
 | Verdadeiro ou falso | uma afirmação; duas cartas, "Verdadeiro" e "Falso" | escolheu a carta certa | afirmação até 400 caracteres | rosa; a afirmação numa placa com aspas e duas cartas grandes (verde e vermelha) |
 | Caça-palavras | tocar na primeira e na última letra de cada palavra; o jogo reconhece a palavra na hora | achou todas | 2 a 5 palavras de 3 a 12 letras, uma palavra só cada; só na horizontal (esquerda→direita) ou na vertical (cima→baixo), nunca na diagonal; grade de 8 a 12 (desde 20/10/2026, também na diagonal, se cruzando, numa grade de 10 a 14: seção 13) | verde-limão; papel quadriculado e a lista com as palavras riscadas ao achar |
-| Memória | virar duas cartas por vez e formar os pares (termo e o que corresponde) | formou todos os pares errando no máximo uma vez por par | 2 a 5 pares (4 a 10 cartas), cada carta até 80 caracteres | roxo; mesa de feltro e cartas que viram em 3D |
+| Memória | virar duas cartas por vez e formar os pares (termo e o que corresponde) | formou todos os pares (sem limite de tentativas nem de erros; ver 12.1) | 2 a 5 pares (4 a 10 cartas), cada carta até 80 caracteres | roxo; mesa de feltro e cartas que viram em 3D |
 | Selecione | marcar tudo o que atende ao pedido (várias certas) | marcou todas as certas e nenhuma errada | 3 a 12 opções, 1 a 8 certas e ao menos uma errada | verde-esmeralda; prancheta com caixas de marcar |
-| Desembaralhe | uma palavra com as letras embaralhadas e a dica dela; tocar nas letras na ordem | formou a palavra | banco de 10 palavras (3 a 14 letras, com o acento), cada uma com a sua dica; cada partida sorteia uma | dourado; peças de letra de madeira e as casas da palavra |
-| Termo | digitar palavras inteiras; cada letra fica verde (lugar certo), amarela (em outro lugar) ou cinza (não tem, já contadas as vezes que aparece) | acertou a palavra dentro das tentativas | banco de 10 palavras de 4 a 7 letras (dica opcional); cada partida sorteia uma; tentativas = letras + 1; sem acento ("mao" vale para "mão"); não confere se o palpite existe | grafite; tabuleiro escuro, casas que viram uma a uma e teclado na tela pintado |
+| Desembaralhe | uma palavra com as letras embaralhadas e a dica dela; tocar nas letras na ordem | formou a palavra inteira (não existe meia palavra) | banco de 10 palavras (3 a 14 letras, com o acento), cada uma com a sua dica; cada partida sorteia uma | dourado; peças de letra de madeira e as casas da palavra |
+| Termo | digitar palavras inteiras; cada letra fica verde (lugar certo), amarela (em outro lugar) ou cinza (não tem, já contadas as vezes que aparece) | acertou a palavra dentro das tentativas (vale 10 ÷ a tentativa em que acertou) | banco de 10 palavras de 4 a 7 letras (dica opcional); cada partida sorteia uma; tentativas = letras + 1; sem acento ("mao" vale para "mão"); não confere se o palpite existe | grafite; tabuleiro escuro, casas que viram uma a uma e teclado na tela pintado |
 
 - **No caça-palavras,** o admin escolhe o que quem joga vê: as palavras (a pista, se houver, vai embaixo) ou só as pistas (a palavra fica escondida, com o número de letras). A grade não tem acento nem cedilha ("Inspeção" vira INSPECAO). Se o preenchimento formar a palavra de novo em outro lugar, achar lá também vale.
 - **Na memória,** o termo aparece em negrito e o correspondente em itálico, para ver qual lado do par cada carta é.
@@ -255,16 +255,29 @@ As regras de negócio "Pontuação e navegação dos treinamentos gamificados" (
 | Minijogo | Respostas possíveis | Acertos |
 |---|---|---|
 | Quiz, decisão, verdadeiro ou falso | 1 | a opção certa |
-| Termo | 1 | acertar a palavra dentro das tentativas |
+| Desembaralhe | 1 | formar a palavra inteira (não existe meia palavra; `acertos` é 0 ou 1) |
+| Termo | 1 (a base é 1 ÷ a tentativa) | acertar a palavra dentro das tentativas; **acertou na 1ª, 10; na 2ª, 5; na 5ª, 2** (10 ÷ a tentativa). Os acertos ficam 1 de 1, e a base vem de `fracao` (`shared/treinamento-servico/nota.ts`) |
 | Selecione | as opções certas | as certas marcadas, menos as erradas marcadas (senão marcar tudo daria 10) |
 | Ligar | os pares | os pares certos |
 | Pôr em ordem | as etapas | as etapas na posição certa |
 | Caça-palavras | as palavras | as palavras achadas |
-| Desembaralhe | as letras | as letras na casa certa |
-| Memória | os pares | os pares formados, menos 1 por erro além do limite (1 por par) |
+| Memória | os pares | os pares formados; **sem limite de tentativas nem de erros** (os erros só aparecem no placar): achou todos, 10; achou parte, 10 × pares achados ÷ pares |
 
-- **Multiplicador do tempo:** até 10 s, 1,0×; até 20 s, 0,9×; até 30 s, 0,8×; até 40 s, 0,7×; até 50 s, 0,6×; até 60 s, 0,5×; depois, 0,4×. Pontos da fase = base × multiplicador (duas casas).
+- **Multiplicador do tempo (desde 20/10/2026, um tempo para cada minijogo):** são 5 degraus, de 100% a 50%: 1,0×, 0,875×, 0,75×, 0,625× e 0,5× (o piso). Cada minijogo tem o seu **tempo cheio** (T): até T vale 1,0×, e cada degrau seguinte dura o mesmo T (até 2×T, 0,875×; até 3×T, 0,75×; até 4×T, 0,625×; depois de 4×T, 0,5×). O limite é inclusive. Os tempos, pensados para quem lê o enunciado e joga com atenção (o Termo, por exemplo, passa de 5 minutos), estão na tabela abaixo. Pontos da fase = base × multiplicador (duas casas). Antes era uma tabela só para todos os jogos (de 10 em 10 segundos, de 1,0× até o piso de 0,4× depois de 60 s), que deixava o Termo e o caça-palavras sempre no piso.
+
+| Minijogo | T (100% até) | 87,5% até | 75% até | 62,5% até | 50% depois de |
+|---|---|---|---|---|---|
+| Verdadeiro ou falso | 10 s | 20 s | 30 s | 40 s | 40 s |
+| Quiz | 15 s | 30 s | 45 s | 1 min | 1 min |
+| Decisão | 20 s | 40 s | 1 min | 1 min 20 s | 1 min 20 s |
+| Selecione, ligar, pôr em ordem e desembaralhe | 30 s | 1 min | 1 min 30 s | 2 min | 2 min |
+| Memória | 45 s | 1 min 30 s | 2 min 15 s | 3 min | 3 min |
+| Caça-palavras | 1 min | 2 min | 3 min | 4 min | 4 min |
+| Termo | 1 min 30 s | 3 min | 4 min 30 s | 6 min | 6 min |
+
+  Fica em `TEMPO_CHEIO_SEGUNDOS` (`shared/treinamento-servico/nota.ts`); `multiplicadorDoTempo` e `pontosDaFase` recebem o tipo da fase. **Tentativas já concluídas** guardam os pontos e a nota da regra antiga (o ranking mistura as duas regras); o multiplicador mostrado no detalhe delas é o recalculado pela regra nova.
 - **Nota:** a soma dos pontos das fases × (total de fases × 10), arredondada. Fase sem resposta vale zero, mas conta no total. A nota máxima é 100 × fases² (ex.: 5 fases, 2.500).
+- **"Quase" (desde 20/10/2026):** nas fases com mais de uma resposta certa (Selecione, Ligar, Pôr em ordem, Caça-palavras e Memória), quem acertou parte, mas não tudo, vê o painel do retorno **amarelo** com "Quase!" (e a Vitória surpresa) em vez do vermelho do erro: os pontos já contam só o que acertou. Errar tudo continua vermelho, e acertar tudo, verde. A regra é `!certa && acertos > 0` (`FaseDoJogo.tsx`, `data-quase` em `treinamento-jogo.css`).
 - **"Fase certa"** (estrelas, gamificação e a conquista Nota máxima) é a que teve todos os acertos possíveis.
 - As contas ficam em `shared/treinamento-servico/nota.ts`, usadas pela `api` (que calcula e grava) e pela web (que mostra).
 

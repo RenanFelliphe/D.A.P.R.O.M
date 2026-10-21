@@ -435,7 +435,6 @@ export interface FaseParaJogarCacaPalavras {
 export interface FaseParaJogarMemoria {
   indice: number;
   tipo: "memoria";
-  limite_erros: number;
   /** `grupo`: as duas cartas de um par têm o mesmo; `lado` 0 é o termo, 1 o correspondente. */
   cartas: { texto: string; grupo: number; lado: 0 | 1 }[];
 }
@@ -501,9 +500,8 @@ export interface ResultadoDaResposta {
     verdadeira?: boolean;
     /** Caça-palavras: onde cada palavra estava e se foi achada. */
     palavras?: { palavra: string; inicio: [number, number]; fim: [number, number]; achada: boolean }[];
-    /** Memória: os erros contados pelo servidor, o limite e os pares. */
+    /** Memória: os erros contados pelo servidor (não limitam a fase) e os pares. */
     erros?: number;
-    limite_erros?: number;
     completa?: boolean;
     pares_memoria?: { termo: string; correspondente: string }[];
     /** Selecione: as posições mostradas das opções certas. */
@@ -592,13 +590,13 @@ export const duracaoEstimada = (passos: number, fases: number) => Math.max(2, Ma
 /** O máximo de pontos de um treinamento: 5 pelo concluído e 1 por fase certa na primeira resposta (até 10). */
 export const pontosMaximos = (fases: number) => 5 + Math.min(fases, 10);
 
-export { FAIXAS_DO_TEMPO, MULTIPLICADOR_MINIMO, multiplicadorDoTempo, notaMaxima } from "../../../shared/treinamento-servico/nota";
+export { DEGRAUS_DO_TEMPO, MULTIPLICADOR_MINIMO, TEMPO_CHEIO_SEGUNDOS, faixasDoTempo, multiplicadorDoTempo, notaMaxima } from "../../../shared/treinamento-servico/nota";
 
 /** A nota com separador de milhar ("2.000"). */
 export const formatarNota = (nota: number) => nota.toLocaleString("pt-BR");
 
-/** O multiplicador como aparece na tela ("0,9×"). */
-export const formatarMultiplicador = (m: number) => `${m.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}×`;
+/** O multiplicador como aparece na tela ("1,0×", "0,875×"). */
+export const formatarMultiplicador = (m: number) => `${m.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 3 })}×`;
 
 /** O tempo da fase como aparece na tela ("0:42", "1:05"). */
 export function formatarTempo(ms: number): string {

@@ -186,9 +186,6 @@ export interface CartaNaMesa {
 /** As cartas embaralhadas na mesa: duas por par. */
 export const mesaDaMemoria = (pares: number): CartaNaMesa[] => embaralhar([...Array(pares).keys()].flatMap((par) => [{ par, lado: 0 as const }, { par, lado: 1 as const }]));
 
-/** O máximo de erros (duas cartas viradas que não formam par) para a fase valer como certa: um por par. */
-export const limiteDeErrosDaMemoria = (pares: number) => pares;
-
 /**
  * Refaz a partida a partir das jogadas: cada jogada vira duas cartas diferentes ainda na mesa; se forem do mesmo par, saem
  * da mesa, senão conta um erro. Jogada com carta inexistente ou já tirada torna a partida inválida (não é um jogo possível).

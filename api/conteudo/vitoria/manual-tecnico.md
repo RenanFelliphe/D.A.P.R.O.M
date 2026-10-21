@@ -124,8 +124,15 @@
   e, depois, o jogo, com fases de vários minijogos: quiz, decisão, ligar, pôr em ordem, verdadeiro ou falso,
   caça-palavras, memória, selecione, desembaralhe e termo. A barra do topo mostra em que parte você está.
   [treinar_servico]
-- Cada fase vale até 10 pontos pelos acertos, e quanto mais rápido, mais vale (até 10 segundos, o valor cheio; o tempo
-  aparece ao lado do tipo da fase). A nota é a soma das fases vezes o número de fases vezes 10.
+- Cada fase vale até 10 pontos pelos acertos, e quanto mais rápido, mais vale. Cada minijogo tem o seu tempo para valer o
+  cheio (de 10 segundos no verdadeiro ou falso a 1 minuto e 30 segundos no Termo); passado esse tempo, o valor cai em
+  degraus iguais ao próprio tempo, até a metade (o tempo e o multiplicador aparecem ao lado do tipo da fase). A nota é a
+  soma das fases vezes o número de fases vezes 10.
+- Como a fase vale: quiz, decisão, verdadeiro ou falso e desembaralhe são tudo ou nada (não existe meia palavra). No termo,
+  acertar na 1ª tentativa vale 10, na 2ª vale 5, na 5ª vale 2 (10 dividido pela tentativa). Selecione, ligar, pôr em ordem,
+  caça-palavras e memória valem por parte: cada acerto vale 10 dividido pelo número de respostas certas; na memória, cada
+  par achado conta e não há limite de tentativas nem de erros. Quando você acerta só parte, o painel da fase fica amarelo
+  com um "Quase!" (e não vermelho), e os pontos contam só o que acertou.
 - Dá para voltar e avançar entre as fases, mesmo sem responder; a resposta confirmada não muda. Avançar sem confirmar
   a fase, recomeçar uma fase, jogar de novo e finalizar com fase pendente pedem confirmação: o que você já fez numa
   fase não confirmada conta, o resto vale zero.

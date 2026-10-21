@@ -18,6 +18,7 @@ import {
 } from "../src/db/schema";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 import { letrasDaGrade, letrasDaPalavra } from "../../shared/treinamento-servico/jogos";
+import { faixasDoTempo, multiplicadorDoTempo, pontosDaFase, type TipoDoJogo } from "../../shared/treinamento-servico/nota";
 
 /**
  * Testes dos treinamentos de serviço (seção 3 do `vitoria.md`): os 5 tipos de fase, o gabarito nunca exposto antes da
@@ -177,7 +178,7 @@ describe("Treinamentos de serviço", () => {
     if (fase.tipo === "desembaralhe") return { letras: ap.ordem.map((_: unknown, k: number) => ap.ordem.indexOf(k)) };
     if (fase.tipo === "termo") {
       const segredo = letrasDaGrade(fase.palavras[ap.sorteada].palavra);
-      return { palpites: ["Z".repeat(segredo.length), segredo.toLowerCase()] };
+      return { palpites: [segredo.toLowerCase()] };
     }
     if (fase.tipo === "ligar") {
       const n = fase.pares.length;
@@ -195,10 +196,9 @@ describe("Treinamentos de serviço", () => {
     if (fase.tipo === "verdadeiro_falso") return { verdadeira: !fase.verdadeira };
     if (fase.tipo === "caca_palavras") return { selecoes: [] };
     if (fase.tipo === "memoria") {
-      // Erra mais vezes que o limite (um erro por par) virando uma carta do par 0 com uma do par 1, depois completa a mesa.
+      // Forma só o primeiro par e para: não há limite de erros, então "errada" é a mesa incompleta.
       const certas = (respostaCerta(ap, fase) as { jogadas: [number, number][] }).jogadas;
-      const erro: [number, number] = [certas[0]![0], certas[1]![0]];
-      return { jogadas: [...Array(fase.pares.length + 1).fill(erro), ...certas] };
+      return { jogadas: [certas[0]!] };
     }
     if (fase.tipo === "selecione") return { marcadas: [] };
     if (fase.tipo === "termo") {
@@ -407,7 +407,7 @@ describe("Treinamentos de serviço", () => {
     assert.ok(caca.grade.every((l: string) => l.length === caca.grade.length), "grade quadrada");
     assert.equal(memoria.cartas.length, 4);
     assert.ok(memoria.cartas.every((c: any) => !("par" in c)), "o índice do par no gabarito não vai");
-    assert.equal(memoria.limite_erros, 2);
+    assert.equal("limite_erros" in memoria, false, "a memória não tem limite de erros");
     assert.ok(selecione.opcoes.every((o: unknown) => typeof o === "string"), "sem a marca de certa");
     const doDesembaralhe = letrasDaPalavra(BANCO_DESEMBARALHE[apresentacao.fases[4].sorteada]!);
     assert.notEqual(desembaralhe.letras.join(""), doDesembaralhe.join(""), "as letras vêm embaralhadas");
@@ -587,16 +587,16 @@ describe("Treinamentos de serviço", () => {
 
     const aberta = await abrirTentativa(codigo, u);
     const { apresentacao } = await apresentacaoEGabarito(aberta.tentativa_id);
-    // Fase 1 (quiz): 15 s e certa → 10 × 0,9 = 9.
+    // Fase 1 (quiz, tempo cheio de 15 s): 20 s e certa → 2º degrau, 10 × 0,875 = 8,75.
     await entrar(aberta.tentativa_id, 0);
-    passar(15);
+    passar(20);
     const quiz = await responder(aberta.tentativa_id, 0, { escolha: apresentacao.fases[0].ordem.indexOf(0) }, u);
-    assert.deepEqual([quiz.certa, quiz.tempo_ms, quiz.multiplicador, quiz.pontos], [true, 15000, 0.9, 9]);
+    assert.deepEqual([quiz.certa, quiz.tempo_ms, quiz.multiplicador, quiz.pontos], [true, 20000, 0.875, 8.75]);
     // Voltar e responder de novo, errado, não muda nada.
     const deNovo = await responder(aberta.tentativa_id, 0, { escolha: (apresentacao.fases[0].ordem.indexOf(0) + 1) % 3 }, u);
-    assert.deepEqual([deNovo.certa, deNovo.pontos], [true, 9]);
+    assert.deepEqual([deNovo.certa, deNovo.pontos], [true, 8.75]);
 
-    // Fase 2 (selecione): marca 1 das 2 certas, avança sem confirmar e volta; o tempo soma as duas visitas (5 + 3 s).
+    // Fase 2 (selecione, tempo cheio de 30 s): marca 1 das 2 certas, avança sem confirmar e volta; o tempo soma as duas visitas (5 + 3 s).
     await entrar(aberta.tentativa_id, 1);
     passar(5);
     await progresso(aberta.tentativa_id, 1, { marcadas: [apresentacao.fases[1].ordem.indexOf(0)] });
@@ -609,27 +609,98 @@ describe("Treinamentos de serviço", () => {
     assert.deepEqual(
       resultado.fases.map((f: any) => [f.fase, f.acertos, f.possiveis, f.tempo_ms, f.pontos, f.confirmada]),
       [
-        [0, 1, 1, 15000, 9, true],
+        [0, 1, 1, 20000, 8.75, true],
         [1, 1, 2, 8000, 5, false],
         [2, 0, 1, 25000, 0, false],
       ],
     );
-    assert.equal(resultado.nota, Math.round((9 + 5 + 0) * 3 * 10), "a soma das fases × (3 fases × 10)");
+    assert.equal(resultado.nota, Math.round((8.75 + 5 + 0) * 3 * 10), "a soma das fases × (3 fases × 10)");
     assert.equal(resultado.nota_maxima, 900);
     assert.equal(resultado.melhor_anterior, null);
     assert.equal(resultado.fases_certas, 1);
     assert.equal(resultado.pontos_ganhos, 6, "a gamificação segue 5 + 1 por fase certa");
 
-    // Jogar de novo sem avisar a entrada na fase não zera o tempo: os 70 s desde a abertura vão para a fase respondida.
+    // Jogar de novo sem avisar a entrada na fase não zera o tempo: os 70 s desde a abertura vão para a fase respondida (no quiz, passou de 4 × 15 s: o piso).
     const outra = await abrirTentativa(codigo, u);
     const ap2 = (await apresentacaoEGabarito(outra.tentativa_id)).apresentacao;
     passar(70);
     const semEntrar = await responder(outra.tentativa_id, 0, { escolha: ap2.fases[0].ordem.indexOf(0) }, u);
-    assert.deepEqual([semEntrar.tempo_ms, semEntrar.multiplicador, semEntrar.pontos], [70000, 0.4, 4]);
+    assert.deepEqual([semEntrar.tempo_ms, semEntrar.multiplicador, semEntrar.pontos], [70000, 0.5, 5]);
     const segunda = await concluir(outra.tentativa_id, u);
     assert.equal(segunda.melhor_anterior, resultado.nota);
     assert.equal(segunda.pontos_ganhos, 0, "refazer não pontua na gamificação");
     assert.equal((await amb.req("POST", `/treinamentos/tentativas/${outra.tentativa_id}/fases/1/entrar`, { como: u })).status, 409, "a tentativa concluída não aceita mais nada");
+  });
+
+  it("os pontos por minijogo: desembaralhe tudo ou nada, termo pela tentativa e memória pelos pares, sem limite de erros", async () => {
+    const codigo = "TRE-PONTOS-JOGOS";
+    await criarEPublicar(codigo, fasesDosJogosNovos());
+    // Posições em `fasesDosJogosNovos()`: verdadeiro ou falso, caça-palavras, memória, selecione, desembaralhe e termo.
+    const [memoria, desembaralhe, termo] = [2, 4, 5];
+    const u = await amb.criarUsuario({ perfil: "tecnico" });
+
+    // Tentativa A: a memória com muitos erros no meio, mas todos os pares formados, vale o cheio; o Termo na 4ª tentativa vale 10 ÷ 4.
+    const a = await abrirTentativa(codigo, u);
+    const dadosA = await apresentacaoEGabarito(a.tentativa_id);
+    const certas = (respostaCerta(dadosA.apresentacao.fases[memoria], dadosA.fases[memoria]) as { jogadas: [number, number][] }).jogadas;
+    const erro: [number, number] = [certas[0]![0], certas[1]![0]];
+    const cheia = await responder(a.tentativa_id, memoria, { jogadas: [...Array(12).fill(erro), ...certas] }, u);
+    assert.deepEqual([cheia.certa, cheia.acertos, cheia.possiveis, cheia.pontos], [true, 2, 2, 10], "12 erros não tiram nada: achou todos os pares");
+    const segredo = letrasDaGrade(dadosA.fases[termo].palavras[dadosA.apresentacao.fases[termo].sorteada].palavra).toLowerCase();
+    const errado = "z".repeat(segredo.length);
+    const naQuarta = await responder(a.tentativa_id, termo, { palpites: [errado, errado, errado, segredo] }, u);
+    assert.deepEqual([naQuarta.certa, naQuarta.gabarito.tentativa_do_acerto, naQuarta.pontos], [true, 4, 2.5]);
+    const naPrimeira = await responder(a.tentativa_id, desembaralhe, respostaCerta(dadosA.apresentacao.fases[desembaralhe], dadosA.fases[desembaralhe]), u);
+    assert.deepEqual([naPrimeira.certa, naPrimeira.pontos], [true, 10]);
+
+    // Tentativa B: metade dos pares vale metade; a palavra do Desembaralhe quase pronta vale zero; Termo sem acertar vale zero.
+    const b = await abrirTentativa(codigo, u);
+    const dadosB = await apresentacaoEGabarito(b.tentativa_id);
+    const metade = await responder(b.tentativa_id, memoria, respostaErrada(dadosB.apresentacao.fases[memoria], dadosB.fases[memoria]), u);
+    assert.deepEqual([metade.certa, metade.acertos, metade.possiveis, metade.pontos], [false, 1, 2, 5]);
+    const todas = (respostaCerta(dadosB.apresentacao.fases[desembaralhe], dadosB.fases[desembaralhe]) as { letras: number[] }).letras;
+    const quase = await responder(b.tentativa_id, desembaralhe, { letras: todas.slice(0, -1) }, u);
+    assert.deepEqual([quase.certa, quase.acertos, quase.possiveis, quase.pontos], [false, 0, 1, 0], "não existe meia palavra");
+    const semAcertar = await responder(b.tentativa_id, termo, respostaErrada(dadosB.apresentacao.fases[termo], dadosB.fases[termo]), u);
+    assert.deepEqual([semAcertar.certa, semAcertar.pontos], [false, 0]);
+  });
+
+  it("o tempo de cada minijogo: 5 degraus de 100% a 50%, cada um do tamanho do tempo cheio", () => {
+    const cheios: Record<TipoDoJogo, number> = {
+      verdadeiro_falso: 10,
+      quiz: 15,
+      decisao: 20,
+      selecione: 30,
+      ligar: 30,
+      ordem: 30,
+      desembaralhe: 30,
+      memoria: 45,
+      caca_palavras: 60,
+      termo: 90,
+    };
+    for (const [tipo, cheio] of Object.entries(cheios) as [TipoDoJogo, number][]) {
+      assert.deepEqual(
+        faixasDoTempo(tipo).map((f) => [f.ateSegundos, f.multiplicador]),
+        [
+          [cheio, 1],
+          [cheio * 2, 0.875],
+          [cheio * 3, 0.75],
+          [cheio * 4, 0.625],
+          [null, 0.5],
+        ],
+        tipo,
+      );
+      // O limite é inclusive: no segundo exato do degrau ainda vale o degrau; um instante depois, o seguinte.
+      assert.equal(multiplicadorDoTempo(tipo, 0), 1);
+      assert.equal(multiplicadorDoTempo(tipo, cheio * 1000), 1);
+      assert.equal(multiplicadorDoTempo(tipo, cheio * 1000 + 1), 0.875);
+      assert.equal(multiplicadorDoTempo(tipo, cheio * 4000), 0.625);
+      assert.equal(multiplicadorDoTempo(tipo, cheio * 4000 + 1), 0.5);
+      assert.equal(multiplicadorDoTempo(tipo, cheio * 1000 * 100), 0.5, "o piso não passa de 50%");
+    }
+    // O mesmo tempo vale diferente em cada jogo: 2 minutos são o piso no verdadeiro ou falso e ainda o 2º degrau no Termo.
+    assert.equal(pontosDaFase("verdadeiro_falso", 1, 1, 120_000), 5);
+    assert.equal(pontosDaFase("termo", 1, 1, 120_000), 8.75);
   });
 
   it("a migração 0035 dá nota às tentativas de antes dela (fase certa = 10, sem tempo)", async () => {

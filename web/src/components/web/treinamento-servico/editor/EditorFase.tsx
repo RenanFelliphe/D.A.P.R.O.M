@@ -407,7 +407,7 @@ function EditorMemoria({ fase, aoMudar, explicacao }: { fase: Extract<Fase, { ti
     <div className="ts-fase-campos">
       <Lista
         titulo="Pares de cartas"
-        dica={`De ${LIMITES.paresMin} a ${LIMITES.paresMax} pares. Cada par vira duas cartas viradas para baixo: o termo e o que corresponde a ele (a função, a definição, a medida). Vale como certa errando no máximo uma vez por par.`}
+        dica={`De ${LIMITES.paresMin} a ${LIMITES.paresMax} pares. Cada par vira duas cartas viradas para baixo: o termo e o que corresponde a ele (a função, a definição, a medida). Não há limite de tentativas: cada par encontrado vale 10 ÷ o número de pares.`}
         rotuloAdicionar="Adicionar par"
         podeAdicionar={fase.pares.length < LIMITES.paresMax}
         aoAdicionar={() => aoMudar({ ...fase, pares: [...fase.pares, { termo: "", correspondente: "" }] })}

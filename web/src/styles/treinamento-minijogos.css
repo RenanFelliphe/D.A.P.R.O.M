@@ -753,6 +753,8 @@
   border: 0;
   background: none;
   cursor: pointer;
+  /* A perspectiva fica na carta: na mesa ela não alcança o giro, que é neto dela, e a virada saía achatada. */
+  perspective: 700px;
   animation: ts-subir .35s both;
   animation-delay: calc(var(--i, 0) * 45ms);
 }
@@ -766,7 +768,7 @@
   display: block;
   width: 100%;
   height: 100%;
-  transition: transform .45s cubic-bezier(.3, .9, .3, 1.1);
+  transition: transform .55s cubic-bezier(.4, .1, .25, 1);
   transform-style: preserve-3d;
 }
 
@@ -833,14 +835,37 @@
   border-color: #F5B301;
 }
 
+/* Tremer e pulsar com animações próprias: as genéricas (ts-tremer, ts-acerto) trocam o transform da frente e tiram o
+   rotateY dela, e a carta sumia no meio do giro. Começam depois que a carta terminou de virar. */
 .ts-memoria-carta[data-estado="errada"] .ts-memoria-frente {
   border-color: var(--jg-erro);
-  animation: ts-tremer .45s ease-in-out .3s;
+  animation: ts-memoria-tremer .45s ease-in-out .55s;
 }
 
 .ts-memoria-carta[data-estado="formada"] .ts-memoria-frente {
   background: color-mix(in srgb, var(--par, var(--jogo-2)) 12%, #fff);
-  animation: ts-acerto .5s ease-out .2s;
+  animation: ts-memoria-acerto .5s ease-out .45s;
+}
+
+@keyframes ts-memoria-tremer {
+  20% {
+    transform: rotateY(180deg) translateX(6px);
+  }
+  40% {
+    transform: rotateY(180deg) translateX(-6px);
+  }
+  60% {
+    transform: rotateY(180deg) translateX(4px);
+  }
+  80% {
+    transform: rotateY(180deg) translateX(-3px);
+  }
+}
+
+@keyframes ts-memoria-acerto {
+  40% {
+    transform: rotateY(180deg) scale(1.04);
+  }
 }
 
 .ts-memoria-nota {

@@ -40,7 +40,6 @@ import {
 import {
   embaralhar,
   embaralharLetras,
-  limiteDeErrosDaMemoria,
   permutacaoDesordenada,
   sortearIndice,
   mesaDaMemoria,
@@ -51,7 +50,7 @@ import {
   type CartaNaMesa,
   type PosicaoNaGrade,
 } from "./treinamento-servico-jogos";
-import { multiplicadorDoTempo, notaDoTreinamento, notaMaxima, pontosDaFase } from "../../../shared/treinamento-servico/nota";
+import { multiplicadorDoTempo, notaDoTreinamento, notaMaxima, pontosDaFase, type TipoDoJogo } from "../../../shared/treinamento-servico/nota";
 import { chaveDaPalavra, codificarTermo, letrasDaGrade, letrasDaPalavra, tentativasDoTermo } from "../../../shared/treinamento-servico/jogos";
 
 /**
@@ -306,7 +305,6 @@ async function montarApresentacao(db: Db, atividadeCodigo: string, fases: FaseEn
       paraJogar.push({
         indice,
         tipo: "memoria",
-        limite_erros: limiteDeErrosDaMemoria(fase.pares.length),
         cartas: cartas.map((c) => ({ texto: c.lado === 0 ? fase.pares[c.par]!.termo : fase.pares[c.par]!.correspondente, grupo: grupos[c.par], lado: c.lado })),
       });
     } else if (fase.tipo === "termo") {
@@ -383,6 +381,8 @@ export interface ResultadoDaResposta {
   possiveis: number;
 }
 
+  /** A fração da base quando ela não é acertos ÷ possíveis: no Termo, 1 ÷ a tentativa em que acertou (a fase continua 1 de 1). */
+  fracao?: number;
 /** A correção de uma fase com o tempo e os pontos dela (o que a rota devolve e o resultado mostra). */
 export interface ResultadoDaFase extends ResultadoDaResposta {
   tempoMs: number;
@@ -458,10 +458,8 @@ function corrigirFase(fase: FaseEntrada, ap: ApresentacaoFase, respostaBruta: un
     const { jogadas } = validar(esquemaRespostaMemoria, respostaBruta);
     const partida = refazerMemoria(ap.cartas, jogadas);
     if (!partida.valida) throw invalido("resposta_invalida", "jogada com carta inexistente ou já formada");
-    const limite = limiteDeErrosDaMemoria(fase.pares.length);
-    // Cada par formado conta; cada erro além do limite tira um.
-    const acertos = partida.formados - Math.max(0, partida.erros - limite);
-    return proporcional(acertos, fase.pares.length, { erros: partida.erros, limite_erros: limite, completa: partida.completa, pares_memoria: fase.pares });
+    // Sem limite de tentativas nem de erros: cada par formado conta, e a fase só é certa com todos os pares.
+    return proporcional(partida.formados, fase.pares.length, { erros: partida.erros, completa: partida.completa, pares_memoria: fase.pares });
   }
   if (fase.tipo === "termo") {
     if (ap.tipo !== "termo") throw incompativel();
@@ -473,7 +471,8 @@ function corrigirFase(fase: FaseEntrada, ap: ApresentacaoFase, respostaBruta: un
     if (lidos.length > tentativasDoTermo(segredo.length)) throw invalido("resposta_invalida", "palpites além do limite de tentativas");
     if (lidos.some((p) => p.length !== segredo.length)) throw invalido("resposta_invalida", `cada palpite precisa ter ${segredo.length} letras`);
     const acerto = lidos.indexOf(segredo);
-    return tudoOuNada(acerto >= 0, { palavra, tentativa_do_acerto: acerto >= 0 ? acerto + 1 : null });
+    // Vale 10 ÷ a tentativa em que acertou: na 1ª, 10; na 5ª, 2. Quem não acerta, zero.
+    return { ...tudoOuNada(acerto >= 0, { palavra, tentativa_do_acerto: acerto >= 0 ? acerto + 1 : null }), ...(acerto >= 0 && { fracao: 1 / (acerto + 1) }) };
   }
   if (fase.tipo === "selecione") {
     if (ap.tipo !== "selecione") throw incompativel();
@@ -499,9 +498,9 @@ function corrigirFase(fase: FaseEntrada, ap: ApresentacaoFase, respostaBruta: un
   if (letras.length > pecas.length || new Set(letras).size !== letras.length || letras.some((p) => p >= ap.ordem.length)) {
     throw invalido("resposta_invalida", "use cada letra uma vez");
   }
-  // Uma letra conta quando está na casa certa.
-  const acertos = letras.filter((pos, i) => pecas[ap.ordem[pos]!] === pecas[i]).length;
-  return proporcional(acertos, pecas.length, { palavra: pecas.join("") });
+  // Não existe meia palavra: vale a palavra inteira, ou nada.
+  const formou = letras.length === pecas.length && letras.every((pos, i) => pecas[ap.ordem[pos]!] === pecas[i]);
+  return tudoOuNada(formou, { palavra: pecas.join("") });
 }
 
 const incompativel = () => invalido("resposta_invalida", "Fase incompatível com a apresentação gravada");
@@ -599,8 +598,8 @@ export async function guardarProgresso(db: Db, usuarioId: string, tentativaId: s
   });
 }
 
-function comPontos(resultado: ResultadoDaResposta, tempoMs: number): ResultadoDaFase {
-  return { ...resultado, tempoMs, multiplicador: multiplicadorDoTempo(tempoMs), pontos: pontosDaFase(resultado.acertos, resultado.possiveis, tempoMs) };
+function comPontos(tipo: TipoDoJogo, resultado: ResultadoDaResposta, tempoMs: number): ResultadoDaFase {
+  return { ...resultado, tempoMs, multiplicador: multiplicadorDoTempo(tipo, tempoMs), pontos: pontosDaFase(tipo, resultado.acertos, resultado.possiveis, tempoMs, resultado.fracao) };
 }
 
 /**
@@ -617,12 +616,12 @@ export async function responderFase(db: Db, usuarioId: string, tentativaId: stri
     const gravada = ctx.respostas.find((r) => r.fase === indice);
     if (gravada) {
       const correcao = corrigirFase(fase, ap, gravada.resposta);
-      return { ...correcao, certa: gravada.certa, acertos: gravada.acertos, possiveis: gravada.possiveis, tempoMs: gravada.tempoMs, multiplicador: multiplicadorDoTempo(gravada.tempoMs), pontos: gravada.pontos };
+      return { ...correcao, certa: gravada.certa, acertos: gravada.acertos, possiveis: gravada.possiveis, tempoMs: gravada.tempoMs, multiplicador: multiplicadorDoTempo(fase.tipo, gravada.tempoMs), pontos: gravada.pontos };
     }
 
     const correcao = corrigirFase(fase, ap, respostaBruta);
     const cronometro = marcarEvento(lerCronometro(ctx.tentativa), indice, "responder", agora, respondidasDe(ctx));
-    const resultado = comPontos(correcao, tempoDaFase(cronometro, indice));
+    const resultado = comPontos(fase.tipo, correcao, tempoDaFase(cronometro, indice));
     await tx.insert(treinamentoServicoResposta).values({
       tentativaId,
       fase: indice,
@@ -663,12 +662,12 @@ export interface ResultadoDaConclusao {
   fases: FaseDaConclusao[];
 }
 
-const faseDaLinha = (r: typeof treinamentoServicoResposta.$inferSelect): FaseDaConclusao => ({
+const faseDaLinha = (r: typeof treinamentoServicoResposta.$inferSelect, tipo: TipoDoJogo): FaseDaConclusao => ({
   fase: r.fase,
   acertos: r.acertos,
   possiveis: r.possiveis,
   tempoMs: r.tempoMs,
-  multiplicador: multiplicadorDoTempo(r.tempoMs),
+  multiplicador: multiplicadorDoTempo(tipo, r.tempoMs),
   pontos: r.pontos,
   confirmada: r.confirmada,
 });
@@ -709,7 +708,7 @@ export async function concluirTentativa(c: ContextoDePontos, usuarioId: string, 
       nota: tentativa.nota ?? 0,
       notaMaxima: notaMaxima(totalFases),
       melhorAnterior,
-      fases: ctx.respostas.map(faseDaLinha).sort((a, b) => a.fase - b.fase),
+      fases: ctx.respostas.map((r) => faseDaLinha(r, ctx.fases[r.fase]!.tipo)).sort((a, b) => a.fase - b.fase),
     };
   }
 
@@ -740,7 +739,7 @@ export async function concluirTentativa(c: ContextoDePontos, usuarioId: string, 
       acertos,
       possiveis,
       tempoMs,
-      pontos: pontosDaFase(acertos, possiveis, tempoMs),
+      pontos: pontosDaFase(fase.tipo, acertos, possiveis, tempoMs, correcao?.fracao),
       confirmada: false,
     });
   }
@@ -772,7 +771,7 @@ export async function concluirTentativa(c: ContextoDePontos, usuarioId: string, 
     nota,
     notaMaxima: notaMaxima(totalFases),
     melhorAnterior,
-    fases: todas.map(faseDaLinha),
+    fases: todas.map((r) => faseDaLinha(r, ctx.fases[r.fase]!.tipo)),
   };
 }
 

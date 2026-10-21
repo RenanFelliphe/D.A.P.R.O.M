@@ -1559,6 +1559,30 @@
   box-shadow: 0 4px 0 var(--jg-erro-escuro);
 }
 
+/* "Quase": acertou parte das respostas certas (selecione, ligar, pôr em ordem, caça-palavras, memória): amarelo, sem tremer. */
+.ts-retorno[data-quase] {
+  border-top-color: #D99A06;
+  background: #FEF6DC;
+  animation: ts-subir-painel .42s cubic-bezier(.2, .9, .3, 1.15) both;
+}
+
+.ts-retorno[data-quase] .ts-retorno-titulo {
+  color: #8A5A00;
+}
+
+.ts-retorno[data-quase] .ts-retorno-marca {
+  background: #D99A06;
+}
+
+.ts-retorno[data-quase] .ts-retorno-texto p {
+  color: #4A3500;
+}
+
+.ts-retorno[data-quase] .ts-retorno-botao {
+  background: #D99A06;
+  box-shadow: 0 4px 0 #8A5A00;
+}
+
 /* As estrelinhas do acerto, estourando em volta da Vitória. */
 .ts-explosao {
   position: absolute;

@@ -21,6 +21,7 @@ import {
   type CorDoTermo,
   type FaseParaJogar,
   type ResultadoDaResposta,
+  type TipoDeFase,
 } from "@/lib/treinamento-servico";
 import { VitoriaNaCena } from "../vitoria/VitoriaNaCena";
 import { useConfirmacao } from "./confirmacao";
@@ -28,7 +29,9 @@ import { AberturaDaFase, Explosao, useSom, useTecla } from "./efeitos";
 
 const LETRAS = ["A", "B", "C", "D"];
 const FRASES_CERTA = ["Isso mesmo!", "Mandou bem!", "Certinho!", "Perfeito!"];
-const FRASES_ERRADA = ["Não foi dessa vez.", "Quase!", "Não é bem assim.", "Essa pegou!"];
+const FRASES_ERRADA = ["Não foi dessa vez.", "Ops, não foi!", "Não é bem assim.", "Essa pegou!"];
+/** Nas fases com mais de uma resposta certa: acertou parte, então não é erro por inteiro. */
+const FRASES_QUASE = ["Quase!", "Quase lá!", "Foi por pouco!", "Faltou pouco!"];
 
 /**
  * Estado visual de uma opção: escolhida antes de confirmar (e a outra, em cinza, no verdadeiro ou falso) e, depois da
@@ -138,7 +141,7 @@ export function FaseDoJogo({
           <Icon name={info.icone} size={13} />
           {info.rotulo}
         </span>
-        <Cronometro key={`cronometro-${numero}`} inicialMs={tempoInicialMs} retorno={retorno} />
+        <Cronometro key={`cronometro-${numero}`} tipo={fase.tipo} inicialMs={tempoInicialMs} retorno={retorno} />
         {reportar}
       </div>
       {!retorno && (
@@ -204,7 +207,7 @@ function Corpo({ corpoRef, topo, children, rodape }: { corpoRef: RefObject<HTMLD
  * somando as visitas anteriores; depois da resposta, mostra o tempo e o multiplicador que o servidor registrou. É só para quem
  * joga acompanhar: o tempo que vale é o do servidor.
  */
-function Cronometro({ inicialMs, retorno }: { inicialMs: number; retorno: ResultadoDaResposta | null }) {
+function Cronometro({ tipo, inicialMs, retorno }: { tipo: TipoDeFase; inicialMs: number; retorno: ResultadoDaResposta | null }) {
   const [inicio] = useState(() => Date.now());
   const [agora, setAgora] = useState(() => Date.now());
   useEffect(() => {
@@ -213,7 +216,7 @@ function Cronometro({ inicialMs, retorno }: { inicialMs: number; retorno: Result
     return () => window.clearInterval(id);
   }, [retorno]);
   const ms = retorno ? retorno.tempo_ms : inicialMs + (agora - inicio);
-  const multiplicador = retorno ? retorno.multiplicador : multiplicadorDoTempo(ms);
+  const multiplicador = retorno ? retorno.multiplicador : multiplicadorDoTempo(tipo, ms);
   return (
     <span className="ts-cronometro" data-multiplicador={Math.round(multiplicador * 10)} title="O tempo nesta fase e o multiplicador dos pontos" aria-label={`Tempo nesta fase: ${formatarTempo(ms)}, multiplicador ${formatarMultiplicador(multiplicador)}`}>
       <Icon name="clock" size={13} />
@@ -306,18 +309,21 @@ function RodapeDaFase({
     );
   }
 
-  const frase = (retorno.certa ? FRASES_CERTA : FRASES_ERRADA)[(numero - 1) % 4];
+  // "Quase": a fase tem mais de uma resposta certa e a pessoa acertou parte delas (os pontos já contam só isso).
+  const quase = !retorno.certa && retorno.acertos > 0;
+  const frase = (retorno.certa ? FRASES_CERTA : quase ? FRASES_QUASE : FRASES_ERRADA)[(numero - 1) % 4];
+  const tentativaDoAcerto = retorno.gabarito.tentativa_do_acerto;
   return (
-    <div className="ts-retorno" data-certa={retorno.certa || undefined} role="status" aria-live="polite">
+    <div className="ts-retorno" data-certa={retorno.certa || undefined} data-quase={quase || undefined} role="status" aria-live="polite">
       {aviso}
       <div className="ts-retorno-vitoria">
         {retorno.certa && <Explosao />}
-        <Figurinha key={`retorno-${numero}`} reacao={retorno.certa ? "certo" : "errada"} tocar tamanho={88} />
+        <Figurinha key={`retorno-${numero}`} reacao={retorno.certa ? "certo" : quase ? "surpresa" : "errada"} tocar tamanho={88} />
       </div>
       <div className="ts-retorno-texto">
         <strong className="ts-retorno-titulo">
           <span className="ts-retorno-marca" aria-hidden="true">
-            <Icon name={retorno.certa ? "check" : "x"} size={16} />
+            <Icon name={retorno.certa ? "check" : quase ? "star" : "x"} size={16} />
           </span>
           {frase}
           {retorno.certa && sequencia >= 2 && (
@@ -331,7 +337,8 @@ function RodapeDaFase({
         <span className="ts-retorno-pontos">
           <Icon name="star" size={13} fill />
           {retorno.pontos.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} {retorno.pontos === 1 ? "ponto" : "pontos"} nesta fase
-          {retorno.possiveis > 1 && ` · ${retorno.acertos} de ${retorno.possiveis} acertos`} · {formatarTempo(retorno.tempo_ms)} ({formatarMultiplicador(retorno.multiplicador)})
+          {retorno.possiveis > 1 && ` · ${retorno.acertos} de ${retorno.possiveis} acertos`}
+          {typeof tentativaDoAcerto === "number" && ` · acertou na ${tentativaDoAcerto}ª tentativa`} · {formatarTempo(retorno.tempo_ms)} ({formatarMultiplicador(retorno.multiplicador)})
         </span>
       </div>
       <div className="ts-retorno-acoes">
@@ -906,6 +913,8 @@ function Memoria({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, c
   // Voltando à fase: os pares já formados nas jogadas guardadas continuam na mesa, virados para cima.
   const [formadas, setFormadas] = useState<Set<number>>(() => new Set(jogadas.flatMap(([a, b]) => (fase.cartas[a]?.grupo === fase.cartas[b]?.grupo ? [a, b] : []))));
   const [errando, setErrando] = useState(false);
+  const fechar = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(fechar.current), []);
   const erros = jogadas.filter(([a, b]) => fase.cartas[a]!.grupo !== fase.cartas[b]!.grupo).length;
   const completa = formadas.size === fase.cartas.length;
   const travado = Boolean(retorno) || ocupado;
@@ -926,17 +935,16 @@ function Memoria({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, c
       setViradas([]);
       return;
     }
-    // Errou o par: as duas ficam à mostra um instante e voltam.
+    // Errou o par: as duas ficam à mostra tempo de ler e guardar (a virada leva 0,55 s) e voltam.
     tocar("toque");
     vibrar(40);
     setErrando(true);
-    window.setTimeout(() => {
+    fechar.current = window.setTimeout(() => {
       setViradas([]);
       setErrando(false);
-    }, 950);
+    }, 2000);
   }
 
-  const passouDoLimite = erros > fase.limite_erros;
   return (
     <Corpo corpoRef={corpoRef} topo={topo} rodape={rodape(completa, () => aoResponder({ jogadas }), jogadas.length > 0 ? { jogadas } : null)}>
       <div className="ts-memoria-placar" aria-live="polite">
@@ -944,9 +952,9 @@ function Memoria({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, c
           <Icon name="cartas" size={13} />
           {formadas.size / 2} de {fase.cartas.length / 2} pares
         </span>
-        <span data-alerta={passouDoLimite || undefined}>
+        <span>
           <Icon name="x" size={13} />
-          {erros} {erros === 1 ? "erro" : "erros"} · vale até {fase.limite_erros}
+          {erros} {erros === 1 ? "erro" : "erros"}
         </span>
       </div>
       <div className="ts-memoria-mesa" data-cartas={fase.cartas.length}>
@@ -977,11 +985,6 @@ function Memoria({ fase, retorno, ocupado, aoResponder, inicial, topo, rodape, c
           );
         })}
       </div>
-      {retorno && retorno.gabarito.erros !== undefined && (
-        <p className="ts-memoria-nota">
-          Você errou {retorno.gabarito.erros} {retorno.gabarito.erros === 1 ? "vez" : "vezes"}; esta fase vale com até {retorno.gabarito.limite_erros}.
-        </p>
-      )}
     </Corpo>
   );
 }
