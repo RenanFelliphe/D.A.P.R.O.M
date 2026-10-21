@@ -15,7 +15,7 @@
 | 5 | Fundo do mapa | As ruas do OpenStreetMap, com o Leaflet. O navegador baixa as imagens das ruas da região vista; nenhum dado da OS vai junto. A atribuição "© OpenStreetMap" fica no canto, como a licença pede. |
 | 6 | Intensidade | Pelo volume da área mais movimentada: até 1/3 é baixa, até 2/3 é média, acima é alta. De propósito sem vermelho ou amarelo puros (muito intensos, cansam a vista e lembram alarme): um dourado opaco até um terracota (`#E3A63B`/`#DD6B33`/`#B3362A`). A radiação, os pontos sem ela e a legenda usam sempre a mesma escala. |
 | 7 | OS sem GPS | Entram na contagem "Sem localização" e na cobertura do mapa, mas não aparecem nele. |
-| 8 | Radiação ligada ou desligada | Um interruptor no cabeçalho do mapa (`Interruptor`, ligado por padrão). Ligada: `leaflet.heat` desenha um brilho por área que se funde com o das vizinhas (o mapa de calor "de verdade", pedido pelo usuário em 21/10/2026 depois de ver a primeira versão só com manchas soltas). Desligada: um ponto sólido colorido por área, sem brilho — para quem quer ler os números com precisão, sem a mistura das cores atrapalhar. |
+| 8 | Radiação ligada ou desligada | Um interruptor no cabeçalho do mapa (`Interruptor`, ligado por padrão). Ligada: cada área emite um brilho que se funde com o das vizinhas (o mapa de calor "de verdade", pedido pelo usuário em 21/10/2026 depois de ver a primeira versão só com manchas soltas). Desligada: um ponto sólido colorido por área, sem brilho — para quem quer ler os números com precisão, sem a mistura das cores atrapalhar. |
 
 ## 2. A `api`
 
@@ -25,7 +25,7 @@
 ## 3. A tela
 
 - `/app/mapa-calor` (`web/src/app/app/(portal)/mapa-calor/page.tsx`), aberta a todos os perfis: o intervalo resolvido, os filtros (GET na URL), três indicadores e o mapa. Não fica em `/web` (a área de gestão, fechada para o técnico comum) porque todo mundo entra nela.
-- `web/src/components/web/os/MapaDeCalor.tsx` carrega o Leaflet só no navegador. A radiação é a biblioteca `leaflet.heat`: ela é de antes dos empacotadores de módulo (não importa o Leaflet, só espera um `L` global já carregado e pendura `heatLayer` nele), então `carregarLeaflet()` resolve o objeto de verdade do Leaflet (nunca o `namespace` do ES module, que pode vir congelado), o coloca em `window.L` e só então carrega o plugin. Cada área também tem um marcador invisível (`calor-os-alvo`), por cima da radiação ou do ponto sólido, só para o clique, o toque e o teclado — com o resumo das situações na dica. A roda do mouse só dá zoom depois de um clique no mapa, para não prender a rolagem da página.
+- `web/src/components/web/os/MapaDeCalor.tsx` carrega o Leaflet só no navegador. A radiação é uma camada própria (`criarCamadaDeRadiacao`, via `L.Layer.extend`, a mesma API que plugins como o `leaflet.heat` usam por baixo): cada ponto desenha um carimbo borrado (a sombra de um círculo invisível) com a opacidade do seu peso; onde as manchas se sobrepõem, a opacidade se acumula, e uma segunda passada troca a opacidade acumulada de cada pixel pela cor equivalente do gradiente. A primeira versão usava a biblioteca `leaflet.heat`, que conta com um `L` global (não importa o Leaflet): funcionava só depois do `next build`, nunca no ambiente de teste do usuário — por isso foi trocada por código nosso, sem essa dependência. Cada área também tem um marcador invisível (`calor-os-alvo`), por cima da radiação ou do ponto sólido, só para o clique, o toque e o teclado — com o resumo das situações na dica. A roda do mouse só dá zoom depois de um clique no mapa, para não prender a rolagem da página.
 - Ao lado, "Áreas com mais OS" lista as cinco maiores; tocar numa leva o mapa até ela (sem animação com "reduzir movimento").
 - A Vitória conhece a tela pela chave `mapa_calor` (aba `menu-mapa-calor`), nos dois manuais.
 
@@ -37,4 +37,4 @@
 
 ## 5. Conferência pendente
 
-- A radiação (`leaflet.heat`) nunca foi vista num navegador de verdade (validado só por `tsc`, ESLint e pela leitura do código do plugin): o risco é o truque do `window.L` não se comportar como o esperado num empacotador específico, e a radiação não aparecer. Abrir a tela e testar o interruptor nos dois estados é o primeiro passo antes de dar a funcionalidade por pronta.
+- A radiação ainda não foi vista num navegador de verdade (validado só por `tsc`, ESLint e pelo `next build`). Agora ela usa só a API pública do Leaflet (`L.Layer.extend`, `L.DomUtil`, `ctx.drawImage`/`getImageData`), a mesma de tudo o mais que já funciona nos dois ambientes — mas abrir a tela e testar o interruptor nos dois estados continua sendo o primeiro passo antes de dar a funcionalidade por pronta.
