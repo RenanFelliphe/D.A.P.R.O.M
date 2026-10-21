@@ -123,6 +123,13 @@ describe("Dados de demonstração", () => {
     assert.ok(aguardando.os.length >= 3 && aguardando.os.every((o: { status: string }) => o.status === "aguardando_supervisor"));
   });
 
+  it("o mapa de calor mostra as execuções espalhadas pelos locais de instalação, não num ponto só", async () => {
+    const eu = await amb.criarUsuario({ perfil: "admin" });
+    const mapa = await amb.esperar(200, "GET", "/os/mapa-calor", { como: eu, consulta: { periodo: "90d" } });
+    assert.ok(mapa.com_localizacao >= 10, JSON.stringify(mapa));
+    assert.ok(mapa.celulas.length >= 5, `${mapa.celulas.length} áreas`);
+  });
+
   it("tem uma ausência em curso, uma agendada, uma vencida e um pedido aguardando o supervisor", async () => {
     const eu = await amb.criarUsuario({ perfil: "admin" });
     const r = await amb.esperar(200, "GET", "/ausencias", { como: eu, consulta: { tamanho: 100 } });

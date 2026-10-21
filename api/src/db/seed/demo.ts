@@ -17,6 +17,7 @@ import { carregarRegistroDosUsuarios } from "./registro-rh";
 import { preencherHistoricoDaGamificacao } from "./gamificacao-historico";
 import { documentoDemo } from "./documento-demo";
 import { assinaturaDemo, fotoDemo } from "./imagens-demo";
+import { posicaoDaDemo } from "./posicoes-demo";
 
 /**
  * Dados fictícios para demonstração: usuários e equipes, locais, o catálogo de serviço (materiais de alguns serviços) e
@@ -471,21 +472,28 @@ export async function popularDemo(depsOriginais: Deps, opcoes: OpcoesDemo = {}):
   const executar = async (u: UsuarioAutenticado, osId: string, aprId: string, participantes: UsuarioAutenticado[], o: OpcoesExecucao) => {
     const exId = randomUUID();
     const t = (min: number) => new Date(o.inicio.getTime() + min * 60_000);
-    await enviar(u, "execucao_iniciada", osId, { id: exId, apr_id: aprId, numero_pessoas: participantes.length, inicio: o.inicio.toISOString(), latitude: -20.3101, longitude: -40.2902 }, o.inicio);
+    // O GPS fica perto do local de instalação da OS, para o mapa de calor mostrar onde cada serviço foi feito.
+    const [ordem] = await db
+      .select({ numero: os.numeroOrdem, local: localInstalacao.codigo })
+      .from(os)
+      .leftJoin(localInstalacao, eq(localInstalacao.id, os.localInstalacaoId))
+      .where(eq(os.id, osId));
+    const gps = (deslocamento = 0) => posicaoDaDemo(ordem?.local ?? null, ordem?.numero ?? osId, deslocamento);
+    await enviar(u, "execucao_iniciada", osId, { id: exId, apr_id: aprId, numero_pessoas: participantes.length, inicio: o.inicio.toISOString(), ...gps() }, o.inicio);
     const dur = o.duracaoMin ?? 150;
     if (o.pausa) {
       const pausaId = randomUUID();
-      await enviar(u, "pausa_iniciada", null, { id: pausaId, execucao_id: exId, inicio: t(o.pausa[0]).toISOString(), motivo: "almoco", latitude: -20.3104, longitude: -40.2899 }, t(o.pausa[0]));
+      await enviar(u, "pausa_iniciada", null, { id: pausaId, execucao_id: exId, inicio: t(o.pausa[0]).toISOString(), motivo: "almoco", ...gps(1) }, t(o.pausa[0]));
       if (o.resultado !== "pausada") await enviar(u, "pausa_encerrada", null, { pausa_id: pausaId, fim: t(o.pausa[1]).toISOString() }, t(o.pausa[1]));
     }
     const fim = t(dur);
     const resultado = o.resultado ?? "encerrada";
     if (resultado === "encerrada") {
       const evidencias: Record<string, unknown>[] = [];
-      for (let k = 0; k < (o.fotos ?? 2); k++) evidencias.push({ id: await foto(), capturada_em: t(dur - 20 + k).toISOString(), latitude: -20.31 + k * 0.0004, longitude: -40.29 - k * 0.0002 });
+      for (let k = 0; k < (o.fotos ?? 2); k++) evidencias.push({ id: await foto(), capturada_em: t(dur - 20 + k).toISOString(), ...gps(2 + k) });
       for (const d of o.documentos ?? []) evidencias.push(await documento(d, t(dur - 5)));
       // O encerramento tem dois passos: o clique em "Encerrar OS" (o tempo para) e, minutos depois, a descrição, as fotos e a assinatura.
-      await enviar(u, "execucao_encerrada", osId, { execucao_id: exId, fim: fim.toISOString(), latitude: -20.3102, longitude: -40.2901 }, fim);
+      await enviar(u, "execucao_encerrada", osId, { execucao_id: exId, fim: fim.toISOString(), ...gps(1) }, fim);
       if (!o.semAssinarEncerramento) {
         const assinou = new Date(fim.getTime() + 4 * 60_000);
         await enviar(u, "encerramento_assinado", osId, {
@@ -497,9 +505,9 @@ export async function popularDemo(depsOriginais: Deps, opcoes: OpcoesDemo = {}):
         }, assinou);
       }
     } else if (resultado === "suspensa") {
-      await enviar(u, "execucao_suspensa", osId, { execucao_id: exId, fim: fim.toISOString(), motivo: "fim_expediente", latitude: -20.3102, longitude: -40.2901 }, fim);
+      await enviar(u, "execucao_suspensa", osId, { execucao_id: exId, fim: fim.toISOString(), motivo: "fim_expediente", ...gps(1) }, fim);
     } else if (resultado === "interrompida") {
-      await enviar(u, "execucao_interrompida", osId, { execucao_id: exId, fim: fim.toISOString(), motivo: o.motivo ?? "Risco identificado durante a atividade.", evidencias: [{ id: await foto(), capturada_em: fim.toISOString(), latitude: -20.31, longitude: -40.29 }], latitude: -20.31, longitude: -40.29 }, fim);
+      await enviar(u, "execucao_interrompida", osId, { execucao_id: exId, fim: fim.toISOString(), motivo: o.motivo ?? "Risco identificado durante a atividade.", evidencias: [{ id: await foto(), capturada_em: fim.toISOString(), ...gps(2) }], ...gps(1) }, fim);
     }
     return exId;
   };

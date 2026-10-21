@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=../.env --env-file-if-exists=../.env.local src/servidor.ts",
     "dev:local": "tsx src/local.ts",
+    "dev:local:demo": "tsx src/local.ts --demo",
     "start": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local src/servidor.ts",
     "test": "node --import tsx --test --test-concurrency=4 \"test/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
@@ -20,6 +21,7 @@
     "vitoria:bateria": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/conferir-vitoria-ia.ts",
     "treinamento:conferir-ia": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/conferir-rascunho-ia.ts",
     "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts",
+    "demo:espalhar-gps": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/espalhar-gps-demo.ts",
     "pdf:exemplo": "tsx scripts/gerar-pdf-os.ts",
     "pdf:digitalizado": "tsx scripts/gerar-pdf-digitalizado.ts",
     "email:testar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/testar-email.ts"

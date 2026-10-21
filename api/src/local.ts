@@ -4,7 +4,8 @@
  * - Banco: PGlite (Postgres em WebAssembly), em memória, com as migrações aplicadas e a carga inicial dos modelos de APR.
  * - Autenticação, arquivos e e-mail: versões em memória (`AuthEmMemoria`, `ArmazenamentoEmMemoria`, `EmailEmMemoria`).
  * - SAP: o simulador do próprio back-end; as OS das fixtures entram logo depois da subida.
- * - Dados de exemplo: equipes, um usuário de cada perfil e a assinatura deles, e um catálogo de serviço fictício.
+ * - Dados de exemplo: equipes, um usuário de cada perfil e a assinatura deles, e um catálogo de serviço fictício. Com
+ *   `pnpm dev:local:demo`, também a demonstração inteira (`popularDemo`): OS executadas, com GPS para o mapa de calor.
  *
  * Tudo some quando o processo termina e a cada subida recomeça igual. Serve ao `web` e ao `mobile` em desenvolvimento
  * e aos testes manuais; nunca à produção.
@@ -20,6 +21,7 @@ import { lerConfigIA, type Config } from "./config";
 import { PASTA_MIGRACOES, type Db } from "./db/conexao";
 import { equipe, usuario, type Perfil } from "./db/schema";
 import { popularCatalogoDemo } from "./db/seed/catalogo-demo";
+import { popularDemo } from "./db/seed/demo";
 import { carregarDadosIniciais } from "./db/seed/carregar";
 import { carregarOrdensDeExemplo } from "./db/seed/ordens-sap";
 import { carregarRegistroDosUsuarios } from "./db/seed/registro-rh";
@@ -41,6 +43,8 @@ import { iniciarTarefas } from "./servicos/tarefas";
 import { garantirRepresentantes } from "./dominio/representacao";
 
 const PORTA = Number(process.env.PORT ?? 3333);
+/** `--demo` (`pnpm dev:local:demo`): sobe já com os dados de demonstração (alguns segundos a mais na subida). */
+const COM_DEMO = process.argv.includes("--demo");
 const SENHA = "synqos123";
 const SEGREDO_JWT = "segredo-local-so-para-desenvolvimento-0123456789";
 const TOKEN_SAP = "token-de-desenvolvimento";
@@ -142,6 +146,16 @@ async function main() {
   await db.update(equipe).set({ supervisorId: sup2 }).where(eq(equipe.id, equipes.INSTRUM!));
   await garantirRepresentantes(db);
 
+  // `pnpm dev:local:demo`: a demonstração inteira (OS em todos os estados, execuções com GPS para o mapa de calor, alertas e
+  // gamificação), com os usuários acima nos papéis de mesma matrícula. Vem antes das ordens de exemplo e das tarefas: a demo
+  // cria os planos de preventiva com checklist, e a leitura do SAP reaproveita um plano que já existe (o contrário falha).
+  const usuariosDaDemo: string[] = [];
+  if (COM_DEMO) {
+    const demo = await popularDemo(deps);
+    console.log(`Demonstração: ${JSON.stringify(demo.contagem)}`);
+    usuariosDaDemo.push(...demo.usuariosCriados.map((u) => `${u.email} (${u.perfil}) ${u.senha}`));
+  }
+
   // O SAP simulado: as ordens de exemplo (o modo local recomeça igual a cada subida).
   console.log(`SAP simulado: ${await carregarOrdensDeExemplo(db)} ordens de exemplo`);
 
@@ -162,6 +176,7 @@ async function main() {
     const leitura = await executarLeitura(deps, {});
     console.log(`api local em http://localhost:${port} — OS do SAP simulado: ${leitura.criadas} novas, ${leitura.atualizadas} atualizadas`);
     console.log(`Usuários (senha ${SENHA}):\n  ${logins.join("\n  ")}`);
+    if (usuariosDaDemo.length > 0) console.log(`Usuários da demonstração (senha provisória):\n  ${usuariosDaDemo.join("\n  ")}`);
   });
   process.on("SIGINT", () => {
     parar();
