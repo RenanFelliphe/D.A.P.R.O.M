@@ -20,6 +20,17 @@
 - Use os filtros do quadro (status, urgência ou busca) para achar uma OS específica sem rolar a lista toda.
   [quadro_os]
 
+## Mapa de calor (supervisor)
+
+- Quem supervisiona uma equipe tem, na seção Ordem de Serviço, a aba "Mapa de Calor": um mapa com as ruas mostrando
+  onde as OS da equipe foram executadas no período, pelo GPS registrado no início (ou no fim) da execução. [mapa_calor]
+- As OS são agrupadas em áreas de cerca de 1 km, sem a posição exata. A cor e o tamanho da mancha crescem com o
+  número de OS: amarelo é pouco, laranja é médio e vermelho é a área mais movimentada. [mapa_calor]
+- Os filtros escolhem o período, a equipe (quando você supervisiona mais de uma) e a situação atual da OS. Ao lado do
+  mapa, "Áreas com mais OS" lista as cinco maiores; tocar numa leva o mapa até ela. [mapa_calor]
+- OS executadas sem GPS (o celular sem permissão de localização, por exemplo) entram na contagem "Sem localização",
+  mas não aparecem no mapa. [mapa_calor]
+
 ## Detalhe da OS
 
 - O detalhe de uma OS traz as instruções, o local, o equipamento, os materiais recomendados e as ações disponíveis

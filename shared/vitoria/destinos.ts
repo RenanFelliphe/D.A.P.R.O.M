@@ -55,6 +55,8 @@ export const DESTINOS: Record<string, Destino> = {
   // ---- Comuns aos dois perfis -------------------------------------------------------------------------------------
   quadro_os: { forma: "fixo", caminho: "/app/lista", alvo: "menu-lista" },
   preventivas: { forma: "fixo", caminho: "/app/lista?preventivas=1", alvo: "menu-lista" },
+  // Admin e supervisor (o técnico sem equipe sob supervisão não vê a aba).
+  mapa_calor: { forma: "fixo", caminho: "/web/os/mapa-calor", alvo: "menu-mapa-calor" },
   os_detalhe: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}" },
   apr_nova: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}/apr", alvo: "os-nova-apr" },
   execucao: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}/execucao", alvo: "os-iniciar-execucao" },

@@ -6,6 +6,7 @@ import { resumoDasAprs } from "../dominio/apr-resumo";
 import { registrarAuditoria, rotuloDaOs } from "../dominio/auditoria";
 import { dashboardDeEquipes, dashboardDeOs, dashboardGeral } from "../dominio/dashboards";
 import { exportarParaSap, MENSAGEM_SEM_NOVAS, nomeDoArquivo, TIPO_XLSX } from "../dominio/painel-exportacao";
+import { mapaDeCalorOs } from "../dominio/mapa-calor";
 import { equipeDoIndicador, historicoDoLocal, indicadoresDeTempo, indicadoresMensais } from "../dominio/painel-indicadores";
 import { darCiencia, detalharOs, executoresDaOs, listarAprsDaOs, listarOs } from "../dominio/painel-os";
 import { criarAviso } from "../dominio/alertas";
@@ -44,6 +45,18 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
     );
     const { itens, total, contagemPorStatus } = await listarOs(deps.db, c.get("usuario"), filtros, deps.agora());
     return responder(c, { os: itens, contagemPorStatus, ...meta(filtros, total) });
+  });
+
+  r.get("/os/mapa-calor", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
+    const filtros = lerConsulta(
+      c,
+      z.object({
+        periodo: esquemaPeriodo,
+        equipe_id: uuid.optional(),
+        status: z.enum(OS_STATUS).optional(),
+      }),
+    );
+    return responder(c, await mapaDeCalorOs(deps.db, c.get("usuario"), filtros, deps.agora()));
   });
 
   r.get("/os/:id", autenticar(), async (c) => {
