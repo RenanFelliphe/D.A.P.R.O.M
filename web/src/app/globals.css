@@ -1,4 +1,4 @@
-/* SYNQ OS — estilos da versão web (desktop).
+/* SYNQ OS — estilos da versão web (responsiva; os pontos de quebra ficam em responsivo.css).
    Este arquivo só importa os estilos de src/styles, agrupados por função.
    A ordem importa: variáveis e base primeiro, componentes comuns, depois cada área. */
 

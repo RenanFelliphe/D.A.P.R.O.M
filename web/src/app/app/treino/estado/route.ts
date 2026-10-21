@@ -29,5 +29,4 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ erro: { codigo: "api_indisponivel", mensagem: "Servidor indisponível. Tente de novo." } }, { status: 502 });
   }
-  return NextResponse.json({ ok: true });
 }

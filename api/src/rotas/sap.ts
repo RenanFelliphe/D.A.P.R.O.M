@@ -380,7 +380,7 @@ export function rotasSap(deps: Deps, { autenticar, exigirPerfil }: Autenticacao)
   /**
    * OS de apoio: a única OS que nasce no sistema (as demais vêm da leitura do SAP ou da planilha). Fica ligada à OS que
    * destrava (`os_origem_id`, obrigatório) e ainda não tem número SAP. O supervisor abre para qualquer equipe, desde que
-   * veja a OS de origem; o admin, a partir de qualquer OS.
+   * supervisione a equipe da OS de origem; o admin, a partir de qualquer OS.
    */
   r.post("/os", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
     const eu = c.get("usuario");
