@@ -50,8 +50,9 @@
 - A aba "Mapa de Calor" da seção Ordem de Serviço mostra, sobre um mapa com as ruas, onde as OS de todas as equipes
   foram executadas no período, pelo GPS registrado no início (ou no fim) da execução. Todo mundo vê a mesma aba, cada
   um no próprio escopo: o técnico, a própria equipe; o supervisor, as que supervisiona. [mapa_calor]
-- As OS são agrupadas em áreas de cerca de 1 km, sem a posição exata. A cor e o tamanho da mancha crescem com o
-  número de OS: amarelo é pouco, laranja é médio e vermelho é a área mais movimentada. [mapa_calor]
+- As OS são agrupadas em áreas de cerca de 1 km, sem a posição exata. Com a radiação ligada (o padrão), cada área
+  emite um brilho que se funde com o das vizinhas, formando uma mancha maior nas regiões mais movimentadas; o
+  interruptor no topo do mapa desliga a radiação e mostra só um ponto colorido por área, sem brilho. [mapa_calor]
 - Os filtros escolhem o período, a equipe e a situação atual da OS. "Áreas com mais OS", ao lado, leva o mapa até
   cada uma das cinco maiores. OS sem GPS entram na contagem "Sem localização", mas não aparecem no mapa. [mapa_calor]
 
