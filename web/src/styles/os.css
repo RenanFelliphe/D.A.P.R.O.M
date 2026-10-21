@@ -162,6 +162,14 @@
   font-weight: 600;
 }
 
+/* O interruptor da radiação ao lado do número de áreas, no cabeçalho do mapa. */
+.calor-os-painel-acoes {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+}
+
 .calor-os-area-mapa {
   display: grid;
   min-height: 420px;
@@ -181,42 +189,29 @@
   font-family: var(--sans);
 }
 
-.calor-os-marcador span {
-  display: flex;
-  width: 28px;
-  height: 28px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.calor-os-marcador:focus-visible {
+/* O alvo do clique/toque/teclado em cada área: invisível com a radiação (o brilho já é o visual) e por cima do
+   ponto sólido sem ela. `outline: none` tira o foco padrão do Leaflet; o foco de verdade vai na borda arredondada. */
+.calor-os-alvo {
+  background: transparent;
   outline: none;
 }
 
-.calor-os-marcador:focus-visible span {
-  outline: 3px solid var(--brand);
+.calor-os-alvo:focus-visible {
+  border-radius: 50%;
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 
-.calor-os-marcador [data-intensidade="baixa"],
 .calor-os-lista b[data-intensidade="baixa"],
 .calor-os-legenda i[data-intensidade="baixa"] {
   background: #E3A63B;
 }
 
-.calor-os-marcador [data-intensidade="media"],
 .calor-os-lista b[data-intensidade="media"],
 .calor-os-legenda i[data-intensidade="media"] {
   background: #DD6B33;
 }
 
-.calor-os-marcador [data-intensidade="alta"],
 .calor-os-lista b[data-intensidade="alta"],
 .calor-os-legenda i[data-intensidade="alta"] {
   background: #B3362A;
@@ -373,6 +368,18 @@
   width: 9px;
   height: 9px;
   border-radius: 50%;
+}
+
+/* A barra do gradiente, quando a radiação está ligada (substitui os três pontos de baixa/média/alta); o alinhamento e
+   o espaçamento vêm de `.calor-os-legenda span`, igual aos outros itens da legenda. */
+.calor-os-gradiente-barra {
+  width: 120px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.calor-os-gradiente b {
+  font-weight: 500;
 }
 
 .calor-os-lateral {
@@ -998,6 +1005,11 @@ button.bcard {
   .calor-os-painel-cabecalho {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .calor-os-painel-acoes {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .calor-os-legenda {

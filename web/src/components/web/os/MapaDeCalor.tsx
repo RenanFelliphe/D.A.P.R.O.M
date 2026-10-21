@@ -1,10 +1,11 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import type { CircleMarker, LayerGroup, Map as MapaLeaflet, Marker } from "leaflet";
+import type { LayerGroup, Map as MapaLeaflet, Marker } from "leaflet";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { Interruptor } from "@/components/ui/Interruptor";
 import { rotas } from "@/lib/rotas";
 import { rotuloDoStatus, type OsStatus } from "@/lib/tipos";
 
@@ -17,7 +18,11 @@ export interface CelulaDoMapa {
 
 export type Intensidade = "baixa" | "media" | "alta";
 
-/** As mesmas cores da legenda (`.calor-os-legenda` em `os.css`): a mancha e a legenda não podem divergir. */
+/**
+ * Cores da intensidade, do mais fraco ao mais forte — de propósito sem vermelho ou amarelo puros (muito intensos,
+ * cansam a vista e lembram alarme): um dourado opaco até um terracota, nunca um tom "neon". A mancha da radiação,
+ * os pontos sem radiação e a legenda usam sempre esta mesma escala, para nunca divergir.
+ */
 const CORES: Record<Intensidade, string> = { baixa: "#E3A63B", media: "#DD6B33", alta: "#B3362A" };
 
 /** Terço do volume da área mais movimentada: até 1/3 é baixa, até 2/3 é média, acima disso é alta. */
@@ -27,18 +32,17 @@ export const intensidadeDa = (total: number, maior: number): Intensidade => {
 };
 
 /**
- * Anéis da mancha, de fora para dentro: `metros` no zoom de rua (a célula da `api` tem cerca de 1,1 km de lado, então o
- * anel externo cobre a célula e se mistura com as vizinhas) e `pixels` como mínimo, para a mancha não sumir quando o mapa
- * enquadra várias cidades. A área mais movimentada fica com os anéis maiores.
+ * Pontos de cor da radiação (`leaflet.heat`): da quase transparente (uma OS isolada) até a mais forte (a área mais
+ * movimentada), nas mesmas três cores de `CORES`. A barra da legenda é pintada com este mesmo gradiente.
  */
-const aneis = (fracao: number) => [
-  { metros: 420 + 260 * fracao, pixels: 24 + 18 * fracao, opacidade: 0.16 },
-  { metros: 280 + 170 * fracao, pixels: 18 + 11 * fracao, opacidade: 0.24 },
-  { metros: 150 + 90 * fracao, pixels: 15 + 4 * fracao, opacidade: 0.42 },
+const PONTOS_DO_GRADIENTE: [number, string][] = [
+  [0.12, "rgba(227, 166, 59, 0.35)"],
+  [0.4, CORES.baixa],
+  [0.7, CORES.media],
+  [1, CORES.alta],
 ];
-
-/** Metros por pixel dos ladrilhos do OpenStreetMap (256 px) na latitude e no zoom dados. */
-const metrosPorPixel = (latitude: number, zoom: number) => (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / 2 ** zoom;
+const GRADIENTE_DA_RADIACAO = Object.fromEntries(PONTOS_DO_GRADIENTE) as Record<number, string>;
+const BARRA_DO_GRADIENTE = `linear-gradient(to right, ${PONTOS_DO_GRADIENTE.map(([p, cor]) => `${cor} ${p * 100}%`).join(", ")})`;
 
 const chaveDa = (c: CelulaDoMapa) => `${c.latitude}:${c.longitude}`;
 
@@ -53,16 +57,32 @@ const coordenadas = (c: CelulaDoMapa) => `${c.latitude.toFixed(3)}°, ${c.longit
 const reduzirMovimento = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * O mapa de calor sobre as ruas do OpenStreetMap (Leaflet), e ao lado as áreas com mais OS: tocar numa delas leva o mapa
- * até ela. O Leaflet mexe no `window`, então é carregado só no navegador, dentro do efeito.
+ * `leaflet.heat` é de antes dos empacotadores de módulo: ele não importa o Leaflet, só espera um `L` global já
+ * carregado e pendura `heatLayer` nele. Por isso resolvemos sempre o mesmo objeto "de verdade" (nunca o `namespace`
+ * do ES module, que pode vir congelado) e o colocamos em `window.L` antes de carregar o plugin.
+ */
+async function carregarLeaflet() {
+  const modulo = await import("leaflet");
+  const L = ((modulo as unknown as { default?: typeof modulo }).default ?? modulo) as typeof modulo;
+  (window as unknown as { L: typeof L }).L = L;
+  await import("leaflet.heat");
+  return L;
+}
+
+/**
+ * O mapa sobre as ruas do OpenStreetMap (Leaflet), e ao lado as áreas com mais OS: tocar numa delas leva o mapa até
+ * ela. Com a radiação ligada (padrão), cada área emite um brilho que se funde com o das vizinhas — o mapa de calor de
+ * verdade, para enxergar regiões, não só pontos; desligada, mostra só os pontos coloridos, sem o brilho. O Leaflet
+ * mexe no `window`, então é carregado só no navegador, dentro do efeito.
  */
 export function MapaDeCalor({ celulas }: { celulas: CelulaDoMapa[] }) {
   const elemento = useRef<HTMLDivElement>(null);
   const mapa = useRef<MapaLeaflet | null>(null);
   const camada = useRef<LayerGroup | null>(null);
   const marcadores = useRef(new Map<string, Marker>());
-  const [leaflet, setLeaflet] = useState<typeof import("leaflet") | null>(null);
+  const [leaflet, setLeaflet] = useState<Awaited<ReturnType<typeof carregarLeaflet>> | null>(null);
   const [selecionada, setSelecionada] = useState<string | null>(null);
+  const [radiacao, setRadiacao] = useState(true);
 
   const maior = Math.max(1, ...celulas.map((c) => c.total));
   const vazio = celulas.length === 0;
@@ -72,7 +92,7 @@ export function MapaDeCalor({ celulas }: { celulas: CelulaDoMapa[] }) {
   useEffect(() => {
     if (vazio) return;
     let cancelado = false;
-    void import("leaflet").then((L) => {
+    void carregarLeaflet().then((L) => {
       if (cancelado || !elemento.current) return;
       const m = L.map(elemento.current, { scrollWheelZoom: false, minZoom: 4, maxZoom: 17 });
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -95,51 +115,41 @@ export function MapaDeCalor({ celulas }: { celulas: CelulaDoMapa[] }) {
     };
   }, [vazio]);
 
-  // Desenha as manchas de novo a cada filtro aplicado e enquadra todas as áreas.
+  // Enquadra o mapa a cada novo filtro — não a cada troca da radiação, para o interruptor não mexer na visão.
   useEffect(() => {
     const m = mapa.current;
+    if (!leaflet || !m || celulas.length === 0) return;
+    const limites = leaflet.latLngBounds(celulas.map((c) => [c.latitude, c.longitude]));
+    if (celulas.length === 1) m.setView(limites.getCenter(), 14);
+    else m.fitBounds(limites.pad(0.25), { maxZoom: 15 });
+  }, [leaflet, celulas]);
+
+  // Desenha a radiação (ou os pontos simples) e os alvos de clique a cada filtro ou troca do interruptor.
+  useEffect(() => {
     const grupo = camada.current;
-    if (!leaflet || !m || !grupo || celulas.length === 0) return;
+    if (!leaflet || !grupo || celulas.length === 0) return;
     grupo.clearLayers();
     marcadores.current.clear();
-    const desenhados: { circulo: CircleMarker; latitude: number; metros: number; pixels: number }[] = [];
+
+    if (radiacao) {
+      const pontos = celulas.map((c): [number, number, number] => [c.latitude, c.longitude, c.total]);
+      grupo.addLayer(leaflet.heatLayer(pontos, { radius: 32, blur: 26, max: maior, minOpacity: 0.28, gradient: GRADIENTE_DA_RADIACAO }));
+    }
+
     for (const celula of celulas) {
       const centro = leaflet.latLng(celula.latitude, celula.longitude);
-      const intensidade = intensidadeDa(celula.total, maior);
-      const cor = CORES[intensidade];
-      for (const anel of aneis(celula.total / maior)) {
-        const circulo = leaflet.circleMarker(centro, { radius: anel.pixels, stroke: false, fillColor: cor, fillOpacity: anel.opacidade, interactive: false }).addTo(grupo);
-        desenhados.push({ circulo, latitude: celula.latitude, metros: anel.metros, pixels: anel.pixels });
+      // Sem radiação, o próprio ponto some; com ela, o ponto é só o alvo invisível do clique e do toque.
+      if (!radiacao) {
+        leaflet.circleMarker(centro, { radius: 7, weight: 2, color: "#fff", fillColor: CORES[intensidadeDa(celula.total, maior)], fillOpacity: 0.95, interactive: false }).addTo(grupo);
       }
       const marcador = leaflet
-        .marker(centro, {
-          icon: leaflet.divIcon({
-            className: "calor-os-marcador",
-            html: `<span data-intensidade="${intensidade}">${celula.total}</span>`,
-            iconSize: [28, 28],
-          }),
-          keyboard: true,
-          title: `${celula.total} OS`,
-        })
+        .marker(centro, { icon: leaflet.divIcon({ className: "calor-os-alvo", html: "", iconSize: [26, 26] }), keyboard: true, title: `${celula.total} OS` })
         .bindTooltip(`<strong>${celula.total} OS</strong><br>${resumoDosStatus(celula.por_status)}`, { direction: "top", offset: [0, -14] })
         .on("click", () => setSelecionada(chaveDa(celula)))
         .addTo(grupo);
       marcadores.current.set(chaveDa(celula), marcador);
     }
-    // O raio de cada anel acompanha o zoom: o tamanho em metros, sem ficar menor que o mínimo em pixels.
-    const ajustarRaios = () => {
-      const zoom = m.getZoom();
-      for (const d of desenhados) d.circulo.setRadius(Math.max(d.pixels, d.metros / metrosPorPixel(d.latitude, zoom)));
-    };
-    m.on("zoomend", ajustarRaios);
-    const limites = leaflet.latLngBounds(celulas.map((c) => [c.latitude, c.longitude]));
-    if (celulas.length === 1) m.setView(limites.getCenter(), 14);
-    else m.fitBounds(limites.pad(0.25), { maxZoom: 15 });
-    ajustarRaios();
-    return () => {
-      m.off("zoomend", ajustarRaios);
-    };
-  }, [leaflet, celulas, maior]);
+  }, [leaflet, celulas, maior, radiacao]);
 
   const focar = (celula: CelulaDoMapa) => {
     const chave = chaveDa(celula);
@@ -156,11 +166,21 @@ export function MapaDeCalor({ celulas }: { celulas: CelulaDoMapa[] }) {
         <div className="calor-os-painel-cabecalho">
           <div>
             <h3 id="calor-os-titulo">Concentração geográfica</h3>
-            <p>Cada mancha agrupa as OS de uma área de cerca de 1 km; a cor e o tamanho crescem com o volume.</p>
+            <p>
+              {radiacao
+                ? "Cada área emite um brilho que se funde com o das vizinhas: quanto mais forte, mais movimentada a região."
+                : "Cada ponto é uma área de cerca de 1 km; a cor fica mais forte com o volume de OS."}
+            </p>
           </div>
-          <span className="calor-os-tag">
-            {celulas.length} {celulas.length === 1 ? "área" : "áreas"}
-          </span>
+          <div className="calor-os-painel-acoes">
+            <Interruptor ligado={radiacao} aoAlternar={setRadiacao} rotulo="Radiação: o brilho do mapa de calor">
+              <Icon name="fogo" size={13} fill={radiacao} />
+              {radiacao ? "Radiação" : "Só pontos"}
+            </Interruptor>
+            <span className="calor-os-tag">
+              {celulas.length} {celulas.length === 1 ? "área" : "áreas"}
+            </span>
+          </div>
         </div>
         <div className="calor-os-area-mapa">
           {vazio ? (
@@ -177,18 +197,28 @@ export function MapaDeCalor({ celulas }: { celulas: CelulaDoMapa[] }) {
         </div>
         <div className="calor-os-legenda" aria-label="Legenda de intensidade">
           <span>Intensidade</span>
-          <span>
-            <i data-intensidade="baixa" />
-            Baixa
-          </span>
-          <span>
-            <i data-intensidade="media" />
-            Média
-          </span>
-          <span>
-            <i data-intensidade="alta" />
-            Alta
-          </span>
+          {radiacao ? (
+            <span className="calor-os-gradiente">
+              <b>Menos</b>
+              <span className="calor-os-gradiente-barra" style={{ background: BARRA_DO_GRADIENTE }} />
+              <b>Mais</b>
+            </span>
+          ) : (
+            <>
+              <span>
+                <i data-intensidade="baixa" />
+                Baixa
+              </span>
+              <span>
+                <i data-intensidade="media" />
+                Média
+              </span>
+              <span>
+                <i data-intensidade="alta" />
+                Alta
+              </span>
+            </>
+          )}
         </div>
       </section>
 
