@@ -1,5 +1,416 @@
 /* Ordens de serviço: telas do técnico e do painel de gestão. */
 
+/* ===== Mapa de calor das OS ===== */
+
+.calor-os {
+  width: 100%;
+}
+
+.calor-os-cabecalho,
+.calor-os-painel-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.calor-os-cabecalho h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.calor-os-cabecalho p,
+.calor-os-painel-cabecalho p {
+  margin: 0;
+  color: var(--ink3);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.calor-os-escopo,
+.calor-os-status,
+.calor-os-privacidade,
+.calor-os-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.calor-os-escopo {
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+.calor-os-status {
+  flex: none;
+  padding: 8px 11px;
+  border: 1px solid var(--brand-bd);
+  border-radius: 999px;
+  background: var(--brand-bg);
+  color: var(--brand-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.calor-os-filtros {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.calor-os-filtro {
+  display: flex;
+  flex: 1 1 180px;
+  min-width: 150px;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink3);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.calor-os-aplicar {
+  flex: none;
+}
+
+.calor-os-privacidade {
+  margin: 0 0 11px auto;
+  color: var(--ink4);
+  font-size: 12px;
+}
+
+.calor-os-resumo {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.calor-os-indicador {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.calor-os-indicador span {
+  color: var(--ink3);
+  font-size: 12px;
+}
+
+.calor-os-indicador strong {
+  font-size: 25px;
+  line-height: 1.2;
+}
+
+.calor-os-indicador small {
+  color: var(--ink4);
+  font-size: 11px;
+}
+
+.calor-os-conteudo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  align-items: stretch;
+  gap: 14px;
+}
+
+.calor-os-painel,
+.calor-os-lateral {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.calor-os-painel {
+  padding: 18px;
+}
+
+.calor-os-painel-cabecalho {
+  align-items: center;
+}
+
+.calor-os-painel-cabecalho h3,
+.calor-os-lateral h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.calor-os-painel-cabecalho p {
+  font-size: 12.5px;
+}
+
+.calor-os-tag {
+  flex: none;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--brand-bg);
+  color: var(--brand-ink);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.calor-os-area-mapa {
+  display: grid;
+  min-height: 420px;
+  margin-top: 16px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line2);
+  border-radius: 9px;
+  background-color: var(--surface2);
+}
+
+/* O Leaflet usa z-index de até 1000 nas camadas e controles: `isolation` os prende aqui, abaixo do menu e dos modais. */
+.calor-os-mapa {
+  width: 100%;
+  height: 440px;
+  isolation: isolate;
+  font-family: var(--sans);
+}
+
+.calor-os-marcador span {
+  display: flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.calor-os-marcador:focus-visible {
+  outline: none;
+}
+
+.calor-os-marcador:focus-visible span {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.calor-os-marcador [data-intensidade="baixa"],
+.calor-os-lista b[data-intensidade="baixa"],
+.calor-os-legenda i[data-intensidade="baixa"] {
+  background: #E3A63B;
+}
+
+.calor-os-marcador [data-intensidade="media"],
+.calor-os-lista b[data-intensidade="media"],
+.calor-os-legenda i[data-intensidade="media"] {
+  background: #DD6B33;
+}
+
+.calor-os-marcador [data-intensidade="alta"],
+.calor-os-lista b[data-intensidade="alta"],
+.calor-os-legenda i[data-intensidade="alta"] {
+  background: #B3362A;
+}
+
+.calor-os-vazio {
+  display: flex;
+  width: min(100% - 32px, 440px);
+  flex-direction: column;
+  align-items: center;
+  padding: 28px;
+  border: 1px solid rgba(220, 221, 214, .8);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .92);
+  text-align: center;
+}
+
+.calor-os-vazio-icone,
+.calor-os-lateral-icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand);
+  background: var(--brand-bg);
+}
+
+.calor-os-vazio-icone {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+}
+
+.calor-os-vazio h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.calor-os-vazio p,
+.calor-os-lateral > p {
+  margin: 0;
+  color: var(--ink3);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.calor-os-lista {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.calor-os-lista button {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+
+.calor-os-lista button:hover {
+  background: var(--surface2);
+}
+
+.calor-os-lista button[aria-pressed="true"] {
+  border-color: var(--brand-bd);
+  background: var(--brand-bg);
+}
+
+.calor-os-lista button:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.calor-os-lista button > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.calor-os-lista strong {
+  color: var(--ink2);
+  font-size: 12px;
+}
+
+.calor-os-lista small {
+  color: var(--ink4);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.calor-os-lista em {
+  color: var(--ink4);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.calor-os-lista i {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line2);
+}
+
+.calor-os-lista b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.calor-os-link {
+  margin-top: auto;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.calor-os-legenda {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+  color: var(--ink4);
+  font-size: 12px;
+}
+
+.calor-os-legenda span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calor-os-legenda span:first-child {
+  margin-right: auto;
+  color: var(--ink3);
+  font-weight: 600;
+}
+
+.calor-os-legenda i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.calor-os-lateral {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 20px;
+}
+
+.calor-os-lateral-icone {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 18px;
+  border-radius: 10px;
+}
+
+.calor-os-lateral > p {
+  font-size: 13px;
+}
+
+.calor-os-nota {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: auto;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--ink4);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.calor-os-nota svg {
+  flex: none;
+  color: var(--brand);
+}
+
 /* ===== Lista de OS, quadro de gestão e detalhe da OS ===== */
 
 .chips {
@@ -537,4 +948,70 @@ button.bcard {
 .insp-editor .input {
   flex: 1 1 auto;
   min-width: 0
+}
+
+@media (max-width: 767px) {
+  .calor-os-cabecalho {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .calor-os-filtros {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .calor-os-filtro {
+    flex-basis: auto;
+  }
+
+  .calor-os-aplicar {
+    width: 100%;
+  }
+
+  .calor-os-resumo {
+    grid-template-columns: 1fr;
+  }
+
+  .calor-os-conteudo {
+    grid-template-columns: 1fr;
+  }
+
+  .calor-os-area-mapa {
+    min-height: 300px;
+  }
+
+  .calor-os-mapa {
+    height: 340px;
+  }
+
+  .calor-os-nota {
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 479px) {
+  .calor-os-painel {
+    padding: 14px;
+  }
+
+  .calor-os-painel-cabecalho {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .calor-os-legenda {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+  }
+
+  .calor-os-legenda span:first-child {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calor-os-lista button {
+    transition: none;
+  }
 }

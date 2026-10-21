@@ -103,6 +103,8 @@ export const rotas = {
   web: {
     /** Aba Importação da seção Ordem de Serviço (a outra aba é o quadro, `app.lista`). */
     importacao: "/web/os/importacao",
+    /** Aba Mapa de Calor da seção Ordem de Serviço: admin (todas as equipes) e supervisor (as equipes dele). */
+    mapaCalor: "/web/os/mapa-calor",
     alertas: "/web/alertas",
     /** Seção APR, Análise Preliminar de Risco (menu "APR"): duas abas. `/web/apr` sozinho leva aos modelos. */
     modelos: "/web/apr/modelos",
