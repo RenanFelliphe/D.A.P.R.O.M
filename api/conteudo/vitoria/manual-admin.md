@@ -27,15 +27,22 @@
   reproduz a folha como ela é, e sem a coluna as assinaturas da APR aparecem só no relatório da execução. [modelos_apr]
 - Editar um modelo publicado cria uma versão nova; as APR já respondidas guardam a versão em que foram feitas, então
   nada muda retroativamente.
-- A aba Atividades mostra a quais atividades cada modelo está ligado. [atividades_apr]
+- A aba Atividades lista os serviços do catálogo: cada OS chega do SAP com o código da atividade, que diz o serviço e a
+  lista de materiais. A atividade não escolhe o modelo da APR: o técnico escolhe a cada APR, e o sistema recomenda um
+  pela orientação de cada modelo. [atividades_apr]
 - Abrir um modelo específico mostra as versões, o editor do rascunho e onde ele é usado. [modelo_apr]
 
 ## Importação de OS
 
 - A seção Ordem de Serviço tem uma aba própria de Importação: a leitura periódica do SAP traz as OS automaticamente,
   e "Importar planilha" ou "Importar PDF" cobrem o que não vier assim. [importacao]
-- Um PDF escaneado (sem texto para ler) é recusado hoje: a digitalização de OS antigas, que trataria esse caso, ainda
-  não foi implementada.
+- Antes de importar, a tela pergunta se a OS é para liberar no sistema ou se já foi concluída no papel. Para liberar,
+  vale a planilha ou o PDF gerado pelo SAP; um PDF escaneado (sem texto para ler) é recusado nesse caminho. [importacao]
+- A digitalização traz OS antigas, já executadas no papel, como histórico: escolha "Já foi concluída no papel" e envie o
+  PDF escaneado das folhas, ou use o cartão "Digitalização" para fotografar 1 ou 2 folhas avulsas. A IA lê as folhas em
+  segundo plano, inclusive o que foi escrito à mão, e você confere cada OS ao lado das folhas antes de registrar; a OS
+  entra encerrada. Só o administrador vê a Digitalização. Com a função "Digitalização de documentos" desligada no Controle
+  da IA (ou sem IA), o texto impresso continua sendo lido e o escrito à mão é digitado por você na conferência. [importacao]
 - A exportação para baixa no SAP fica num bloco à parte, no Dashboard de OS. [exportacao_sap]
 
 ## Auditoria
@@ -111,7 +118,7 @@
 
 - O Dashboard geral reúne a visão de OS, equipes e APR num só lugar. [dashboard_geral]
 - O dashboard de OS traz os tempos de execução (com a pausa por motivo) e a entrada de ordens. [dashboard_os]
-- A OS só está concluída quando o responsável assina o encerramento e, por último, o supervisor assina depois de ler o
+- A OS só está concluída quando quem a encerrou assina o encerramento e, por último, o supervisor assina depois de ler o
   relatório da execução (um PDF à parte, que o supervisor e o admin veem no detalhe da OS). Enquanto isso a OS fica
   "encerrando" ou "aguardando o supervisor"; o PDF da OS e a baixa no SAP só valem para a OS concluída. [dashboard_os]
 - O dashboard de APR traz os indicadores de aprovação e bloqueio, por equipe e por período. [dashboard_apr]
@@ -136,7 +143,6 @@
   tela, o perfil e a data. [vitoria_sem_resposta]
 - A lista fica no menu "Vitória", abaixo do diagnóstico da IA, com um selo que conta as que ainda não foram tratadas. Depois de melhorar o
   manual com a resposta, marque a pergunta como tratada. [vitoria_sem_resposta]
-- Depois de melhorar o manual com essa resposta, marque a pergunta como tratada na mesma tela.
 
 ## Diagnóstico da Vitória
 
@@ -177,6 +183,8 @@
 ## Glossário
 
 - OS (ordem de serviço): o pedido de um serviço a executar. Chega pelo SAP, por planilha ou pelo PDF da OS. [importacao]
+- Digitalização: a entrada de OS antigas, já executadas no papel, pelo PDF escaneado ou pela foto das folhas; a OS entra
+  encerrada, como histórico. [importacao]
 - APR (Análise Preliminar de Risco): a análise dos riscos que a equipe faz antes de executar uma OS, a partir de um
   modelo.
 - Modelo de APR: o roteiro da APR de uma atividade, com versões. [modelos_apr]

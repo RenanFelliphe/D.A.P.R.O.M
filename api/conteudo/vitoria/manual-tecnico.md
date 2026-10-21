@@ -36,7 +36,7 @@
 - A APR precisa de pelo menos 2 participantes: ninguém executa o serviço sozinho. Não há máximo.
 - Depois que a APR é validada, cada participante assina a APR na própria conta, com a assinatura do perfil (a pessoa
   recebe o aviso no sino e a faixa no quadro). A execução só começa quando todos assinaram. Essa é a única hora em
-  que todos assinam: no fim, só o responsável.
+  que todos assinam: no fim, só quem encerrou a OS.
 - Quem não concorda com a APR (por exemplo, por não estar bem física ou emocionalmente) usa o direito de recusa: informa
   o motivo e sai da APR. O supervisor é avisado na hora. Se restarem menos de 2 participantes, ou se quem recusou foi o
   responsável, é preciso fazer uma APR nova.
@@ -59,9 +59,9 @@
   não é registrada na assinatura da APR.
 - Ao tocar em "Encerrar OS", o sistema pede uma confirmação: o tempo para ali e a execução não pode ser retomada. Depois
   vêm a descrição e as fotos, que são opcionais (só vale registrar quando aconteceu algo), o checklist de inspeção das
-  preventivas e a assinatura do responsável. Esse preenchimento não entra no tempo. Sem descrição, o documento sai com
+  preventivas e a assinatura de quem encerrou. Esse preenchimento não entra no tempo. Sem descrição, o documento sai com
   "Executado conforme a OS, sem ocorrências".
-- Depois que o responsável assina, a OS fica aguardando o supervisor, que lê o relatório da execução e assina por último.
+- Depois que quem encerrou assina, a OS fica aguardando o supervisor, que lê o relatório da execução e assina por último.
   Só então a OS está concluída e o PDF é gerado.
 - O cronômetro não depende do aplicativo aberto: o tempo é calculado a partir do início, então continua certo com o
   celular bloqueado.
@@ -69,6 +69,43 @@
   do perfil antes de concluir.
 - Esqueceu de encerrar no mesmo dia? Ao abrir a OS de novo, o sistema pede a hora real em que o trabalho parou antes
   de deixar continuar.
+
+## Execução em equipe
+
+- Todos os participantes da APR acompanham a execução e podem agir sobre ela, não só quem a iniciou (o responsável).
+  [execucao]
+- Pausar, continuar, interromper por risco e suspender por lesão ou enfermidade valem na hora, por qualquer
+  participante.
+- Encerrar e suspender por outro motivo viram um pedido ao responsável, que aceita ou recusa em até 2 minutos; sem
+  resposta, o pedido é aprovado sozinho. Os outros participantes podem apoiar o pedido, e quem pediu pode cancelá-lo.
+  Aprovado, a ação vale no instante em que foi pedida.
+- Sem sinal, nada é pedido: a ação vale na hora no aparelho. Quando todos sincronizam, o sistema compara o que cada
+  aparelho registrou (a conferência da execução). Se os registros batem, cada um dá a ciência com um toque; se divergem,
+  o responsável escolhe os horários e as pausas, o supervisor escolhe o resultado, e a equipe assina — quem discordar
+  assina com ressalva, que vai ao supervisor e ao relatório. Horários com até 5 minutos de diferença valem como o mesmo,
+  e as fotos de todos os aparelhos somam.
+- Quem falta sincronizar ou assinar recebe lembretes. Depois de 72 horas, o responsável ou o supervisor pode fechar a
+  conferência com o que existe; depois de 7 dias, ela fecha sozinha.
+
+## Sem sinal no celular
+
+- No aplicativo, o trabalho de campo continua sem sinal: o app guarda uma cópia das OS da sua equipe, e o que você faz
+  (APR, execução, encerramento, fotos) fica numa fila que sobe quando o sinal volta, inclusive com o app fechado.
+- Uma faixa no topo mostra quantos registros esperam o envio. Enquanto houver algo na fila, "Sair" fica bloqueado, para
+  nada se perder.
+- Sem sinal, a APR é registrada no aparelho do responsável, com os participantes presentes assinando ali mesmo; o
+  servidor a valida quando o sinal voltar e, se ela reprovar, o supervisor é avisado.
+- Dá para entrar sem sinal no celular em que você já entrou antes, desde que o servidor tenha confirmado a sua conta nos
+  últimos 7 dias; depois disso, o app pede para conectar.
+
+## Ausências
+
+- Férias, atestado, viagem: peça a ausência em "Ausências", com o início, o fim (em dias ou pela data de volta) e o
+  motivo. O supervisor da equipe aprova, ajusta as datas ou recusa; aprovada, você confirma com a sua assinatura.
+- Durante a ausência você continua vendo o sistema, com uma faixa no topo "Você está ausente até…", mas não faz APR,
+  execução nem outras alterações; as OS reservadas para você voltam para a equipe. Para voltar antes, use "Pedir fim
+  antecipado"; depois da data, confirme o retorno.
+- Quando o supervisor está ausente, quem responde pela equipe é o representante.
 
 ## Meu perfil
 
@@ -144,12 +181,11 @@
 - Sair no meio pede confirmação, e o jogo recomeça do início quando você voltar.
 - O jogo tem som (o alto-falante no topo desliga) e, no computador, atalhos: 1 a 4 escolhem a opção, Enter confirma e
   segue, e as setas trocam o passo da explicação. No celular, dá para deslizar o dedo para trocar o passo.
-- A nota e os pontos ganhos só valem na primeira vez que você conclui cada treinamento; refazer ajuda a revisar, mas
-  não muda a pontuação.
-- Ao concluir, o resultado mostra a sua nota e o ranking daquele treinamento: quem já concluiu, ordenado pelas
-  fases certas de primeira, com a sua posição em destaque. No ranking também vale a primeira conclusão; jogar de novo
-  não muda a sua posição. A capa do treinamento mostra o mesmo ranking, e quem está anônimo na gamificação também
-  aparece como "Participante anônimo" aqui.
+- Os pontos da gamificação só valem na primeira vez que você conclui cada treinamento; refazer ajuda a revisar e pode
+  melhorar a sua nota no ranking do treinamento, mas não dá pontos de novo.
+- Ao concluir, o resultado mostra a sua nota e o ranking daquele treinamento: quem já concluiu, pela melhor nota de cada
+  um (no empate, quem chegou à nota primeiro), com a sua posição em destaque. A capa do treinamento mostra o mesmo
+  ranking, e quem está anônimo na gamificação também aparece como "Participante anônimo" aqui.
 - Encontrou algo que parece errado numa fase? O botão "Reportar problema" manda um aviso direto para quem administra
   o sistema.
 - Quem supervisiona uma equipe (ou está no comando como representante) pode criar o treinamento de um serviço que a equipe
@@ -216,8 +252,10 @@
   é como se registra que a inspeção foi feita.
 - Por que a OS pode ficar pendente depois da APR: se uma resposta do checklist pediu evidência ou comentário, o
   supervisor revisa o que foi registrado antes de a OS seguir.
-- Por que os treinamentos de serviço pontuam só na primeira conclusão: refazer serve para revisar, mas a pontuação e a
-  posição no ranking não mudam.
+- Por que os treinamentos de serviço pontuam só na primeira conclusão: refazer serve para revisar; uma nota melhor sobe
+  no ranking do treinamento, mas os pontos da gamificação não mudam.
+- Por que encerrar pede a aprovação do responsável e pausar não: encerrar e suspender mudam o destino da OS, então quem
+  iniciou a execução confirma; pausar, continuar e as paradas por saúde ou risco não podem esperar ninguém.
 - Por que o Campo de treino existe: para aprender o sistema com dados de mentira, sem afetar nenhuma OS de verdade.
 
 ## Glossário
