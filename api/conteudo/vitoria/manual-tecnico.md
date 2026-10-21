@@ -152,6 +152,14 @@
   aparece como "Participante anônimo" aqui.
 - Encontrou algo que parece errado numa fase? O botão "Reportar problema" manda um aviso direto para quem administra
   o sistema.
+- Quem supervisiona uma equipe (ou está no comando como representante) pode criar o treinamento de um serviço que a equipe
+  já faz: no cartão do serviço, "Criar treinamento". O rascunho é seu: só você e o administrador editam. Ao terminar, "Enviar
+  para validação", com a sua assinatura, trava o rascunho e avisa os supervisores das 3 equipes que mais fazem o serviço
+  (a sua equipe não valida o que você criou). Assinam 2 dos 3 e o treinamento é publicado sozinho; uma recusa, com motivo,
+  volta para você ajustar e enviar de novo.
+- Quem foi escolhido para validar recebe o aviso "Treinamento para validar", e o item "Para validar" do menu mostra o que
+  espera a sua decisão. Na tela de validar você vê o treinamento com as respostas certas, pode testar o jogo, e então aprova
+  (com a sua assinatura) ou recusa (com o motivo). Você valida uma vez por treinamento.
 
 ## Gamificação
 

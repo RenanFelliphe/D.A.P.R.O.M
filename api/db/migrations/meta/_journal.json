@@ -309,6 +309,13 @@
       "when": 1792540580105,
       "tag": "0043_controle_da_ia",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792542518878,
+      "tag": "0044_validacao_de_treinamento",
+      "breakpoints": true
     }
   ]
 }

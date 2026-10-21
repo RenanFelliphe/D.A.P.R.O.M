@@ -8,7 +8,9 @@ import {
   treinamentoServicoReporte,
   treinamentoServicoResposta,
   treinamentoServicoTentativa,
+  treinamentoServicoValidador,
   treinamentoServicoVersao,
+  equipe,
   usuario,
 } from "../db/schema";
 import { conflito, invalido, naoEncontrado } from "../http/erros";
@@ -379,10 +381,10 @@ export interface ResultadoDaResposta {
   /** Os acertos e as respostas certas possíveis (a base da fase: 10 × acertos ÷ possíveis). */
   acertos: number;
   possiveis: number;
-}
-
   /** A fração da base quando ela não é acertos ÷ possíveis: no Termo, 1 ÷ a tentativa em que acertou (a fase continua 1 de 1). */
   fracao?: number;
+}
+
 /** A correção de uma fase com o tempo e os pontos dela (o que a rota devolve e o resultado mostra). */
 export interface ResultadoDaFase extends ResultadoDaResposta {
   tempoMs: number;
@@ -801,6 +803,10 @@ export interface RascunhoDoEditor {
   rodadasIa: number;
   /** As pendências da IA ainda abertas, que impedem publicar (`shared/treinamento-servico/ia.ts`). */
   pendencias: PendenciaAberta[];
+  /** Quem montou o rascunho (o admin ou o supervisor do serviço); nulo nas versões de antes da validação pelos supervisores. */
+  autorId: string | null;
+  /** Enviado para validação: o rascunho está travado até a validação terminar ou o autor retirá-lo. */
+  emValidacao: boolean;
 }
 
 /**
@@ -830,7 +836,7 @@ export async function obterOuCriarRascunho(db: Db, atividadeCodigo: string, usua
         : { explicacao: [], fases: [] };
       const [criada] = await tx
         .insert(treinamentoServicoVersao)
-        .values({ treinamentoId: treinamento!.id, versao: (maior?.max ?? 0) + 1, ...base })
+        .values({ treinamentoId: treinamento!.id, versao: (maior?.max ?? 0) + 1, autorId: usuarioId, ...base })
         .returning();
       rascunho = criada!;
     }
@@ -853,6 +859,8 @@ export function rascunhoParaEditor(treinamentoId: string, rascunho: VersaoLinha,
     geradoComIa: rascunho.geradoComIa,
     rodadasIa: rascunho.rodadasIa,
     pendencias: pendenciasAbertas({ explicacao, fases }),
+    autorId: rascunho.autorId,
+    emValidacao: rascunho.validacaoEnviadaEm !== null,
   };
 }
 
@@ -864,6 +872,7 @@ export async function salvarRascunho(db: Db, atividadeCodigo: string, conteudo: 
   if (!treinamento) throw naoEncontrado("Treinamento não encontrado; abra o editor para criá-lo");
   const rascunho = await rascunhoDoTreinamento(db, treinamento.id);
   if (!rascunho) throw naoEncontrado("Não há rascunho para este treinamento");
+  if (rascunho.validacaoEnviadaEm) throw conflito("em_validacao", "Este treinamento está em validação: retire-o da validação para editar");
   const publicada = await versaoPublicadaDoTreinamento(db, treinamento.id);
 
   const [salvo] = await db
@@ -882,6 +891,12 @@ export interface VersaoAnterior {
   publicadaPorNome: string | null;
   totalFases: number;
   totalPassos: number;
+  /** `validacao`: os supervisores assinaram; `direta`: o admin publicou sem esperar (a exceção, e tudo o que veio antes da validação). `null` no rascunho. */
+  via: "validacao" | "direta" | null;
+  /** Quem aprovou na validação (a última rodada), com a equipe e quando. */
+  assinaturas: { nome: string; equipeNome: string; em: Date }[];
+  /** A justificativa do admin na publicação direta. */
+  justificativa: string | null;
 }
 
 export async function versoesAnteriores(db: Db, atividadeCodigo: string): Promise<VersaoAnterior[]> {
@@ -896,20 +911,35 @@ export async function versoesAnteriores(db: Db, atividadeCodigo: string): Promis
       publicadaPorNome: usuario.nome,
       explicacao: treinamentoServicoVersao.explicacao,
       fases: treinamentoServicoVersao.fases,
+      rodada: treinamentoServicoVersao.rodadaDeValidacao,
+      justificativa: treinamentoServicoVersao.publicacaoDiretaJustificativa,
     })
     .from(treinamentoServicoVersao)
     .leftJoin(usuario, eq(usuario.id, treinamentoServicoVersao.publicadaPor))
     .where(eq(treinamentoServicoVersao.treinamentoId, treinamento.id))
     .orderBy(desc(treinamentoServicoVersao.versao));
-  return linhas.map((l) => ({
-    versaoId: l.id,
-    versao: l.versao,
-    estado: l.estado,
-    publicadaEm: l.publicadaEm,
-    publicadaPorNome: l.publicadaPorNome,
-    totalFases: ((l.fases as unknown[]) ?? []).length,
-    totalPassos: ((l.explicacao as unknown[]) ?? []).length,
-  }));
+  const aprovacoes = await db
+    .select({ versaoId: treinamentoServicoValidador.versaoId, rodada: treinamentoServicoValidador.rodada, nome: usuario.nome, equipeNome: equipe.nome, em: treinamentoServicoValidador.decididaEm })
+    .from(treinamentoServicoValidador)
+    .innerJoin(usuario, eq(usuario.id, treinamentoServicoValidador.usuarioId))
+    .innerJoin(equipe, eq(equipe.id, treinamentoServicoValidador.equipeId))
+    .where(and(inArray(treinamentoServicoValidador.versaoId, linhas.map((l) => l.id)), eq(treinamentoServicoValidador.decisao, "aprovou")))
+    .orderBy(asc(treinamentoServicoValidador.decididaEm));
+  return linhas.map((l) => {
+    const assinaturas = aprovacoes.filter((a) => a.versaoId === l.id && a.rodada === l.rodada).map((a) => ({ nome: a.nome, equipeNome: a.equipeNome, em: a.em! }));
+    return {
+      versaoId: l.id,
+      versao: l.versao,
+      estado: l.estado,
+      publicadaEm: l.publicadaEm,
+      publicadaPorNome: l.publicadaPorNome,
+      totalFases: ((l.fases as unknown[]) ?? []).length,
+      totalPassos: ((l.explicacao as unknown[]) ?? []).length,
+      via: l.publicadaEm === null ? null : l.justificativa === null && assinaturas.length > 0 ? ("validacao" as const) : ("direta" as const),
+      assinaturas,
+      justificativa: l.justificativa,
+    };
+  });
 }
 
 export interface PublicarResultado {
@@ -921,8 +951,41 @@ export interface PublicarResultado {
   textoOrigem: string | null;
 }
 
-/** Publica o rascunho: termo + assinatura (já enviada por `PUT /arquivos/{id}`, tipo `assinatura`), no padrão de `PUT /me/assinatura`. */
-export async function publicarVersao(db: Db, atividadeCodigo: string, usuarioId: string, assinaturaPath: string, agora: Date): Promise<PublicarResultado> {
+/**
+ * Põe o rascunho no ar na transação de quem chama: a versão publicada até então vira `substituida`, e o rascunho, `publicada`, com o
+ * termo e a assinatura de quem publicou (a de quem fechou o quórum, na validação; a do admin, na publicação direta).
+ */
+export async function publicarRascunho(
+  tx: Db,
+  treinamentoId: string,
+  rascunho: VersaoLinha,
+  servico: { codigo: string; descricao: string },
+  quem: { usuarioId: string; assinaturaPath: string; agora: Date; justificativaDireta?: string },
+): Promise<PublicarResultado> {
+  await tx
+    .update(treinamentoServicoVersao)
+    .set({ estado: "substituida" })
+    .where(and(eq(treinamentoServicoVersao.treinamentoId, treinamentoId), eq(treinamentoServicoVersao.estado, "publicada")));
+  const [publicada] = await tx
+    .update(treinamentoServicoVersao)
+    .set({
+      estado: "publicada",
+      publicadaEm: quem.agora,
+      publicadaPor: quem.usuarioId,
+      assinaturaPath: quem.assinaturaPath,
+      termo: TERMO_TREINAMENTO(servico.codigo, servico.descricao),
+      ...(quem.justificativaDireta ? { publicacaoDiretaJustificativa: quem.justificativaDireta } : {}),
+    })
+    .where(eq(treinamentoServicoVersao.id, rascunho.id))
+    .returning({ id: treinamentoServicoVersao.id, versao: treinamentoServicoVersao.versao, publicadaEm: treinamentoServicoVersao.publicadaEm });
+  return { versaoId: publicada!.id, versao: publicada!.versao, publicadaEm: publicada!.publicadaEm!, geradoComIa: rascunho.geradoComIa, textoOrigem: rascunho.textoOrigem };
+}
+
+/**
+ * Publica o rascunho direto, sem esperar a validação dos supervisores: termo + assinatura (já enviada por `PUT /arquivos/{id}`, tipo
+ * `assinatura`), no padrão de `PUT /me/assinatura`. É a exceção do admin; `justificativaDireta` fica gravada com a versão.
+ */
+export async function publicarVersao(db: Db, atividadeCodigo: string, usuarioId: string, assinaturaPath: string, agora: Date, justificativaDireta?: string): Promise<PublicarResultado> {
   const [servico] = await db.select({ codigo: atividade.codigo, descricao: atividade.descricao }).from(atividade).where(eq(atividade.codigo, atividadeCodigo)).limit(1);
   if (!servico) throw naoEncontrado("Serviço não encontrado no catálogo");
   const treinamento = await treinamentoDoCodigo(db, atividadeCodigo);
@@ -937,18 +1000,7 @@ export async function publicarVersao(db: Db, atividadeCodigo: string, usuarioId:
   validarSemPendencias(explicacao, fases);
   await validarFasesContraCatalogo(db, fases);
 
-  return db.transaction(async (tx) => {
-    await tx
-      .update(treinamentoServicoVersao)
-      .set({ estado: "substituida" })
-      .where(and(eq(treinamentoServicoVersao.treinamentoId, treinamento.id), eq(treinamentoServicoVersao.estado, "publicada")));
-    const [publicada] = await tx
-      .update(treinamentoServicoVersao)
-      .set({ estado: "publicada", publicadaEm: agora, publicadaPor: usuarioId, assinaturaPath, termo: TERMO_TREINAMENTO(servico.codigo, servico.descricao) })
-      .where(eq(treinamentoServicoVersao.id, rascunho.id))
-      .returning({ id: treinamentoServicoVersao.id, versao: treinamentoServicoVersao.versao, publicadaEm: treinamentoServicoVersao.publicadaEm });
-    return { versaoId: publicada!.id, versao: publicada!.versao, publicadaEm: publicada!.publicadaEm!, geradoComIa: rascunho.geradoComIa, textoOrigem: rascunho.textoOrigem };
-  });
+  return db.transaction(async (transacao) => publicarRascunho(transacao as unknown as Db, treinamento.id, rascunho, servico, { usuarioId, assinaturaPath, agora, justificativaDireta }));
 }
 
 // ---- Reportes (admin) -----------------------------------------------------------------------------------------------

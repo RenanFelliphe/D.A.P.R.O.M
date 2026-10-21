@@ -1,7 +1,9 @@
 import { Hono, type Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
+import { eq } from "drizzle-orm";
 import type { Db } from "../db/conexao";
+import { usuario } from "../db/schema";
 import { registrarAuditoria } from "../dominio/auditoria";
 import { ganhosDe } from "../dominio/lancamentos";
 import {
@@ -24,6 +26,18 @@ import {
   versoesAnteriores,
 } from "../dominio/treinamento-servico";
 import { esquemaConteudo } from "../dominio/treinamento-servico-esquema";
+import {
+  decidirValidacao,
+  enviarParaValidacao,
+  exigirPodeEditar,
+  exigirPodePreVisualizar,
+  exigirPodeVer,
+  justificativaExigida,
+  retirarDaValidacao,
+  servicosDoSupervisor,
+  situacaoDaValidacao,
+  treinamentosParaValidar,
+} from "../dominio/treinamento-servico-validacao";
 import { LINHAS_DO_RANKING, rankingDoTreinamento } from "../dominio/treinamento-servico-ranking";
 import {
   executarRascunhoIA,
@@ -55,7 +69,8 @@ function indiceDaFase(bruto: string): number {
 }
 
 const esquemaRascunho = esquemaConteudo.extend({ cenario_path: z.string().trim().min(1).max(200).nullable().optional() });
-const esquemaPublicar = z.object({ arquivo_id: uuid });
+const esquemaPublicar = z.object({ arquivo_id: uuid, justificativa: z.string().trim().max(1000).optional() });
+const esquemaRecusa = z.object({ motivo: textoObrigatorio.max(1000) });
 const esquemaReporte = z.object({ fase: z.number().int().min(0).nullable().optional(), texto: textoObrigatorio.max(500) });
 const esquemaGerar = z.object({
   texto: z.string().trim().min(40, "Cole o texto do procedimento (ao menos algumas frases)").max(LIMITE_TEXTO_PROCEDIMENTO),
@@ -131,8 +146,10 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
    * A pré-visualização do admin também termina em `/tentativas`, então precisa ser registrada antes da rota de baixo
    * (`:atividade{.+}/tentativas`): como o código do serviço casa com qualquer caminho, a mais específica tem que vir primeiro.
    */
-  r.post("/treinamentos/:atividade{.+}/rascunho/pre-visualizar/tentativas", autenticar(), soAdmin, async (c) => {
-    const tentativa = await abrirPreVisualizacao(deps.db, c.get("usuario").id, codigoDoServico(c.req.param("atividade")), deps.agora());
+  r.post("/treinamentos/:atividade{.+}/rascunho/pre-visualizar/tentativas", autenticar(), async (c) => {
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    await exigirPodePreVisualizar(deps.db, c.get("usuario"), codigo);
+    const tentativa = await abrirPreVisualizacao(deps.db, c.get("usuario").id, codigo, deps.agora());
     return responder(c, tentativa, 201);
   });
 
@@ -197,39 +214,51 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
 
   // ---- Admin: editor, publicação e reportes -------------------------------------------------------------------------
 
-  r.get("/treinamentos/:atividade{.+}/rascunho", autenticar(), soAdmin, async (c) => {
+  r.get("/treinamentos/:atividade{.+}/rascunho", autenticar(), async (c) => {
     const codigo = codigoDoServico(c.req.param("atividade"));
-    const rascunho = await obterOuCriarRascunho(deps.db, codigo, c.get("usuario").id);
-    return responder(c, { ...rascunho, ia: await situacaoDaIA(deps, codigo) });
+    const eu = c.get("usuario");
+    await exigirPodeEditar(deps.db, eu, codigo);
+    const rascunho = await obterOuCriarRascunho(deps.db, codigo, eu.id);
+    const [autor] = rascunho.autorId ? await deps.db.select({ id: usuario.id, nome: usuario.nome }).from(usuario).where(eq(usuario.id, rascunho.autorId)) : [];
+    return responder(c, { ...rascunho, autor: autor ?? null, podeEditar: !rascunho.emValidacao, ia: await situacaoDaIA(deps, codigo) });
   });
 
   // O rascunho pela IA: `503` sem IA configurada, `409` com o limite esgotado (antes do streaming); depois, os eventos SSE.
-  r.post("/treinamentos/:atividade{.+}/rascunho/gerar", autenticar(), soAdmin, async (c) => {
+  r.post("/treinamentos/:atividade{.+}/rascunho/gerar", autenticar(), async (c) => {
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    await exigirPodeEditar(deps.db, c.get("usuario"), codigo);
     const { texto, plano } = await lerCorpo(c, esquemaGerar);
-    const chamada = await prepararRascunhoIA(deps, codigoDoServico(c.req.param("atividade")), c.get("usuario").id, { tipo: "gerar", texto, plano });
+    const chamada = await prepararRascunhoIA(deps, codigo, c.get("usuario").id, { tipo: "gerar", texto, plano });
     return responderRascunhoIA(c, deps, chamada);
   });
 
-  r.post("/treinamentos/:atividade{.+}/rascunho/ajustar", autenticar(), soAdmin, async (c) => {
+  r.post("/treinamentos/:atividade{.+}/rascunho/ajustar", autenticar(), async (c) => {
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    await exigirPodeEditar(deps.db, c.get("usuario"), codigo);
     const { pedido, fase } = await lerCorpo(c, esquemaAjustar);
-    const chamada = await prepararRascunhoIA(deps, codigoDoServico(c.req.param("atividade")), c.get("usuario").id, { tipo: "ajustar", pedido, fase });
+    const chamada = await prepararRascunhoIA(deps, codigo, c.get("usuario").id, { tipo: "ajustar", pedido, fase });
     return responderRascunhoIA(c, deps, chamada);
   });
 
-  r.put("/treinamentos/:atividade{.+}/rascunho", autenticar(), soAdmin, async (c) => {
+  r.put("/treinamentos/:atividade{.+}/rascunho", autenticar(), async (c) => {
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    await exigirPodeEditar(deps.db, c.get("usuario"), codigo);
     const dados = await lerCorpo(c, esquemaRascunho);
-    const salvo = await salvarRascunho(deps.db, codigoDoServico(c.req.param("atividade")), { explicacao: dados.explicacao, fases: dados.fases, cenarioPath: dados.cenario_path });
+    const salvo = await salvarRascunho(deps.db, codigo, { explicacao: dados.explicacao, fases: dados.fases, cenarioPath: dados.cenario_path });
     return responder(c, salvo);
   });
 
   r.post("/treinamentos/:atividade{.+}/publicar", autenticar(), soAdmin, async (c) => {
     const codigo = codigoDoServico(c.req.param("atividade"));
     const eu = c.get("usuario");
-    const { arquivo_id } = await lerCorpo(c, esquemaPublicar);
+    const { arquivo_id, justificativa } = await lerCorpo(c, esquemaPublicar);
     if (!(await deps.armazenamento.existe("assinaturas", arquivo_id))) {
       throw invalido("arquivo_inexistente", "Envie a imagem da assinatura antes (PUT /arquivos/{id})");
     }
-    const publicado = await publicarVersao(deps.db, codigo, eu.id, arquivo_id, deps.agora());
+    // A exceção do admin: com a validação possível, publicar direto exige dizer por quê (fica na versão e na auditoria).
+    const exigida = await justificativaExigida(deps.db, codigo);
+    if (exigida && !justificativa) throw invalido("justificativa_obrigatoria", "Publicar sem a validação dos supervisores exige uma justificativa");
+    const publicado = await publicarVersao(deps.db, codigo, eu.id, arquivo_id, deps.agora(), exigida ? justificativa : undefined);
     // Só a primeira publicação avisa os técnicos: as seguintes corrigem o que já está lá.
     if (publicado.versao === 1) await avisarTreinamentoPublicado(deps.db, codigo, deps.agora());
     await registrarAuditoria(deps.db, eu, {
@@ -238,14 +267,68 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
       entidadeId: codigo,
       alvo: codigo,
       resumo: `Publicou a versão ${publicado.versao} do treinamento de serviço ${codigo}${publicado.geradoComIa ? " (rascunho feito com a IA)" : ""}`,
-      detalhes: { versao: publicado.versao, gerado_com_ia: publicado.geradoComIa, ...(publicado.textoOrigem ? { texto_origem: publicado.textoOrigem } : {}) },
+      detalhes: {
+        versao: publicado.versao,
+        gerado_com_ia: publicado.geradoComIa,
+        ...(publicado.textoOrigem ? { texto_origem: publicado.textoOrigem } : {}),
+        ...(exigida ? { publicacao_direta: true, justificativa } : {}),
+      },
     });
     return responder(c, { versaoId: publicado.versaoId, versao: publicado.versao, publicadaEm: publicado.publicadaEm });
   });
 
-  r.get("/treinamentos/:atividade{.+}/versoes", autenticar(), soAdmin, async (c) => {
-    const versoes = await versoesAnteriores(deps.db, codigoDoServico(c.req.param("atividade")));
+  r.get("/treinamentos/:atividade{.+}/versoes", autenticar(), async (c) => {
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    await exigirPodeVer(deps.db, c.get("usuario"), codigo);
+    const versoes = await versoesAnteriores(deps.db, codigo);
     return responder(c, { versoes });
+  });
+
+  // ---- A validação pelos supervisores -----------------------------------------------------------------------------------------
+
+  /** Os serviços que a pessoa monta: o admin todos (`admin: true`); o supervisor, os das equipes que supervisiona. */
+  r.get("/treinamentos/meus-servicos", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    if (eu.perfil === "admin") return responder(c, { admin: true, servicos: [] });
+    return responder(c, { admin: false, servicos: await servicosDoSupervisor(deps.db, eu) });
+  });
+
+  /** Os treinamentos que esperam a decisão de quem pede (vaga de equipe que supervisiona, sem decisão dela). */
+  r.get("/treinamentos/para-validar", autenticar(), async (c) => responder(c, { treinamentos: await treinamentosParaValidar(deps.db, c.get("usuario")) }));
+
+  r.get("/treinamentos/:atividade{.+}/validacao", autenticar(), async (c) => responder(c, await situacaoDaValidacao(deps.db, c.get("usuario"), codigoDoServico(c.req.param("atividade")))));
+
+  r.post("/treinamentos/:atividade{.+}/validacao/enviar", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    await exigirPodeEditar(deps.db, eu, codigo);
+    await enviarParaValidacao(deps, eu, codigo);
+    return responder(c, await situacaoDaValidacao(deps.db, eu, codigo));
+  });
+
+  r.post("/treinamentos/:atividade{.+}/validacao/retirar", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    await retirarDaValidacao(deps, eu, codigo);
+    return responder(c, await situacaoDaValidacao(deps.db, eu, codigo));
+  });
+
+  r.post("/treinamentos/:atividade{.+}/validacao/aprovar", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    const resultado = await decidirValidacao(deps, eu, codigo, { aprovar: true });
+    // Publicado, o rascunho virou a versão no ar: não há mais situação de validação para mostrar.
+    if (resultado.publicada) return responder(c, { publicada: true, versao: resultado.versao });
+    return responder(c, { ...(await situacaoDaValidacao(deps.db, eu, codigo)), publicada: false });
+  });
+
+  r.post("/treinamentos/:atividade{.+}/validacao/recusar", autenticar(), async (c) => {
+    const eu = c.get("usuario");
+    const codigo = codigoDoServico(c.req.param("atividade"));
+    const { motivo } = await lerCorpo(c, esquemaRecusa);
+    await decidirValidacao(deps, eu, codigo, { aprovar: false, motivo });
+    // Devolvido ao autor: quem recusou não vê mais o rascunho; a resposta só confirma.
+    return responder(c, { devolvido: true });
   });
 
   r.get("/treinamentos/reportes", autenticar(), soAdmin, async (c) => {

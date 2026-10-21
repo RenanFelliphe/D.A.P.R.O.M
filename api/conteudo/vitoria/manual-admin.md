@@ -95,9 +95,16 @@
   em "Regerar com a Vitória" numa fase. Na demonstração, poucos treinamentos podem usar a IA e cada um tem poucas rodadas;
   esgotado o limite, os botões ficam desativados com "Limite da demonstração atingido".
 - "Testar o jogo" abre o treinamento numa janela, do jeito que o técnico joga, sem pontuar.
-- Publicar exige o conteúdo completo, sem pendências, o termo de revisão e a assinatura do seu perfil; quem publica
-  responde pelo conteúdo, mesmo o que veio da Vitória. Editar depois cria um rascunho novo a partir da versão publicada,
-  sem apagar a versão publicada anterior.
+- O treinamento é publicado pela validação dos supervisores: ao terminar o conteúdo, "Enviar para validação" (com a sua
+  assinatura) trava o rascunho e avisa as 3 equipes que mais fazem o serviço, sem a de quem criou, uma pessoa por equipe.
+  Assinam 2 dos 3 (todos, quando só há 1 ou 2 equipes) e o treinamento é publicado sozinho; uma recusa, com motivo,
+  devolve o rascunho ao autor. "Retirar da validação" destrava o rascunho. Publicar exige o conteúdo completo, sem
+  pendências e o termo de revisão assinado; quem assina responde pelo conteúdo, mesmo o que veio da Vitória.
+- O administrador ainda pode "Publicar direto", como exceção: quando a validação era possível, a justificativa é obrigatória
+  e fica na versão e na auditoria. Sem nenhuma equipe para validar (por exemplo, serviço sem OS), publica sem justificar.
+- Supervisores de equipes que fazem o serviço também criam o treinamento dele; o rascunho é de quem o criou (só ele e o
+  administrador editam), e a equipe dele não valida. Editar depois cria um rascunho novo a partir da versão publicada, que
+  passa pela validação de novo, sem apagar a versão publicada anterior.
 - Na aba Problemas ficam os avisos que os técnicos mandaram pelas fases; depois de corrigir, marque como tratado.
 
 ## Dashboards
@@ -145,6 +152,10 @@
   do ofício ela pode explicar com o que sabe, avisando que é uma informação geral e não uma regra da empresa). A conversa não fica guardada
   no servidor; só as perguntas que ela não soube responder, sem identificar quem perguntou.
 - Ela não aprova nem reprova APR, não assina nada e não decide nada por ninguém.
+- Só o administrador vê, na página da Vitória, o "Controle da IA": um seletor com as quatro funções dela (Chatbot e Criação de jogos, que funcionam sem
+  dados; Recomendação de modelo de APR e Digitalização de documentos, que só funcionam lendo dados), cada uma com uma explicação e um interruptor de ligar e
+  desligar. Para ligar uma função com dados, ou a leitura de dados do Chatbot e da Criação de jogos, o administrador lê a lista do que será lido e assina com a
+  assinatura do perfil. Desligar não pede assinatura. Desligada, a função segue sem IA. [vitoria_perfil]
 
 ## Por que o sistema funciona assim
 
@@ -152,10 +163,6 @@
   então nada muda retroativamente.
 - Por que a auditoria não deixa editar nem apagar: ela só acrescenta registros, para valer como prova de quem fez o quê
   nas telas de gestão.
-- Só o administrador vê, na página da Vitória, o "Controle da IA": um seletor com as quatro funções dela (Chatbot e Criação de jogos, que funcionam sem
-  dados; Recomendação de modelo de APR e Digitalização de documentos, que só funcionam lendo dados), cada uma com uma explicação e um interruptor de ligar e
-  desligar. Para ligar uma função com dados, ou a leitura de dados do Chatbot e da Criação de jogos, o administrador lê a lista do que será lido e assina com a
-  assinatura do perfil. Desligar não pede assinatura. Desligada, a função segue sem IA. [vitoria_perfil]
 - Por que liberar, recusar, reprogramar e cancelar OS pedem a sua assinatura: são ações importantes, e a assinatura do
   perfil mostra que foi você quem as fez.
 - Por que o sistema nunca devolve o acesso sozinho a quem foi readmitido: o aviso traz o botão "Reativar a conta" e

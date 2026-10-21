@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { boolean, check, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, unique, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { emLista, instante } from "./comum";
 import { atividade } from "./modelos-apr";
-import { usuario } from "./usuarios";
+import { equipe, usuario } from "./usuarios";
 
 /**
  * Treinamentos de serviço (seção 3 do `vitoria.md`): o jogo por serviço do catálogo. Usa o prefixo `treinamento_servico` em
@@ -58,6 +58,22 @@ export const treinamentoServicoVersao = pgTable(
     assinaturaPath: text(),
     /** O termo aceito na publicação, com o código e a descrição do serviço já substituídos (fica gravado como ficou). */
     termo: text(),
+    /**
+     * Quem montou este rascunho (o admin ou o supervisor de uma equipe que faz o serviço): só ele (e o admin) o edita, e a sua equipe não
+     * entra na validação. Nulo nas versões de antes da validação pelos supervisores.
+     */
+    autorId: uuid().references(() => usuario.id),
+    /**
+     * A validação pelos supervisores (`funcionalidades/validacao-de-treinamento.md`): o rascunho enviado fica travado, à espera das
+     * assinaturas. `validacao_enviada_*` vêm preenchidos juntos enquanto a versão está em validação; a assinatura é a do perfil de quem enviou.
+     */
+    validacaoEnviadaEm: instante(),
+    validacaoEnviadaPor: uuid().references(() => usuario.id),
+    validacaoAssinaturaPath: text(),
+    /** Quantas vezes o rascunho foi enviado para validar (a rodada atual, ou a última, de `treinamento_servico_validador`). */
+    rodadaDeValidacao: integer().notNull().default(0),
+    /** Preenchida quando o admin publicou direto, sem esperar a validação dos supervisores (a exceção; a justificativa é obrigatória). */
+    publicacaoDiretaJustificativa: text(),
   },
   (t) => [
     unique("treinamento_servico_versao_treinamento_id_versao_key").on(t.treinamentoId, t.versao),
@@ -66,6 +82,9 @@ export const treinamentoServicoVersao = pgTable(
     check("treinamento_servico_versao_rodadas_ia_check", sql`${t.rodadasIa} >= 0`),
     check("treinamento_servico_versao_publicacao_completa", sql`(${t.publicadaEm} is null) = (${t.publicadaPor} is null) and (${t.publicadaEm} is null) = (${t.assinaturaPath} is null)`),
     check("treinamento_servico_versao_estado_publicacao", sql`(${t.estado} = 'rascunho') = (${t.publicadaEm} is null)`),
+    check("treinamento_servico_versao_envio_completo", sql`(${t.validacaoEnviadaEm} is null) = (${t.validacaoEnviadaPor} is null) and (${t.validacaoEnviadaEm} is null) = (${t.validacaoAssinaturaPath} is null)`),
+    check("treinamento_servico_versao_rodada_check", sql`${t.rodadaDeValidacao} >= 0`),
+    check("treinamento_servico_versao_justificativa_preenchida", sql`${t.publicacaoDiretaJustificativa} is null or btrim(${t.publicacaoDiretaJustificativa}) <> ''`),
     uniqueIndex("treinamento_servico_versao_rascunho_idx").on(t.treinamentoId).where(sql`${t.estado} = 'rascunho'`),
     uniqueIndex("treinamento_servico_versao_publicada_idx").on(t.treinamentoId).where(sql`${t.estado} = 'publicada'`),
     index("treinamento_servico_versao_treinamento_idx").on(t.treinamentoId),
@@ -183,5 +202,47 @@ export const treinamentoServicoReporte = pgTable(
     check("treinamento_servico_reporte_tratamento", sql`(${t.tratadoEm} is null) = (${t.tratadoPor} is null)`),
     index("treinamento_servico_reporte_versao_idx").on(t.versaoId),
     index("treinamento_servico_reporte_pendentes_idx").on(t.versaoId).where(sql`${t.tratadoEm} is null`),
+  ],
+).enableRLS();
+
+export const TREINAMENTO_SERVICO_DECISOES = ["aprovou", "recusou"] as const;
+export type TreinamentoServicoDecisao = (typeof TREINAMENTO_SERVICO_DECISOES)[number];
+
+/**
+ * Os validadores de uma rodada de validação: uma linha por equipe escolhida (as que mais fazem o serviço, sem a do autor), fixadas
+ * quando o rascunho é enviado (o ranking muda com o tempo, e o grupo não pode trocar no meio). Quem pode decidir por uma linha é quem
+ * supervisiona a equipe (o supervisor ou o representante no comando), menos o autor. `usuario_id` só vem junto com a decisão: é quem
+ * decidiu, com a cópia da assinatura do perfil. A recusa leva o motivo e devolve o treinamento ao autor.
+ */
+export const treinamentoServicoValidador = pgTable(
+  "treinamento_servico_validador",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    versaoId: uuid()
+      .notNull()
+      .references(() => treinamentoServicoVersao.id),
+    rodada: integer().notNull(),
+    /** 1 = a equipe que mais faz o serviço (que, no máximo, pode ser a segunda se a primeira é a do autor). */
+    posicao: integer().notNull(),
+    equipeId: uuid()
+      .notNull()
+      .references(() => equipe.id),
+    decisao: text({ enum: TREINAMENTO_SERVICO_DECISOES }),
+    usuarioId: uuid().references(() => usuario.id),
+    decididaEm: instante(),
+    motivo: text(),
+    assinaturaPath: text(),
+  },
+  (t) => [
+    unique("treinamento_servico_validador_versao_rodada_equipe_key").on(t.versaoId, t.rodada, t.equipeId),
+    check("treinamento_servico_validador_rodada_check", sql`${t.rodada} > 0 and ${t.posicao} > 0`),
+    check("treinamento_servico_validador_decisao_check", sql`${t.decisao} is null or ${t.decisao} in ('aprovou', 'recusou')`),
+    check(
+      "treinamento_servico_validador_decisao_completa",
+      sql`(${t.decisao} is null) = (${t.usuarioId} is null) and (${t.decisao} is null) = (${t.decididaEm} is null) and (${t.decisao} is null) = (${t.assinaturaPath} is null)`,
+    ),
+    check("treinamento_servico_validador_recusa_com_motivo", sql`${t.decisao} is distinct from 'recusou' or (${t.motivo} is not null and btrim(${t.motivo}) <> '')`),
+    index("treinamento_servico_validador_versao_idx").on(t.versaoId, t.rodada),
+    index("treinamento_servico_validador_equipe_idx").on(t.equipeId),
   ],
 ).enableRLS();

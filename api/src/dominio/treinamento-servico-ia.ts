@@ -537,12 +537,13 @@ export async function prepararRascunhoIA(deps: DepsDaIA, atividadeCodigo: string
 
   // Garante o treinamento e o rascunho (o editor já os cria, mas a rota não depende disso).
   const rascunhoDoEditor = await obterOuCriarRascunho(deps.db, atividadeCodigo, usuarioId);
+  if (rascunhoDoEditor.emValidacao) throw conflito("em_validacao", "Este treinamento está em validação: retire-o da validação para pedir ajustes à Vitória");
   const situacao = await situacaoDaIA(deps, atividadeCodigo);
   const materiais = await materiaisDoServico(deps, atividadeCodigo);
-
   // Com a leitura de dados autorizada, o pedido leva também o resumo do que acontece nas OS do serviço; sem ela, nada muda.
   const dadosDoServico = await blocoDeDadosDoServico(deps, atividadeCodigo);
   const comDados = dadosDoServico ? `${dadosDoServico}\n\n` : "";
+
   if (entrada.tipo === "gerar") {
     const plano = entrada.plano ?? null;
     if (plano?.includes("selecione_materiais") && materiais.length === 0) {

@@ -80,6 +80,10 @@ export const TIPOS_DE_AVISO = [
   "vitoria_sem_ia",
   "treinamento_publicado",
   "treinamento_problema",
+  // Validação do treinamento pelos supervisores
+  "treinamento_para_validar",
+  "treinamento_devolvido",
+  "treinamento_validado",
   // Lista de materiais do serviço
   ...AVISOS_DE_SUGESTAO_DE_MATERIAIS,
   "materiais_atualizados",
@@ -126,6 +130,9 @@ const alvoDe = (tipo: TipoDeAviso): AlvoDeAviso => {
       return "leitura_rh";
     case "treinamento_publicado":
     case "treinamento_problema":
+    case "treinamento_para_validar":
+    case "treinamento_devolvido":
+    case "treinamento_validado":
       return "treinamento";
     case "materiais_atualizados":
       return "servico";
@@ -192,6 +199,9 @@ export const ROTULO_DO_AVISO: Record<TipoDeAviso, string> = {
   vitoria_sem_ia: "Vitória sem IA",
   treinamento_publicado: "Novo treinamento",
   treinamento_problema: "Problema em treinamento",
+  treinamento_para_validar: "Treinamento para validar",
+  treinamento_devolvido: "Treinamento devolvido pela validação",
+  treinamento_validado: "Treinamento validado e publicado",
   sugestao_materiais_nova: "Sugestão de materiais para avaliar",
   contestacao_materiais_nova: "Contestação de materiais para avaliar",
   sugestao_materiais_aceita: "Sua sugestão de materiais foi aceita",
@@ -274,6 +284,9 @@ export const CATEGORIA_DO_AVISO: Record<TipoDeAviso, CategoriaDeEmail | null> = 
   vitoria_sem_ia: "sistema",
   treinamento_publicado: "treinamentos",
   treinamento_problema: "treinamentos",
+  treinamento_para_validar: "treinamentos",
+  treinamento_devolvido: "treinamentos",
+  treinamento_validado: "treinamentos",
   // A sugestão a avaliar e a resposta ao autor vão por e-mail (categoria Equipe); a lista que mudou fica só no sino: avisa muita gente.
   sugestao_materiais_nova: "equipe",
   contestacao_materiais_nova: "equipe",
@@ -301,7 +314,7 @@ export const DESCRICAO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
   preventivas: "Ciclo das preventivas próximo do vencimento ou vencido.",
   ausencias: "Pedidos, aprovações, recusas, alterações e retorno das ausências.",
   equipe: "Representante que assume ou devolve a equipe, membro desativado, técnico que você cadastrou liberado ou recusado, pedido de conta de quem ainda não tem uma, e sugestões e contestações de materiais (a avaliar, aceitas ou recusadas), e a conferência da execução registrada sem sinal (aberta, a escolher, a assinar, com ressalva ou fechada por prazo).",
-  treinamentos: "Novo treinamento de serviço publicado e problema reportado num treinamento.",
+  treinamentos: "Novo treinamento de serviço publicado, problema reportado num treinamento e a validação dos treinamentos pelos supervisores (para validar, devolvido ou validado).",
   sistema: "Falha na leitura do SAP ou do registro de funcionários, cadastro aguardando liberação, funcionário readmitido, equipe sem supervisor, PDF de OS não gerado e a Vitória sem IA.",
   resumo_diario: "Um e-mail por dia, de manhã, com o que espera por você: OS aguardando ciência, pedidos de ausência, cadastros a liberar e OS reservadas.",
 };
@@ -376,6 +389,13 @@ export function caminhoDoAviso(a: ReferenciasDoAviso): string {
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinar` : "/app/catalogo/servicos";
     case "treinamento_problema":
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento/problemas` : "/app/catalogo/servicos";
+    // A validação pelos supervisores: quem valida abre a tela de validar; o autor, a visão geral (o motivo da devolução está lá); a publicação leva às versões.
+    case "treinamento_para_validar":
+      return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento/validar` : "/app/treinamentos/validar";
+    case "treinamento_devolvido":
+      return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento` : "/app/catalogo/servicos";
+    case "treinamento_validado":
+      return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento/versoes` : "/app/catalogo/servicos";
     case "sugestao_materiais_nova":
     case "contestacao_materiais_nova":
     case "sugestao_materiais_aceita":
