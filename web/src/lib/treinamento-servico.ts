@@ -366,6 +366,12 @@ export interface VersaoAnterior {
   publicada_por_nome: string | null;
   total_fases: number;
   total_passos: number;
+  /** Como foi ao ar: pela validação dos supervisores ou direto pelo admin (a exceção, com justificativa). Ausente nas versões de antes da validação. */
+  via?: "validacao" | "direta" | null;
+  /** Quem assinou a publicação (os validadores que aprovaram) e de qual equipe. */
+  assinaturas?: { nome: string; equipe_nome: string | null; em: string }[];
+  /** Só na publicação direta: por que o admin não esperou a validação. */
+  justificativa?: string | null;
 }
 
 export interface TreinamentoResumo {

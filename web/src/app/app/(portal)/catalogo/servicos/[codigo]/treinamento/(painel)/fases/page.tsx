@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FaixaDaValidacao } from "@/components/web/treinamento-servico/editor/FaixaDaValidacao";
 import { EditorDasFases } from "@/components/web/treinamento-servico/editor/EditorDasFases";
 import { codigoDaRota, materiaisDoCatalogo, rascunhoDoTreinamento, servicoDoTreinamento } from "@/lib/treinamento-servico-servidor";
 
@@ -11,5 +12,9 @@ export default async function FasesDoTreinamentoPage({ params }: { params: Promi
   const doServico = (servico?.materiais ?? []).filter((m) => m.ativo).map((m) => ({ id: m.material_id, descricao: m.descricao, categoria: m.categoria }));
   const nomes = Object.fromEntries([...catalogo.map((m) => [m.id, m.descricao] as const), ...(servico?.materiais ?? []).map((m) => [m.material_id, m.descricao] as const)]);
 
-  return <EditorDasFases key={rascunho.versao_id} codigo={codigo} descricao={servico?.descricao ?? codigo} rascunho={rascunho} materiaisDoServico={doServico} nomes={nomes} />;
+  return (
+    <FaixaDaValidacao codigo={codigo} travar>
+      <EditorDasFases key={rascunho.versao_id} codigo={codigo} descricao={servico?.descricao ?? codigo} rascunho={rascunho} materiaisDoServico={doServico} nomes={nomes} />
+    </FaixaDaValidacao>
+  );
 }

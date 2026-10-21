@@ -24,16 +24,19 @@ import { ListaDoServico } from "./ListaDoServico";
  * da lista, cada uma numa janela: para o admin, "Editar lista" (ou "Adicionar materiais", sem nenhum); para os outros,
  * "Sugerir lista" e "Contestar lista" (o supervisor da equipe que mais faz o serviço avalia). Com treinamento
  * publicado, o cartãozinho da Vitória fica à vista, com "Ver ranking". O admin, em vez de jogar, abre o treinamento no
- * editor (ou o cria).
+ * editor (ou o cria); o supervisor de equipe que faz o serviço joga e também abre o editor (ou cria o treinamento).
  */
 export function CartaoServico({
   servico,
   podeEditar,
+  podeCriarTreinamento = podeEditar,
   treinamento = null,
   colaboracao = true,
 }: {
   servico: ServicoDoCatalogo;
   podeEditar: boolean;
+  /** Cria e edita o treinamento do serviço: o admin e o supervisor de equipe que faz o serviço (o admin edita também a lista de materiais). */
+  podeCriarTreinamento?: boolean;
   treinamento?: TreinamentoResumo | null;
   /** Sugerir, contestar e ver as equipes: desligado no Campo de treino, onde a API fictícia não conhece as sugestões. */
   colaboracao?: boolean;
@@ -117,9 +120,17 @@ export function CartaoServico({
               Abrir treinamento
             </LinkButton>
           ) : (
-            <BotaoTreinar codigo={servico.codigo} jaConcluiu={treinamento.concluido} rotulo="Jogar treinamento" sm className="cartao-servico-treinar" />
+            <>
+              <BotaoTreinar codigo={servico.codigo} jaConcluiu={treinamento.concluido} rotulo="Jogar treinamento" sm className="cartao-servico-treinar" />
+              {podeCriarTreinamento && (
+                <LinkButton variant="ghost" sm className="cartao-servico-treinar" href={rotas.app.treinamentoServico(servico.codigo)}>
+                  <Icon name="pencil" size={13} />
+                  Editar treinamento
+                </LinkButton>
+              )}
+            </>
           ))}
-        {!treinamento && podeEditar && (
+        {!treinamento && podeCriarTreinamento && (
           <LinkButton variant="ghost" sm className="cartao-servico-treinar" href={rotas.app.treinamentoServico(servico.codigo)}>
             <Icon name="plus" size={13} />
             Criar treinamento

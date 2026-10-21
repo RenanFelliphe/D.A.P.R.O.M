@@ -22,6 +22,9 @@ function tituloDoAviso(a: Alerta): string {
       return "Vitória sem IA";
     case "treinamento_publicado":
     case "treinamento_problema":
+    case "treinamento_para_validar":
+    case "treinamento_devolvido":
+    case "treinamento_validado":
       return a.treinamento_codigo ? `Treinamento do serviço ${a.treinamento_codigo}` : "Treinamento de serviço";
     case "sugestao_materiais_nova":
     case "contestacao_materiais_nova":
@@ -57,6 +60,12 @@ function atalhoDoAviso(a: Alerta, usuario: Usuario): { rotulo: string; href: str
       return a.treinamento_codigo && ehAdmin(usuario) ? { rotulo: "Ver os problemas reportados", href: rotas.app.treinamentoServico(a.treinamento_codigo, "problemas") } : null;
     case "treinamento_publicado":
       return a.treinamento_codigo ? { rotulo: "Jogar o treinamento", href: rotas.app.treinarServico(a.treinamento_codigo) } : null;
+    case "treinamento_para_validar":
+      return a.treinamento_codigo ? { rotulo: "Revisar e decidir", href: rotas.app.treinamentoServico(a.treinamento_codigo, "validar") } : { rotulo: "Treinamentos para validar", href: rotas.app.treinamentosParaValidar };
+    case "treinamento_devolvido":
+      return a.treinamento_codigo ? { rotulo: "Abrir o treinamento", href: rotas.app.treinamentoServico(a.treinamento_codigo) } : null;
+    case "treinamento_validado":
+      return a.treinamento_codigo ? { rotulo: "Ver as versões", href: rotas.app.treinamentoServico(a.treinamento_codigo, "versoes") } : null;
     case "sugestao_materiais_nova":
       return a.servico_codigo && a.sugestao_id ? { rotulo: "Avaliar a sugestão", href: rotas.app.sugestaoDeMateriais(a.servico_codigo, a.sugestao_id) } : null;
     case "contestacao_materiais_nova":
@@ -85,6 +94,9 @@ const COMO_SEGUIR: Partial<Record<Alerta["tipo"], string>> = {
     "A Vitória continua respondendo, pelas sugestões fixas e pela busca no manual. O perfil dela mostra o provedor, o modelo e os limites; o limite do dia volta à meia-noite.",
   treinamento_problema: "Confira a fase no editor do treinamento, corrija se for o caso e marque o reporte como tratado.",
   treinamento_publicado: "O treinamento fica no catálogo de serviço, no serviço dele.",
+  treinamento_para_validar: "A sua equipe é uma das que mais fazem este serviço. Revise a explicação e as respostas, jogue o teste e aprove com a sua assinatura ou recuse com o motivo; publica quando duas assinaturas se completam.",
+  treinamento_devolvido: "Um validador recusou o treinamento e escreveu o motivo. Ajuste o rascunho e envie de novo: a nova rodada escolhe os validadores outra vez.",
+  treinamento_validado: "As assinaturas se completaram e a versão já está no ar para os técnicos.",
   sugestao_materiais_nova: "Veja o que muda na lista e aceite (com ou sem ajuste) ou recuse com o motivo. Você recebe porque a sua equipe é a que mais faz este serviço.",
   contestacao_materiais_nova: "Leia o motivo. Para aceitar, a contestação precisa de uma lista nova (a da pessoa, se ela mandou uma, ou a sua); senão, recuse com o motivo.",
   sugestao_materiais_aceita: "A lista do serviço já foi atualizada. Quem aceita e quem sugere ganham pontos, na regra Colaboração.",

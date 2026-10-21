@@ -26,11 +26,11 @@ const decodificar = (caminho: string) => {
  * As abas do treinamento do admin, na ordem do trabalho: visão geral, o conteúdo (explicação e fases), a revisão e o histórico.
  * Compara os caminhos decodificados (o código do serviço pode ter barra, `%2F` na URL) e a visão geral só pelo caminho exato.
  */
-export function AbasDoTreinamento({ codigo, problemasAbertos }: { codigo: string; problemasAbertos: number }) {
+export function AbasDoTreinamento({ codigo, problemasAbertos, admin = true }: { codigo: string; problemasAbertos: number; /** Os problemas reportados são só do admin: a aba some para o supervisor que cria o treinamento. */ admin?: boolean }) {
   const atual = decodificar(usePathname());
   return (
     <nav className="abas ts-abas" aria-label="Partes do treinamento">
-      {ABAS.map((aba) => {
+      {ABAS.filter((aba) => admin || aba.tela !== "problemas").map((aba) => {
         const href = rotas.app.treinamentoServico(codigo, aba.tela);
         return (
           <Link key={aba.rotulo} href={href} aria-current={decodificar(href) === atual ? "page" : undefined}>

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
+import { FaixaDaValidacao } from "@/components/web/treinamento-servico/editor/FaixaDaValidacao";
 import { EscolhaDeCriacao } from "@/components/web/treinamento-servico/editor/EscolhaDeCriacao";
 import { rotas } from "@/lib/rotas";
 import { codigoDaRota, rascunhoDoTreinamento, servicoDoTreinamento } from "@/lib/treinamento-servico-servidor";
@@ -19,7 +20,9 @@ export default async function CriarTreinamentoPage({ params }: { params: Promise
         <Icon name="left" size={16} />
         {temAlgo ? "Voltar à visão geral" : "Voltar ao catálogo"}
       </Link>
-      <EscolhaDeCriacao codigo={codigo} descricao={servico?.descricao ?? codigo} rascunho={rascunho} />
+      <FaixaDaValidacao codigo={codigo} travar>
+        <EscolhaDeCriacao codigo={codigo} descricao={servico?.descricao ?? codigo} rascunho={rascunho} />
+      </FaixaDaValidacao>
     </>
   );
 }

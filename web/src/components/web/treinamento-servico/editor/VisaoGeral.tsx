@@ -5,6 +5,7 @@ import { cx } from "@/lib/cx";
 import { dataHora } from "@/lib/formatar";
 import { rotas } from "@/lib/rotas";
 import { pendenciasAbertas, problemasDoConteudo, requisitosDePublicacao, type RascunhoComIA, type VersaoAnterior } from "@/lib/treinamento-servico";
+import { situacaoDaValidacao, textoDoAndamento, type ValidacaoDoTreinamento } from "@/lib/treinamento-validacao";
 import { VitoriaNaCena } from "../vitoria/VitoriaNaCena";
 import { BotaoTestar } from "./BotaoTestar";
 
@@ -15,6 +16,8 @@ interface VisaoGeralProps {
   rascunho: RascunhoComIA | null;
   publicada: VersaoAnterior | null;
   problemasAbertos: number;
+  /** A validação pelos supervisores (só vem para o admin, o autor e os validadores). */
+  validacao?: ValidacaoDoTreinamento | null;
 }
 
 type Situacao = "feita" | "agora" | "depois";
@@ -23,13 +26,13 @@ type Situacao = "feita" | "agora" | "depois";
  * A visão geral do treinamento do admin: o caminho até publicar (conteúdo, validação, teste e publicação), com a situação de
  * cada etapa e o atalho para ela; ao lado, o que está no ar, os problemas reportados e a Vitória.
  */
-export function VisaoGeral({ codigo, descricao, rascunho, publicada, problemasAbertos }: VisaoGeralProps) {
+export function VisaoGeral({ codigo, descricao, rascunho, publicada, problemasAbertos, validacao = null }: VisaoGeralProps) {
   const rota = (tela?: Parameters<typeof rotas.app.treinamentoServico>[1]) => rotas.app.treinamentoServico(codigo, tela);
 
   return (
     <div className="ts-visao">
       <div className="ts-editor-grade">
-        <div className="ts-editor-principal">{rascunho ? <Caminho codigo={codigo} descricao={descricao} rascunho={rascunho} /> : <SemRascunho codigo={codigo} publicada={publicada} />}</div>
+        <div className="ts-editor-principal">{rascunho ? <Caminho codigo={codigo} descricao={descricao} rascunho={rascunho} validacao={validacao} /> : <SemRascunho codigo={codigo} publicada={publicada} />}</div>
 
         <aside className="ts-editor-lado" aria-label="Situação do treinamento">
           <section className="panel ts-no-ar">
@@ -104,7 +107,7 @@ function SemRascunho({ codigo, publicada }: { codigo: string; publicada: VersaoA
   );
 }
 
-function Caminho({ codigo, descricao, rascunho }: { codigo: string; descricao: string; rascunho: RascunhoComIA }) {
+function Caminho({ codigo, descricao, rascunho, validacao }: { codigo: string; descricao: string; rascunho: RascunhoComIA; validacao: ValidacaoDoTreinamento | null }) {
   const rota = (tela?: Parameters<typeof rotas.app.treinamentoServico>[1]) => rotas.app.treinamentoServico(codigo, tela);
   const { explicacao, fases } = rascunho;
   const pendencias = pendenciasAbertas(rascunho).length;
@@ -112,6 +115,9 @@ function Caminho({ codigo, descricao, rascunho }: { codigo: string; descricao: s
   const requisitos = requisitosDePublicacao(rascunho, pendencias);
   const conteudoOk = requisitos.filter((q) => q.chave !== "pendencias").every((q) => q.ok);
   const publicavel = requisitos.every((q) => q.ok);
+  const situacaoDaValidacaoAgora = situacaoDaValidacao(validacao);
+  const previstos = validacao?.validadores_previstos ?? [];
+  const aguardando = validacao?.validadores.filter((x) => !x.decisao).map((x) => x.equipe_nome) ?? [];
 
   const etapas: { icone: IconName; titulo: string; detalhe: string; situacao: Situacao; acoes: ReactNode }[] = [
     {
@@ -132,7 +138,7 @@ function Caminho({ codigo, descricao, rascunho }: { codigo: string; descricao: s
     },
     {
       icone: "check",
-      titulo: "Validação",
+      titulo: "Revisão",
       detalhe: rascunho.gerado_com_ia
         ? pendencias === 0
           ? "Nenhuma pendência da Vitória."
@@ -154,17 +160,31 @@ function Caminho({ codigo, descricao, rascunho }: { codigo: string; descricao: s
     },
     {
       icone: "shield",
-      titulo: "Publicação",
-      detalhe: publicavel ? "Pronto para publicar com a sua assinatura." : "Libera quando o conteúdo estiver completo e sem pendências.",
-      situacao: publicavel ? "agora" : "depois",
-      acoes: publicavel ? (
+      titulo: "Validação pelos supervisores",
+      detalhe:
+        situacaoDaValidacaoAgora === "em_validacao" && validacao
+          ? `Em validação: ${textoDoAndamento(validacao)}${aguardando.length > 0 ? ` · falta decidir: ${aguardando.join(", ")}` : ""}.`
+          : situacaoDaValidacaoAgora === "devolvido" && validacao?.historico[0]
+            ? `Devolvido${validacao.historico[0].por_nome ? ` por ${validacao.historico[0].por_nome}` : ""}: ${validacao.historico[0].motivo ?? "sem motivo registrado"}.`
+            : !publicavel
+              ? "Libera quando o conteúdo estiver completo e sem pendências."
+              : previstos.length > 0
+                ? `Pronto para enviar. Validam: ${previstos.map((p) => p.equipe_nome).join(", ")}. Publica quando ${Math.min(2, previstos.length)} ${Math.min(2, previstos.length) === 1 ? "assina" : "assinam"}.`
+                : "Pronto para enviar. Nenhuma equipe pode validar agora: o administrador publica direto.",
+      situacao: situacaoDaValidacaoAgora !== "nao_enviado" || publicavel ? "agora" : "depois",
+      acoes: situacaoDaValidacaoAgora === "devolvido" ? (
+        <LinkButton variant="p" sm href={rota("revisao")}>
+          Ajustar e reenviar
+          <Icon name="right" size={13} />
+        </LinkButton>
+      ) : publicavel ? (
         <LinkButton variant="p" sm href={rota("publicar")}>
-          Publicar
+          {situacaoDaValidacaoAgora === "em_validacao" ? "Ver o andamento" : validacao && validacao.pode_enviar ? "Enviar para validação" : "Abrir a publicação"}
           <Icon name="right" size={13} />
         </LinkButton>
       ) : (
         <Button variant="p" sm disabled>
-          Publicar
+          Enviar para validação
         </Button>
       ),
     },

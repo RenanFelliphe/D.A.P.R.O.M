@@ -11,6 +11,7 @@ import type { ListaDeServicos, Material, ServicoDoCatalogo } from "@/lib/catalog
 import { rotas } from "@/lib/rotas";
 import { emTreino } from "@/lib/treino-modo";
 import type { TreinamentoResumo } from "@/lib/treinamento-servico";
+import { meusServicosDeTreinamento } from "@/lib/treinamento-servico-servidor";
 
 export const metadata: Metadata = { title: "Catálogo de serviço" };
 
@@ -63,11 +64,20 @@ export default async function ServicosDoCatalogoPage({ searchParams }: { searchP
   const treinamentoPorCodigo = new Map((treinamentos?.treinamentos ?? []).map((t) => [t.atividade_codigo, t]));
   const consulta = { busca, sem_materiais: semMateriais ? "true" : undefined, material_id: filtroDeMaterial };
   const colaboracao = !(await emTreino());
+  // O supervisor cria o treinamento dos serviços que as equipes dele fazem; no campo de treino a `api` fictícia não conhece essa rota.
+  const servicosDeQuemCria = new Set(colaboracao && !podeEditar ? (await meusServicosDeTreinamento().catch(() => ({ servicos: [] as string[] }))).servicos : []);
   // A `api` lista primeiro os serviços com treinamento publicado; na página, cada grupo ganha a sua seção.
   const comTreinamento = lista.servicos.filter((s) => treinamentoPorCodigo.has(s.codigo));
   const outros = lista.servicos.filter((s) => !treinamentoPorCodigo.has(s.codigo));
   const cartao = (s: ServicoDoCatalogo) => (
-    <CartaoServico key={s.codigo} servico={s} podeEditar={podeEditar} treinamento={treinamentoPorCodigo.get(s.codigo) ?? null} colaboracao={colaboracao} />
+    <CartaoServico
+      key={s.codigo}
+      servico={s}
+      podeEditar={podeEditar}
+      podeCriarTreinamento={podeEditar || servicosDeQuemCria.has(s.codigo)}
+      treinamento={treinamentoPorCodigo.get(s.codigo) ?? null}
+      colaboracao={colaboracao}
+    />
   );
 
   return (

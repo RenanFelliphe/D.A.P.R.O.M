@@ -3229,3 +3229,146 @@
     left: 0;
   }
 }
+
+/* ---------- Validação pelos supervisores (AndamentoDaValidacao.tsx, PublicarTreinamento.tsx, ValidarTreinamento.tsx) ---------- */
+
+.ts-travado {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0.6;
+}
+.ts-sem-acesso {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ts-validacao {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ts-validacao-barra {
+  height: 8px;
+}
+.ts-validadores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ts-validadores li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--surface2);
+  animation: ts-validador-entra 0.2s ease-out both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+.ts-validadores li[data-decisao="aprovou"] {
+  border-color: var(--enc);
+  background: var(--enc-bg);
+}
+.ts-validadores li[data-decisao="recusou"] {
+  border-color: var(--blq-bd);
+  background: var(--blq-bg);
+}
+.ts-validador-marca {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--line2);
+  color: var(--ink3);
+}
+.ts-validadores li[data-decisao="aprovou"] .ts-validador-marca {
+  background: var(--enc);
+  color: #fff;
+}
+.ts-validadores li[data-decisao="recusou"] .ts-validador-marca {
+  background: var(--blq);
+  color: #fff;
+}
+.ts-validador-motivo {
+  font-style: italic;
+}
+@keyframes ts-validador-entra {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.ts-quem-valida {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ts-quem-valida ol {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ts-direto {
+  border: 1px dashed var(--line3);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.ts-direto > summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink3);
+}
+.ts-direto[open] > summary {
+  margin-bottom: 10px;
+}
+.ts-validar-acoes {
+  position: sticky;
+  bottom: 0;
+}
+.ts-lista-validar {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+}
+.ts-lista-validar > li {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ts-validadores li {
+    animation: none;
+  }
+}
+.ts-versao-assinantes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ts-versao-assinantes li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--enc);
+}

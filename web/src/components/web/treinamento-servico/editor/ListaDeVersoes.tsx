@@ -29,7 +29,7 @@ export function ListaDeVersoes({ codigo, versoes }: { codigo: string; versoes: V
       <div className="ts-secao-cab">
         <div>
           <h2 id="titulo-versoes">Versões</h2>
-          <p className="muted">A versão publicada nunca muda: editar cria a seguinte, que precisa de nova assinatura.</p>
+          <p className="muted">A versão publicada nunca muda: editar cria a seguinte, que precisa de nova validação pelos supervisores.</p>
         </div>
       </div>
       <ol className="ts-linha-do-tempo">
@@ -52,10 +52,32 @@ export function ListaDeVersoes({ codigo, versoes }: { codigo: string; versoes: V
                     <Icon name="right" size={13} />
                   </LinkButton>
                 ) : (
-                  <span className="ts-versao-assinatura">
-                    <Icon name="shield" size={13} />
-                    Assinada e publicada por {v.publicada_por_nome ?? "—"} em {dataHora(v.publicada_em)}
-                  </span>
+                  <>
+                    {v.via === "validacao" && v.assinaturas && v.assinaturas.length > 0 ? (
+                      <>
+                        <span className="ts-versao-assinatura">
+                          <Icon name="shield" size={13} />
+                          Validada pelos supervisores e publicada em {dataHora(v.publicada_em)}
+                        </span>
+                        <ul className="ts-versao-assinantes">
+                          {v.assinaturas.map((a) => (
+                            <li key={`${a.nome}-${a.em}`} className="small">
+                              <Icon name="check" size={13} />
+                              {a.nome}
+                              {a.equipe_nome ? ` · ${a.equipe_nome}` : ""} · {dataHora(a.em)}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : (
+                      <span className="ts-versao-assinatura">
+                        <Icon name="shield" size={13} />
+                        Assinada e publicada por {v.publicada_por_nome ?? "—"} em {dataHora(v.publicada_em)}
+                        {v.via === "direta" ? " · publicação direta do administrador" : ""}
+                      </span>
+                    )}
+                    {v.via === "direta" && v.justificativa && <span className="small">Justificativa: {v.justificativa}</span>}
+                  </>
                 )}
               </div>
             </li>

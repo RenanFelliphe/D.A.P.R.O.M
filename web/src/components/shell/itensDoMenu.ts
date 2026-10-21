@@ -16,10 +16,11 @@ import type { ItemMenu } from "./MenuLateral";
  * - Admin: Ordem de Serviço, APR, Catálogo, Equipes e usuários, Auditoria, Vitória, Gamificação (sem Minha pontuação:
  *   o admin não joga) e Dashboard.
  * - Supervisor e técnico: Ordem de Serviço (o técnico, "OS da equipe"), Minha equipe, Catálogo (só para consulta), Gamificação e
- *   Dashboard; o supervisor com cadastro de técnicos e o técnico só para consulta.
+ *   Dashboard; o supervisor com cadastro de técnicos e o técnico só para consulta, e mais "Para validar" (os treinamentos de serviço
+ *   que esperam a decisão do supervisor).
  * O Dashboard é sempre o último; o Campo de treino vem depois, num grupo à parte (ver `Casca`).
  */
-export function itensDeNavegacao(usuario: Usuario, pendentes?: number, perguntasSemResposta?: number): ItemMenu[] {
+export function itensDeNavegacao(usuario: Usuario, pendentes?: number, perguntasSemResposta?: number, paraValidar?: number): ItemMenu[] {
   const admin = ehAdmin(usuario);
   // As abas de cada seção viram o dropdown do item; quem só tem uma fica com o link simples.
   const comAbas = (item: ItemMenu, abas: AbaDaSecao[]): ItemMenu => (abas.length > 1 ? { ...item, subitens: abas } : item);
@@ -32,7 +33,19 @@ export function itensDeNavegacao(usuario: Usuario, pendentes?: number, perguntas
   // A gamificação é para todos; quem joga abre em "Minha pontuação" e o admin, no Ranking (a primeira aba de cada um).
   const abasDaGamificacaoDeQuem = abasDaGamificacao(usuario);
   const gamificacao = comAbas({ href: abasDaGamificacaoDeQuem[0]!.href, icone: "trophy", rotulo: "Gamificação", prefixos: ["/app/gamificacao"], chave: "menu-gamificacao" }, abasDaGamificacaoDeQuem);
-  if (!admin) return [quadro, { href: rotas.app.usuarios, icone: "users", rotulo: "Minha equipe", chave: "menu-usuarios" }, catalogo, gamificacao, dashboard];
+  // O supervisor valida os treinamentos de serviço das equipes que mais fazem o serviço: o selo conta os que esperam a decisão dele.
+  const validar: ItemMenu[] = ehSupervisor(usuario)
+    ? [
+        {
+          href: rotas.app.treinamentosParaValidar,
+          icone: "check",
+          rotulo: "Para validar",
+          chave: "menu-validar",
+          ...(paraValidar ? { contador: paraValidar, rotuloDoContador: `${paraValidar} treinamentos para validar` } : {}),
+        },
+      ]
+    : [];
+  if (!admin) return [quadro, { href: rotas.app.usuarios, icone: "users", rotulo: "Minha equipe", chave: "menu-usuarios" }, catalogo, ...validar, gamificacao, dashboard];
   return [
     quadro,
     comAbas({ href: rotas.web.modelos, icone: "clip", rotulo: "APR", prefixos: ["/web/apr"], chave: "menu-apr" }, abasApr),

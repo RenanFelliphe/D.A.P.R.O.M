@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LinkButton } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import { FaixaDaValidacao } from "@/components/web/treinamento-servico/editor/FaixaDaValidacao";
 import { GerarComVitoria } from "@/components/web/treinamento-servico/editor/GerarComVitoria";
 import { rotas } from "@/lib/rotas";
 import { codigoDaRota, rascunhoDoTreinamento, servicoDoTreinamento } from "@/lib/treinamento-servico-servidor";
@@ -21,6 +22,7 @@ export default async function GerarTreinamentoPage({ params }: { params: Promise
         <Icon name="left" size={16} />
         Voltar à escolha
       </Link>
+      <FaixaDaValidacao codigo={codigo} travar>
       {rascunho.ia.disponivel ? (
         <GerarComVitoria codigo={codigo} rascunho={rascunho} materiais={materiais} />
       ) : (
@@ -33,6 +35,7 @@ export default async function GerarTreinamentoPage({ params }: { params: Promise
           </span>
         </Notice>
       )}
+      </FaixaDaValidacao>
     </>
   );
 }

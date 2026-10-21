@@ -8,7 +8,7 @@
  */
 
 /** As telas do treinamento de serviço do admin, além da visão geral (`rotas.app.treinamentoServico`). */
-export type TelaDoTreinamento = "criar" | "gerar" | "explicacao" | "fases" | "revisao" | "publicar" | "versoes" | "problemas";
+export type TelaDoTreinamento = "criar" | "gerar" | "explicacao" | "fases" | "revisao" | "publicar" | "validar" | "versoes" | "problemas";
 
 export const rotas = {
   app: {
@@ -65,9 +65,12 @@ export const rotas = {
     catalogoMateriais: "/app/catalogo/materiais",
     /**
      * Treinamento de serviço do admin. Sem `tela`, a visão geral (o caminho até publicar); as abas `explicacao`, `fases`,
-     * `revisao`, `versoes` e `problemas`; e as telas de fluxo `criar` (com a Vitória ou à mão), `gerar` (rascunho pela IA) e `publicar`.
+     * `revisao`, `versoes` e `problemas`; e as telas de fluxo `criar` (com a Vitória ou à mão), `gerar` (rascunho pela IA), `publicar`
+     * (enviar para validação ou, o admin, publicar direto) e `validar` (a decisão de quem valida).
      */
     treinamentoServico: (codigo: string, tela?: TelaDoTreinamento) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinamento${tela ? `/${tela}` : ""}`,
+    /** Os treinamentos que esperam a validação do supervisor (as 3 equipes que mais fazem o serviço validam; 2 assinam). */
+    treinamentosParaValidar: "/app/treinamentos/validar",
     /** A capa do treinamento de serviço (técnico, inclusive pendente); o jogo abre numa janela por cima. */
     treinarServico: (codigo: string) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinar`,
     /** Sugestões e contestações da lista de materiais (todos os perfis; o admin só avalia): `?aba=avaliar` abre a fila de quem avalia. */

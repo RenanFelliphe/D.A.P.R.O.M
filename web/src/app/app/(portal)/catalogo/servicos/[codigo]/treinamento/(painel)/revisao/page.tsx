@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FaixaDaValidacao } from "@/components/web/treinamento-servico/editor/FaixaDaValidacao";
 import { RevisaoDoRascunho } from "@/components/web/treinamento-servico/editor/RevisaoDoRascunho";
 import { codigoDaRota, materiaisDoCatalogo, rascunhoDoTreinamento, servicoDoTreinamento } from "@/lib/treinamento-servico-servidor";
 
@@ -10,5 +11,9 @@ export default async function RevisaoDoTreinamentoPage({ params }: { params: Pro
   const [servico, rascunho, catalogo] = await Promise.all([servicoDoTreinamento(codigo), rascunhoDoTreinamento(codigo), materiaisDoCatalogo()]);
   const nomes = Object.fromEntries([...catalogo.map((m) => [m.id, m.descricao] as const), ...(servico?.materiais ?? []).map((m) => [m.material_id, m.descricao] as const)]);
 
-  return <RevisaoDoRascunho key={rascunho.versao_id} codigo={codigo} descricao={servico?.descricao ?? codigo} rascunho={rascunho} nomes={nomes} />;
+  return (
+    <FaixaDaValidacao codigo={codigo} travar>
+      <RevisaoDoRascunho key={rascunho.versao_id} codigo={codigo} descricao={servico?.descricao ?? codigo} rascunho={rascunho} nomes={nomes} />
+    </FaixaDaValidacao>
+  );
 }

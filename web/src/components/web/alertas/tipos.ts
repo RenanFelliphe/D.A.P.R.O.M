@@ -88,7 +88,11 @@ export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; u
       return { icone: "chat", urgente: false };
     case "treinamento_publicado":
     case "treinamento_problema":
+    case "treinamento_validado":
       return { icone: "trophy", urgente: false };
+    case "treinamento_para_validar":
+    case "treinamento_devolvido":
+      return { icone: "check", urgente: false };
     case "sugestao_materiais_nova":
     case "contestacao_materiais_nova":
     case "sugestao_materiais_aceita":
