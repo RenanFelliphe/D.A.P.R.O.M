@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
 import { and, asc, desc, eq, isNotNull, isNull } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { atividade, modeloApr, orientacaoModeloApr } from "../db/schema";
+import { atividade, modeloApr, orientacaoModeloApr, osRecomendacaoApr } from "../db/schema";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { osVisivel } from "./painel-os";
 
@@ -9,6 +10,10 @@ import { osVisivel } from "./painel-os";
  * descrição e os exemplos de cada modelo e recomenda o que mais combina com a OS, pelas palavras-chave da orientação
  * (`orientacao_modelo_apr`) achadas no título, no serviço do catálogo e na descrição da OS. A recomendação nunca é
  * aplicada sozinha: a tela pede para o técnico conferir.
+ *
+ * A recomendação é guardada por OS (`os_recomendacao_apr`, `recomendacao-apr-guardada.ts`): primeiro as palavras-chave, na hora, e
+ * depois a IA, quando a função Recomendação está ligada. Quem pede a escolha aqui só lê o que está guardado: sem linha, ou com
+ * a linha velha (o texto da OS ou os modelos mudaram), calcula na hora por palavras-chave, e nunca chama a IA.
  */
 
 /** Sem acento e em minúsculas. */
@@ -99,6 +104,45 @@ export function recomendarModelo(textos: TextosDaOs, orientacoes: { codigo: stri
   return { codigo: maior > 0 && noTopo.length === 1 ? noTopo[0]![0] : null, encontradas };
 }
 
+/** O que da orientação de um modelo entra na impressão que dá a validade da análise guardada. */
+export interface ModeloParaLer {
+  codigo: string;
+  versao: number;
+  descricao: string;
+  exemplos: string[];
+  palavrasChave: string[];
+}
+
+/** Hash do que a análise lê dos modelos (código, versão, descrição, exemplos e palavras-chave): mudou o modelo, a análise guardada está velha. */
+export function impressaoDosModelos(modelos: ModeloParaLer[]): string {
+  return createHash("sha256").update(JSON.stringify(modelos.map((m) => [m.codigo, m.versao, m.descricao, m.exemplos, m.palavrasChave]))).digest("hex");
+}
+
+/** A chave de uma análise: o texto da OS que é lido e a impressão dos modelos. Igual à guardada, ela ainda vale. */
+export function chaveDaAnalise(textos: TextosDaOs, impressaoDosModelosLidos: string): string {
+  return createHash("sha256").update(JSON.stringify([textos.titulo, textos.servico ?? "", textos.descricao ?? "", impressaoDosModelosLidos])).digest("hex");
+}
+
+/** Como a tela e o snapshot recebem a escolha: o recomendado, de onde ele veio, o porquê (só da IA) e o que cada modelo achou na OS. */
+export interface EscolhaGuardada {
+  recomendado: string | null;
+  fonte: "ia" | "palavras";
+  motivo: string | null;
+  encontradas: Map<string, string[]>;
+}
+
+/**
+ * A escolha de uma OS: a análise guardada quando a chave dela bate com o texto e os modelos de agora; senão (sem linha, ou a linha
+ * velha) a leitura por palavras-chave, feita na hora. Nunca chama a IA.
+ */
+export function escolhaDaOs(guardada: typeof osRecomendacaoApr.$inferSelect | undefined, textos: TextosDaOs, modelos: { codigo: string; palavrasChave: string[] }[], impressao: string): EscolhaGuardada {
+  if (guardada && guardada.chave === chaveDaAnalise(textos, impressao)) {
+    return { recomendado: guardada.codigo, fonte: guardada.fonte, motivo: guardada.motivo, encontradas: new Map(guardada.encontradas.map((e) => [e.codigo, e.palavras])) };
+  }
+  const { codigo, encontradas } = recomendarModelo(textos, modelos);
+  return { recomendado: codigo, fonte: "palavras", motivo: null, encontradas };
+}
+
 /** A versão publicada mais recente de cada modelo não excluído, com a orientação, por código. */
 export async function modelosParaEscolher(db: Db) {
   const linhas = await db
@@ -122,15 +166,18 @@ export async function modelosParaEscolher(db: Db) {
 
 /**
  * `GET /os/{id}/modelos-apr`: os modelos que o técnico pode escolher para a APR desta OS, com a orientação, o que cada um
- * achou na OS e o recomendado. As palavras-chave não vão: o técnico vê só o que foi achado.
+ * achou na OS e o recomendado (com a fonte, `ia` ou `palavras`, e o motivo da IA). As palavras-chave não vão: o técnico vê só o que foi achado.
  */
 export async function escolhaDoModelo(db: Db, eu: UsuarioAutenticado, osId: string) {
   const { os: o } = await osVisivel(db, eu, osId);
   const [servico] = o.codigoAtividade ? await db.select({ descricao: atividade.descricao }).from(atividade).where(eq(atividade.codigo, o.codigoAtividade)) : [];
   const modelos = await modelosParaEscolher(db);
-  const { codigo, encontradas } = recomendarModelo({ titulo: o.titulo, servico: servico?.descricao, descricao: o.descricao }, modelos);
+  const [guardada] = await db.select().from(osRecomendacaoApr).where(eq(osRecomendacaoApr.osId, o.id));
+  const { recomendado, fonte, motivo, encontradas } = escolhaDaOs(guardada, { titulo: o.titulo, servico: servico?.descricao, descricao: o.descricao }, modelos, impressaoDosModelos(modelos));
   return {
-    recomendado: codigo,
+    recomendado,
+    fonte,
+    motivo,
     modelos: modelos.map(({ palavrasChave: _, ...m }) => ({ ...m, encontradas: encontradas.get(m.codigo) ?? [] })),
   };
 }

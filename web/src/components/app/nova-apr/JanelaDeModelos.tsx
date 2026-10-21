@@ -37,9 +37,11 @@ function AvisoDaRecomendacao({ escolha }: { escolha: EscolhaDoModelo }) {
   );
 }
 
-function OpcaoDeModelo({ modelo, recomendado, atual, carregando, bloqueado, aoSelecionar }: {
+function OpcaoDeModelo({ modelo, recomendado, motivo, atual, carregando, bloqueado, aoSelecionar }: {
   modelo: ModeloParaEscolher;
   recomendado: boolean;
+  /** Por que a Vitória recomenda este modelo (só quando a IA leu a OS). */
+  motivo: string | null;
   atual: boolean;
   carregando: boolean;
   bloqueado: boolean;
@@ -56,6 +58,7 @@ function OpcaoDeModelo({ modelo, recomendado, atual, carregando, bloqueado, aoSe
         {modelo.codigo} — {modelo.titulo}
       </h4>
       {modelo.descricao ? <p>{modelo.descricao}</p> : <p className="muted">O admin ainda não descreveu os serviços deste modelo.</p>}
+      {recomendado && motivo && <p className="achado">Vitória: {motivo}</p>}
       {modelo.encontradas.length > 0 && (
         <p className="achado">
           Encontrado nesta OS:{" "}
@@ -90,6 +93,7 @@ export function JanelaDeModelos({ escolha, erro, atual, carregando, aoSelecionar
       key={m.codigo}
       modelo={m}
       recomendado={m === recomendado}
+      motivo={m === recomendado ? (escolha?.motivo ?? null) : null}
       atual={m.codigo === atual}
       carregando={m.codigo === carregando}
       bloqueado={Boolean(carregando)}

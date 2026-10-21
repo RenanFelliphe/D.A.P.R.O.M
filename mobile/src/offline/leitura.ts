@@ -250,6 +250,8 @@ export function criarLeitura(banco: Banco, pessoa: () => PessoaLogada | null, ag
       const modelos = await lerModelosPublicados(banco);
       return {
         recomendado: os.escolha_do_modelo.recomendado,
+        fonte: os.escolha_do_modelo.fonte,
+        motivo: os.escolha_do_modelo.motivo,
         modelos: modelos.map((m) => ({ codigo: m.codigo, versao: m.versao, titulo: m.titulo, descricao: m.orientacao.descricao, exemplos: m.orientacao.exemplos, encontradas: achadas.get(m.codigo) ?? [] })),
       };
     },

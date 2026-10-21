@@ -84,6 +84,10 @@ export interface ModeloParaEscolher {
  */
 export interface EscolhaDoModelo {
   recomendado: string | null;
+  /** De onde vem a recomendação: `ia` (a Vitória leu a OS) ou `palavras` (a leitura por palavras-chave). Ausente nas cópias offline de antes. */
+  fonte?: "ia" | "palavras";
+  /** Só na `ia`: a frase curta com o porquê; a tela mostra no lugar das palavras achadas. */
+  motivo?: string | null;
   modelos: ModeloParaEscolher[];
 }
 

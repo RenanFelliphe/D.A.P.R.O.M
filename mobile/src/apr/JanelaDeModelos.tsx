@@ -32,12 +32,13 @@ function AvisoDaRecomendacao({ escolha }: { escolha: EscolhaDoModelo }) {
   );
 }
 
-function OpcaoDeModelo({ modelo, recomendado, atual, carregando, bloqueado, aoSelecionar }: { modelo: ModeloParaEscolher; recomendado: boolean; atual: boolean; carregando: boolean; bloqueado: boolean; aoSelecionar: () => void }) {
+function OpcaoDeModelo({ modelo, recomendado, motivo, atual, carregando, bloqueado, aoSelecionar }: { modelo: ModeloParaEscolher; recomendado: boolean; motivo: string | null; atual: boolean; carregando: boolean; bloqueado: boolean; aoSelecionar: () => void }) {
   return (
     <View style={[estilos.opcao, recomendado && estilos.recomendada]}>
       {atual ? <Selo>Em uso nesta APR</Selo> : null}
       <Text style={estilos.titulo}>{`${modelo.codigo} — ${modelo.titulo}`}</Text>
       {modelo.descricao ? <Text style={estilos.descricao}>{modelo.descricao}</Text> : <Text style={estilos.suave}>O admin ainda não descreveu os serviços deste modelo.</Text>}
+      {recomendado && motivo ? <Text style={estilos.achado}>{`Vitória: ${motivo}`}</Text> : null}
       {modelo.encontradas.length > 0 ? <Text style={estilos.achado}>{`Encontrado nesta OS: ${modelo.encontradas.join(", ")}`}</Text> : null}
       <Botao
         titulo={atual ? "Em uso" : `Selecionar ${modelo.codigo}`}
@@ -58,7 +59,7 @@ export function JanelaDeModelos({ escolha, carregandoEscolha, erro, atual, carre
   const recomendado = escolha?.modelos.find((m) => m.codigo === escolha.recomendado);
   const outros = escolha?.modelos.filter((m) => m !== recomendado) ?? [];
   const opcao = (m: ModeloParaEscolher) => (
-    <OpcaoDeModelo key={m.codigo} modelo={m} recomendado={m === recomendado} atual={m.codigo === atual} carregando={m.codigo === carregando} bloqueado={Boolean(carregando)} aoSelecionar={() => aoSelecionar(m.codigo)} />
+    <OpcaoDeModelo key={m.codigo} modelo={m} recomendado={m === recomendado} motivo={m === recomendado ? (escolha?.motivo ?? null) : null} atual={m.codigo === atual} carregando={m.codigo === carregando} bloqueado={Boolean(carregando)} aoSelecionar={() => aoSelecionar(m.codigo)} />
   );
 
   return (

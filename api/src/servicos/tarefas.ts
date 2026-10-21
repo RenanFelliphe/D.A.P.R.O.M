@@ -11,6 +11,7 @@ import { conferirAusencias } from "../dominio/ausencia";
 import { conferirConferencias } from "../dominio/conferencia-execucao";
 import { atualizarSupervisaoDasEquipes } from "../dominio/representacao";
 import { verificarCiclos } from "../dominio/preventivas";
+import { analisarRecomendacoesDeApr } from "../dominio/recomendacao-apr-guardada";
 import { fecharPedidosVencidos } from "../dominio/pedidos-execucao";
 import { agendarLeituraDiariaRh, alertarFalhaDaLeituraRh, manipularConferenciaRh, manipularLeituraRh } from "../dominio/rh";
 
@@ -69,6 +70,8 @@ export const INTERVALO_CICLOS_MIN = 60;
 export const INTERVALO_AUSENCIAS_MIN = 60;
 /** De quanto em quanto tempo os prazos das conferências das execuções são conferidos (avisos de 24 h e 48 h, e o fechamento aos 7 dias). */
 export const INTERVALO_CONFERENCIAS_MIN = 60;
+/** De quanto em quanto tempo as OS sem recomendação de modelo de APR (ou com ela velha) são analisadas: as palavras-chave de todas e a IA em lotes. */
+export const INTERVALO_RECOMENDACOES_MIN = 1;
 /** De quanto em quanto tempo as temporadas da gamificação que passaram da tolerância são fechadas. */
 export const INTERVALO_TEMPORADAS_MIN = 60;
 /** De quanto em quanto tempo se confere se já é hora da leitura diária do registro de funcionários (o índice único evita repetir). */
@@ -176,7 +179,7 @@ export async function agendarLeituraSap(deps: Deps): Promise<boolean> {
  * `INTERVALO_AUSENCIAS_MIN` minutos, com quem responde por cada equipe), confere os prazos das conferências das execuções (a cada
  * `INTERVALO_CONFERENCIAS_MIN` minutos: avisos de 24 h e 48 h e o fechamento aos 7 dias), agenda o resumo diário por e-mail (quando há servidor de
  * e-mail, uma vez por dia a partir de `EMAIL_RESUMO_HORA`) e executa as tarefas vencidas, sem que
- * duas rodadas se sobreponham. Devolve a função que o encerra.
+ * duas rodadas se sobreponham. A cada `INTERVALO_RECOMENDACOES_MIN` minutos analisa as OS sem recomendação de modelo de APR. Devolve a função que o encerra.
  */
 export function iniciarTarefas(deps: Deps): () => void {
   let rodando = false;
@@ -188,6 +191,7 @@ export function iniciarTarefas(deps: Deps): () => void {
   let ultimaConferenciaDeConferencias = 0;
   let ultimaChecagemDaLeituraRh = 0;
   let ultimaChecagemDoResumo = 0;
+  let ultimaVarreduraDeRecomendacoes = 0;
 
   async function rodada() {
     if (rodando || parado) return;
@@ -220,6 +224,11 @@ export function iniciarTarefas(deps: Deps): () => void {
         ultimaConferenciaDeConferencias = agora;
         // Idempotente; uma falha aqui não impede as tarefas da rodada.
         await conferirConferencias(deps.db, deps.agora()).catch((erro) => console.error("Falha ao conferir os prazos das conferências das execuções:", erro));
+      }
+      if (agora - ultimaVarreduraDeRecomendacoes >= minutos(INTERVALO_RECOMENDACOES_MIN)) {
+        ultimaVarreduraDeRecomendacoes = agora;
+        // Idempotente; uma falha aqui não impede as tarefas da rodada. Cobre as OS de qualquer entrada (SAP, planilha, PDF, apoio).
+        await analisarRecomendacoesDeApr(deps).catch((erro) => console.error("Falha ao analisar as recomendações de modelo de APR:", erro));
       }
       if (deps.email.configurado && agora - ultimaChecagemDoResumo >= minutos(INTERVALO_RESUMO_MIN)) {
         ultimaChecagemDoResumo = agora;

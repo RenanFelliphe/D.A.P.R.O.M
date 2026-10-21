@@ -1,11 +1,11 @@
 import { and, desc, eq, gte, inArray, isNotNull, or } from "drizzle-orm";
 import type { Db } from "../db/conexao";
-import { apr, aprParticipante, atividade, equipe, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
+import { apr, aprParticipante, atividade, equipe, execucao, execucaoPausa, itemModeloApr, localInstalacao, modeloApr, os, osRecomendacaoApr, riscoModeloApr, usuario } from "../db/schema";
 import { ausenciaDaPessoaParaApi, ausentesEm } from "./ausencia";
 import { materiaisDosServicos } from "./catalogo";
 import { checklistsDasOs } from "./checklist-inspecao";
 import { semClassificacao } from "./modelo-apr-banco";
-import { modelosParaEscolher, recomendarModelo } from "./recomendacao-apr";
+import { escolhaDaOs, impressaoDosModelos, modelosParaEscolher } from "./recomendacao-apr";
 import { diaDe } from "./tempo";
 import { usuarioParaApi } from "./usuarios";
 
@@ -78,9 +78,18 @@ export async function montarSnapshot(db: Db, usuarioLogado: { id: string; equipe
   const paraEscolher = await modelosParaEscolher(db);
   const orientacaoPorCodigo = new Map(paraEscolher.map((m) => [m.codigo, { descricao: m.descricao, exemplos: m.exemplos }]));
   const servicoPorCodigo = new Map(atividades.map((a) => [a.codigo, a.descricao]));
+  // O que ficou guardado da análise de cada OS (palavras-chave e, quando a função Recomendação está ligada, a IA); a OS sem análise
+  // ou com a análise velha sai pelas palavras-chave, calculadas aqui.
+  const guardadas = new Map((osIds.length ? await db.select().from(osRecomendacaoApr).where(inArray(osRecomendacaoApr.osId, osIds)) : []).map((g) => [g.osId, g]));
+  const impressao = impressaoDosModelos(paraEscolher);
   const escolhaDe = (o: (typeof ordens)[number]) => {
-    const { codigo, encontradas } = recomendarModelo({ titulo: o.titulo, servico: o.codigoAtividade ? servicoPorCodigo.get(o.codigoAtividade) : null, descricao: o.descricao }, paraEscolher);
-    return { recomendado: codigo, encontradas: [...encontradas].map(([modelo, palavras]) => ({ codigo: modelo, palavras })) };
+    const { recomendado, fonte, motivo, encontradas } = escolhaDaOs(
+      guardadas.get(o.id),
+      { titulo: o.titulo, servico: o.codigoAtividade ? servicoPorCodigo.get(o.codigoAtividade) : null, descricao: o.descricao },
+      paraEscolher,
+      impressao,
+    );
+    return { recomendado, fonte, motivo, encontradas: [...encontradas].map(([modelo, palavras]) => ({ codigo: modelo, palavras })) };
   };
 
   return {

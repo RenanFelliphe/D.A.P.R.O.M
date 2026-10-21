@@ -38,7 +38,7 @@ export interface OsDaCopia {
   justificativa_devolucao: string | null;
   devolucao_exportada_em: string | null;
   /** O modelo que a leitura da OS recomendou e o que cada modelo achou nela. */
-  escolha_do_modelo: { recomendado: string | null; encontradas: { codigo: string; palavras: string[] }[] };
+  escolha_do_modelo: { recomendado: string | null; fonte?: "ia" | "palavras"; motivo?: string | null; encontradas: { codigo: string; palavras: string[] }[] };
   checklist_inspecao: PerguntaDoChecklist[];
 }
 
