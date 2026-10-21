@@ -20,8 +20,8 @@ export type Intensidade = "baixa" | "media" | "alta";
 
 /**
  * Cores da intensidade, do mais fraco ao mais forte — de propósito sem vermelho ou amarelo puros (muito intensos,
- * cansam a vista e lembram alarme): um dourado opaco até um terracota, nunca um tom "neon". A mancha da radiação,
- * os pontos sem radiação e a legenda usam sempre esta mesma escala, para nunca divergir.
+ * cansam a vista e lembram alarme): um dourado opaco até um terracota, nunca um tom "neon". A radiação, os pontos
+ * sem radiação e a legenda usam sempre esta mesma escala, para nunca divergir.
  */
 const CORES: Record<Intensidade, string> = { baixa: "#E3A63B", media: "#DD6B33", alta: "#B3362A" };
 
@@ -32,17 +32,21 @@ export const intensidadeDa = (total: number, maior: number): Intensidade => {
 };
 
 /**
- * Pontos de cor da radiação (`leaflet.heat`): da quase transparente (uma OS isolada) até a mais forte (a área mais
- * movimentada), nas mesmas três cores de `CORES`. A barra da legenda é pintada com este mesmo gradiente.
+ * Pontos de cor da radiação: já bem visível cedo (pouco "lavado"), até a mais forte na área mais movimentada, nas
+ * mesmas três cores de `CORES`. A barra da legenda é pintada com este mesmo gradiente.
  */
 const PONTOS_DO_GRADIENTE: [number, string][] = [
-  [0.12, "rgba(227, 166, 59, 0.35)"],
-  [0.4, CORES.baixa],
-  [0.7, CORES.media],
+  [0, "rgba(227, 166, 59, 0)"],
+  [0.22, "rgba(227, 166, 59, 0.8)"],
+  [0.55, CORES.media],
   [1, CORES.alta],
 ];
-const GRADIENTE_DA_RADIACAO = Object.fromEntries(PONTOS_DO_GRADIENTE) as Record<number, string>;
 const BARRA_DO_GRADIENTE = `linear-gradient(to right, ${PONTOS_DO_GRADIENTE.map(([p, cor]) => `${cor} ${p * 100}%`).join(", ")})`;
+
+/** Por baixo do valor da área mais movimentada, nenhum ponto some: mesmo uma OS isolada fica bem visível. */
+const OPACIDADE_MINIMA_DA_RADIACAO = 0.55;
+const RAIO_DA_RADIACAO = 26;
+const DESFOQUE_DA_RADIACAO = 16;
 
 const chaveDa = (c: CelulaDoMapa) => `${c.latitude}:${c.longitude}`;
 
@@ -56,17 +60,115 @@ const coordenadas = (c: CelulaDoMapa) => `${c.latitude.toFixed(3)}°, ${c.longit
 
 const reduzirMovimento = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/** Tabela de 256 cores (uma por nível de opacidade acumulada), lida de um gradiente de 1×256 pixels. */
+function tabelaDeCores(gradiente: [number, string][]): Uint8ClampedArray {
+  const tela = document.createElement("canvas");
+  tela.width = 1;
+  tela.height = 256;
+  const ctx = tela.getContext("2d")!;
+  const grad = ctx.createLinearGradient(0, 0, 0, 256);
+  for (const [posicao, cor] of gradiente) grad.addColorStop(posicao, cor);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1, 256);
+  return ctx.getImageData(0, 0, 1, 256).data;
+}
+
+/** O carimbo de cada ponto: um círculo invisível bem longe da tela, só para a sombra borrada aparecer. */
+function carimboDoPonto(raio: number, desfoque: number): HTMLCanvasElement {
+  const tela = document.createElement("canvas");
+  const r = raio + desfoque;
+  tela.width = tela.height = r * 2;
+  const ctx = tela.getContext("2d")!;
+  const distancia = r * 8;
+  ctx.shadowOffsetX = ctx.shadowOffsetY = distancia;
+  ctx.shadowBlur = desfoque;
+  ctx.shadowColor = "#000";
+  ctx.beginPath();
+  ctx.arc(r - distancia, r - distancia, raio, 0, Math.PI * 2, true);
+  ctx.closePath();
+  ctx.fill();
+  return tela;
+}
+
+interface PontoDaRadiacao {
+  lat: number;
+  lng: number;
+  peso: number;
+}
+
 /**
- * `leaflet.heat` é de antes dos empacotadores de módulo: ele não importa o Leaflet, só espera um `L` global já
- * carregado e pendura `heatLayer` nele. Por isso resolvemos sempre o mesmo objeto "de verdade" (nunca o `namespace`
- * do ES module, que pode vir congelado) e o colocamos em `window.L` antes de carregar o plugin.
+ * O estado da camada de radiação (os campos que `L.Layer.extend` guarda em cada instância). `extend` tipa `props`
+ * como `any` — a tipagem aqui é só para o nosso próprio código, não muda o que o Leaflet aceita.
  */
-async function carregarLeaflet() {
-  const modulo = await import("leaflet");
-  const L = ((modulo as unknown as { default?: typeof modulo }).default ?? modulo) as typeof modulo;
-  (window as unknown as { L: typeof L }).L = L;
-  await import("leaflet.heat");
-  return L;
+interface EstadoDaCamada {
+  _mapaDoLeaflet: MapaLeaflet;
+  _tela: HTMLCanvasElement;
+  _ctx: CanvasRenderingContext2D;
+  _redesenhar: () => void;
+  _redimensionar: () => void;
+}
+
+/**
+ * A radiação do mapa de calor, como camada própria do Leaflet (`L.Layer.extend`, a mesma API que o `leaflet.heat`
+ * usa por baixo): cada ponto desenha o carimbo borrado com a opacidade do seu peso; onde várias mancham se
+ * sobrepõem, a opacidade se acumula (a "energia" se somando), e por fim cada pixel troca a opacidade acumulada pela
+ * cor equivalente do gradiente. Esse código é nosso, e não de um plugin de antes dos empacotadores de módulo (que
+ * conta com um `L` global): aquele funcionava só depois do build de produção, nunca no ambiente de teste.
+ */
+function criarCamadaDeRadiacao(L: typeof import("leaflet"), pontos: PontoDaRadiacao[], maiorPeso: number) {
+  const carimbo = carimboDoPonto(RAIO_DA_RADIACAO, DESFOQUE_DA_RADIACAO);
+  const cores = tabelaDeCores(PONTOS_DO_GRADIENTE);
+  const r = RAIO_DA_RADIACAO + DESFOQUE_DA_RADIACAO;
+
+  const Camada = L.Layer.extend({
+    onAdd(this: EstadoDaCamada, mapaDoLeaflet: MapaLeaflet) {
+      this._mapaDoLeaflet = mapaDoLeaflet;
+      this._tela = L.DomUtil.create("canvas", "leaflet-heatmap-layer leaflet-layer") as HTMLCanvasElement;
+      this._ctx = this._tela.getContext("2d")!;
+      this._redimensionar();
+      mapaDoLeaflet.getPanes().overlayPane.appendChild(this._tela);
+      mapaDoLeaflet.on("moveend", this._redesenhar, this);
+      mapaDoLeaflet.on("resize", this._redimensionar, this);
+      this._redesenhar();
+    },
+    onRemove(this: EstadoDaCamada, mapaDoLeaflet: MapaLeaflet) {
+      mapaDoLeaflet.getPanes().overlayPane.removeChild(this._tela);
+      mapaDoLeaflet.off("moveend", this._redesenhar, this);
+      mapaDoLeaflet.off("resize", this._redimensionar, this);
+    },
+    _redimensionar(this: EstadoDaCamada) {
+      const tamanho = this._mapaDoLeaflet.getSize();
+      this._tela.width = tamanho.x;
+      this._tela.height = tamanho.y;
+      this._redesenhar();
+    },
+    _redesenhar(this: EstadoDaCamada) {
+      L.DomUtil.setPosition(this._tela, this._mapaDoLeaflet.containerPointToLayerPoint([0, 0]));
+      const ctx = this._ctx;
+      const largura = this._tela.width;
+      const altura = this._tela.height;
+      ctx.clearRect(0, 0, largura, altura);
+      for (const ponto of pontos) {
+        const p = this._mapaDoLeaflet.latLngToContainerPoint([ponto.lat, ponto.lng]);
+        if (p.x < -r || p.x > largura + r || p.y < -r || p.y > altura + r) continue;
+        ctx.globalAlpha = Math.max(ponto.peso / maiorPeso, OPACIDADE_MINIMA_DA_RADIACAO);
+        ctx.drawImage(carimbo, p.x - r, p.y - r);
+      }
+      if (pontos.length === 0) return;
+      const imagem = ctx.getImageData(0, 0, largura, altura);
+      const dados = imagem.data;
+      for (let i = 3; i < dados.length; i += 4) {
+        const alfa = dados[i]!;
+        if (!alfa) continue;
+        const indice = alfa * 4;
+        dados[i - 3] = cores[indice]!;
+        dados[i - 2] = cores[indice + 1]!;
+        dados[i - 1] = cores[indice + 2]!;
+      }
+      ctx.putImageData(imagem, 0, 0);
+    },
+  });
+  return new Camada();
 }
 
 /**
@@ -80,7 +182,7 @@ export function MapaDeCalor({ celulas }: { celulas: CelulaDoMapa[] }) {
   const mapa = useRef<MapaLeaflet | null>(null);
   const camada = useRef<LayerGroup | null>(null);
   const marcadores = useRef(new Map<string, Marker>());
-  const [leaflet, setLeaflet] = useState<Awaited<ReturnType<typeof carregarLeaflet>> | null>(null);
+  const [leaflet, setLeaflet] = useState<typeof import("leaflet") | null>(null);
   const [selecionada, setSelecionada] = useState<string | null>(null);
   const [radiacao, setRadiacao] = useState(true);
 
@@ -92,7 +194,7 @@ export function MapaDeCalor({ celulas }: { celulas: CelulaDoMapa[] }) {
   useEffect(() => {
     if (vazio) return;
     let cancelado = false;
-    void carregarLeaflet().then((L) => {
+    void import("leaflet").then((L) => {
       if (cancelado || !elemento.current) return;
       const m = L.map(elemento.current, { scrollWheelZoom: false, minZoom: 4, maxZoom: 17 });
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -132,8 +234,8 @@ export function MapaDeCalor({ celulas }: { celulas: CelulaDoMapa[] }) {
     marcadores.current.clear();
 
     if (radiacao) {
-      const pontos = celulas.map((c): [number, number, number] => [c.latitude, c.longitude, c.total]);
-      grupo.addLayer(leaflet.heatLayer(pontos, { radius: 32, blur: 26, max: maior, minOpacity: 0.28, gradient: GRADIENTE_DA_RADIACAO }));
+      const pontos = celulas.map((c): PontoDaRadiacao => ({ lat: c.latitude, lng: c.longitude, peso: c.total }));
+      grupo.addLayer(criarCamadaDeRadiacao(leaflet, pontos, maior));
     }
 
     for (const celula of celulas) {
