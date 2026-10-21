@@ -28,6 +28,9 @@ const centroDaCelula = (indice: number, limite: number) => Math.min(limite, Math
  * Distribuição espacial das OS executadas no período, a partir do GPS do início da execução (ou do fim quando
  * o início não tem posição). Uma OS entra uma vez, pela execução mais recente no período; as coordenadas são
  * agregadas em células de aproximadamente 1 km para não expor posições exatas.
+ *
+ * Todo perfil acessa; o escopo é o de sempre (`condicaoEscopo`/`equipeDoIndicador`): o técnico só vê a própria equipe,
+ * o supervisor a dele e as que supervisiona, e o admin todas. Pedir uma equipe fora do escopo é `403`.
  */
 export async function mapaDeCalorOs(db: Db, eu: UsuarioAutenticado, filtros: FiltrosMapaDeCalor, agora: Date) {
   const equipeId = equipeDoIndicador(eu, filtros.equipe_id);

@@ -47,7 +47,8 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
     return responder(c, { os: itens, contagemPorStatus, ...meta(filtros, total) });
   });
 
-  r.get("/os/mapa-calor", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
+  // Todos os perfis: o escopo (a própria equipe, as supervisionadas ou, para o admin, todas) já vem de `mapaDeCalorOs`.
+  r.get("/os/mapa-calor", autenticar(), async (c) => {
     const filtros = lerConsulta(
       c,
       z.object({

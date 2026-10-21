@@ -121,11 +121,24 @@ describe("Mapa de calor das OS", () => {
     assert.equal(filtrado.corpo.os_no_periodo, 2);
   });
 
-  it("recusa perfis sem supervisão e equipes fora do escopo", async () => {
+  it("o técnico sem supervisão vê o mapa da própria equipe, nunca de outra", async () => {
+    const r = await amb.req("GET", "/os/mapa-calor", { como: tecnico });
+    assert.equal(r.status, 200);
+    assert.equal(r.corpo.os_no_periodo, 1);
+    assert.equal(r.corpo.celulas.length, 1);
+
     const foraDoEscopo = await amb.req("GET", "/os/mapa-calor", { como: supervisor, consulta: { equipe_id: outraEquipe } });
     assert.equal(foraDoEscopo.status, 403);
 
-    const tecnicoSemSupervisao = await amb.req("GET", "/os/mapa-calor", { como: tecnico });
-    assert.equal(tecnicoSemSupervisao.status, 403);
+    const tecnicoForaDoEscopo = await amb.req("GET", "/os/mapa-calor", { como: tecnico, consulta: { equipe_id: equipeDaSupervisora } });
+    assert.equal(tecnicoForaDoEscopo.status, 403);
+  });
+
+  it("o técnico sem equipe vê o mapa vazio, não um erro", async () => {
+    const semEquipe = await amb.criarUsuario({ perfil: "tecnico" });
+    const r = await amb.req("GET", "/os/mapa-calor", { como: semEquipe });
+    assert.equal(r.status, 200);
+    assert.equal(r.corpo.os_no_periodo, 0);
+    assert.equal(r.corpo.celulas.length, 0);
   });
 });

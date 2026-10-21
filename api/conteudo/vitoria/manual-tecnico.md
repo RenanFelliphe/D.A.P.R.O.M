@@ -20,10 +20,11 @@
 - Use os filtros do quadro (status, urgência ou busca) para achar uma OS específica sem rolar a lista toda.
   [quadro_os]
 
-## Mapa de calor (supervisor)
+## Mapa de calor
 
-- Quem supervisiona uma equipe tem, na seção Ordem de Serviço, a aba "Mapa de Calor": um mapa com as ruas mostrando
-  onde as OS da equipe foram executadas no período, pelo GPS registrado no início (ou no fim) da execução. [mapa_calor]
+- A seção Ordem de Serviço tem a aba "Mapa de Calor": um mapa com as ruas mostrando onde as OS foram executadas no
+  período, pelo GPS registrado no início (ou no fim) da execução. Você vê a sua equipe; quem supervisiona uma ou
+  mais equipes vê as que supervisiona. [mapa_calor]
 - As OS são agrupadas em áreas de cerca de 1 km, sem a posição exata. A cor e o tamanho da mancha crescem com o
   número de OS: amarelo é pouco, laranja é médio e vermelho é a área mais movimentada. [mapa_calor]
 - Os filtros escolhem o período, a equipe (quando você supervisiona mais de uma) e a situação atual da OS. Ao lado do
