@@ -5,22 +5,18 @@ import { AtualizacaoAutomatica } from "@/components/ui/AtualizacaoAutomatica";
 import { Screen } from "@/components/ui/Screen";
 import { CabecalhoSecaoOs } from "@/components/web/os/CabecalhoSecaoOs";
 import { PaginaQuadro } from "@/components/web/quadro/PaginaQuadro";
-import { usuarioAtual } from "@/lib/api";
-import { ehAdmin, ehSupervisor } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Quadro de OS" };
 
 /**
- * Quadro de OS: um endereço só para admin, supervisor e técnico (a `api` entrega a cada um o que ele enxerga). Admin e
- * supervisor ficam na seção Ordem de Serviço, com as abas; o técnico vê o título "OS da equipe". Acima do quadro, a faixa "APR
- * aguardando a sua assinatura" aparece só para quem tem APR pendente. Atualiza sozinho.
+ * Quadro de OS: um endereço só para admin, supervisor e técnico (a `api` entrega a cada um o que ele enxerga). O título e as
+ * abas da seção (Quadro, Importação e Mapa de Calor, conforme o perfil) ficam com `CabecalhoSecaoOs`. Acima do quadro, a
+ * faixa "APR aguardando a sua assinatura" aparece só para quem tem APR pendente. Atualiza sozinho.
  */
 export default async function ListaPage({ searchParams }: PageProps<"/app/lista">) {
-  const { usuario } = await usuarioAtual();
-  const gestao = ehAdmin(usuario) || ehSupervisor(usuario);
   return (
     <Screen>
-      {gestao ? <CabecalhoSecaoOs /> : <h1>OS da equipe</h1>}
+      <CabecalhoSecaoOs />
       <FaixaDeAssinaturas />
       <FaixaDeConferencias />
       <PaginaQuadro searchParams={searchParams} />

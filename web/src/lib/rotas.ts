@@ -24,6 +24,11 @@ export const rotas = {
     lista: "/app/lista",
     /** Quadro com a janela "OS preventivas" aberta (intervalo entre ciclos de cada preventiva). */
     preventivas: "/app/lista?preventivas=1",
+    /**
+     * Aba Mapa de Calor da seção Ordem de Serviço, a mesma para todos os perfis: onde as OS foram executadas, pelo
+     * escopo de sempre (técnico, a própria equipe; supervisor, as que supervisiona; admin, todas).
+     */
+    mapaCalor: "/app/mapa-calor",
     /** Detalhe da OS (todos os perfis). */
     os: (id: string) => `/app/os/${id}`,
     /** Nova APR da OS: participantes, riscos e modelo. */
@@ -101,10 +106,8 @@ export const rotas = {
     vitoriaSemResposta: "/app/vitoria/sem-resposta",
   },
   web: {
-    /** Aba Importação da seção Ordem de Serviço (a outra aba é o quadro, `app.lista`). */
+    /** Aba Importação da seção Ordem de Serviço (as outras abas, o quadro e o mapa de calor, ficam em `/app`). */
     importacao: "/web/os/importacao",
-    /** Aba Mapa de Calor da seção Ordem de Serviço: admin (todas as equipes) e supervisor (as equipes dele). */
-    mapaCalor: "/web/os/mapa-calor",
     alertas: "/web/alertas",
     /** Seção APR, Análise Preliminar de Risco (menu "APR"): duas abas. `/web/apr` sozinho leva aos modelos. */
     modelos: "/web/apr/modelos",

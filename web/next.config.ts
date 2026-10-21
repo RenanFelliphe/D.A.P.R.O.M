@@ -27,6 +27,8 @@ const nextConfig: NextConfig = {
     { source: "/os/:id([0-9a-fA-F-]{36})", destination: "/app/os/:id", permanent: false },
     { source: "/web/quadro", destination: "/app/lista", permanent: false },
     { source: "/web/os/quadro", destination: "/app/lista", permanent: false },
+    // O Mapa de Calor era exclusivo de admin e supervisor em `/web/os`; agora é de todos, em `/app`.
+    { source: "/web/os/mapa-calor", destination: "/app/mapa-calor", permanent: false },
     { source: "/web/os/:id([0-9a-fA-F-]{36})", destination: "/app/os/:id", permanent: false },
     { source: "/web/perfil", destination: "/app/perfil", permanent: false },
     { source: "/web/perfil/:id", destination: "/app/perfil/:id", permanent: false },
