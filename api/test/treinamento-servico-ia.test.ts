@@ -183,7 +183,7 @@ describe("Treinamentos de serviço — rascunho pela IA", () => {
 
     // O pedido à IA: o texto, os materiais com códigos curtos (nunca o id) e o modelo do rascunho, com tempo para 1-2 minutos.
     const pedido = amb.ia.chamadas.at(-1)!;
-    assert.equal(pedido.modelo, "rascunho");
+    assert.equal(pedido.modelo, "minigames");
     assert.ok((pedido.tempoLimiteMs ?? 0) > 60_000);
     const tudo = pedido.mensagens.map((m) => m.texto).join("\n");
     assert.ok(tudo.includes(TEXTO));

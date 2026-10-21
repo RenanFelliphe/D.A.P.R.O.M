@@ -10,7 +10,11 @@ import type { ExpressaoVitoria } from "./treinamento-servico-esquema";
 import { contar, type limiteEDeslocamento } from "../http/paginacao";
 import { naoEncontrado } from "../http/erros";
 import { IAIndisponivel, type BlocoDeMensagem, type MotivoDaFalhaIA, type PedidoDeTexto } from "../servicos/ia";
+import type { FuncaoDeIA } from "../../../shared/ia/funcoes";
 import { proximaRenovacaoDoGemini } from "./ia-falhas";
+import { estadoDasFuncoes, situacaoDaFuncao } from "./ia-funcoes";
+import { blocoDeDadosParaOChatbot } from "./vitoria-dados";
+import type { UsuarioAutenticado } from "../http/autenticacao";
 import { blocoDeDatas } from "./vitoria-datas";
 import { buscarNoManual, manualDoPerfil } from "./vitoria-manual";
 import { diaDe, inicioDoDia, somarDias } from "./tempo";
@@ -45,6 +49,8 @@ export interface RespostaVitoria {
 
 export interface PedidoVitoria {
   usuarioId: string;
+  /** Quem pergunta, inteiro: com a leitura de dados do Chatbot ligada, a Vitória lê o trabalho dele (`vitoria-dados.ts`). Sem ele, nunca vai dado. */
+  usuario?: UsuarioAutenticado;
   perfil: Perfil;
   /** Chave da "tela atual" que o cliente está vendo (a mesma usada pelas sugestões fixas); nunca uma URL. */
   tela: string;
@@ -112,15 +118,17 @@ Destinos disponíveis (a única lista de onde "destino" pode vir):
 ${listaDeDestinosParaPrompt()}`;
 
 /** `hoje` (`AAAA-MM-DD`) vai no último bloco de sistema, depois do manual com `cache: true`: mudar todo dia não invalida o cache. */
-function montarPedido(perfil: Perfil, tela: string, contexto: Record<string, string>, historico: MensagemDoHistorico[], mensagem: string, hoje: string): PedidoDeTexto {
+function montarPedido(perfil: Perfil, tela: string, contexto: Record<string, string>, historico: MensagemDoHistorico[], mensagem: string, hoje: string, dados: string | null = null): PedidoDeTexto {
   const mensagens: BlocoDeMensagem[] = [
     { papel: "sistema", texto: INSTRUCAO_COMPORTAMENTO },
     { papel: "sistema", texto: manualDoPerfil(perfil), cache: true },
+    // Os dados de quem pergunta (só com a leitura autorizada) vêm depois do manual em cache: mudar a cada pergunta não invalida o cache.
+    ...(dados ? [{ papel: "sistema" as const, texto: dados }] : []),
     { papel: "sistema", texto: `Tela atual: ${tela}. Contexto desta tela (só para ações com_contexto): ${JSON.stringify(contexto)}.\n\n${blocoDeDatas(hoje)}` },
     ...historico.slice(-10).map((m): BlocoDeMensagem => ({ papel: m.papel, texto: m.texto })),
     { papel: "usuario", texto: mensagem },
   ];
-  return { modelo: "vitoria", mensagens };
+  return { modelo: "chatbot", mensagens };
 }
 
 /** Extrai o primeiro bloco `{...}` do texto (o modelo às vezes embrulha em ```json apesar da instrução) e valida o formato. */
@@ -247,10 +255,12 @@ async function respostaSemIA(db: Db, agora: Date, pedido: PedidoVitoria, motivo:
 
 export interface SobreAVitoria {
   provedor: "anthropic" | "gemini";
-  /** `false` sem a chave, sem crédito ou com o provedor desligado: ela responde sem IA (seção 2.6). */
+  /** `false` sem a chave, sem crédito, com o provedor desligado ou com a função Chatbot desligada pelo admin: ela responde sem IA (seção 2.6). */
   ligada: boolean;
   /** O modelo real de cada uso, como está na configuração; nunca a chave. */
-  modelos: { conversa: string; rascunho: string };
+  modelos: Record<FuncaoDeIA, string>;
+  /** Quais funções de IA recebem dado real agora (o admin autorizou, assinando): o perfil conta isso a todos, para ninguém ler "nunca os seus dados" onde não vale. */
+  lendoDados: Record<FuncaoDeIA, boolean>;
   limites: { porConversa: number; porContaDia: number };
   /** Quantas respostas com IA a pessoa logada já recebeu hoje (o mesmo contador do limite por conta). */
   mensagensHoje: number;
@@ -316,8 +326,9 @@ export async function sobreAVitoria(deps: Pick<Deps, "db" | "ia" | "config" | "a
   const { db, ia, config, agora } = deps;
   return {
     provedor: config.ia.provedor,
-    ligada: ia.disponivel(),
-    modelos: { conversa: config.ia.modelos.vitoria, rascunho: config.ia.modelos.rascunho },
+    ligada: (await situacaoDaFuncao(deps, "chatbot")) === "disponivel",
+    modelos: config.ia.modelos,
+    lendoDados: Object.fromEntries((await estadoDasFuncoes(db)).map((e) => [e.funcao, e.comDados])) as Record<FuncaoDeIA, boolean>,
     limites: { porConversa: config.vitoria.limitePorConversa, porContaDia: config.vitoria.limitePorContaDia },
     mensagensHoje: await usoDoDia(db, usuarioId, diaDe(agora())),
     estatisticas: await estatisticasDaVitoria(db),
@@ -329,7 +340,7 @@ export async function sobreAVitoria(deps: Pick<Deps, "db" | "ia" | "config" | "a
 /** O resultado da última chamada à IA feita por esta api; fica na memória do processo (zera ao reiniciar) e só serve ao diagnóstico. */
 let ultimaChamadaIA: { em: Date; ok: boolean; erro?: string; motivo?: MotivoDaFalhaIA } | null = null;
 
-export type EstadoDaVitoria = "ativa" | "sem_chave" | "limite_do_dia" | "fornecedor_com_problema";
+export type EstadoDaVitoria = "ativa" | "sem_chave" | "desligada" | "limite_do_dia" | "fornecedor_com_problema";
 
 export interface DiagnosticoDaVitoria {
   estado: EstadoDaVitoria;
@@ -387,7 +398,13 @@ export async function diagnosticoDaVitoria(deps: Pick<Deps, "db" | "ia" | "confi
   let porque: string;
   let volta: string | null = null;
 
-  if (!ia.disponivel()) {
+  const situacaoDoChatbot = await situacaoDaFuncao(deps, "chatbot");
+  if (situacaoDoChatbot === "desligada") {
+    estado = "desligada";
+    titulo = "Desligada pelo administrador";
+    porque = "A função Chatbot está desligada na página da Vitória, então ela responde só pelas sugestões fixas e pela busca no manual.";
+    volta = "Quando o administrador ligar a função Chatbot de novo.";
+  } else if (situacaoDoChatbot === "sem_chave") {
     estado = "sem_chave";
     titulo = "Desligada: sem chave de IA";
     porque = `Não há chave configurada para o ${nomeDoProvedor} (${config.ia.provedor === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY"}), então ela responde só pelas sugestões fixas e pela busca no manual.`;
@@ -433,7 +450,7 @@ export async function diagnosticoDaVitoria(deps: Pick<Deps, "db" | "ia" | "confi
     porque,
     volta,
     provedor: config.ia.provedor,
-    modelo: config.ia.modelos.vitoria,
+    modelo: config.ia.modelos.chatbot,
     uso: {
       dia,
       usadas,
@@ -500,13 +517,14 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
     return respostaSemIA(db, agora(), pedido, "limite_global");
   }
 
-  if (!ia.disponivel()) return respostaSemIA(db, agora(), pedido, "sem_ia");
+  if ((await situacaoDaFuncao(deps, "chatbot")) !== "disponivel") return respostaSemIA(db, agora(), pedido, "sem_ia");
 
   let bruto: string;
   // O tempo da IA vem do relógio de verdade, não do `agora` (que nos testes fica parado).
   const inicio = performance.now();
   try {
-    bruto = await ia.conversar(montarPedido(pedido.perfil, pedido.tela, pedido.contexto, pedido.historico, pedido.mensagem, dia));
+    const dados = await blocoDeDadosParaOChatbot(deps, pedido.usuario);
+    bruto = await ia.conversar(montarPedido(pedido.perfil, pedido.tela, pedido.contexto, pedido.historico, pedido.mensagem, dia, dados));
     ultimaChamadaIA = { em: agora(), ok: true };
   } catch (erro) {
     ultimaChamadaIA = { em: agora(), ok: false, erro: erro instanceof Error ? erro.message.slice(0, 300) : "erro desconhecido", motivo: erro instanceof IAIndisponivel ? erro.motivo : undefined };

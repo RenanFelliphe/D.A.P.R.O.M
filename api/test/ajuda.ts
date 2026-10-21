@@ -19,6 +19,8 @@ import type { Deps } from "../src/deps";
 import { ArmazenamentoEmMemoria } from "../src/servicos/armazenamento";
 import { AuthEmMemoria } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
+import { definicaoDaFuncao, exigeDados, type FuncaoDeIA } from "../../shared/ia/funcoes";
+import { controlarIA } from "../src/dominio/ia-funcoes";
 import { ProvedorIAEmMemoria } from "../src/servicos/ia";
 import { OcrEmMemoria } from "../src/servicos/ocr-memoria";
 import { RegistroIndisponivel, type ClienteRh, type FuncionarioRh } from "../src/servicos/rh";
@@ -49,7 +51,7 @@ export const configDeTeste: Config = {
   emailResumoHora: 7,
   painelUrl: "http://painel.local",
   // Sem chave real: os testes programam o `ProvedorIAEmMemoria` (amb.ia) quando precisam simular a IA ligada.
-  ia: { provedor: "anthropic", apiKey: "", ligada: false, modelos: { vitoria: "modelo-vitoria-teste", rascunho: "modelo-rascunho-teste", digitalizacao: "modelo-digitalizacao-teste" } },
+  ia: { provedor: "anthropic", apiKey: "", ligada: false, modelos: { chatbot: "modelo-chatbot-teste", minigames: "modelo-minigames-teste", recomendacao: "modelo-recomendacao-teste", digitalizacao: "modelo-digitalizacao-teste" } },
   vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
   treinamentoIa: { limiteTreinamentos: 3, limiteRodadas: 4, maxTokens: 16000 },
 };
@@ -124,7 +126,8 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   const rh = new RhEmMemoria();
   const ia = new ProvedorIAEmMemoria();
   const ocr = new OcrEmMemoria();
-  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, ia, ocr, agora: () => relogio.agora };
+  // Como em produção, a IA passa pelo controle: `amb.ia` é a de memória que o teste programa, e `deps.ia` a que confere se a função está ligada.
+  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, ia: controlarIA(db, ia), ocr, agora: () => relogio.agora };
   // O aviso que o simulador do RH manda ao SYNQ OS: fica anotado em `avisosRh` e, com `rhSimulador.encaminhar`, chega de verdade em `POST /rh/avisos`.
   const avisosRh: string[][] = [];
   const rhSimulador = { encaminhar: false };
@@ -223,11 +226,25 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
     return r.corpo;
   }
 
+  /**
+   * Liga uma função de IA como o admin faz na página da Vitória, pela rota de verdade (`PUT /vitoria/ia/{funcao}`, com a assinatura do
+   * perfil). Nas funções que só funcionam com dados (recomendacao e digitalizacao) já autoriza a leitura; no chatbot e nos minigames
+   * só autoriza com `comDados: true`. Sem `como`, cria um admin só para isso.
+   */
+  async function ligarIa(funcao: FuncaoDeIA, opcoes: { comDados?: boolean; como?: UsuarioDeTeste } = {}) {
+    const admin = opcoes.como ?? (await criarUsuario({ perfil: "admin", nome: "Admin da IA" }));
+    await esperar(200, "PUT", `/vitoria/ia/${funcao}`, {
+      como: admin,
+      json: { ligada: true, com_dados: opcoes.comDados ?? exigeDados(funcao), versao_do_texto: definicaoDaFuncao(funcao).versaoDoTexto },
+    });
+    return admin;
+  }
+
   const sql = async <T = Record<string, unknown>>(texto: string, params: unknown[] = []) => (await cliente.query<T>(texto, params)).rows;
   /** A imagem da assinatura que está no perfil agora: é a que cada ato assinado copia para si. */
   const assinaturaDe = async (usuario: UsuarioDeTeste) => (await sql<{ assinatura_path: string | null }>("select assinatura_path from usuario where id = $1", [usuario.id]))[0]!.assinatura_path;
 
-  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, ocr, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, cadastrarAssinatura, assinaturaDe, sql, fechar: () => cliente.close() };
+  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, ocr, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, cadastrarAssinatura, assinaturaDe, ligarIa, sql, fechar: () => cliente.close() };
 }
 
 export type Ambiente = Awaited<ReturnType<typeof criarAmbiente>>;

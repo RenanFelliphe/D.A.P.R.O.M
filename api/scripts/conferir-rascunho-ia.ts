@@ -37,7 +37,7 @@ if (!ia.disponivel()) {
   console.error(`IA desligada: defina IA_PROVEDOR e a chave do provedor (hoje: ${config.provedor}) no .env.local da raiz.`);
   process.exit(1);
 }
-console.log(`Provedor: ${config.provedor} | modelo do rascunho: ${config.modelos.rascunho}\n`);
+console.log(`Provedor: ${config.provedor} | modelo do rascunho: ${config.modelos.minigames}\n`);
 
 /** Chama a rota da IA lendo o SSE conforme chega (o progresso sai na hora) e devolve o evento final ou o erro. */
 async function chamar(amb: Ambiente, admin: UsuarioDeTeste, acao: "gerar" | "ajustar", corpo: unknown): Promise<{ final?: any; erro?: any }> {

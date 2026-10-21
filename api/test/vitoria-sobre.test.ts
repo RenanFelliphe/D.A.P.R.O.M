@@ -8,7 +8,7 @@ import { criarAmbiente, configDeTeste, type Ambiente, type UsuarioDeTeste } from
 interface Sobre {
   provedor: string;
   ligada: boolean;
-  modelos: { conversa: string; rascunho: string };
+  modelos: Record<string, string>;
   limites: { por_conversa: number; por_conta_dia: number };
   mensagens_hoje: number;
   estatisticas: {
@@ -45,7 +45,7 @@ describe("Vitória — GET /vitoria/sobre", () => {
     const sobre = r.corpo as Sobre;
     assert.equal(sobre.provedor, configDeTeste.ia.provedor);
     assert.equal(typeof sobre.ligada, "boolean");
-    assert.deepEqual(sobre.modelos, { conversa: configDeTeste.ia.modelos.vitoria, rascunho: configDeTeste.ia.modelos.rascunho });
+    assert.deepEqual(sobre.modelos, configDeTeste.ia.modelos);
     assert.deepEqual(sobre.limites, { por_conversa: configDeTeste.vitoria.limitePorConversa, por_conta_dia: configDeTeste.vitoria.limitePorContaDia });
     assert.equal(JSON.stringify(sobre).includes("api_key"), false);
   });

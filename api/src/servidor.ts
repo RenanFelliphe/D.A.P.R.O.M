@@ -11,6 +11,7 @@ import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servi
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
 import { EmailSemServidor, EmailSmtp } from "./servicos/email";
+import { controlarIA } from "./dominio/ia-funcoes";
 import { criarProvedorIA } from "./servicos/ia";
 import { MotorOcrTesseract } from "./servicos/ocr";
 import { ClienteRhHttp } from "./servicos/rh-http";
@@ -64,11 +65,11 @@ async function main() {
     email,
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
-    ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),
+    ia: controlarIA(db, criarProvedorIA(config.ia, config.vitoria.maxTokensResposta)),
     ocr: new MotorOcrTesseract(),
     agora: () => new Date(),
   };
-  if (config.ia.ligada) console.log(`IA ligada: ${config.ia.provedor} (Vitória: ${config.ia.modelos.vitoria})`);
+  if (config.ia.ligada) console.log(`IA ligada: ${config.ia.provedor} (Vitória: ${config.ia.modelos.chatbot})`);
   else console.warn(`Chave de IA vazia para IA_PROVEDOR=${config.ia.provedor} (${config.ia.provedor === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY"}): o módulo de IA fica desligado (fallback sem IA).`);
 
   const parar = iniciarTarefas(deps);

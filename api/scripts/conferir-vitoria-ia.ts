@@ -51,13 +51,13 @@ if (argumentos.has("listar")) {
 
 const config = lerConfigIA();
 const modelo = argumentos.get("modelo");
-if (modelo) config.modelos.vitoria = modelo;
+if (modelo) config.modelos.chatbot = modelo;
 const ia = criarProvedorIA(config, configDeTeste.vitoria.maxTokensResposta);
 if (!ia.disponivel()) {
   console.error(`IA desligada: defina IA_PROVEDOR e a chave do provedor (hoje: ${config.provedor}) no .env.local da raiz.`);
   process.exit(1);
 }
-console.log(`Provedor: ${config.provedor} | modelo da Vitória: ${config.modelos.vitoria} | ${casos.length} casos\n`);
+console.log(`Provedor: ${config.provedor} | modelo da Vitória: ${config.modelos.chatbot} | ${casos.length} casos\n`);
 
 /** Lê o corpo SSE de `POST /vitoria/mensagens`: o texto montado pelos eventos `texto` e o evento `final`. */
 function lerResposta(corpo: ArrayBuffer): Resultado {

@@ -141,7 +141,7 @@
 
 - A Vitória é a assistente virtual do SYNQ OS. O perfil dela mostra quem ela é, o que pode e o que não pode fazer no
   sistema e qual modelo de IA está respondendo agora. Também abre tocando no nome dela, no topo do chat. [vitoria_perfil]
-- Ela não vê as OS, as respostas da APR nem os dados de ninguém: os fatos do sistema vêm só deste manual (em conceitos gerais
+- Ela não vê as OS, as respostas da APR nem os dados de ninguém, a menos que o administrador tenha ligado a leitura de dados do Chatbot na página dela: aí ela passa a ler as OS em aberto que o seu perfil enxerga, quantas APRs esperam assinatura e, para o técnico, os pontos, e só usa isso nas perguntas sobre o trabalho de quem pergunta (nunca o nome de colegas). Os fatos do sistema vêm só deste manual (em conceitos gerais
   do ofício ela pode explicar com o que sabe, avisando que é uma informação geral e não uma regra da empresa). A conversa não fica guardada
   no servidor; só as perguntas que ela não soube responder, sem identificar quem perguntou.
 - Ela não aprova nem reprova APR, não assina nada e não decide nada por ninguém.
@@ -152,6 +152,10 @@
   então nada muda retroativamente.
 - Por que a auditoria não deixa editar nem apagar: ela só acrescenta registros, para valer como prova de quem fez o quê
   nas telas de gestão.
+- Só o administrador vê, na página da Vitória, o "Controle da IA": um seletor com as quatro funções dela (Chatbot e Criação de jogos, que funcionam sem
+  dados; Recomendação de modelo de APR e Digitalização de documentos, que só funcionam lendo dados), cada uma com uma explicação e um interruptor de ligar e
+  desligar. Para ligar uma função com dados, ou a leitura de dados do Chatbot e da Criação de jogos, o administrador lê a lista do que será lido e assina com a
+  assinatura do perfil. Desligar não pede assinatura. Desligada, a função segue sem IA. [vitoria_perfil]
 - Por que liberar, recusar, reprogramar e cancelar OS pedem a sua assinatura: são ações importantes, e a assinatura do
   perfil mostra que foi você quem as fez.
 - Por que o sistema nunca devolve o acesso sozinho a quem foi readmitido: o aviso traz o botão "Reativar a conta" e

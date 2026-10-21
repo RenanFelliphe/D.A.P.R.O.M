@@ -64,6 +64,8 @@ describe("Digitalização de OS antigas", () => {
   before(async () => {
     amb = await criarAmbiente({ comCarga: true });
     admin = await amb.criarUsuario({ perfil: "admin" });
+    // A leitura por IA só sai com a função Digitalização ligada e autorizada pelo admin (controle-da-ia.md).
+    await amb.ligarIa("digitalizacao", { como: admin });
     equipeServ = (await amb.criarEquipe({ nome: "Serviços Especiais", centroTrabalho: "SERV_ESP" })).id;
     equipeProt = (await amb.criarEquipe({ nome: "Proteção Catódica", centroTrabalho: "PROT_CAT" })).id;
     tecnico = await amb.criarUsuario({ perfil: "tecnico", equipeId: equipeServ });

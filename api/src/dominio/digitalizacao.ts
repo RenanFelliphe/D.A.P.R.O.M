@@ -6,6 +6,7 @@ import { ErroApi } from "../http/erros";
 import type { FolhaLidaPorOcr } from "../servicos/ocr";
 import { abrirFolhas } from "../servicos/pdf-imagem";
 import { IAIndisponivel, RespostaIAInvalida, type ImagemDeMensagem } from "../servicos/ia";
+import { situacaoDaFuncao } from "./ia-funcoes";
 import type { AprLida, EstadoDaIa } from "./digitalizacao-apr";
 import { lerAprs, separarFolhasDaApr } from "./digitalizacao-apr-leitura";
 import { lerManuscritoComIa, MANUSCRITO_VAZIO, MAX_IMAGENS_POR_OS, recortarFolha, type ManuscritoLido } from "./digitalizacao-ia";
@@ -249,7 +250,16 @@ export async function processarDigitalizacao(deps: Deps, id: string, aoAndar?: (
     }));
 
     // 3. O manuscrito, pela IA de visão, uma OS por vez. Sem IA (ou a IA cai no meio), as demais seguem sem ela.
-    const ia: EstadoDaIa = { usou: false, motivo: deps.ia.disponivel() ? null : "A IA não está configurada: o escrito à mão é digitado na conferência." };
+    const situacaoDaIa = await situacaoDaFuncao(deps, "digitalizacao");
+    const ia: EstadoDaIa = {
+      usou: false,
+      motivo:
+        situacaoDaIa === "disponivel"
+          ? null
+          : situacaoDaIa === "desligada"
+            ? "A função Digitalização de documentos está desligada na página da Vitória: o escrito à mão é digitado na conferência."
+            : "A IA não está configurada: o escrito à mão é digitado na conferência.",
+    };
     const lerJpeg = async (n: number) => {
       const bytes = await deps.armazenamento.ler(BUCKET_DAS_FOLHAS, caminhoDaFolha(id, n));
       if (!bytes) throw new Error(`folha ${n} sumiu`);

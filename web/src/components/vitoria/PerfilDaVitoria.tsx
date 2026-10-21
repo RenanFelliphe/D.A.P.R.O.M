@@ -10,13 +10,18 @@ import { numero } from "@/lib/gamificacao";
 import { rotas } from "@/lib/rotas";
 import { estaPendente } from "@/lib/tipos";
 import { REACOES, type Reacao } from "@/lib/vitoria";
+import type { FuncaoDeIA } from "../../../../shared/ia/funcoes";
+import type { PainelDaIa } from "@/lib/vitoria-ia";
+import { ControleDaIa } from "./ControleDaIa";
 import { Figurinha } from "./Figurinha";
 
 /** Resposta de `GET /vitoria/sobre`: a única parte verdadeira do perfil (o provedor, os modelos, os limites e o uso de hoje). */
 interface SobreAVitoria {
   provedor: "anthropic" | "gemini";
   ligada: boolean;
-  modelos: { conversa: string; rascunho: string };
+  modelos: Record<FuncaoDeIA, string>;
+  /** Quais funções recebem dado real agora (o admin autorizou, assinando). */
+  lendo_dados: Record<FuncaoDeIA, boolean>;
   limites: { por_conversa: number; por_conta_dia: number };
   mensagens_hoje: number;
   /** Os números de verdade dela (`vitoria_estatistica`), somados desde `desde`. */
@@ -92,7 +97,7 @@ const PODE = [
   "Responder pelo manual, sem IA, quando a IA está fora do ar",
 ];
 const NAO_PODE = [
-  "Ver as suas OS, as respostas da APR ou os seus dados",
+  "Ver as suas OS, as respostas da APR ou os seus dados (a menos que o administrador libere a leitura, e então só o seu trabalho)",
   "Dizer o que reprova a APR ou orientar normas de segurança de campo",
   "Aprovar, reprovar ou assinar qualquer coisa",
   "Guardar a conversa: ela fica só no seu aparelho",
@@ -130,8 +135,10 @@ export async function PerfilDaVitoria() {
   // a patente e as conquistas não são consultadas. Qualquer falha ao consultar o modelo só esconde o bloco dele.
   const { usuario: eu } = await usuarioAtual();
   const consultaGamificacao = !estaPendente(eu);
-  const [sobre, patentes, conquistas] = await Promise.all([
+  const [sobre, painelDaIa, patentes, conquistas] = await Promise.all([
     apiOuNulo<SobreAVitoria>("/vitoria/sobre").catch(() => null),
+    // O controle da IA é só do admin: para os outros perfis a consulta nem é feita.
+    eu.perfil === "admin" ? apiOuNulo<PainelDaIa>("/vitoria/ia").catch(() => null) : null,
     consultaGamificacao ? lerOuNulo(lerPatentes) : null,
     consultaGamificacao ? lerOuNulo(lerConquistas) : null,
   ]);
@@ -177,6 +184,8 @@ export async function PerfilDaVitoria() {
 
       <div className="perfil-grade">
         <div className="col-main stack g16" style={{ minWidth: 0 }}>
+          {painelDaIa && <ControleDaIa painel={painelDaIa} />}
+
           <section className="panel" aria-labelledby="vp-sobre">
             <h2 id="vp-sobre">Sobre</h2>
             <div className="vp-texto">
@@ -259,11 +268,11 @@ export async function PerfilDaVitoria() {
                   </div>
                   <div>
                     <dt>Modelo da conversa</dt>
-                    <dd className="mono">{sobre.modelos.conversa}</dd>
+                    <dd className="mono">{sobre.modelos.chatbot}</dd>
                   </div>
                   <div>
                     <dt>Modelo dos rascunhos de treinamento</dt>
-                    <dd className="mono">{sobre.modelos.rascunho}</dd>
+                    <dd className="mono">{sobre.modelos.minigames}</dd>
                   </div>
                   <div>
                     <dt>Situação</dt>
@@ -282,7 +291,11 @@ export async function PerfilDaVitoria() {
                     </dd>
                   </div>
                 </dl>
-                <p className="small muted">A IA recebe só a sua pergunta, a tela em que você está e o manual do seu perfil. Nunca as suas OS nem os seus dados.</p>
+                <p className="small muted">
+                  {sobre.lendo_dados.chatbot
+                    ? "A IA recebe a sua pergunta, a tela em que você está, o manual do seu perfil e um resumo do seu trabalho (as OS em aberto da sua equipe, as assinaturas que faltam e os seus pontos), porque o administrador autorizou essa leitura."
+                    : "A IA recebe só a sua pergunta, a tela em que você está e o manual do seu perfil. Nunca as suas OS nem os seus dados."}
+                </p>
               </>
             )}
           </section>

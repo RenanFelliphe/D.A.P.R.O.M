@@ -36,7 +36,7 @@ import { regraPontuacao } from "../db/schema";
 
 const jogaNoSistema = (eu: Pick<UsuarioAutenticado, "perfil">) => eu.perfil === "tecnico";
 
-async function pontosDaPessoaNaTemporada(deps: Deps, usuarioId: string, codigo: string): Promise<number> {
+export async function pontosDaPessoaNaTemporada(deps: Pick<Deps, "db">, usuarioId: string, codigo: string): Promise<number> {
   const [linha] = await deps.db
     .select({ pontos: sql<number>`coalesce(sum(${lancamentoPontos.pontos}), 0)::int` })
     .from(lancamentoPontos)

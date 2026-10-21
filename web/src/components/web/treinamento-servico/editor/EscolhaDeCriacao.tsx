@@ -25,7 +25,7 @@ export function EscolhaDeCriacao({ codigo, descricao, rascunho }: { codigo: stri
   const passos = rascunho.explicacao.length;
   const fases = rascunho.fases.length;
   const temConteudo = passos + fases > 0;
-  const motivoSemIA = !ia.disponivel ? "A IA não está configurada neste ambiente" : !ia.pode_gerar ? (ia.motivo ?? "Limite da demonstração atingido") : null;
+  const motivoSemIA = !ia.disponivel ? (ia.motivo ?? "A IA não está configurada neste ambiente") : !ia.pode_gerar ? (ia.motivo ?? "Limite da demonstração atingido") : null;
 
   return (
     <div className="ts-escolha">

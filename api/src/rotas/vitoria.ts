@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
+import { FUNCOES_DE_IA } from "../../../shared/ia/funcoes";
+import { alterarFuncaoDeIa, painelDaIa } from "../dominio/ia-funcoes";
 import { diagnosticoDaVitoria, listarPerguntasSemResposta, marcarPerguntaTratada, registrarEventoDaVitoria, responderVitoria, sobreAVitoria } from "../dominio/vitoria";
 import type { Deps } from "../deps";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { emSnakeCase, responder } from "../http/resposta";
 import { esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
-import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, textoObrigatorio } from "../http/validacao";
+import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, textoObrigatorio, validar } from "../http/validacao";
 
 const esquemaMensagemDoHistorico = z.object({ papel: z.enum(["usuario", "assistente"]), texto: textoObrigatorio.max(2000) });
 const esquemaPedido = z.object({
@@ -19,6 +21,13 @@ const esquemaPedido = z.object({
   historico: z.array(esquemaMensagemDoHistorico).max(10).optional(),
   /** Quantas mensagens a conversa já tem, 1-based, contando esta; sem isso o limite por conversa não teria como ser conferido. */
   numero_mensagem: z.number().int().positive().max(1_000_000).optional(),
+});
+
+/** O estado que o admin quer para a função; passar a ler dados reais leva a versão do texto que ele viu e assinou (`controle-da-ia.md`). */
+const esquemaAlteracaoDaIa = z.object({
+  ligada: z.boolean(),
+  com_dados: z.boolean().optional(),
+  versao_do_texto: z.number().int().positive().optional(),
 });
 
 const esquemaEvento = z.object({ tipo: z.enum(["ida_a_tela", "sugestao"]) });
@@ -53,6 +62,7 @@ export function rotasVitoria(deps: Deps, { autenticar, exigirPerfil }: Autentica
     const dados = await lerCorpo(c, esquemaPedido);
     const resultado = await responderVitoria(deps, {
       usuarioId: eu.id,
+      usuario: eu,
       perfil: eu.perfil,
       tela: dados.tela,
       contexto: dados.contexto ?? {},
@@ -82,6 +92,19 @@ export function rotasVitoria(deps: Deps, { autenticar, exigirPerfil }: Autentica
 
   /** O diagnóstico da IA da Vitória (ativa ou não, por quê, quando volta e quanto falta do limite do dia); só o admin. */
   r.get("/vitoria/diagnostico", autenticar(), soAdmin, async (c) => responder(c, await diagnosticoDaVitoria(deps)));
+
+  /**
+   * O controle da IA (só o admin): o estado das quatro funções e, por função, o que ela lê. `PUT` leva o estado desejado;
+   * ligar a leitura de dados usa a assinatura do perfil de quem pede.
+   */
+  r.get("/vitoria/ia", autenticar(), soAdmin, async (c) => responder(c, await painelDaIa(deps)));
+
+  r.put("/vitoria/ia/:funcao", autenticar(), soAdmin, async (c) => {
+    const funcao = validar(z.enum(FUNCOES_DE_IA), c.req.param("funcao"));
+    const dados = await lerCorpo(c, esquemaAlteracaoDaIa);
+    await alterarFuncaoDeIa(deps, c.get("usuario"), funcao, { ligada: dados.ligada, comDados: dados.com_dados, versaoDoTexto: dados.versao_do_texto });
+    return responder(c, await painelDaIa(deps));
+  });
 
   r.get("/vitoria/sem-resposta", autenticar(), soAdmin, async (c) => {
     const filtros = lerConsulta(c, esquemaPaginacao.extend({ tratada: booleanoDaConsulta }));

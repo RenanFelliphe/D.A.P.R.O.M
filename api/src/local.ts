@@ -32,6 +32,7 @@ import { ArmazenamentoEmMemoria } from "./servicos/armazenamento";
 import { DOMINIO_DEMO, emailDoNome } from "./dominio/usuarios";
 import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
+import { controlarIA } from "./dominio/ia-funcoes";
 import { criarProvedorIA } from "./servicos/ia";
 import { MotorOcrTesseract } from "./servicos/ocr";
 import { ClienteRhHttp } from "./servicos/rh-http";
@@ -93,7 +94,7 @@ async function main() {
     email: new EmailEmMemoria({ registrar: true }),
     sap: new ClienteSapHttp(config.sapApiUrl, TOKEN_SAP),
     rh: new ClienteRhHttp(config.rhApiUrl, TOKEN_RH),
-    ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),
+    ia: controlarIA(db, criarProvedorIA(config.ia, config.vitoria.maxTokensResposta)),
     ocr: new MotorOcrTesseract(),
     agora: () => new Date(),
   };

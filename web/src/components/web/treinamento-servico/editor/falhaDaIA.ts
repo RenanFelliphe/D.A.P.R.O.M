@@ -14,6 +14,7 @@ const EXPLICACOES: Record<string, { titulo: string; origem: string }> = {
   ia_sobrecarregada: { titulo: "O servidor da IA está lotado", origem: "Servidor da IA, fora do SYNQ OS" },
   ia_chave_recusada: { titulo: "A chave da IA não foi aceita", origem: "Configuração da api" },
   ia_indisponivel: { titulo: "A IA não está ligada", origem: "Configuração da api" },
+  ia_desligada: { titulo: "A função está desligada", origem: "Controle da IA, na página da Vitória" },
   ia_inacessivel: { titulo: "Sem conexão com a IA", origem: "Rede entre o SYNQ OS e a IA" },
   ia_falhou: { titulo: "A IA recusou o pedido", origem: "Fornecedor da IA" },
   resposta_ia_invalida: { titulo: "A resposta da IA veio fora do formato", origem: "Resposta da IA" },

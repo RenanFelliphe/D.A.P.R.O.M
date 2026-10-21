@@ -6,6 +6,8 @@ import { atividade, atividadeMaterial, material, treinamentoServicoVersao } from
 import type { Deps } from "../deps";
 import { conflito, ErroApi, invalido, naoEncontrado } from "../http/erros";
 import { erroDaIAParaAdmin } from "./ia-falhas";
+import { situacaoDaFuncao } from "./ia-funcoes";
+import { blocoDeDadosDoServico } from "./treinamento-servico-dados";
 import { IAIndisponivel, type BlocoDeMensagem, type PedidoDeTexto } from "../servicos/ia";
 import { obterOuCriarRascunho, rascunhoDoTreinamento, rascunhoParaEditor, treinamentoDoCodigo, versaoPublicadaDoTreinamento, type RascunhoDoEditor } from "./treinamento-servico";
 import {
@@ -66,10 +68,12 @@ export interface SituacaoIATreinamento {
 }
 
 const MOTIVO_LIMITE = "Limite da demonstração atingido";
+const MOTIVO_DESLIGADA = "A função Criação de jogos está desligada na página da Vitória";
 
 export async function situacaoDaIA(deps: DepsDaIA, atividadeCodigo: string): Promise<SituacaoIATreinamento> {
   const { limiteTreinamentos, limiteRodadas } = deps.config.treinamentoIa;
-  const disponivel = deps.ia.disponivel();
+  const situacaoDaIa = await situacaoDaFuncao(deps, "minigames");
+  const disponivel = situacaoDaIa === "disponivel";
   const [usados] = await deps.db
     .select({ total: sql<number>`count(distinct ${treinamentoServicoVersao.treinamentoId})::int` })
     .from(treinamentoServicoVersao)
@@ -99,7 +103,7 @@ export async function situacaoDaIA(deps: DepsDaIA, atividadeCodigo: string): Pro
   const podeGerar = disponivel && (usaIa ? restamRodadas : treinamentosUsados < limiteTreinamentos);
   const podeAjustar = disponivel && usaIa && temTextoOrigem && restamRodadas;
   // Sem rodadas, `podeGerar` também é falso: um motivo cobre os dois botões.
-  const motivo = !disponivel ? "A IA não está configurada" : !podeGerar ? MOTIVO_LIMITE : null;
+  const motivo = situacaoDaIa === "sem_chave" ? "A IA não está configurada" : situacaoDaIa === "desligada" ? MOTIVO_DESLIGADA : !podeGerar ? MOTIVO_LIMITE : null;
   return { disponivel, usaIa, treinamentosUsados, limiteTreinamentos, rodadasUsadas, limiteRodadas, podeGerar, podeAjustar, motivo };
 }
 
@@ -516,14 +520,18 @@ export interface ChamadaDeRascunhoIA {
   };
 }
 
-const iaIndisponivel = () => new ErroApi(503, "ia_indisponivel", "A IA não está configurada: monte o treinamento à mão no editor");
+const iaIndisponivel = (situacao: "sem_chave" | "desligada") =>
+  situacao === "desligada"
+    ? new ErroApi(503, "ia_desligada", `${MOTIVO_DESLIGADA}: monte o treinamento à mão no editor`)
+    : new ErroApi(503, "ia_indisponivel", "A IA não está configurada: monte o treinamento à mão no editor");
 
 /**
  * Confere tudo o que pode dar errado antes de chamar a IA (IA desligada → 503, limite → 409, ajuste sem texto de origem ou
  * fase inexistente → 422) e monta o pedido. Depois daqui a resposta já é streaming, e os erros viram o evento `erro`.
  */
 export async function prepararRascunhoIA(deps: DepsDaIA, atividadeCodigo: string, usuarioId: string, entrada: PedidoDeRascunhoIA): Promise<ChamadaDeRascunhoIA> {
-  if (!deps.ia.disponivel()) throw iaIndisponivel();
+  const situacaoDaIa = await situacaoDaFuncao(deps, "minigames");
+  if (situacaoDaIa !== "disponivel") throw iaIndisponivel(situacaoDaIa);
   const [servico] = await deps.db.select({ codigo: atividade.codigo, descricao: atividade.descricao }).from(atividade).where(eq(atividade.codigo, atividadeCodigo)).limit(1);
   if (!servico) throw naoEncontrado("Serviço não encontrado no catálogo");
 
@@ -532,6 +540,9 @@ export async function prepararRascunhoIA(deps: DepsDaIA, atividadeCodigo: string
   const situacao = await situacaoDaIA(deps, atividadeCodigo);
   const materiais = await materiaisDoServico(deps, atividadeCodigo);
 
+  // Com a leitura de dados autorizada, o pedido leva também o resumo do que acontece nas OS do serviço; sem ela, nada muda.
+  const dadosDoServico = await blocoDeDadosDoServico(deps, atividadeCodigo);
+  const comDados = dadosDoServico ? `${dadosDoServico}\n\n` : "";
   if (entrada.tipo === "gerar") {
     const plano = entrada.plano ?? null;
     if (plano?.includes("selecione_materiais") && materiais.length === 0) {
@@ -544,12 +555,12 @@ export async function prepararRascunhoIA(deps: DepsDaIA, atividadeCodigo: string
       fase: null,
       mensagemInicial: "Lendo o texto do procedimento…",
       pedido: {
-        modelo: "rascunho",
+        modelo: "minigames",
         maxTokens: deps.config.treinamentoIa.maxTokens,
         tempoLimiteMs: TEMPO_LIMITE_MS,
         mensagens: [
           { papel: "sistema", texto: `${REGRAS}\n\n${FORMATO}`, cache: true },
-          { papel: "usuario", texto: `${blocoDoServico(servico.codigo, servico.descricao, materiais, entrada.texto)}\n\n${plano ? `${planoParaIA(plano)}\n\n` : ""}Monte o rascunho completo.` },
+          { papel: "usuario", texto: `${blocoDoServico(servico.codigo, servico.descricao, materiais, entrada.texto)}\n\n${comDados}${plano ? `${planoParaIA(plano)}\n\n` : ""}Monte o rascunho completo.` },
         ],
       },
       contexto: {
@@ -580,14 +591,14 @@ export async function prepararRascunhoIA(deps: DepsDaIA, atividadeCodigo: string
   const mensagens: BlocoDeMensagem[] = [
     { papel: "sistema", texto: `${REGRAS}\n\n${FORMATO}`, cache: true },
     { papel: "sistema", texto: fase === null ? INSTRUCAO_AJUSTE : INSTRUCAO_FASE },
-    { papel: "usuario", texto: `${blocoDoServico(servico.codigo, servico.descricao, materiais, texto)}\n\nRascunho atual:\n${atual}\n\n${ordem}` },
+    { papel: "usuario", texto: `${blocoDoServico(servico.codigo, servico.descricao, materiais, texto)}\n\n${comDados}Rascunho atual:\n${atual}\n\n${ordem}` },
   ];
   return {
     atividadeCodigo,
     tipo: "ajustar",
     fase,
     mensagemInicial: fase === null ? "Lendo o seu pedido…" : `Refazendo a fase ${fase + 1}…`,
-    pedido: { modelo: "rascunho", maxTokens: deps.config.treinamentoIa.maxTokens, tempoLimiteMs: TEMPO_LIMITE_MS, mensagens },
+    pedido: { modelo: "minigames", maxTokens: deps.config.treinamentoIa.maxTokens, tempoLimiteMs: TEMPO_LIMITE_MS, mensagens },
     contexto: {
       treinamentoId: rascunhoDoEditor.treinamentoId,
       versaoId: rascunhoDoEditor.versaoId,

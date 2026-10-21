@@ -4,7 +4,7 @@ import { dataHora, hora } from "@/lib/formatar";
 
 /** Resposta de `GET /vitoria/diagnostico` (só admin). */
 export interface Diagnostico {
-  estado: "ativa" | "sem_chave" | "limite_do_dia" | "fornecedor_com_problema";
+  estado: "ativa" | "sem_chave" | "desligada" | "limite_do_dia" | "fornecedor_com_problema";
   titulo: string;
   porque: string;
   volta: string | null;
@@ -27,7 +27,8 @@ export interface Diagnostico {
 
 const TOM: Record<Diagnostico["estado"], { selo: BadgeTone; rotulo: string }> = {
   ativa: { selo: "enc", rotulo: "Ativa" },
-  sem_chave: { selo: "neu", rotulo: "Desligada" },
+  sem_chave: { selo: "neu", rotulo: "Sem chave" },
+  desligada: { selo: "neu", rotulo: "Desligada" },
   limite_do_dia: { selo: "blq", rotulo: "Limite do dia" },
   fornecedor_com_problema: { selo: "crit", rotulo: "Fornecedor com problema" },
 };

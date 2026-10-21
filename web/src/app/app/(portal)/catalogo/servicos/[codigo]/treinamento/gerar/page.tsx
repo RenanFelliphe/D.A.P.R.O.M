@@ -26,7 +26,7 @@ export default async function GerarTreinamentoPage({ params }: { params: Promise
       ) : (
         <Notice tone="al" icon="alert">
           <span className="stack g8">
-            <span>A IA não está configurada neste ambiente, então a Vitória não monta rascunhos. O editor manual funciona normalmente.</span>
+            <span>{rascunho.ia.motivo ?? "A IA não está configurada neste ambiente"}, então a Vitória não monta rascunhos. O editor manual funciona normalmente.</span>
             <LinkButton variant="line" sm href={rotas.app.treinamentoServico(codigo, "explicacao")}>
               Criar manualmente
             </LinkButton>

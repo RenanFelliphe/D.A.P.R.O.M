@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { FuncaoDeIA } from "../../shared/ia/funcoes";
 
 const booleano = z
   .enum(["true", "false"])
@@ -42,13 +43,20 @@ const esquema = z.object({
 const esquemaIA = z.object({
   IA_PROVEDOR: z.enum(["anthropic", "gemini"]).default("anthropic"),
   ANTHROPIC_API_KEY: z.string().trim().default(""),
-  ANTHROPIC_MODELO_VITORIA: z.string().default("claude-haiku-5-5"),
-  ANTHROPIC_MODELO_RASCUNHO: z.string().default("claude-opus-5-5"),
+  ANTHROPIC_MODELO_CHATBOT: z.string().optional(),
+  ANTHROPIC_MODELO_MINIGAMES: z.string().optional(),
+  ANTHROPIC_MODELO_RECOMENDACAO: z.string().optional(),
   ANTHROPIC_MODELO_DIGITALIZACAO: z.string().default("claude-haiku-5-5"),
+  /** Os nomes de antes da troca dos nomes lógicos (chatbot era "vitoria", minigames era "rascunho"): ainda valem se o ambiente os traz. */
+  ANTHROPIC_MODELO_VITORIA: z.string().optional(),
+  ANTHROPIC_MODELO_RASCUNHO: z.string().optional(),
   GEMINI_API_KEY: z.string().trim().default(""),
-  GEMINI_MODELO_VITORIA: z.string().default("gemini-3.8-flash"),
-  GEMINI_MODELO_RASCUNHO: z.string().default("gemini-3.8-flash"),
+  GEMINI_MODELO_CHATBOT: z.string().optional(),
+  GEMINI_MODELO_MINIGAMES: z.string().optional(),
+  GEMINI_MODELO_RECOMENDACAO: z.string().optional(),
   GEMINI_MODELO_DIGITALIZACAO: z.string().default("gemini-3.8-flash"),
+  GEMINI_MODELO_VITORIA: z.string().optional(),
+  GEMINI_MODELO_RASCUNHO: z.string().optional(),
   GEMINI_MODELO_RESERVA: z.string().trim().default("gemini-3.5-flash-lite"),
 });
 
@@ -86,7 +94,7 @@ export interface Config {
     apiKey: string;
     ligada: boolean;
     /** Nome real do modelo do provedor escolhido para cada uso lógico (`ProvedorIA`); troca sem mudar código. */
-    modelos: { vitoria: string; rascunho: string; digitalizacao: string };
+    modelos: Record<FuncaoDeIA, string>;
     /** Só no Gemini: o modelo que assume quando o principal segue lotado (503) depois das novas tentativas; vazio desliga. */
     modeloReserva?: string;
   };
@@ -112,11 +120,17 @@ export interface Config {
 export function lerConfigIA(env: NodeJS.ProcessEnv = process.env): Config["ia"] {
   const e = esquemaIA.parse(env);
   if (e.IA_PROVEDOR === "gemini") {
+    const padrao = "gemini-3.8-flash";
     return {
       provedor: "gemini",
       apiKey: e.GEMINI_API_KEY,
       ligada: Boolean(e.GEMINI_API_KEY),
-      modelos: { vitoria: e.GEMINI_MODELO_VITORIA, rascunho: e.GEMINI_MODELO_RASCUNHO, digitalizacao: e.GEMINI_MODELO_DIGITALIZACAO },
+      modelos: {
+        chatbot: e.GEMINI_MODELO_CHATBOT ?? e.GEMINI_MODELO_VITORIA ?? padrao,
+        minigames: e.GEMINI_MODELO_MINIGAMES ?? e.GEMINI_MODELO_RASCUNHO ?? padrao,
+        recomendacao: e.GEMINI_MODELO_RECOMENDACAO ?? padrao,
+        digitalizacao: e.GEMINI_MODELO_DIGITALIZACAO,
+      },
       modeloReserva: e.GEMINI_MODELO_RESERVA,
     };
   }
@@ -124,7 +138,12 @@ export function lerConfigIA(env: NodeJS.ProcessEnv = process.env): Config["ia"] 
     provedor: "anthropic",
     apiKey: e.ANTHROPIC_API_KEY,
     ligada: Boolean(e.ANTHROPIC_API_KEY),
-    modelos: { vitoria: e.ANTHROPIC_MODELO_VITORIA, rascunho: e.ANTHROPIC_MODELO_RASCUNHO, digitalizacao: e.ANTHROPIC_MODELO_DIGITALIZACAO },
+    modelos: {
+      chatbot: e.ANTHROPIC_MODELO_CHATBOT ?? e.ANTHROPIC_MODELO_VITORIA ?? "claude-haiku-5-5",
+      minigames: e.ANTHROPIC_MODELO_MINIGAMES ?? e.ANTHROPIC_MODELO_RASCUNHO ?? "claude-opus-5-5",
+      recomendacao: e.ANTHROPIC_MODELO_RECOMENDACAO ?? "claude-haiku-5-5",
+      digitalizacao: e.ANTHROPIC_MODELO_DIGITALIZACAO,
+    },
   };
 }
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { IAIndisponivel, ProvedorIAGemini, RespostaIAInvalida, type PedidoDeTexto } from "../src/servicos/ia";
 
-const MODELOS = { vitoria: "gemini-vitoria", rascunho: "gemini-rascunho", digitalizacao: "gemini-digitalizacao" };
+const MODELOS = { chatbot: "gemini-vitoria", minigames: "gemini-rascunho", recomendacao: "gemini-recomendacao", digitalizacao: "gemini-digitalizacao" };
 
 interface Chamada {
   url: string;
@@ -26,7 +26,7 @@ const json = (corpo: unknown, status = 200) => () => new Response(JSON.stringify
 const candidato = (texto: string, finishReason = "STOP") => ({ candidates: [{ content: { role: "model", parts: [{ text: texto }] }, finishReason }] });
 
 const PEDIDO: PedidoDeTexto = {
-  modelo: "vitoria",
+  modelo: "chatbot",
   mensagens: [
     { papel: "sistema", texto: "Você é a Vitória." },
     { papel: "sistema", texto: "Manual do técnico.", cache: true },
@@ -116,14 +116,14 @@ describe("ProvedorIAGemini", () => {
 
   it("usa o modelo do uso lógico pedido", async () => {
     const { buscar, chamadas } = buscaFalsa([json(candidato("ok"))]);
-    await new ProvedorIAGemini("chave", MODELOS, 1024, buscar).conversar({ ...PEDIDO, modelo: "rascunho" });
+    await new ProvedorIAGemini("chave", MODELOS, 1024, buscar).conversar({ ...PEDIDO, modelo: "minigames" });
     assert.match(chamadas[0]!.url, /models\/gemini-rascunho:generateContent$/);
   });
 
   it("descarta falas da assistente no começo da conversa e mensagens vazias", async () => {
     const { buscar, chamadas } = buscaFalsa([json(candidato("ok"))]);
     await new ProvedorIAGemini("chave", MODELOS, 1024, buscar).conversar({
-      modelo: "vitoria",
+      modelo: "chatbot",
       mensagens: [
         { papel: "assistente", texto: "Resposta de uma pergunta que ficou fora da janela." },
         { papel: "usuario", texto: "" },

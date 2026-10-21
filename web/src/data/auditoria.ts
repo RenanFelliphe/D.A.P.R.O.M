@@ -13,6 +13,7 @@ export const entidadesDaAuditoria = [
   { valor: "conquista", rotulo: "Conquista" },
   { valor: "regra_pontuacao", rotulo: "Pontos da tarefa" },
   { valor: "rh", rotulo: "Registro de funcionários" },
+  { valor: "ia_funcao", rotulo: "Função de IA" },
 ] as const;
 
 export type EntidadeDaAuditoria = (typeof entidadesDaAuditoria)[number]["valor"];

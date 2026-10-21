@@ -302,6 +302,13 @@
       "when": 1792511907267,
       "tag": "0042_pedido_de_conta",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792540580105,
+      "tag": "0043_controle_da_ia",
+      "breakpoints": true
     }
   ]
 }

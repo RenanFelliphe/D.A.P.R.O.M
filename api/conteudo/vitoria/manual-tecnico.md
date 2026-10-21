@@ -179,7 +179,7 @@
 
 - A Vitória é a assistente virtual do SYNQ OS. O perfil dela mostra quem ela é, o que pode e o que não pode fazer no
   sistema e qual modelo de IA está respondendo agora. Também abre tocando no nome dela, no topo do chat. [vitoria_perfil]
-- Ela não vê as OS, as respostas da APR nem os dados de ninguém: os fatos do sistema vêm só deste manual (em conceitos gerais
+- Ela não vê as OS, as respostas da APR nem os dados de ninguém, a menos que o administrador tenha ligado a leitura de dados do Chatbot: aí ela passa a ler as OS em aberto da sua equipe, quantas APRs esperam assinatura e os seus pontos, e só usa isso nas perguntas sobre o seu trabalho (nunca de outra equipe, nem o nome de colegas). Os fatos do sistema vêm só deste manual (em conceitos gerais
   do ofício ela pode explicar com o que sabe, avisando que é uma informação geral e não uma regra da empresa). A conversa não fica guardada
   no servidor.
 - Ela não aprova nem reprova APR, não assina nada e não decide nada por ninguém.

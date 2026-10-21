@@ -132,11 +132,13 @@ Premissas: PTAX de 13/10/2026 (R$ 5,01); cada mensagem da Vitória com o manual 
 ### 1.4 Dados e LGPD
 
 - **O que vai ao fornecedor:**
-  - Vitória: a pergunta, o manual do perfil, a tela atual e as últimas mensagens. Nunca dados de OS.
-  - Treinamentos: o texto do procedimento colado pelo admin e os materiais do serviço no catálogo.
+  - Vitória: a pergunta, o manual do perfil, a tela atual e as últimas mensagens. **Dados de OS só se o admin autorizar, assinando, a leitura de dados do Chatbot** (as OS em aberto do escopo de quem pergunta, as APRs que esperam assinatura e os pontos; nunca nome de colega). Ver [controle-da-ia.md](controle-da-ia.md).
+  - Treinamentos: o texto do procedimento colado pelo admin e os materiais do serviço no catálogo. Com a leitura de dados da Criação de jogos autorizada, também um resumo agregado das OS do serviço (pausas, itens de APR com problema e materiais sugeridos e aceitos).
+  - Recomendação de modelo de APR (nova, 20/10/2026): o título, a descrição e o serviço de cada OS e a descrição dos modelos; só com a autorização assinada.
   - Digitalização: as imagens das folhas, com nomes, matrículas e assinaturas. **É a primeira funcionalidade que envia dados de OS e dados pessoais ao fornecedor** (seção 10.10).
 - **Protótipo e feira:** dados fictícios e textos de demonstração; não há problema.
-- **Piloto:** a empresa precisa aprovar o envio. Se não aprovar, a IA é desligada e as três funcionalidades continuam (seção 1.1).
+- **Piloto:** a empresa precisa aprovar o envio. Se não aprovar, o admin deixa desligadas as funções com dados (a autorização assinada, em [controle-da-ia.md](controle-da-ia.md), é o registro da aprovação) ou desliga a IA, e as funcionalidades continuam sem ela (seção 1.1).
+- **Controle por função (20/10/2026):** o admin liga e desliga cada função de IA (Chatbot, Criação de jogos, Recomendação de modelo de APR e Digitalização de documentos) na página da Vitória; o módulo de IA recusa a chamada de função desligada. Os nomes lógicos dos usos passaram a ser `chatbot`, `minigames`, `recomendacao` e `digitalizacao` (as variáveis `*_MODELO_VITORIA` e `*_MODELO_RASCUNHO` ainda valem).
 - **As conversas da Vitória não são guardadas no servidor.** Só ficam as perguntas que ela não soube responder, sem identificar a pessoa (seção 2.7).
 
 ### 1.5 O módulo de IA (implementado em 16/10/2026)

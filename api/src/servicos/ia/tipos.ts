@@ -4,6 +4,8 @@
  * em `criarProvedorIA`), sem mudar quem chama.
  */
 
+import type { FuncaoDeIA } from "../../../../shared/ia/funcoes";
+
 export type PapelDeMensagem = "sistema" | "usuario" | "assistente";
 
 /** Uma imagem anexada a uma mensagem (a folha digitalizada que a IA de visão lê). */
@@ -21,8 +23,12 @@ export interface BlocoDeMensagem {
   cache?: boolean;
 }
 
-/** Nome lógico do uso (não o nome do modelo real); a tradução para o modelo do provedor fica na configuração. */
-export type ModeloLogico = "vitoria" | "rascunho" | "digitalizacao";
+/**
+ * Nome lógico do uso (não o nome do modelo real); a tradução para o modelo do provedor fica na configuração. É o mesmo nome da
+ * função de IA que o admin liga e desliga (`shared/ia/funcoes.ts`): chatbot (a Vitória), minigames (o rascunho dos
+ * treinamentos), recomendacao (o modelo de APR de cada OS) e digitalizacao.
+ */
+export type ModeloLogico = FuncaoDeIA;
 
 export interface PedidoDeTexto {
   modelo: ModeloLogico;
@@ -57,10 +63,11 @@ export interface ProvedorIA {
  * - `limite_por_minuto`: pedidos demais em pouco tempo; volta em segundos (`esperarSegundos`, quando o fornecedor diz).
  * - `sobrecarga`: o servidor do fornecedor está lotado ou com erro interno (5xx), mesmo depois das novas tentativas.
  * - `chave`: sem chave configurada, ou o fornecedor recusou a chave.
+ * - `desligada`: o administrador desligou esta função de IA (ou ainda não autorizou a leitura dos dados dela).
  * - `rede`: não foi possível falar com o fornecedor (rede fora do ar ou tempo esgotado).
  * - `fornecedor`: outra recusa do fornecedor (pedido rejeitado, resposta quebrada).
  */
-export type MotivoDaFalhaIA = "cota" | "limite_por_minuto" | "sobrecarga" | "chave" | "rede" | "fornecedor";
+export type MotivoDaFalhaIA = "cota" | "limite_por_minuto" | "sobrecarga" | "chave" | "rede" | "fornecedor" | "desligada";
 
 /** Rede fora do ar, chave ausente ou HTTP ruim: quem chama deve cair num fallback sem IA, nunca propagar um 500. */
 export class IAIndisponivel extends Error {
