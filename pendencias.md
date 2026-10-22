@@ -8,7 +8,7 @@ Só o que ainda não foi realizado. Ao concluir um item, apague-o daqui; a regra
 
 | # | Item | Tipo | Prioridade |
 |---|---|---|---|
-| 1 | Ver o app num aparelho, online e em modo avião (APK em montagem; o `docker build` do `mobile/Dockerfile` nunca rodou) | código | 🔴 |
+| 1 | Ver o app num aparelho, online e em modo avião (o APK 0.2.0 do EAS Build já abriu num aparelho) | código | 🔴 |
 | 2 | Rodar a bateria inteira da Vitória (66 casos) contra a IA real; depende da cota | código | 🟡 |
 | 4 | Servidor de e-mail (SMTP) | terceiros | 🟡 |
 | 5 | Supervisor devolve a OS ao responsável em vez de assinar (questão 69) | decisão | 🟡 |
@@ -28,7 +28,6 @@ O MVP está completo quando o caminho **ler OS → APR → executar → PDF**, c
 
 ### 2.1 O app num aparelho
 
-- **Montar o APK** (`pnpm apk` na pasta `mobile`, com Docker) e corrigir o `Dockerfile` se algum passo falhar (download do SDK, Gradle, R8, `apksigner`). Ver [mobile/README.md](mobile/README.md).
 - **Roteiro da demo, ensaiado nos aparelhos da apresentação:** o caminho online no app e no navegador; o mesmo caminho em modo avião; a volta do sinal com a OS chegando ao painel; o envio com o app fechado.
 - **Nunca visto rodando:** a assinatura desenhada com o dedo e o PNG gerado; a câmera, o seletor de PDF e o GPS; o banco SQLite abrindo; o NetInfo mudando no modo avião; a tarefa em segundo plano (a economia de bateria do fabricante pode adiá-la); o tempo da derivação da senha no Hermes; as figurinhas animadas da Vitória; o teclado nos campos longos e o botão voltar do Android.
 - **Câmera da digitalização:** afinar `NITIDEZ_MINIMA` com fotos reais.

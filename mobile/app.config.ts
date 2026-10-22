@@ -6,7 +6,7 @@ import type { ExpoConfig } from "expo/config";
  */
 const permitirHttp = process.env.APP_PERMITIR_HTTP === "true";
 
-/** `APP_VERSION_CODE` (inteiro, o Dockerfile do APK repassa): cada APK novo precisa de um número maior para o Android aceitá-lo por cima do instalado. */
+/** `APP_VERSION_CODE` (inteiro, no perfil do `eas.json`): cada APK novo precisa de um número maior para o Android aceitá-lo por cima do instalado. */
 const versionCode = Number.parseInt(process.env.APP_VERSION_CODE ?? "", 10) || 1;
 
 /**
@@ -53,8 +53,6 @@ const config: ExpoConfig = {
     // A notificação push (docs/pessoas-e-equipes.md, seção 8.5): o ícone pequeno da bandeja é só a silhueta (o Android ignora a cor).
     ["expo-notifications", { icon: "./assets/icone-notificacao.png", color: "#0F5C78" }],
     ["expo-build-properties", { android: { usesCleartextTraffic: permitirHttp } }],
-    // Assina o release com a chave que o Dockerfile entrega por variável de ambiente (sem ela, nada muda).
-    "./plugins/assinatura-android.js",
   ],
 };
 

@@ -8,8 +8,6 @@ expo-env.d.ts
 *.apk
 *.aab
 *.keystore
-# Saída do build do APK (Dockerfile do mobile).
-/apk
 
 # Credenciais do Firebase (push): vêm por GOOGLE_SERVICES_JSON no build, nunca no repositório.
 google-services.json

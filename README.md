@@ -76,7 +76,7 @@ Situação: **pronta** = feita no código; "falta ver" = ainda não conferida na
 | Digitalização de OS antigas | PDF em lote ou fotos; OCR no impresso, IA no manuscrito, conferência antes de registrar | pronta; IA real e câmera falta ver | [ia-e-vitoria.md, seção 6](docs/ia-e-vitoria.md) |
 | Gamificação | Pontos, temporadas, ranking, patentes e conquistas; a segurança nunca custa pontos | pronta | [gamificacao-e-treinamentos.md, seções 1 a 7](docs/gamificacao-e-treinamentos.md) |
 | Treinamentos de serviço | Minijogos narrados pela Vitória, rascunho pela IA, validação pelos supervisores | pronta (só na web) | [gamificacao-e-treinamentos.md, seções 8 e 9](docs/gamificacao-e-treinamentos.md) |
-| App e modo offline | Cópia da equipe e fila em SQLite, entrada sem sinal por 7 dias, envio com o app fechado, APK pelo Dockerfile | pronta no código; falta ver num aparelho | [especificacao.md, seção 6](docs/especificacao.md) e [mobile/README.md](mobile/README.md) |
+| App e modo offline | Cópia da equipe e fila em SQLite, entrada sem sinal por 7 dias, envio com o app fechado, APK pelo EAS Build e atualização pelo ar (EAS Update) | pronta; abriu num aparelho, falta passar por cada tela | [especificacao.md, seção 6](docs/especificacao.md) e [mobile/README.md](mobile/README.md) |
 
 **De onde vieram:** as essenciais saíram do desafio e das reuniões; as prioridades do time foram o catálogo de serviço com os materiais, a digitalização de OS e APRs antigas, o ciclo das preventivas, a assinatura e a OS de apoio; as extras, o registro de funcionários, a gamificação e o chatbot (que virou a Vitória e os treinamentos). Surgiram no caminho a atribuição e a devolução, a ausência e o representante, os avisos por e-mail, a sugestão de materiais, a execução compartilhada, o pedido de conta, o controle da IA, a validação dos treinamentos, as validações do supervisor, o mapa de calor, a previsão do tempo e as configurações.
 
@@ -90,7 +90,7 @@ Situação: **pronta** = feita no código; "falta ver" = ainda não conferida na
 | `shared` | TypeScript | Contratos da `api` usados pela `web` e pelo `mobile`, avisos, Vitória e funções de IA |
 | Persistência | Supabase (Postgres, Auth e Storage) | Só a `api` fala com ele; nenhum cliente tem a chave |
 | IA | Claude, ou o Gemini gratuito só na demonstração (`IA_PROVEDOR`) | Vitória, rascunho de treinamento, recomendação do modelo e digitalização |
-| Implantação | Docker | `api` e `web` com Dockerfile e `docker-compose.yml`; o Dockerfile do `mobile` gera o APK assinado |
+| Implantação | Docker (`api` e `web`); EAS Build e EAS Update (`mobile`) | `api` e `web` com Dockerfile e `docker-compose.yml`; o APK sai do EAS Build e o JavaScript novo chega aos aparelhos pelo EAS Update |
 
 Todo registro de campo chega à `api` como um evento idempotente (`POST /eventos`), online ou pela fila do app. O detalhe (decisões-chave, modelo de dados, estados, eventos, contratos, tarefas e segurança) está em [docs/especificacao.md](docs/especificacao.md).
 
@@ -139,7 +139,7 @@ A `api` aplica as migrações e carrega os modelos de APR antes de abrir a porta
 
 ### 6.5 App e APK
 
-O app aponta para a `api` por `EXPO_PUBLIC_API_URL` e roda pelo *development build* (`pnpm android`, não no Expo Go). O APK assinado sai do `mobile/Dockerfile` (`pnpm apk`). Ver [mobile/README.md](mobile/README.md).
+O app aponta para a `api` por `EXPO_PUBLIC_API_URL` e roda pelo *development build* (`pnpm android`, não no Expo Go). O APK sai do EAS Build, nos servidores da Expo (`pnpm apk`), e as mudanças só de JavaScript chegam aos aparelhos pelo EAS Update (`pnpm atualizar`), sem APK novo. O app não usa Docker. Ver [mobile/README.md](mobile/README.md), seção "Gerar o APK e atualizar".
 
 ## 7. Hospedagem
 
@@ -148,7 +148,7 @@ O app aponta para a `api` por `EXPO_PUBLIC_API_URL` e roda pelo *development bui
 | Coolify, hospedado pelo mentor da maratona | **oficial** até o fim da maratona; `api` e `web` sobem pelos Dockerfiles |
 | Render (https://d-a-p-r-o-m.onrender.com) | hospedagem anterior; continua de pé e pode voltar a ser usada |
 
-O app não é publicado: o APK é gerado e instalado nos aparelhos.
+O app não fica nessas hospedagens nem em loja: o APK é gerado no EAS Build e instalado pelo link do Expo, e as atualizações vêm do EAS Update.
 
 ## 8. Documentação
 

@@ -1,3 +1,0 @@
-# O script roda dentro de uma imagem Linux: com CRLF ele quebra.
-docker/*.sh text eol=lf
-Dockerfile text eol=lf

@@ -45,7 +45,7 @@ flowchart LR
 |---|---|---|
 | `api` | regras de negócio, autorização, banco, eventos de campo, PDF, e-mail, tarefas em segundo plano, IA e os dois simuladores | `api/Dockerfile` (imagem única, roda o TypeScript com `tsx`) |
 | `web` | Next.js para todos os perfis: área de campo (`/app/*`), painel de gestão, Campo de treino e telas dos simuladores (`/simulador/*`) | `web/Dockerfile` |
-| `mobile` | app Expo para Android: telas de campo, câmera, assinatura, cópia local e fila em SQLite, envio em segundo plano | `mobile/Dockerfile` gera o APK assinado; não é publicado como serviço |
+| `mobile` | app Expo para Android: telas de campo, câmera, assinatura, cópia local e fila em SQLite, envio em segundo plano | EAS Build gera o APK (`eas.json`) e EAS Update entrega o JavaScript novo; não é publicado como serviço |
 | `shared` | contratos comuns às três aplicações: tipos da api (`shared/api`), avisos e categorias de e-mail (`shared/notificacoes/avisos.ts`), funções de IA (`shared/ia/funcoes.ts`), destinos da Vitória, jogos de treinamento | — |
 | raiz | `docker-compose.yml` (sobe `api` e `web`), `.env.example` | — |
 
@@ -202,7 +202,7 @@ A lista completa, com padrões e validação, está em `api/src/config.ts`; o mo
 | Assinatura com validade jurídica | `ASSINATURA_PROVEDOR` (`desligado`, padrão; `zapsign`; `simulado`), `ZAPSIGN_URL` (padrão: o sandbox), `ZAPSIGN_TOKEN`, `ASSINATURA_WEBHOOK_SEGREDO`, `API_URL_PUBLICA` (só o simulado). Ver [pessoas-e-equipes.md, seção 3.3](pessoas-e-equipes.md) |
 | Servidor | `PORT` |
 | web | `API_URL` (só no servidor do `web`) |
-| mobile | `EXPO_PUBLIC_API_URL`, fixada no build do APK |
+| mobile | `EXPO_PUBLIC_API_URL`, fixada no APK e em cada atualização pelo ar (perfil `preview` do `mobile/eas.json`) |
 
 Parte dos valores (cidade padrão, intervalo de leitura do SAP, horas da leitura do RH e do resumo, limites da IA) pode ser mudada pelo admin em `/app/configuracoes`; o valor gravado na tabela `configuracao` vence o do ambiente (`CONFIGURACOES_CHAVES`, `api/src/db/schema/clima.ts`; `aplicarConfiguracoes`, `api/src/dominio/configuracoes.ts`).
 

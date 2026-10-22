@@ -2,7 +2,7 @@
 
 Aplicativo de campo do SYNQ OS (Android), em Expo SDK 58 com React Native e TypeScript. Funciona online no dia a dia e tem um modo offline de contingência para aplicar a APR e executar a OS onde não há sinal. É um cliente: as regras ficam na [`api`](../api/README.md), que é a mesma da [`web`](../web/README.md); o app mostra, coleta e envia.
 
-**Situação:** o app está feito no código (app online, modo offline, login sem sinal, envio com o app fechado, Dockerfile do APK e conquista de sincronização offline). Falta o teste num aparelho e o roteiro da demonstração. Tudo foi validado por código (`tsc`, ESLint, testes de unidade e os scripts `conferir:*` contra a `api` local), sem aparelho.
+**Situação:** o app está feito no código (app online, modo offline, login sem sinal, envio com o app fechado e conquista de sincronização offline). O APK sai do EAS Build e abriu num aparelho em 22/10/2026 (versão 0.2.0); falta passar por cada tela no aparelho e o roteiro da demonstração. O resto foi validado por código (`tsc`, ESLint, testes de unidade e os scripts `conferir:*` contra a `api` local).
 
 Regras de negócio: [docs/](../docs) (campo em [operacao-de-campo.md](../docs/operacao-de-campo.md)); o app sem sinal, a fila e a cópia local: [docs/especificacao.md](../docs/especificacao.md), seções 6.5 a 6.7.
 
@@ -43,7 +43,7 @@ Regras de negócio: [docs/](../docs) (campo em [operacao-de-campo.md](../docs/op
 | D3 | **Conta aguardando liberação** vê a espera, com o aviso de fazer o Campo de treino pela web, e nenhuma tela de campo | `src/app/aguardando.tsx` |
 | D4 | **Treinamentos de serviço** (os jogos) ficam na web | — |
 | D5 | **Um registro por pessoa no aparelho:** cada pessoa tem o seu hash de senha, o seu `GET /me` guardado, a sua cópia e a sua fila; outra pessoa entrar não apaga o da anterior | `src/sessao/credenciais.ts`, `src/offline/identidade.ts` |
-| D6 | **APK assinado instalado à mão** nos aparelhos da demonstração; sem loja | `mobile/Dockerfile` |
+| D6 | **APK pelo EAS Build, instalado pelo link do Expo** nos aparelhos da demonstração; sem loja. O JavaScript novo chega pelo ar (EAS Update) | `eas.json`, perfil `preview` |
 
 Outras escolhas que valem: o modelo da APR vem de `GET /modelos-apr/{codigo}/versoes/publicada`, como na web; a assinatura é desenhada sobre `react-native-svg` (caixa de 600 × 180, a mesma da web), e o PNG sobe como arquivo; a janela de 7 dias conta desde a última confirmação do servidor (login ou `GET /me` com sinal), não só desde o login; a data da ausência e a hora da execução esquecida são digitadas (`dd/mm/aaaa`, `hh:mm`), sem seletor nativo.
 
@@ -78,8 +78,9 @@ Os `conferir:*` rodam o mesmo cliente das telas contra uma `api` de verdade (`AP
 |---|---|
 | `pnpm typecheck` | `tsc --noEmit` (estrito) |
 | `pnpm lint` | `expo lint` |
-| `pnpm test` | testes de unidade (`node --test`; o SQLite de verdade pelo `node:sqlite`) das partes puras: cliente, sessão e janela sem sinal, fila, cópia, projeção, sincronizador, APR, execução, ausências, avisos, gamificação, Vitória, comando do APK |
-| `pnpm apk` | gera o APK pelo Docker (ver "Gerar o APK"); `--simular` só mostra o comando |
+| `pnpm test` | testes de unidade (`node --test`; o SQLite de verdade pelo `node:sqlite`) das partes puras: cliente, sessão e janela sem sinal, fila, cópia, projeção, sincronizador, APR, execução, ausências, avisos, gamificação, Vitória |
+| `pnpm apk` | gera o APK no EAS Build, perfil `preview` (ver "Gerar o APK e atualizar") |
+| `pnpm atualizar --message "..."` | publica o JavaScript atual pelo ar no canal `preview`, com os endereços do `eas.json` |
 | `pnpm conferir:api` | login de cada tipo de conta, lista, detalhe, renovação do token e envio de evento |
 | `pnpm conferir:campo` | o fluxo de campo: modelo, APR validada, assinaturas de duas contas, iniciar, pausar, encerrar em dois passos com foto e PDF, cancelar, interromper, APR bloqueada e evidência |
 | `pnpm conferir:perfil` | assinatura, avisos, e-mails, anonimato, senha, ausência, gamificação e o fluxo SSE da Vitória |
@@ -92,10 +93,9 @@ Os `conferir:*` rodam o mesmo cliente das telas contra uma `api` de verdade (`AP
 ```
 mobile/
   index.ts             entrada: registra a tarefa de segundo plano e carrega o expo-router/entry
-  app.config.ts        nome SYNQ OS, pacote br.synqos.app, permissões, plugins, versionCode
-  plugins/             assinatura-android.js (o release do Gradle lê a chave do ambiente)
-  Dockerfile, docker/  o build do APK
-  scripts/             pnpm apk e os conferir:*
+  app.config.ts        nome SYNQ OS, pacote br.synqos.app, versão, permissões, plugins, versionCode, EAS Update
+  eas.json             o perfil preview do EAS Build: APK, canal, endereços da api e da web, versionCode
+  scripts/             pnpm atualizar e os conferir:*
   src/app/             rotas (Expo Router), abaixo
   src/api/             cliente da api (puro e testado), erros, eventos e arquivos, tokens no SecureStore
   src/sessao/          SessaoProvider, destino da conta, credenciais e hash da senha, janela de 7 dias, GET /me com e sem sinal, sair
@@ -132,47 +132,45 @@ mobile/
 
 ## Gerar o app
 
-`pnpm android` compila o development build. O projeto nativo (`android/`) é gerado pelo `expo prebuild` e fica fora do git: nunca se edita à mão; o que for nativo entra no `app.config.ts` ou num plugin (`plugins/`).
+`pnpm android` compila o development build. O projeto nativo (`android/`) é gerado pelo `expo prebuild` e fica fora do git: nunca se edita à mão; o que for nativo entra no `app.config.ts` (ou num plugin de configuração).
 
-## Gerar o APK
+## Gerar o APK e atualizar
 
-O APK sai do [Dockerfile](Dockerfile) do `mobile`; ele não é publicado como serviço (nem no Coolify nem no Render). A imagem traz o JDK 17, o Android SDK (as versões que o React Native pede, lidas do arquivo dele), o Node e o pnpm, roda o `expo prebuild` e o Gradle (`assembleRelease`) e entrega **um arquivo**, `synq-os.apk`, assinado e conferido com o `apksigner`. Só precisa do **Docker com BuildKit**; nada de Android Studio. A primeira vez baixa o SDK, o NDK e as dependências do Gradle e demora bem mais que as seguintes. O `docker build` ainda não foi rodado (a máquina de desenvolvimento não tem Docker): quem tiver, rode `pnpm apk --simular` e depois o build de verdade.
+O app de verdade sai de dois serviços da Expo, na conta `renanfelliphe9` (projeto `synq-os`): o **EAS Build** monta o APK nos servidores da Expo, e o **EAS Update** (`expo-updates`) entrega o JavaScript novo aos aparelhos que já têm o APK. Nada é montado na máquina, e o app não é publicado como serviço (nem no Coolify nem no Render) nem em loja.
 
-**O endereço da `api` é gravado no APK no build** (`EXPO_PUBLIC_API_URL`) e é obrigatório. O build recusa `http://`, a menos que se peça `--http`, só para um teste com a `api` local.
-
-```bash
-# na pasta mobile/ (o contexto do build é a raiz do repositório, por causa do shared/)
-pnpm apk --api https://api.exemplo.com.br                       # APK de demonstração, chave descartável
-pnpm apk --api https://api.exemplo.com.br --web https://app.exemplo.com.br --chave ../chaves/synqos.keystore --senha ../chaves/synqos.senha --versao 2
-# resultado: mobile/apk/synq-os.apk
-```
-
-O `pnpm apk` só monta e roda o `docker build`; o mesmo comando, direto, na raiz do repositório:
+### APK (EAS Build)
 
 ```bash
-docker build -f mobile/Dockerfile --target saida --output type=local,dest=./mobile/apk --build-arg EXPO_PUBLIC_API_URL=https://api.exemplo.com.br --secret id=chave,src=./chaves/synqos.keystore --secret id=chave_senha,src=./chaves/synqos.senha .
+cd mobile
+pnpm apk        # pnpm dlx eas-cli build --platform android --profile preview
 ```
 
-| Opção (`pnpm apk`) | `--build-arg` / segredo | O que faz |
-|---|---|---|
-| `--api` | `EXPO_PUBLIC_API_URL` | endereço da `api` (obrigatório) |
-| `--web` | `EXPO_PUBLIC_WEB_URL` | endereço da web, para o "Me leve lá" (opcional) |
-| `--http` | `APP_PERMITIR_HTTP=true` | libera `http://`; só teste com a `api` local |
-| `--versao` | `APP_VERSION_CODE` | número que cresce a cada APK distribuído; o Android só instala por cima um número maior (padrão 1) |
-| `--arquiteturas` | `ARQUITETURAS` | padrão `arm64-v8a,armeabi-v7a,x86_64`; `arm64-v8a` sozinho acelera o build |
-| `--chave` e `--senha` | segredos `chave` e `chave_senha` | o `.keystore` e um arquivo só com a senha (do arquivo e da chave; apelido `synqos`) |
-| `--saida` | — | pasta do APK (padrão `mobile/apk`) |
+- **O perfil `preview` do [`eas.json`](eas.json)** gera um APK de distribuição interna no canal `preview` e grava no build `EXPO_PUBLIC_API_URL` (a `api` oficial, `https`), `EXPO_PUBLIC_WEB_URL` e `APP_VERSION_CODE`. O `.env` da máquina não entra no build ([`.easignore`](../.easignore)).
+- **O que sobe:** a pasta do repositório como está no disco, commitada ou não, menos o que o `.easignore` tira (`api`, `web`, documentos, dependências e o que é gerado); o que importa é `mobile/` e `shared/`. Commite antes, para o build ter um commit que o identifique.
+- **Tempo:** no plano gratuito o build espera numa fila, que pode levar horas; a montagem em si leva uns 10 a 20 minutos. O andamento e o link ficam em [expo.dev](https://expo.dev/accounts/renanfelliphe9/projects/synq-os/builds).
+- **Instalar:** abrir o link do build no Android (ou o QR code que o comando mostra) e liberar "instalar apps desconhecidos".
+- **A chave de assinatura** é guardada pela Expo, nas credenciais do projeto (`eas credentials`), e é a mesma em todo build: o APK novo instala por cima do anterior sem desinstalar. Ela nunca vem ao repositório.
+- **Push:** sem `GOOGLE_SERVICES_JSON` (o caminho do `google-services.json` do Firebase) o APK sai sem notificações push; o resto funciona.
 
-**A chave de assinatura.** Sem `--chave`, o build cria uma chave **descartável** (com aviso no log): serve para testar, mas cada build gera outra, e o Android não instala por cima de um APK assinado com chave diferente (desinstale antes). Para a demonstração e qualquer distribuição, gere a chave **uma vez** e guarde-a fora do repositório (o `.gitignore` e o `Dockerfile.dockerignore` já barram `*.keystore`); **perdê-la impede atualizar o app nos aparelhos que já o têm**:
+### Atualização pelo ar (EAS Update)
 
 ```bash
-keytool -genkeypair -keystore synqos.keystore -alias synqos -keyalg RSA -keysize 2048 -validity 10000
-printf '%s' 'a-senha-escolhida' > synqos.senha      # a mesma senha para o arquivo e para a chave
+cd mobile
+pnpm atualizar --message "o que mudou"
 ```
 
-A chave e a senha entram como **segredos do BuildKit**: existem só durante o passo do Gradle e não ficam na imagem. O [`plugins/assinatura-android.js`](plugins/assinatura-android.js) faz o Gradle ler a chave de `SYNQOS_KEYSTORE` e `SYNQOS_KEYSTORE_SENHA`; sem elas (`pnpm android`), o release usa a chave de depuração do template. O Dockerfile e o `docker/gerar-apk.sh` ficam com LF (`.gitattributes`): com CRLF o script quebra no Linux.
+- O app procura atualização ao abrir (`checkAutomatically: "ON_LOAD"`, em [`app.config.ts`](app.config.ts)) e a aplica **na abertura seguinte**.
+- **O [`scripts/atualizar.ts`](scripts/atualizar.ts) usa os endereços do `eas.json`**, os mesmos do APK. O `eas update` monta o JavaScript na máquina e gravaria o `EXPO_PUBLIC_API_URL` do `.env`, que no desenvolvimento aponta para a `api` local; chamado direto, mandaria os aparelhos para lá.
+- A atualização só chega aos APKs com o **mesmo `version`** (`runtimeVersion` com a política `appVersion`).
 
-**Instalar:** `adb install synq-os.apk` (depuração USB ligada) ou copiar o arquivo para o aparelho e abri-lo (liberar "instalar apps desconhecidos"). Num celular com o app já instalado, use um `--versao` maior e a **mesma chave**.
+### Quando é preciso um APK novo
+
+| Mudou | O que fazer |
+|---|---|
+| Telas, textos, regras do app, chamadas à `api`, imagens importadas pelo código (`src/`, `shared/`) | `pnpm atualizar` |
+| Biblioteca com código nativo, plugin, permissão, ícone, nome, `google-services.json`, endereço da `api`, versão do Expo SDK | subir o `version` no `app.config.ts` **e** o `APP_VERSION_CODE` no `eas.json`, e rodar `pnpm apk` |
+
+Subir o `version` separa as atualizações: as publicadas depois dele só chegam a quem instalar o APK novo, e os aparelhos com o APK antigo deixam de recebê-las. Sem subir, um JavaScript que conta com algo nativo que o APK antigo não tem quebra o app nesses aparelhos. Na dúvida, gere o APK.
 
 ## Ainda não conferido
 
