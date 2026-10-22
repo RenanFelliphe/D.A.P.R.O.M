@@ -1,5 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { MIN_PARTICIPANTES, type Colega, type ItemDoModelo, type RiscoDoModelo } from "@shared/api/apr";
+import { PRAZO_DO_CONVITE_MIN, type ConviteFeito } from "@shared/api/apr-convite";
+import { seloDoConvite } from "@/convites/regras";
 import { cores, espaco } from "@/tema/tema";
 import { Aviso } from "@/ui/Aviso";
 import { Botao } from "@/ui/Botao";
@@ -16,6 +18,15 @@ interface ParticipantesAprProps {
   aoTornarResponsavel?: (id: string) => void;
   /** Por que não dá para continuar (menos de 2 participantes), junto da lista. */
   erro?: string;
+  /**
+   * Os convites que o responsável fez nesta OS hoje, com a situação de cada um; `undefined` sem sinal (o convite é do servidor, e sem
+   * ele vale o presencial de sempre). Cada participante convidado leva o selo da resposta dele.
+   */
+  convites?: ConviteFeito[];
+  /** Convidar as pessoas marcadas que ainda não têm convite em aberto; `paraConvidar` diz quantas são. */
+  aoConvidar?: () => void;
+  paraConvidar?: number;
+  convidando?: boolean;
 }
 
 /**
@@ -23,7 +34,7 @@ interface ParticipantesAprProps {
  * (ninguém executa sozinho) e não tem máximo. Equipe com só 1 pessoa disponível não consegue iniciar a APR, e a seção diz isso
  * sem esperar o toque.
  */
-export function ParticipantesApr({ equipe, usuarioId, marcados, responsavelId, aoAlternar, aoTornarResponsavel, erro }: ParticipantesAprProps) {
+export function ParticipantesApr({ equipe, usuarioId, marcados, responsavelId, aoAlternar, aoTornarResponsavel, erro, convites, aoConvidar, paraConvidar = 0, convidando = false }: ParticipantesAprProps) {
   const sozinho = equipe.length < MIN_PARTICIPANTES;
   return (
     <View style={estilos.secao}>
@@ -40,15 +51,24 @@ export function ParticipantesApr({ equipe, usuarioId, marcados, responsavelId, a
           const voce = c.id === usuarioId;
           const marcado = marcados.includes(c.id);
           const responsavel = c.id === responsavelId;
+          const convite = marcado ? convites?.find((x) => x.convidado.id === c.id) : undefined;
+          const selo = convite ? seloDoConvite(convite) : null;
           return (
             <Opcao
               key={c.id}
               rotulo={`${c.nome}${voce ? " (você)" : ""}`}
-              detalhe={`mat. ${c.matricula}${c.cargo ? ` · ${c.cargo}` : ""}${c.assinatura_path ? "" : " · sem assinatura cadastrada"}`}
+              detalhe={`mat. ${c.matricula}${c.cargo ? ` · ${c.cargo}` : ""}${c.assinatura_path ? "" : " · sem assinatura cadastrada"}${convite?.situacao === "recusado" && convite.motivo ? ` · Não pode: ${convite.motivo}` : ""}`}
               marcada={marcado}
               desabilitada={voce}
               aoPressionar={() => aoAlternar(c.id)}
-              direita={marcado ? responsavel ? <Selo tom="dark">Responsável</Selo> : <Selo>Executor</Selo> : undefined}
+              direita={
+                marcado ? (
+                  <View style={estilos.selos}>
+                    {responsavel ? <Selo tom="dark">Responsável</Selo> : <Selo>Executor</Selo>}
+                    {selo ? <Selo tom={selo.tom}>{selo.rotulo}</Selo> : null}
+                  </View>
+                ) : undefined
+              }
             />
           );
         })}
@@ -63,6 +83,12 @@ export function ParticipantesApr({ equipe, usuarioId, marcados, responsavelId, a
         </View>
       ) : null}
       {erro && !sozinho ? <Aviso tom="blq">{erro}</Aviso> : null}
+      {aoConvidar && paraConvidar > 0 ? (
+        <View style={estilos.convidar}>
+          <Botao titulo={`Convidar ${paraConvidar} ${paraConvidar === 1 ? "pessoa" : "pessoas"}`} icone="paper-plane-outline" variante="secundario" enviando={convidando} bloco={false} aoPressionar={aoConvidar} />
+          <Text style={estilos.nota}>{`Cada um recebe o convite agora (notificação) e responde em até ${PRAZO_DO_CONVITE_MIN} minutos: "Aceito" ou "Não posso". Com convite, o checklist só começa quando todos aceitam.`}</Text>
+        </View>
+      ) : null}
       <Text style={estilos.nota}>
         {aoTornarResponsavel
           ? `Você é o responsável por padrão e sempre participa. Marque ao menos mais um colega (a APR exige ${MIN_PARTICIPANTES} participantes, sem máximo); a APR precisa de um responsável.`
@@ -117,4 +143,6 @@ const estilos = StyleSheet.create({
   grupo: { gap: espaco.s },
   classificacao: { fontSize: 12, fontWeight: "700", color: cores.tinta3, textTransform: "uppercase" },
   responsavel: { flexDirection: "row", flexWrap: "wrap", gap: espaco.s },
+  convidar: { gap: espaco.s },
+  selos: { flexDirection: "row", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" },
 });

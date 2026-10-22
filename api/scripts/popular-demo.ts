@@ -19,6 +19,7 @@ import { PAPEIS_DEMO, popularDemo, type PapelDemo } from "../src/db/seed/demo";
 import { ArmazenamentoSupabase } from "../src/servicos/armazenamento";
 import { AuthSupabase } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
+import { PushEmMemoria } from "../src/servicos/push";
 import { criarProvedorIA } from "../src/servicos/ia";
 import { ClimaIndisponivel } from "../src/servicos/clima";
 import { OcrEmMemoria } from "../src/servicos/ocr-memoria";
@@ -41,6 +42,8 @@ try {
     auth: new AuthSupabase(config.supabaseUrl, config.supabaseServiceRoleKey),
     armazenamento: new ArmazenamentoSupabase(config.supabaseUrl, config.supabaseServiceRoleKey),
     email: new EmailEmMemoria(),
+    // A demonstração não manda notificação a aparelho nenhum.
+    push: new PushEmMemoria(),
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
     ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),

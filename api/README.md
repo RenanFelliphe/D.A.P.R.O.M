@@ -31,6 +31,7 @@ Todas lidas e validadas em [`src/config.ts`](src/config.ts); o modelo para preen
 | `RH_SIMULADO` | `true` liga o registro de funcionários simulado em `/rh-simulado`. Ligado, `RH_API_URL`, `RH_API_TOKEN`, `RH_AVISO_TOKEN` e `RH_AVISO_URL` também têm padrão. **Sem registro configurado, criar ou reativar usuário responde `503 registro_indisponivel`** ([`src/dominio/rh.ts`](src/dominio/rh.ts)) |
 | `SMTP_URL`, `EMAIL_REMETENTE`, `PAINEL_URL`, `EMAIL_RESUMO_HORA` | e-mail; ver "Servidor de e-mail" |
 | `IA_PROVEDOR`, `ANTHROPIC_API_KEY` ou `GEMINI_API_KEY`, `*_MODELO_*` | IA; sem a chave do provedor, nada chama a IA. Ver [docs/ia-e-vitoria.md](../docs/ia-e-vitoria.md), seção 2 |
+| `PUSH_LIGADO`, `EXPO_PUSH_URL`, `EXPO_ACCESS_TOKEN` | notificação push do app (serviço da Expo; `PUSH_LIGADO=false` desliga; a chave só se a conta da Expo exige). Ver [docs/pessoas-e-equipes.md](../docs/pessoas-e-equipes.md), seção 8.6 |
 | `CLIMA_API_URL`, `CLIMA_API_CHAVE` | previsão do tempo (Open-Meteo; a chave só existe no plano pago) |
 | `PORT` | padrão 3333 |
 

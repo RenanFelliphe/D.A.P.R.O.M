@@ -2,7 +2,7 @@
 
 Aplicativo de campo do SYNQ OS (Android), em Expo SDK 58 com React Native e TypeScript. Funciona online no dia a dia e tem um modo offline de contingência para aplicar a APR e executar a OS onde não há sinal. É um cliente: as regras ficam na [`api`](../api/README.md), que é a mesma da [`web`](../web/README.md); o app mostra, coleta e envia.
 
-**Situação:** as pendências 1 a 8 do [pendencias.md](../pendencias.md) estão feitas (app online, modo offline, login sem sinal, envio com o app fechado, Dockerfile do APK e conquista de sincronização offline). Falta o teste num aparelho e o roteiro da demonstração. Tudo foi validado por código (`tsc`, ESLint, testes de unidade e os scripts `conferir:*` contra a `api` local), sem aparelho.
+**Situação:** o app está feito no código (app online, modo offline, login sem sinal, envio com o app fechado, Dockerfile do APK e conquista de sincronização offline). Falta o teste num aparelho e o roteiro da demonstração. Tudo foi validado por código (`tsc`, ESLint, testes de unidade e os scripts `conferir:*` contra a `api` local), sem aparelho.
 
 Regras de negócio: [docs/](../docs) (campo em [operacao-de-campo.md](../docs/operacao-de-campo.md)); o app sem sinal, a fila e a cópia local: [docs/especificacao.md](../docs/especificacao.md), seções 6.5 a 6.7.
 
@@ -18,10 +18,12 @@ Regras de negócio: [docs/](../docs) (campo em [operacao-de-campo.md](../docs/op
 - **Câmera, galeria e PDF:** foto comprimida (lado maior ~1600 px, qualidade 70%) que sobe por `PUT /arquivos/{id}` antes do evento que a cita; reenviar usa o mesmo id e não duplica.
 - **Previsão do tempo** ([`src/clima/`](src/clima), `GET /clima`): o cartão do expediente na lista de OS; na APR, a pergunta marcada mostra a previsão e, com risco previsto, pede confirmação (no extremo, a foto do local); no encerramento, a previsão vai com o evento. A posição é a do aparelho só se a permissão já foi dada; senão, a cidade padrão. A última previsão do dia vale sem sinal; sem nenhuma, a tela some e nada é bloqueado. Regras: [operacao-de-campo.md](../docs/operacao-de-campo.md), seção 4.7.
 - **Sugestão de materiais** (rotas `materiais/`): sugerir ou contestar a lista de um serviço em etapas, acompanhar as minhas e, para quem supervisiona, avaliar. Regras: [operacao-de-campo.md](../docs/operacao-de-campo.md), seção 10.2.
-- **Perfil e Configurações:** dados (só leitura), Minhas ausências, Sugestões de materiais, OS que encerrei (60 dias, com o PDF), Registros recusados e Sincronizar; em Configurações, a assinatura, as preferências de e-mail, a troca de senha e o anonimato no ranking. O que é do sistema todo (cidade padrão, controle da IA) fica só na web.
-- **Avisos** (o sino), **ausências** do próprio técnico (pedir, acompanhar, confirmar, pedir o fim, confirmar o retorno), **Pontos** (Minha pontuação, Ranking, Conquistas e a janela "Parabéns!") e a **Vitória** (botão flutuante, conversa, figurinhas e "Me leve lá" para a tela do app, ou para a web quando `EXPO_PUBLIC_WEB_URL` está definida). Não há push.
+- **Perfil e Configurações:** dados (só leitura), Validações (só quem supervisiona; a fila do `GET /me/validacoes`, com o selo da contagem), Minhas ausências, Sugestões de materiais, OS que encerrei (60 dias, com o PDF), Registros recusados e Sincronizar; em Configurações, a assinatura, as preferências de e-mail, a troca de senha e o anonimato no ranking. O que é do sistema todo (cidade padrão, controle da IA) fica só na web.
+- **Avisos** (o sino), **ausências** do próprio técnico (pedir, acompanhar, confirmar, pedir o fim, confirmar o retorno), **Pontos** (Minha pontuação, Ranking, Conquistas e a janela "Parabéns!") e a **Vitória** (botão flutuante, conversa, figurinhas e "Me leve lá" para a tela do app, ou para a web quando `EXPO_PUBLIC_WEB_URL` está definida). **Notificações push** ([`src/notificacoes/`](src/notificacoes)): o app registra o aparelho na `api` ao abrir (pede a permissão do sistema), o toque abre a tela do aviso e Configurações › Notificações neste aparelho liga e desliga; sem os serviços do Google o aparelho não recebe e os avisos seguem no sino. Para o push chegar de verdade, o build precisa do `google-services.json` (`GOOGLE_SERVICES_JSON`) e das credenciais do FCM na conta da Expo (`eas credentials`); a biblioteca é nativa, então o app passou para a versão 0.2.0 e pede um APK novo. Regras: [pessoas-e-equipes.md, seção 8.6](../docs/pessoas-e-equipes.md).
+- **Botão de emergência** ([`src/emergencia/`](src/emergencia)): sempre à vista na execução; a janela abre pelos contatos para ligar (o PAE cadastrado pelo admin e o SAMU e os Bombeiros, guardados no aparelho para a hora sem sinal) e avisa o supervisor e os administradores com a posição pela fila de campo (sem sinal, sobe quando o sinal volta). Regras: [operacao-de-campo.md, seção 5.9](../docs/operacao-de-campo.md).
+- **Convites para a APR** ([`src/convites/`](src/convites)): quem foi convidado aceita ou recusa (com o motivo) numa faixa em toda tela de campo e em Perfil › Convites para a APR; quem convida, na etapa dos participantes, convida os marcados, vê a resposta de cada um ao vivo e só começa o checklist quando todos os convidados aceitam (só com sinal). Regras: [operacao-de-campo.md, seção 4.9](../docs/operacao-de-campo.md).
 
-**Fica na web:** as telas de gestão (reservar e devolver OS, a assinatura final do supervisor, o relatório da execução, Validações, quadro e dashboards, responder ausências dos outros), os cadastros da gamificação, o Campo de treino e os treinamentos de serviço.
+**Fica na web:** as telas de gestão (reservar e devolver OS, a assinatura final do supervisor, o relatório da execução, quadro e dashboards, responder ausências dos outros; as Validações do app abrem a web para o que só ela decide), os cadastros da gamificação, o Campo de treino e os treinamentos de serviço.
 
 ### Modo offline
 
@@ -111,6 +113,10 @@ mobile/
   src/gamificacao/     Minha pontuação, Ranking, Conquistas, selo de patente, "Parabéns!"
   src/vitoria/         painel, botão flutuante, conversa, SSE, figurinhas
   src/perfil/          o anonimato no ranking
+  src/validacoes/      a fila de Validações do supervisor (consulta, destino de cada item, cartão)
+  src/notificacoes/    o push: registro do aparelho, toque na notificação e a opção das Configurações
+  src/emergencia/      o botão de emergência: contatos (com cópia no aparelho), lista para ligar e a janela do acionamento
+  src/convites/        o convite para a APR: consultas, faixa, cartão de resposta e as contas
   src/estado/          TanStack Query e o indicador de conexão (NetInfo)
   src/ui/              componentes base (botão, campo, cartão, selo, aviso, janela, formulário RHF + Zod)
   src/tema/            as cores da web (ver o "Sistema visual" do README da web)
@@ -119,7 +125,7 @@ mobile/
   ../shared/           código comum à web, à api e ao app (importado como @shared/*)
 ```
 
-**Rotas** (`src/app/`): `index` (leva ao destino da conta), `entrar`, `trocar-senha`, `aguardando`, `assinatura`, `somente-web`; as abas `(abas)/lista`, `avisos`, `pontos` e `perfil`; `os/[id]` e, dentro dele, `apr`, `checklist`, `aprovada`, `bloqueio`, `execucao` e `conferencia`; `materiais/index`, `materiais/nova` e `materiais/[id]`; `ausencias`, `historico`, `recusados`, `configuracoes`, `emails` e `senha`. Cada situação da conta abre só as telas dela (`Stack.Protected`).
+**Rotas** (`src/app/`): `index` (leva ao destino da conta), `entrar`, `trocar-senha`, `aguardando`, `assinatura`, `somente-web`; as abas `(abas)/lista`, `avisos`, `pontos` e `perfil`; `os/[id]` e, dentro dele, `apr`, `checklist`, `aprovada`, `bloqueio`, `execucao` e `conferencia`; `materiais/index`, `materiais/nova` e `materiais/[id]`; `validacoes`, `convites`, `ausencias`, `historico`, `recusados`, `configuracoes`, `emails` e `senha`. Cada situação da conta abre só as telas dela (`Stack.Protected`).
 
 - **`shared/api/`** tem os tipos das respostas e as regras puras que a web e o app repetiriam; as telas ficam em cada lado. `web/src/lib/<nome>.ts` só reexporta o de `shared/api/`.
 - **O formulário nunca fica desativado por campo faltando** (só enquanto envia): a mensagem aparece junto do campo e o foco vai ao primeiro erro (`useFormulario`).

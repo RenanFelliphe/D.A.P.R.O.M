@@ -11,6 +11,7 @@ import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servi
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
 import { AuthSupabase } from "./servicos/auth";
 import { EmailSemServidor, EmailSmtp } from "./servicos/email";
+import { PushDesligado, PushExpo } from "./servicos/push";
 import { controlarIA } from "./dominio/ia-funcoes";
 import { criarProvedorIA } from "./servicos/ia";
 import { aplicarConfiguracoes } from "./dominio/configuracoes";
@@ -52,6 +53,10 @@ async function main() {
   if (config.smtpUrl) console.log(`E-mail ligado: os avisos saem de ${config.emailRemetente}; o resumo diário, a partir das ${config.emailResumoHora}h.`);
   else console.warn("SMTP_URL vazio: os avisos ficam só no sino, sem e-mail (pnpm email:testar confere a configuração).");
 
+  // O push vai pelo serviço da Expo (as credenciais do FCM ficam na conta dela); sem aparelho registrado, não sai nada.
+  const push = config.push.ligado ? new PushExpo(config.push.url, config.push.chave) : new PushDesligado();
+  console.log(config.push.ligado ? "Push ligado (serviço da Expo): os avisos de campo tocam nos aparelhos registrados." : "PUSH_LIGADO=false: os avisos ficam no sino, sem notificação no celular.");
+
   const armazenamento = new ArmazenamentoSupabase(config.supabaseUrl, config.supabaseServiceRoleKey);
   await armazenamento.garantirBuckets().catch((erro) => console.warn(`Buckets do Storage não verificados: ${erro.message}`));
   // As imagens das patentes e das conquistas da carga inicial (as que o admin trocou não voltam).
@@ -68,6 +73,7 @@ async function main() {
     auth: new AuthSupabase(config.supabaseUrl, config.supabaseServiceRoleKey),
     armazenamento,
     email,
+    push,
     sap: new ClienteSapHttp(config.sapApiUrl, config.sapApiToken),
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
     ia: controlarIA(db, criarProvedorIA(config.ia, config.vitoria.maxTokensResposta)),

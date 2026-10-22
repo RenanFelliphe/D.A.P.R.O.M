@@ -40,7 +40,7 @@ O caminho completo, com as regras, está em [docs/operacao-de-campo.md](docs/ope
 
 ## 4. Mapa de funcionalidades
 
-Situação: **pronta** = feita no código; "falta ver" = ainda não conferida na tela, no aparelho ou contra o serviço real (ver [pendencias.md](pendencias.md), seção 3).
+Situação: **pronta** = feita no código; "falta ver" = ainda não conferida na tela, no aparelho ou contra o serviço real (ver [pendencias.md](pendencias.md), seção 2).
 
 | Área | O que faz | Situação | Onde está |
 |---|---|---|---|
@@ -49,9 +49,12 @@ Situação: **pronta** = feita no código; "falta ver" = ainda não conferida na
 | Campo de treino | Tutorial com dados fictícios para quem aguarda liberação | pronta | [pessoas-e-equipes.md, seção 2.5](docs/pessoas-e-equipes.md) |
 | Assinatura | Desenhada no perfil, obrigatória depois da liberação, valida as ações importantes | pronta; validade jurídica depende de terceiros | [pessoas-e-equipes.md, seção 3](docs/pessoas-e-equipes.md) |
 | Equipes e supervisor | Supervisor é quem a equipe aponta; gestão das equipes que supervisiona | pronta | [pessoas-e-equipes.md, seção 4](docs/pessoas-e-equipes.md) |
-| Validações do supervisor | Uma página com tudo o que espera a decisão ou a assinatura dele: OS, treinamentos, materiais, conferências e ausências | pronta na web; falta no app | [pessoas-e-equipes.md, seção 5](docs/pessoas-e-equipes.md) |
+| Validações do supervisor | Uma página com tudo o que espera a decisão ou a assinatura dele: OS, treinamentos, materiais, conferências e ausências | pronta na web e no app (o app abre no navegador o que só a web decide) | [pessoas-e-equipes.md, seção 5](docs/pessoas-e-equipes.md) |
 | Representante e ausência | O representante assume quando o supervisor se ausenta ou fica parado; o ausente só consulta | pronta | [pessoas-e-equipes.md, seções 6 e 7](docs/pessoas-e-equipes.md) |
 | Avisos e e-mails | Sino, e-mail por categoria e resumo diário | pronta; o e-mail depende do SMTP | [pessoas-e-equipes.md, seção 8](docs/pessoas-e-equipes.md) |
+| Notificação push | O aviso que pede ação no campo também toca no celular, com o app fechado | pronta; depende do Firebase/FCM na conta da Expo e de um APK novo | [pessoas-e-equipes.md, seção 8.6](docs/pessoas-e-equipes.md#86-notificação-push) |
+| Botão de emergência | Na execução, avisa na hora o supervisor e os administradores (sino, push e e-mail) com nome e posição, e mostra os contatos do PAE e o SAMU e os Bombeiros para ligar | pronta; os contatos do PAE esperam a Segurança do Trabalho (o admin cadastra em Configurações) | [operacao-de-campo.md, seção 5.9](docs/operacao-de-campo.md) |
+| Convite de participação na APR | O responsável convida cada participante, que aceita ou recusa em 15 min; o checklist só começa quando todos os convidados aceitam | pronta (web e app); prazo e bloqueio a confirmar | [operacao-de-campo.md, seção 4.9](docs/operacao-de-campo.md) |
 | SAP simulado e entrada de OS | Leitura agendada, planilha, PDF da OS e tela do simulador | pronta | [integracoes-simuladas.md, seções 2 e 3](docs/integracoes-simuladas.md) |
 | Saída para o SAP | Planilha de baixa e devolução da OS com erro | pronta | [integracoes-simuladas.md, seção 4](docs/integracoes-simuladas.md) |
 | Registro de funcionários simulado | Só vira usuário quem está no registro; desligamento em tempo real | pronta | [integracoes-simuladas.md, seção 5](docs/integracoes-simuladas.md) |
@@ -157,7 +160,7 @@ O app não é publicado: o APK é gerado e instalado nos aparelhos.
 | [docs/integracoes-simuladas.md](docs/integracoes-simuladas.md) | SAP simulado, entrada e saída de OS, registro de funcionários simulado |
 | [docs/ia-e-vitoria.md](docs/ia-e-vitoria.md) | Funções de IA, provedores, controle por função, Vitória, recomendação do modelo e digitalização |
 | [docs/gamificacao-e-treinamentos.md](docs/gamificacao-e-treinamentos.md) | Pontos, patentes, temporadas, ranking, conquistas, treinamentos de serviço e rascunho pela IA |
-| [pendencias.md](pendencias.md) | O que falta antes da apresentação, terceiros, decisões a confirmar, perguntas em aberto e o que está fora do MVP |
+| [pendencias.md](pendencias.md) | O que falta antes da apresentação, funcionalidades novas, terceiros, decisões a confirmar, perguntas em aberto e o que está fora do MVP |
 | [api/README.md](api/README.md), [web/README.md](web/README.md), [mobile/README.md](mobile/README.md) | Como rodar e testar cada pacote |
 | [vitoria/README.md](vitoria/README.md) | As imagens da Vitória e como são geradas |
 | [docs/reunioes/](docs/reunioes/) | Transcrições das reuniões [1](docs/reunioes/Transcricao_Reuniao1.md), [2](docs/reunioes/Transcricao_Reuniao2.md) e [3](docs/reunioes/Transcricao_Reuniao3.md) com os mentores |

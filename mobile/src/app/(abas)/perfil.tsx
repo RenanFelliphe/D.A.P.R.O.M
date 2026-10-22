@@ -4,6 +4,7 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { ehSupervisor, iniciaisDe, rotuloDoPerfil } from "@shared/api/tipos";
+import { useConvitesRecebidos } from "@/convites/consultas";
 import { useParaAvaliar } from "@/materiais/consultas";
 import { CartaoParaConferir } from "@/conferencia/CartaoParaConferir";
 import { CartaoDeSincronizacao } from "@/offline/CartaoDeSincronizacao";
@@ -19,6 +20,7 @@ import { Carregando } from "@/ui/Estados";
 import { JanelaDeConfirmacao } from "@/ui/Janela";
 import { LinhaDeNavegacao } from "@/ui/LinhaDeNavegacao";
 import { Tela } from "@/ui/Tela";
+import { useValidacoes } from "@/validacoes/consultas";
 
 /**
  * O perfil da pessoa logada: os dados (só leitura: nome, cargo e equipe vêm do registro de funcionários), o caminho para as ausências, as
@@ -35,7 +37,10 @@ export default function Perfil() {
   const [semSair, setSemSair] = useState<string | null>(null);
   const { pendentes } = useEstadoDaSincronizacao();
   const sincronizar = useSincronizar();
-  const paraAvaliar = useParaAvaliar(eu ? ehSupervisor(eu.usuario) : false);
+  const supervisor = eu ? ehSupervisor(eu.usuario) : false;
+  const paraAvaliar = useParaAvaliar(supervisor);
+  const validacoes = useValidacoes(supervisor);
+  const convites = useConvitesRecebidos();
 
   if (!eu) return <Carregando />;
   const u = eu.usuario;
@@ -44,7 +49,7 @@ export default function Perfil() {
   const atualizar = async () => {
     setAtualizando(true);
     try {
-      await Promise.all([recarregarEu(), consultas.invalidateQueries({ queryKey: ["me", "conferencias"] })]);
+      await Promise.all([recarregarEu(), consultas.invalidateQueries({ queryKey: ["me", "conferencias"] }), consultas.invalidateQueries({ queryKey: ["me", "validacoes"] })]);
     } finally {
       setAtualizando(false);
     }
@@ -87,6 +92,8 @@ export default function Perfil() {
 
       {eu.equipe && u.perfil === "tecnico" ? <CartaoDeSincronizacao /> : null}
 
+      {supervisor ? <LinhaDeNavegacao icone="shield-checkmark-outline" titulo="Validações" detalhe="O que espera a sua decisão ou a sua assinatura" selo={validacoes.data?.total ?? 0} aoPressionar={() => router.push("/validacoes")} /> : null}
+      {u.perfil === "tecnico" ? <LinhaDeNavegacao icone="people-outline" titulo="Convites para a APR" detalhe="Colegas que escolheram você como participante" selo={convites.data?.filter((c) => c.situacao === "aguardando").length ?? 0} aoPressionar={() => router.push("/convites")} /> : null}
       <LinhaDeNavegacao icone="calendar-outline" titulo="Minhas ausências" detalhe="Pedir, acompanhar e confirmar o retorno" aoPressionar={() => router.push("/ausencias")} />
       <LinhaDeNavegacao icone="list-outline" titulo="Sugestões de materiais" detalhe="Sugerir e contestar as listas recomendadas dos serviços" selo={paraAvaliar.data ?? 0} aoPressionar={() => router.push("/materiais")} />
       <LinhaDeNavegacao icone="document-text-outline" titulo="OS que encerrei" detalhe="Os últimos 60 dias, com o PDF" aoPressionar={() => router.push("/historico")} />

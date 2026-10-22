@@ -4,6 +4,7 @@ import type { Db } from "../db/conexao";
 import { APR_FUNCOES, APR_RESPOSTAS, APR_RESULTADOS, apr, aprParticipante, aprResposta, aprRisco, evidencia, execucao, itemModeloApr, modeloApr, os, riscoModeloApr, usuario } from "../db/schema";
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas, criarAviso } from "./alertas";
+import { fecharConvitesDaApr, MENSAGEM_DO_PROBLEMA_DE_CONVITE, problemasDeConvite } from "./apr-convites";
 import { MIN_PARTICIPANTES, participantesDaApr, resolverAvisoDeAssinatura, situacaoDasAssinaturas } from "./apr-assinaturas";
 import { ausentesEm } from "./ausencia";
 import { esquemaClimaRegistrado, gravarClimaDaApr } from "./clima-registro";
@@ -99,6 +100,11 @@ export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadAp
     if (!pessoa.ativo || pessoa.liberacao !== "liberado") throw rejeitar("participante_inativo", `${pessoa.nome} está desligado ou sem acesso e não pode entrar na APR`);
     if (!pessoa.equipeId || !equipesAceitas.has(pessoa.equipeId)) throw rejeitar("participante_fora_da_equipe", `${pessoa.nome} não é da equipe da OS`);
     if (!pessoa.assinaturaPath) throw rejeitar("assinatura_ausente", `${pessoa.nome} ainda não cadastrou a assinatura no perfil`);
+  }
+  // Quem o responsável convidou precisa ter aceitado. Sem sinal não há convite (o aparelho não podia convidar), então a fila offline não é cobrada.
+  if (!ctx.offline) {
+    const [problema] = await problemasDeConvite(ctx.tx, ordem.id, ctx.usuario.id, ids, ctx.recebidoEm);
+    if (problema) throw rejeitar(problema.codigo, MENSAGEM_DO_PROBLEMA_DE_CONVITE[problema.codigo](problema.nome));
   }
 
   // Riscos marcados e respostas precisam ser do modelo.
@@ -278,6 +284,8 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
       assinaturaPresencial: presencial,
     })),
   );
+  // Os convites aceitos viram parte da APR; os que sobraram (de quem ficou de fora) são desfeitos.
+  await fecharConvitesDaApr(ctx.tx, { osId: ordem.id, responsavelId: ctx.usuario.id, aprId: p.id, participantes: p.participantes.map((x) => x.usuario_id), agora: ctx.recebidoEm });
   if (p.riscos.length > 0) await ctx.tx.insert(aprRisco).values(p.riscos.map((riscoId) => ({ aprId: p.id, riscoId })));
   if (p.respostas.length > 0) {
     await ctx.tx.insert(aprResposta).values(

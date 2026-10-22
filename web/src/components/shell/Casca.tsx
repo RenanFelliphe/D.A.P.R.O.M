@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AcessoRecusado } from "@/components/aguardando/AcessoRecusado";
 import { FaixaDeAusencia } from "@/components/ausencia/FaixaDeAusencia";
+import { FaixaDeConvites } from "@/components/app/FaixaDeConvites";
 import { FaixaDePedidos } from "@/components/app/FaixaDePedidos";
 import { FaixaDeRepresentacao } from "@/components/representacao/FaixaDeRepresentacao";
 import { FaixaDoTreino } from "@/components/treino/FaixaDoTreino";
@@ -132,6 +133,8 @@ export async function Casca({ children }: { children: ReactNode }) {
         {!admin && liberado && !treino && <FaixaDeRepresentacao equipes={usuario.equipes_representadas ?? []} />}
         {/* Execução compartilhada: um participante pediu algo ao responsável pela execução, que tem 2 minutos para responder. */}
         {!admin && liberado && !treino && !ausencia && <FaixaDePedidos />}
+        {/* Convite de participação na APR: um colega escolheu a pessoa como participante e espera a resposta dela (15 minutos). */}
+        {!admin && liberado && !treino && !ausencia && <FaixaDeConvites />}
         {children}
         {gamificacao && gamificacao.avisos_pendentes > 0 && <AvisoConquista />}
         {!admin && <TreinoRaiz emTreino={treino} primeiroAcesso={primeiroAcesso} pendente={pendente} />}

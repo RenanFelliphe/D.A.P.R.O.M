@@ -11,6 +11,7 @@ const ROTULOS: Record<string, string> = {
   execucao_interrompida: "Interrupção por risco",
   execucao_suspensa: "Suspensão da execução",
   execucao_cancelada: "Cancelamento da execução",
+  emergencia_acionada: "Emergência acionada",
 };
 
 export const rotuloDoEvento = (tipo: string): string => ROTULOS[tipo] ?? "Registro de campo";

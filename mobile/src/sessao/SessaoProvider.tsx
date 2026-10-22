@@ -4,6 +4,7 @@ import type { RespostaMe } from "@shared/api/tipos";
 import { aoSessaoEncerrada, cliente, definirModoLocal, modoLocalAtivo } from "@/api/api";
 import { encerraASessao, ErroDaApi, ErroDeConexaoNecessaria, ErroDeRede, mensagemDoErro } from "@/api/erros";
 import { useConexao } from "@/estado/conexao";
+import { removerAparelho } from "@/notificacoes/aparelho";
 import { conexaoDoAparelho, definirUltimaPessoa, esquecerIdentidade, guardarIdentidade, lerIdentidade, pendentesDaPessoa } from "@/offline/app";
 import { credenciais } from "./credenciais-do-app";
 import { mensagemDaEntradaSemSinal } from "./credenciais";
@@ -212,6 +213,8 @@ export function SessaoProvider({ children }: { children: React.ReactNode }) {
   const sair = useCallback(async () => {
     const pendentes = await pendentesDaPessoa().catch(() => 0);
     if (pendentes > 0) return mensagemDeSairComFila(pendentes);
+    // O aparelho deixa de receber as notificações desta conta antes de a sessão acabar (sem sessão não há como pedir).
+    await removerAparelho();
     await cliente.sair();
     voltarParaEntrada(null);
     return null;

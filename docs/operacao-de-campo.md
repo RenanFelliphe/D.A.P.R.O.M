@@ -147,6 +147,7 @@ O rascunho fica no aparelho (SQLite no app, navegador na web) e nada é enviado 
 - **Exatamente um responsável** (`responsavel`; no papel, "Supervisor da Atividade"; não confundir com o supervisor da equipe). Os demais são `executor`. O técnico logado é sempre participante e, por padrão, o responsável.
 - **Quem pode entrar** (`conferirApr` em [`eventos-apr.ts`](../api/src/dominio/eventos-apr.ts)): pessoa ativa e liberada, da equipe da OS (ou da equipe de quem preenche), com a assinatura cadastrada no perfil. O ausente e o desligado não entram (`participante_ausente`, `participante_inativo`).
 - **OS reservada:** o responsável da APR tem de ser a pessoa designada (`responsavel_reservado`); os colegas entram como participantes (seção 11).
+- **Convite:** o responsável pode convidar cada participante antes de a APR existir; quem foi convidado precisa aceitar (seção 4.9).
 
 ### 4.3 O técnico não sabe o que é eliminatório
 
@@ -209,6 +210,28 @@ Os limites são constantes, não configurações: mudá-los é decisão da Segur
 
 - A APR vale para **uma** execução, **no dia** em que foi concluída. A de outro dia, ou já usada, não ampara execução nova (`apr_vencida`, `apr_ja_usada`).
 - O cancelamento por engano devolve a APR para uso no mesmo dia (seção 5.7).
+
+### 4.9 Convite de participação
+
+Ao escolher os participantes, o responsável pode **convidar** cada um: a pessoa recebe o convite na hora (notificação push e sino) e responde "Aceito" ou "Não posso", com um motivo curto. O convite existe porque o rascunho da APR fica só no aparelho do responsável e nunca chega à `api`: antes, a pessoa só descobria que fora escolhida depois de a APR estar preenchida e aprovada, e a recusa derrubava a APR. Código em [`apr-convites.ts`](../api/src/dominio/apr-convites.ts) e [`shared/api/apr-convite.ts`](../shared/api/apr-convite.ts).
+
+- **É opcional e só com sinal.** Sem sinal, ou sem convidar, vale o presencial de sempre: quem não foi convidado não é cobrado.
+- **Quem convida:** o técnico da equipe da OS, enquanto ela aceita APR (`liberada` ou `pendente`; na reservada, só o responsável). Convida pessoas da equipe da OS ou da equipe de quem convida, ativas, liberadas, presentes e com a assinatura cadastrada (as regras da seção 4.2; `convidado_fora_da_equipe`, `convidado_ausente`, `convidado_inativo`, `convidado_sem_assinatura`). Chamar alguém de outra equipe (questões 10 e 72) não existe.
+- **Prazo: 15 minutos** (`PRAZO_DO_CONVITE_MIN`; a confirmar, ver [../pendencias.md](../pendencias.md)). Depois, o convite fica "sem resposta" e só serve para ser renovado ou trocado. O aceite vale no dia, como a APR.
+- **O responsável vê ao vivo** (a cada 5 s) a resposta de cada um: Aguardando resposta, Aceitou, Não pode (com o motivo) ou Sem resposta. Tirar a pessoa da lista desfaz o convite (ela é avisada); "Convidar" de novo renova o que venceu e substitui o recusado. Cada pessoa tem um convite em aberto por OS (`409 convite_em_aberto` se outro responsável já a convidou).
+- **O checklist só começa quando todos os convidados aceitaram.** A trava está na tela e no servidor: `POST /aprs/avaliar` e o registro da APR recusam com `convite_pendente`, `convite_recusado` ou `convite_sem_resposta` (`conferirApr`). A fila offline não é cobrada, porque o aparelho sem sinal não podia convidar.
+- **O aceite é "eu vou"; a assinatura continua no fim** ("li e concordo com os riscos"), na conta de cada um, e o direito de recusa também (seção 4.6).
+- **Ao registrar a APR,** os aceites dos participantes viram `usado` (apontam para a APR) e os convites que sobraram, de quem ficou de fora, são desfeitos em silêncio.
+
+| Rota | Quem | O que faz |
+|---|---|---|
+| `POST /os/{id}/apr-convites` | técnico da equipe da OS | convida (até 20 pessoas); repetir não duplica |
+| `GET /os/{id}/apr-convites` | quem convidou | os convites de hoje, o último de cada pessoa, com a situação de agora |
+| `DELETE /apr-convites/{id}` | quem convidou | desfaz; a pessoa é avisada |
+| `GET /me/apr-convites` | o convidado | o que espera a resposta e o que já aceitou e não virou APR |
+| `POST /apr-convites/{id}/aceitar` e `.../recusar` | o convidado | responde; a recusa exige o motivo, até 160 caracteres |
+
+**Avisos** (`apr_convite`, `apr_convite_aceito`, `apr_convite_recusado`, `apr_convite_cancelado`): só no sino e no push, sem e-mail (valem por minutos). No app, o convite aparece numa faixa em toda tela de campo e em Perfil › Convites para a APR; na web, numa faixa no alto das telas, com os botões. Quem convida acompanha as respostas na própria etapa dos participantes.
 
 ## 5. Execução
 
@@ -285,6 +308,26 @@ Na pausa ou na suspensão, avisam o supervisor **na hora** com `lesao_ou_enfermi
 
 Reprogramar e abrir OS de apoio ficam no detalhe da OS e no alerta.
 
+### 5.9 Botão de emergência
+
+Na execução (do responsável e dos participantes, no app e na web) há sempre um botão **Emergência**. Ele não é uma ação da execução: não pausa, não suspende, não muda a OS. Serve para pedir ajuda. Código em [`emergencia.ts`](../api/src/dominio/emergencia.ts) e [`shared/api/emergencia.ts`](../shared/api/emergencia.ts).
+
+- **A janela começa pelos contatos para ligar:** os do PAE (Plano de Atendimento a Emergências), que o admin cadastra, e os números públicos **SAMU 192** e **Bombeiros 193**, que aparecem sempre. Tocar abre o discador (`tel:`); ligar não depende de avisar o sistema nem de sinal de dados. O app guarda a última lista para mostrá-la sem sinal.
+- **"Avisar o supervisor e o administrador"** manda o evento `emergencia_acionada`: o aviso `emergencia` vai ao supervisor da equipe da OS (e ao representante, se está no comando) e a **todos os administradores**, e a mais ninguém. Leva o nome e a matrícula de quem acionou, a OS, o local, a hora, a posição (com o endereço do mapa) e a observação, se houver. É aviso de segurança: **sino, push (canal Urgentes) e e-mail obrigatório**, que a pessoa não desliga (seção 8.2 de [pessoas-e-equipes.md](pessoas-e-equipes.md)).
+- **Nunca é barrado:** vale sem GPS ("Sem posição"), sem execução aberta e em qualquer estado da OS. Só a OS de outra equipe é recusada (`fora_da_equipe`).
+- **Sem sinal (app):** o acionamento passa pela fila de campo, fica guardado e sobe sozinho quando o sinal volta; a janela diz "ficou guardado, ligue agora". O aviso mostra a que horas foi acionado e que chegou depois. Na web não há fila: sem conexão o aviso não vai, e a janela diz e deixa os contatos à mão.
+- **Sem duplicar:** o id do acionamento nasce na abertura da janela; tocar duas vezes, ou reenviar, não avisa de novo.
+- **Atendimento:** o supervisor da equipe ou o admin abre o alerta no painel, vê a posição no mapa e dá a emergência por **atendida**, com uma nota opcional (`POST /emergencias/{id}/atender`); quem acionou é avisado (`emergencia_atendida`). Quem acionou não a dá por atendida. `GET /os/{id}/emergencias` lista os acionamentos da OS.
+- **Contatos do PAE:** Configurações › Sistema › Contatos de emergência (PAE), só do admin (seção 13): até 10 contatos com nome, telefone e o que atendem. **Vazia até a Segurança do Trabalho fornecer os números** (questão 28): o botão funciona assim mesmo e mostra só os números públicos. `GET /emergencia/contatos` entrega a lista a todos os logados.
+- **No Campo de treino** o botão abre a janela com um contato de exemplo e **não avisa ninguém**.
+
+| Rota | Quem | O que faz |
+|---|---|---|
+| `POST /eventos` (`emergencia_acionada`) | técnico da equipe da OS | aciona; idempotente pelo id |
+| `GET /emergencia/contatos` | todos os logados | os contatos do PAE e os públicos |
+| `GET /os/{id}/emergencias` | quem vê a equipe da OS | os acionamentos, com posição e atendimento |
+| `POST /emergencias/{id}/atender` | supervisor da equipe e admin | dá por atendida (nota opcional) |
+
 ## 6. Execução compartilhada
 
 Todos os participantes de uma execução a acompanham e agem sobre ela, sem depender do aparelho do responsável (conversa de 19/10/2026). O que foi feito sem sinal em aparelhos diferentes é conferido e assinado depois.
@@ -328,7 +371,7 @@ A regra está em um só lugar: `pedeAprovacaoDoResponsavel` ([`shared/api/execuc
 
 ### 6.4 Acompanhar e responder
 
-Não há push no celular; o aviso é por consulta periódica, só com a tela aberta e em primeiro plano.
+O pedido também toca no celular (notificação push, [pessoas-e-equipes.md, seção 8.6](pessoas-e-equipes.md#86-notificação-push)), mas o painel dentro do app é por consulta periódica, só com a tela aberta e em primeiro plano.
 
 | Quem | O que vê | Atualização |
 |---|---|---|
@@ -641,6 +684,7 @@ A página `/app/configuracoes` tem a aba **Minha conta** (todos: assinatura, e-m
 | Configuração | Faixa | Onde está a regra |
 |---|---|---|
 | Cidade padrão da previsão do tempo | busca de cidades brasileiras (`GET /clima/cidades`); padrão Vitória, ES | seção 4.7; vale só para quem está sem GPS |
+| Contatos de emergência (PAE) | até 10 contatos (nome, telefone, o que atende); vazio até a Segurança do Trabalho fornecer | seção 5.9 |
 | Intervalo da leitura do SAP | 5 a 1440 minutos | [integracoes-simuladas.md](integracoes-simuladas.md) |
 | Hora da leitura diária do registro de funcionários | 0 a 23 | [integracoes-simuladas.md](integracoes-simuladas.md) |
 | Hora do resumo diário por e-mail | 0 a 23 | [pessoas-e-equipes.md](pessoas-e-equipes.md) |

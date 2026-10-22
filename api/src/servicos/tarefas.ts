@@ -5,6 +5,7 @@ import { enfileirarTarefa } from "./fila";
 import { alertarFalhaDoPdf, manipularEmailAlerta, manipularPdfOs } from "./pdf-os";
 import { agendarResumosDiarios, manipularEmailResumo } from "./email-resumo";
 import { manipularLeituraSap } from "./leitura-sap";
+import { manipularPushAlerta } from "../dominio/push";
 import { processarDigitalizacao } from "../dominio/digitalizacao";
 import { fecharTemporadasVencidas } from "../dominio/fechamento-temporada";
 import { conferirAusencias } from "../dominio/ausencia";
@@ -21,6 +22,7 @@ type Manipulador = (deps: Deps, tarefa: { id: string; referenciaId: string | nul
 const MANIPULADORES: Record<string, Manipulador> = {
   pdf_os: manipularPdfOs,
   email_alerta: manipularEmailAlerta,
+  push_alerta: manipularPushAlerta,
   email_resumo: manipularEmailResumo,
   leitura_sap: manipularLeituraSap,
   leitura_rh: manipularLeituraRh,

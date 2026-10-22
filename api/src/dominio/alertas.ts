@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { ALVO_DO_AVISO, CATEGORIA_DO_AVISO, TIPOS_DE_AVISO, type TipoDeAviso } from "../../../shared/notificacoes/avisos";
+import { temPush } from "../../../shared/notificacoes/push";
 import type { Db } from "../db/conexao";
 import { alerta, equipe, importacao, usuario, type AlertaTipo } from "../db/schema";
 import { enfileirarTarefa } from "../servicos/fila";
@@ -59,7 +60,8 @@ export interface DadosDoAviso {
 
 /**
  * Cria o aviso para cada destinatário (sem repetir a pessoa) e, quando o tipo tem categoria de e-mail, enfileira a tarefa
- * `email_alerta`, que decide na hora de enviar (servidor configurado, pessoa ativa, categoria ligada no perfil). Quem chama
+ * `email_alerta`, que decide na hora de enviar (servidor configurado, pessoa ativa, categoria ligada no perfil); quando o tipo toca
+ * no celular (`PUSH_DO_AVISO`), enfileira também a `push_alerta`. Quem chama
  * passa a própria transação: o aviso e o e-mail só existem se o resto da operação for confirmado. Devolve os ids criados.
  */
 export async function criarAviso(db: Db, destinatarios: Iterable<string>, dados: DadosDoAviso): Promise<string[]> {
@@ -88,6 +90,8 @@ export async function criarAviso(db: Db, destinatarios: Iterable<string>, dados:
       .returning({ id: alerta.id });
     ids.push(criado!.id);
     if (comEmail) await enfileirarTarefa(db, "email_alerta", criado!.id, dados.agora);
+    // O push sai em seguida e pelo mesmo caminho: a tarefa decide na hora (aparelho registrado, aviso ainda não lido).
+    if (temPush(dados.tipo)) await enfileirarTarefa(db, "push_alerta", criado!.id, dados.agora);
   }
   return ids;
 }

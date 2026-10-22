@@ -125,7 +125,7 @@ A OS fica `pendente` e qualquer pessoa da equipe a retoma com uma APR nova, sem 
 | Recomendação de modelo e digitalização fora da requisição | a IA é lenta e pode cair; a tela lê o que está guardado ou calcula pelas palavras-chave na hora |
 | IA só pelo módulo da `api`, com o controle por função | nenhuma chamada sai com a função desligada; trocar de provedor é configuração (`IA_PROVEDOR`) |
 | Assinatura do perfil copiada em cada ato | refazer a assinatura vale para as próximas; as já feitas guardam a imagem que usaram |
-| Sem push notification | a OS nova aparece ao atualizar a lista; no offline, na próxima sincronização |
+| Push só para o que pede ação em campo, pelo serviço da Expo, e só no app | o aviso nunca depende dele (sino e e-mail seguem); a OS nova aparece ao atualizar a lista e, no offline, na próxima sincronização |
 
 ## 3. Plataforma da api
 
@@ -196,6 +196,7 @@ A lista completa, com padrões e validação, está em `api/src/config.ts`; o mo
 | SAP simulado | `SAP_SIMULADO`, `SAP_API_URL`, `SAP_API_TOKEN`, `SAP_LEITURA_INTERVALO_MIN` |
 | Registro de funcionários simulado | `RH_SIMULADO`, `RH_API_URL`, `RH_API_TOKEN`, `RH_AVISO_TOKEN`, `RH_AVISO_URL`, `RH_LEITURA_HORA` |
 | E-mail | `SMTP_URL` (sem ele os avisos ficam só no sino), `EMAIL_REMETENTE`, `EMAIL_RESUMO_HORA`, `PAINEL_URL` (base dos links) |
+| Push | `PUSH_LIGADO` (padrão `true`), `EXPO_PUSH_URL`, `EXPO_ACCESS_TOKEN` (só se a conta da Expo a exige) |
 | IA | `IA_PROVEDOR`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `*_MODELO_CHATBOT`, `*_MODELO_MINIGAMES`, `*_MODELO_RECOMENDACAO`, `*_MODELO_DIGITALIZACAO`, `GEMINI_MODELO_RESERVA`, limites `VITORIA_*` e `TREINAMENTO_IA_*` |
 | Previsão do tempo | `CLIMA_API_URL`, `CLIMA_API_CHAVE` |
 | Servidor | `PORT` |
@@ -647,6 +648,7 @@ A tabela `tarefa` guarda o trabalho assíncrono; o executor roda no próprio pro
 |---|---|---|
 | `pdf_os` | `os.id` | gera e guarda o PDF da OS concluída |
 | `email_alerta` | `alerta.id` | envia o e-mail do aviso, se o tipo tem categoria, a pessoa está ativa e não desligou a categoria |
+| `push_alerta` | `alerta.id` | manda a notificação push do aviso, se o tipo toca no celular (`PUSH_DO_AVISO`), o aviso não foi lido, a pessoa está ativa e tem aparelho registrado |
 | `email_resumo` | `usuario.id` | resumo diário por e-mail (a partir de `EMAIL_RESUMO_HORA`, uma vez por dia por pessoa) |
 | `leitura_sap` | `importacao.id` ou nulo | leitura do SAP, agendada ou pedida |
 | `leitura_rh` | `leitura_rh.id` | leitura completa do registro de funcionários (diária, a partir de `RH_LEITURA_HORA`, ou "Ler agora") |
@@ -696,6 +698,9 @@ Cada arquivo de `api/src/rotas/` é um módulo registrado em `api/src/app.ts`. O
 | Pedido de conta | `solicitacoes-conta.ts` | `/solicitacoes-conta`, `/solicitacoes-conta/equipes`, `.../{id}/descartar` | pedir: sem token; listar e descartar: admin e supervisor |
 | Ausência | `ausencias.ts` | `/ausencias`, `/ausencias/{id}` e os atos (`aprovar`, `recusar`, `confirmar`, `recusar-ajuste`, `cancelar`, `pedir-fim`, `responder-fim`, `prorrogar`, `encerrar`, `confirmar-retorno`) | técnico pede; supervisor decide e registra; admin vê todas |
 | Validações | `validacoes.ts` | `GET /me/validacoes` | supervisor (admin recebe `403`) |
+| Push | `dispositivos.ts` | `GET /me/dispositivos`, `POST /me/dispositivos`, `DELETE /me/dispositivos` | a própria conta (o ausente também registra) |
+| Emergência | `emergencia.ts` | `GET /emergencia/contatos`, `GET /os/{id}/emergencias`, `POST /emergencias/{id}/atender` (o acionamento é o evento `emergencia_acionada`) | contatos: todos; atender: supervisor da equipe e admin |
+| Convite na APR | `apr-convites.ts` | `GET` e `POST /os/{id}/apr-convites`, `DELETE /apr-convites/{id}`, `GET /me/apr-convites`, `POST /apr-convites/{id}/aceitar` e `.../recusar` | técnico |
 | Busca | `busca.ts` | `GET /busca/exata` | todos |
 | Arquivos | `arquivos.ts` | `PUT /arquivos/{id}`, `GET /arquivos/{id}/url` | todos (inclusive desativado e ausente, para a fila) |
 | Auditoria | `auditoria.ts` | `GET /auditoria` | admin |

@@ -35,6 +35,10 @@ export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; u
       return { icone: "shield", urgente: true };
     case "lesao_ou_enfermidade":
       return { icone: "alert", urgente: true };
+    case "emergencia":
+      return { icone: "octagon", urgente: true };
+    case "emergencia_atendida":
+      return { icone: "check", urgente: false };
     case "clima_extremo":
       return { icone: "trovoada", urgente: true };
     case "pedido_de_acao":

@@ -12,6 +12,9 @@ import { ehAvisoDeConferencia } from "../conferencia/aviso";
 export function destinoDoAvisoNoApp(a: Pick<Alerta, "tipo" | "os_id" | "destinatario_id" | "usuario_alvo_id" | "sugestao_id">): string | null {
   if (ehAvisoDeConferencia(a)) return a.os_id ? `/os/${a.os_id}/conferencia` : null;
   if (a.tipo === "apr_para_assinar") return a.os_id ? `/os/${a.os_id}/aprovada` : null;
+  // O convite para a APR se responde na tela de convites; o aceite e a recusa, quem convidou acompanha na etapa dos participantes da APR.
+  if (a.tipo === "apr_convite" || a.tipo === "apr_convite_cancelado") return "/convites";
+  if (a.tipo === "apr_convite_aceito" || a.tipo === "apr_convite_recusado") return a.os_id ? `/os/${a.os_id}/apr` : null;
   if (alvoDoAlerta(a) === "sugestao") return a.sugestao_id ? `/materiais/${a.sugestao_id}` : "/materiais";
   switch (alvoDoAlerta(a)) {
     case "os":

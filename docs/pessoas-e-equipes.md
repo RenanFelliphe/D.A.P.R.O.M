@@ -218,7 +218,7 @@ Pausar, retomar e suspender a execução no fim do expediente; reservar a OS e l
 A página **Validações** (`/app/validacoes`, na web) é a fila de tudo o que espera a decisão ou a assinatura do supervisor. Ela não decide nada: reúne o que já existia e leva cada item à tela onde a decisão é tomada, com a janela de assinatura de sempre.
 
 - **Quem vê:** quem supervisiona uma equipe, titular ou representante no comando (`GET /me/validacoes`, só papel `supervisor`). O admin e o técnico sem equipe supervisionada recebem `403`.
-- **O app** ainda não tem a página; a `api` e o contrato ([`shared/api/validacoes.ts`](../shared/api/validacoes.ts)) já servem a ele.
+- **O app** tem a mesma fila em Perfil > Validações (`mobile/src/app/validacoes.tsx`), com o selo da contagem no perfil e o mesmo filtro por tipo, sobre o mesmo contrato ([`shared/api/validacoes.ts`](../shared/api/validacoes.ts)). Cada item abre no app quando a tela existe lá (a conferência, a sugestão de materiais e a OS que ainda espera a conferência) e, quando só a web a tem (a assinatura final da OS, o treinamento de um serviço, a resposta às ausências da equipe), abre a web no navegador (`EXPO_PUBLIC_WEB_URL`). Sem sinal a fila não carrega: ela vem da `api`, sem cópia no aparelho.
 - **O selo do menu** "Validações" conta a fila inteira. O antigo endereço `/app/treinamentos/validar` redireciona para `/app/validacoes?tipo=treinamento`.
 
 ### 5.1 O que entra
@@ -373,7 +373,7 @@ Age só sobre a própria ausência; sobre a equipe, `403 usuario_ausente`. Quem 
 - **Todo perfil tem o sino** (`GET /alertas`, `PATCH /alertas/{id}`), com os avisos endereçados a ele. Na web fica na barra; no app, na aba Avisos. A tela de alertas da gestão (`/web/alertas`) é do supervisor e do admin.
 - **Os tipos de aviso**, o alvo de cada um, os rótulos, a categoria de e-mail de cada tipo e o destino do clique (`caminhoDoAviso`) estão em [`shared/notificacoes/avisos.ts`](../shared/notificacoes/avisos.ts).
 - **Todo aviso passa por `criarAviso`** ([`api/src/dominio/alertas.ts`](../api/src/dominio/alertas.ts)), que grava o aviso e, se o tipo tem categoria de e-mail, enfileira o envio. `resolverAvisos` tira do "não lido" o que já foi feito (cadastro liberado, conta reativada, equipe com supervisor).
-- **Não há push no celular, por decisão:** no app, "puxar para atualizar" traz o aviso novo, e o número na aba se atualiza sozinho.
+- **Push no celular:** os avisos que pedem ação no campo também tocam no app (seção 8.6). No app, "puxar para atualizar" traz o aviso novo, e o número na aba se atualiza sozinho.
 
 ### 8.2 As categorias de e-mail
 
@@ -381,7 +381,7 @@ Todo e-mail nasce de um aviso do sino (menos o resumo diário). Se o tipo tem ca
 
 | Categoria (`CATEGORIAS_DE_EMAIL`) | O que entra | Desliga? |
 |---|---|---|
-| Segurança | APR bloqueada, interrupção por risco, direito de recusa, lesão ou enfermidade, risco climático extremo | não |
+| Segurança | APR bloqueada, interrupção por risco, direito de recusa, lesão ou enfermidade, risco climático extremo, emergência acionada | não |
 | Sua conta | conta criada, acesso liberado ou recusado, senha redefinida | não |
 | Ordens de serviço | reserva, assinatura final, OS aguardando assinatura, apoio encerrado, inspeção com pendência, conflitos | sim |
 | Preventivas | ciclo próximo e vencido | sim |
@@ -426,3 +426,22 @@ Um e-mail por pessoa por dia, a partir de `EMAIL_RESUMO_HORA` (padrão 7h, horá
 | `EMAIL_RESUMO_HORA` | a hora do resumo diário (padrão 7) |
 
 Como testar a conexão e enviar um e-mail de teste está em [../api/README.md](../api/README.md).
+
+### 8.6 Notificação push
+
+O aviso que pede ação no campo também toca no celular, com o app fechado. É um canal a mais, nunca o único: todo aviso continua no sino e, se o tipo tem categoria, no e-mail.
+
+- **Só no app** (Android). A web não tem push.
+- **Quais avisos** (`PUSH_DO_AVISO`, [`shared/notificacoes/push.ts`](../shared/notificacoes/push.ts)): segurança (impedimento, direito de recusa, lesão ou enfermidade, clima extremo, emergência acionada e atendida); o pedido de ação na execução, que vence em 2 minutos, e a resposta; a APR para assinar e o convite para a APR (seção 4.9 de [operacao-de-campo.md](operacao-de-campo.md)); a OS reservada, a reserva desfeita e a assinatura final; a conferência da execução; os pedidos e as respostas de ausência; a representação; as sugestões de materiais. Ficam de fora os avisos de gestão do admin, o ciclo das preventivas, "um participante agiu" e "materiais atualizados". O Android tem dois canais: **Urgentes** (prioridade máxima) e **Avisos**.
+- **Como sai:** `criarAviso` enfileira a tarefa `push_alerta` junto do aviso. A tarefa ([`api/src/dominio/push.ts`](../api/src/dominio/push.ts)) manda ao serviço de push da Expo (que entrega pelo FCM) a todos os aparelhos da pessoa, e termina sem enviar quando: não há serviço configurado; o aviso já foi lido (o convite respondido, a OS assinada); a pessoa está desativada ou sem liberação; ou ela não tem aparelho registrado. Falha do serviço repete como as outras tarefas; o token que o serviço recusa (`DeviceNotRegistered`) é apagado. A notificação leva o rótulo do aviso, o texto dele cortado em 160 caracteres e o necessário para abrir a tela ao toque.
+- **O aparelho:** o app registra o token na abertura (`POST /me/dispositivos`, que também o confirma) e o tira ao sair e ao desligar (`DELETE /me/dispositivos`). O token é do aparelho: quem entra num aparelho que era de outra pessoa o toma para si. O token não confirmado há 120 dias não recebe. `GET /me/dispositivos` diz quantos aparelhos a pessoa tem e se a `api` tem o serviço de push.
+- **A pessoa escolhe:** Configurações › Notificações neste aparelho liga e desliga, por aparelho. A primeira abertura pede a permissão do sistema (Android 13 ou mais); se ela for negada, a tela leva às configurações do aparelho.
+- **Ao tocar,** o app marca o aviso como lido e abre a mesma tela do toque no sino (`destinoDoAvisoNoApp`); o que só existe na web apenas abre o app. A notificação de outra pessoa (o aparelho trocou de mãos) não abre tela.
+- **Sem os serviços do Google** (os PDAs industriais costumam não ter; questão 41) o aparelho não recebe o token: as Configurações avisam e tudo segue pelo sino, com o app aberto. Não há alternativa sem o Google.
+- **Para ligar em produção:** um projeto no Firebase, o `google-services.json` dele (variável `GOOGLE_SERVICES_JSON` do build, nunca no repositório) e as credenciais do FCM na conta da Expo (`eas credentials`); depois, um APK novo (a biblioteca é nativa; o app passou para a versão 0.2.0).
+
+| Variável da `api` | O que é |
+|---|---|
+| `PUSH_LIGADO` | `false` desliga o push (padrão `true`; sem aparelho registrado, nada sai) |
+| `EXPO_PUSH_URL` | o endereço do serviço (padrão `https://exp.host/--/api/v2/push/send`) |
+| `EXPO_ACCESS_TOKEN` | a chave de acesso, só se a conta da Expo a exige |

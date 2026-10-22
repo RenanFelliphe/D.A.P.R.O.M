@@ -34,6 +34,7 @@ import { ArmazenamentoEmMemoria } from "./servicos/armazenamento";
 import { DOMINIO_DEMO, emailDoNome } from "./dominio/usuarios";
 import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
+import { PushEmMemoria } from "./servicos/push";
 import { controlarIA } from "./dominio/ia-funcoes";
 import { criarProvedorIA } from "./servicos/ia";
 import { aplicarConfiguracoes } from "./dominio/configuracoes";
@@ -75,6 +76,7 @@ const config: Config = {
   smtpUrl: "",
   emailRemetente: "synqos@localhost",
   emailResumoHora: 7,
+  push: { ligado: false, url: "", chave: "" },
   climaApiUrl: "https://api.open-meteo.com/v1/forecast",
   climaApiChave: "",
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
@@ -101,6 +103,8 @@ async function main() {
     armazenamento,
     // Sem SMTP no modo local: os e-mails ficam na memória e o console mostra quem receberia e o assunto.
     email: new EmailEmMemoria({ registrar: true }),
+    // O modo local não tem aparelho: o push fica na memória, e o console mostra quem receberia.
+    push: new PushEmMemoria({ registrar: true }),
     sap: new ClienteSapHttp(config.sapApiUrl, TOKEN_SAP),
     rh: new ClienteRhHttp(config.rhApiUrl, TOKEN_RH),
     ia: controlarIA(db, criarProvedorIA(config.ia, config.vitoria.maxTokensResposta)),

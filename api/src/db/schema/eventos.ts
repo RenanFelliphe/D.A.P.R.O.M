@@ -26,6 +26,8 @@ export const EVENTO_TIPOS = [
   "pedido_decidido",
   "pedido_cancelado",
   "pedido_apoiado",
+  /** O botão de emergência: avisa o supervisor e os administradores na hora (`docs/operacao-de-campo.md`, seção 5.9). */
+  "emergencia_acionada",
 ] as const;
 export type EventoTipo = (typeof EVENTO_TIPOS)[number];
 

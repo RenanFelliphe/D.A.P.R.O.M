@@ -2,10 +2,14 @@ import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { z } from "zod";
+import { frasePendenteDosConvites, pendenciaDosConvites } from "@shared/api/apr-convite";
 import { avisoAoDescartar, continuaNasAssinaturas, doModeloCompleto, estaTravada, MIN_PARTICIPANTES, novoRascunho, riscosEquivalentes, totalDePerguntas, type Funcao, type ModeloCompleto } from "@shared/api/apr";
 import { execucaoAberta, reservadaParaOutro, rotuloDaOs } from "@shared/api/os-app";
 import { execucaoJaTerminou, type Usuario } from "@shared/api/tipos";
 import { ErroDaApi, mensagemDoErro } from "@/api/erros";
+import { useAcoesDeConvite, useConvitesDaOs } from "@/convites/consultas";
+import { conviteADesfazer, quemConvidar } from "@/convites/regras";
+import { useConexao } from "@/estado/conexao";
 import { carregarModeloPublicado, useColegasDaEquipe, useEscolhaDoModelo } from "@/apr/consultas";
 import { equipeDaApr } from "@/apr/equipe";
 import { JanelaDeModelos } from "@/apr/JanelaDeModelos";
@@ -122,6 +126,12 @@ function FormularioDaApr({ osId, rotulo, tituloDaOs, local, reservada, usuario, 
   const [responsavelId, setResponsavelId] = useState(usuarioId);
   const [riscos, setRiscos] = useState<string[]>([]);
   const [descartando, setDescartando] = useState(false);
+  const [convidando, setConvidando] = useState(false);
+  // O convite é do servidor: só com sinal. Sem ele vale o presencial de sempre (ninguém é cobrado por convite que não existe).
+  const online = useConexao() === "online";
+  const convitesDaOs = useConvitesDaOs(osId, rascunho === null);
+  const acoesDeConvite = useAcoesDeConvite(osId);
+  const convites = online ? convitesDaOs.data : undefined;
 
   // A APR exige ao menos 2 participantes e um modelo escolhido. O botão não fica parado: faltando algo, a mensagem aparece junto do que falta.
   const esquema = useMemo(
@@ -146,6 +156,9 @@ function FormularioDaApr({ osId, rotulo, tituloDaOs, local, reservada, usuario, 
   // Aberta sozinha só quando há o que escolher: sem modelo publicado, a pessoa vê o aviso ao tocar em "Escolher o modelo".
   const abreSozinha = janela === "auto" && !modelo && (escolha ? escolha.modelos.length > 0 : carregandoEscolha);
   const janelaAberta = rascunho === null && (janela === "aberta" || abreSozinha);
+  // Quem o responsável convidou precisa ter aceitado para o checklist começar; quem não foi convidado não é cobrado.
+  const fraseDosConvites = convites ? frasePendenteDosConvites(pendenciaDosConvites(convites, marcados)) : null;
+  const paraConvidar = convites ? quemConvidar(marcados, usuarioId, convites) : [];
 
   if (rascunho === undefined) return <Carregando texto="Abrindo a APR…" />;
 
@@ -166,8 +179,24 @@ function FormularioDaApr({ osId, rotulo, tituloDaOs, local, reservada, usuario, 
     }
   }
 
+  /** Convida as pessoas marcadas que ainda não têm convite em aberto; o erro (uma pessoa ausente, de outra equipe) aparece junto do botão. */
+  async function convidar() {
+    setErro(null);
+    setConvidando(true);
+    try {
+      await acoesDeConvite.convidar(paraConvidar);
+    } catch (e) {
+      setErro(mensagemDoErro(e));
+    } finally {
+      setConvidando(false);
+    }
+  }
+
   function alternarParticipante(id: string) {
     if (id === usuarioId) return;
+    // Quem sai da lista com o convite ainda em aberto não fica esperando: o convite é desfeito e a pessoa é avisada.
+    const aDesfazer = marcados.includes(id) && convites ? conviteADesfazer(convites, id) : null;
+    if (aDesfazer) void acoesDeConvite.desfazer(aDesfazer.id).catch(() => undefined);
     setMarcados((atuais) => (atuais.includes(id) ? atuais.filter((m) => m !== id) : [...atuais, id]));
     if (id === responsavelId) setResponsavelId(usuarioId);
   }
@@ -176,7 +205,7 @@ function FormularioDaApr({ osId, rotulo, tituloDaOs, local, reservada, usuario, 
   const total = modelo ? totalDePerguntas(doModeloCompleto(modelo), riscos) : 0;
 
   const comecar = enviar(() => {
-    if (!modelo) return;
+    if (!modelo || fraseDosConvites) return;
     const participantes = marcados.map((id) => ({ usuarioId: id, funcao: (id === responsavelId ? "responsavel" : "executor") as Funcao }));
     gravar(novoRascunho({ osId, usuarioId, modelo: doModeloCompleto(modelo), participantes, riscos }));
     router.replace(rotas.checklist(osId));
@@ -209,7 +238,7 @@ function FormularioDaApr({ osId, rotulo, tituloDaOs, local, reservada, usuario, 
     );
   }
 
-  const mensagensDeErro = [erros.modelo?.message, erros.participantes?.message].filter((m): m is string => Boolean(m));
+  const mensagensDeErro = [erros.modelo?.message, erros.participantes?.message, fraseDosConvites].filter((m): m is string => Boolean(m));
   return (
     <Tela bordas={["bottom"]}>
       <Text style={estilos.etapa}>{`Etapa 1 de 3 · modelo, participantes e riscos`}</Text>
@@ -244,6 +273,10 @@ function FormularioDaApr({ osId, rotulo, tituloDaOs, local, reservada, usuario, 
         aoAlternar={alternarParticipante}
         aoTornarResponsavel={reservada ? undefined : setResponsavelId}
         erro={erros.participantes?.message}
+        convites={convites}
+        aoConvidar={() => void convidar()}
+        paraConvidar={paraConvidar.length}
+        convidando={convidando}
       />
       {modelo ? <RiscosApr riscos={modelo.riscos} itens={modelo.itens} marcados={riscos} aoAlternar={alternarRisco} /> : null}
 

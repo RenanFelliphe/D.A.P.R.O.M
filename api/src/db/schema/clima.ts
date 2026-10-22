@@ -67,6 +67,8 @@ export const CONFIGURACOES_CHAVES = [
   "treinamento_ia_limite_treinamentos",
   "treinamento_ia_limite_rodadas",
   "treinamento_ia_max_tokens",
+  /** Os contatos do PAE que o botão de emergência mostra (lista de `{nome, telefone, descricao}`). */
+  "contatos_pae",
 ] as const;
 export type ConfiguracaoChave = (typeof CONFIGURACOES_CHAVES)[number];
 

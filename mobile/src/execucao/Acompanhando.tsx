@@ -10,6 +10,7 @@ import { comPosicao } from "@shared/api/localizacao";
 import { ehMotivoDeSaude } from "@shared/api/motivos-de-parada";
 import { novoUuid } from "@shared/api/uuid";
 import { useConexao } from "@/estado/conexao";
+import { BotaoDeEmergencia } from "@/emergencia/BotaoDeEmergencia";
 import { enviarEvento } from "@/offline/app";
 import { obterPosicao } from "@/campo/localizacao";
 import { useAcao, useAtualizarDepoisDoEvento } from "@/campo/useAcao";
@@ -183,6 +184,7 @@ export function Acompanhando({ usuarioId, osId, numeroOrdem, titulo, local, situ
             setJanela("suspender");
           }}
         />
+        <BotaoDeEmergencia osId={osId} execucaoId={execucao.id} />
       </View>
 
       <Cartao>

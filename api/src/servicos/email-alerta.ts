@@ -231,7 +231,7 @@ async function conteudoDoAviso(deps: Deps, a: LinhaAlerta): Promise<{ assunto: s
   return {
     assunto: `[SYNQ OS] ${rotulo}${sufixo}`,
     titulo: rotulo,
-    urgente: a.tipo === "preventiva_vencida" || a.tipo === "ausencia_vencida" || a.tipo === "falha_importacao" || a.tipo === "rh_leitura_falhou",
+    urgente: a.tipo === "emergencia" || a.tipo === "preventiva_vencida" || a.tipo === "ausencia_vencida" || a.tipo === "falha_importacao" || a.tipo === "rh_leitura_falhou",
     paragrafos: [a.detalhe],
     itens,
     ...(botao ? { botao } : {}),

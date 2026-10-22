@@ -7,6 +7,7 @@ import { pedidoAberto } from "@shared/api/execucao-pedidos";
 import { participantesAtivos } from "@shared/api/execucao-tempo";
 import { comPosicao } from "@shared/api/localizacao";
 import { novoUuid } from "@shared/api/uuid";
+import { BotaoDeEmergencia } from "@/emergencia/BotaoDeEmergencia";
 import { enviarEvento } from "@/offline/app";
 import { JanelaDeAssinatura } from "@/campo/JanelaDeAssinatura";
 import { obterPosicao } from "@/campo/localizacao";
@@ -155,6 +156,7 @@ export function EmAndamento({ osId, numeroOrdem, titulo, local, situacao, atuali
             setJanela("suspender");
           }}
         />
+        <BotaoDeEmergencia osId={osId} execucaoId={execucao.id} />
         {podeCancelar ? (
           <Botao
             titulo="Cancelar por engano"

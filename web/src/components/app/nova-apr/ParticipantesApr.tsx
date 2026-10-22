@@ -1,6 +1,8 @@
 import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
+import { Button } from "@/components/ui/Button";
 import { MIN_PARTICIPANTES, type Colega } from "@/lib/apr";
+import { PRAZO_DO_CONVITE_MIN, type ConviteFeito } from "@/lib/apr-convite";
 import { ParticipanteRow } from "./ParticipanteRow";
 
 interface ParticipantesAprProps {
@@ -13,6 +15,12 @@ interface ParticipantesAprProps {
   aoTornarResponsavel?: (id: string) => void;
   /** Por que não dá para continuar (menos de 2 participantes): em destaque, no lugar da escolha, e o foco vem para cá. */
   erro?: string;
+  /** Os convites que o responsável fez nesta OS hoje; `undefined` sem sinal (o convite é do servidor, e sem ele vale o presencial de sempre). */
+  convites?: ConviteFeito[];
+  /** Convidar as pessoas marcadas que ainda não têm convite em aberto; `paraConvidar` diz quantas são. */
+  aoConvidar?: () => void;
+  paraConvidar?: number;
+  convidando?: boolean;
 }
 
 const avatares = [undefined, "av2", "av3"] as const;
@@ -22,7 +30,7 @@ const avatares = [undefined, "av2", "av3"] as const;
  * exige ao menos 2 participantes (ninguém executa sozinho) e não tem máximo. Equipe com só 1 pessoa disponível não consegue iniciar
  * a APR, e a seção diz isso sem esperar o clique.
  */
-export function ParticipantesApr({ equipe, usuarioId, marcados, responsavelId, aoAlternar, aoTornarResponsavel, erro }: ParticipantesAprProps) {
+export function ParticipantesApr({ equipe, usuarioId, marcados, responsavelId, aoAlternar, aoTornarResponsavel, erro, convites, aoConvidar, paraConvidar = 0, convidando = false }: ParticipantesAprProps) {
   const sozinho = equipe.length < MIN_PARTICIPANTES;
   return (
     <div className="stack g8" data-treino="apr-participantes" data-erro={erro ? "" : undefined}>
@@ -44,6 +52,7 @@ export function ParticipantesApr({ equipe, usuarioId, marcados, responsavelId, a
             avatar={avatares[i % avatares.length]}
             aoAlternar={() => aoAlternar(colega.id)}
             aoTornarResponsavel={aoTornarResponsavel ? () => aoTornarResponsavel(colega.id) : undefined}
+            convite={convites?.find((c) => c.convidado.id === colega.id)}
           />
         ))}
       </div>
@@ -51,6 +60,19 @@ export function ParticipantesApr({ equipe, usuarioId, marcados, responsavelId, a
         <Notice tone="blq" icon="alert" role="alert">
           {erro}
         </Notice>
+      )}
+      {aoConvidar && paraConvidar > 0 && (
+        <div className="stack g6">
+          <div>
+            <Button variant="line" onClick={aoConvidar} disabled={convidando}>
+              <Icon name="users" size={16} />
+              Convidar {paraConvidar} {paraConvidar === 1 ? "pessoa" : "pessoas"}
+            </Button>
+          </div>
+          <span className="small muted">
+            Cada um recebe o convite agora e responde em até {PRAZO_DO_CONVITE_MIN} minutos: &quot;Aceito&quot; ou &quot;Não posso&quot;. Com convite, o checklist só começa quando todos aceitam.
+          </span>
+        </div>
       )}
       <div className="row g8 small">
         <Icon name="users" size={16} />

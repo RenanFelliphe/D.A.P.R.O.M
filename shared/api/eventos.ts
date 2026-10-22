@@ -22,7 +22,9 @@ export type TipoDeEvento =
   | "pedido_aberto"
   | "pedido_decidido"
   | "pedido_cancelado"
-  | "pedido_apoiado";
+  | "pedido_apoiado"
+  // O botão de emergência: avisa o supervisor e os administradores na hora.
+  | "emergencia_acionada";
 
 export interface EventoDeCampo {
   /** Gerado no cliente; reenviar o mesmo id não tem efeito. */

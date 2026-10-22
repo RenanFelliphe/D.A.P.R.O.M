@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CidadePadrao } from "@/components/configuracoes/CidadePadrao";
+import { ContatosDoPae } from "@/components/configuracoes/ContatosDoPae";
 import { ItemNumerico } from "@/components/configuracoes/ItemNumerico";
 import { Notice } from "@/components/ui/Notice";
 import { ControleDaIa } from "@/components/vitoria/ControleDaIa";
@@ -12,7 +13,7 @@ import type { PainelDaIa } from "@/lib/vitoria-ia";
 export const metadata: Metadata = { title: "Configurações do sistema" };
 
 /**
- * Sistema, só do admin (os demais veem 404): a cidade padrão da previsão do tempo, os horários das rotinas (leitura do SAP e do registro
+ * Sistema, só do admin (os demais veem 404): a cidade padrão da previsão do tempo, os contatos de emergência (PAE), os horários das rotinas (leitura do SAP e do registro
  * de funcionários, resumo de e-mail) e a IA (o controle de cada função, que saiu da página da Vitória, e os limites de uso). Cada valor
  * numérico salva sozinho e vale na hora; endereços, chaves e tokens dos outros sistemas ficam no ambiente, fora desta tela.
  */
@@ -33,6 +34,8 @@ export default async function ConfiguracoesSistemaPage() {
   return (
     <div className="stack g16">
       <CidadePadrao cidade={config.cidade_padrao} />
+
+      <ContatosDoPae contatos={config.contatos_pae} />
 
       <section className="panel cfg-bloco" aria-labelledby="cfg-rotinas" data-treino="cfg-rotinas">
         <header>

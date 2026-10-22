@@ -15,6 +15,7 @@ import { Icon } from "@/components/ui/Icon";
 import { JanelaSobreposta } from "@/components/ui/JanelaSobreposta";
 import { ErroDeEnvio } from "@/components/ui/useFormulario";
 import { Notice } from "@/components/ui/Notice";
+import { BotaoDeEmergencia } from "@/components/app/execucao/BotaoDeEmergencia";
 import { enviarEvento, novoId } from "@/lib/cliente-api";
 import { pedidoAberto } from "@/lib/execucao-pedidos";
 import { comPosicao, obterPosicao } from "@/lib/geolocalizacao";
@@ -204,6 +205,7 @@ export function ExecucaoEmAndamento({ os, situacao }: Props) {
               <Button variant="line" block onClick={() => setJanela("suspender")} disabled={ocupado} data-treino="exec-suspender">
                 Suspender
               </Button>
+              <BotaoDeEmergencia osId={os.id} execucaoId={execucao.id} />
               {podeCancelar && (
                 <Button
                   variant="ghost"

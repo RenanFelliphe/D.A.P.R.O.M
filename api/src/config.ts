@@ -26,6 +26,10 @@ const esquema = z.object({
   SMTP_URL: z.string().default(""),
   EMAIL_REMETENTE: z.string().default("synqos@localhost"),
   EMAIL_RESUMO_HORA: z.coerce.number().int().min(0).max(23).default(7),
+  /** Notificação push do app (serviço de push da Expo): `PUSH_LIGADO=false` desliga; a chave só existe se a conta da Expo exige. */
+  PUSH_LIGADO: z.enum(["true", "false"]).default("true").transform((v) => v === "true"),
+  EXPO_PUSH_URL: z.string().default("https://exp.host/--/api/v2/push/send"),
+  EXPO_ACCESS_TOKEN: z.string().trim().default(""),
   /** Previsão do tempo (Open-Meteo): o endereço muda só para o plano pago ou um espelho; a chave só existe no plano pago. */
   CLIMA_API_URL: z.string().default("https://api.open-meteo.com/v1/forecast"),
   CLIMA_API_CHAVE: z.string().trim().default(""),
@@ -89,6 +93,8 @@ export interface Config {
   emailRemetente: string;
   /** Hora (de São Paulo) a partir da qual sai o resumo diário por e-mail. */
   emailResumoHora: number;
+  /** Notificação push do app (`docs/pessoas-e-equipes.md`, seção 8.6). */
+  push: { ligado: boolean; url: string; chave: string };
   /** A previsão do tempo (`docs/operacao-de-campo.md`, seção 4.7). */
   climaApiUrl: string;
   climaApiChave: string;
@@ -179,6 +185,7 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     smtpUrl: e.SMTP_URL,
     emailRemetente: e.EMAIL_REMETENTE,
     emailResumoHora: e.EMAIL_RESUMO_HORA,
+    push: { ligado: e.PUSH_LIGADO, url: e.EXPO_PUSH_URL, chave: e.EXPO_ACCESS_TOKEN },
     climaApiUrl: e.CLIMA_API_URL,
     climaApiChave: e.CLIMA_API_CHAVE,
     painelUrl: e.PAINEL_URL.replace(/\/$/, ""),

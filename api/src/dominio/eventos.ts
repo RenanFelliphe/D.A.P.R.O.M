@@ -4,6 +4,7 @@ import { EVENTO_TIPOS, apr, eventoCampo, execucao, execucaoPausa, execucaoPedido
 import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid } from "../http/validacao";
+import { aplicarEmergenciaAcionada } from "./emergencia";
 import { aplicarAprAssinada, aplicarAprConcluida, aplicarAprRecusada } from "./eventos-apr";
 import { concederConquistas } from "./conquistas";
 import { ganhosDe, type ganhoParaApi } from "./lancamentos";
@@ -142,6 +143,8 @@ async function despachar(ctx: Contexto, e: EventoRecebido) {
       return aplicarPedidoCancelado(ctx, e.payload);
     case "pedido_apoiado":
       return aplicarPedidoApoiado(ctx, e.payload);
+    case "emergencia_acionada":
+      return aplicarEmergenciaAcionada(ctx, osId, e.payload);
   }
 }
 

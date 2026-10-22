@@ -4,6 +4,7 @@ import type { Armazenamento } from "./servicos/armazenamento";
 import type { ProvedorAuth } from "./servicos/auth";
 import type { ClienteClima } from "./servicos/clima";
 import type { Email } from "./servicos/email";
+import type { Push } from "./servicos/push";
 import type { ClienteRh } from "./servicos/rh";
 import type { ClienteSap } from "./servicos/sap";
 import type { ProvedorIA } from "./servicos/ia";
@@ -16,6 +17,8 @@ export interface Deps {
   auth: ProvedorAuth;
   armazenamento: Armazenamento;
   email: Email;
+  /** O serviço de notificação push (Expo); os testes usam o PushEmMemoria. */
+  push: Push;
   sap: ClienteSap;
   /** O registro de funcionários (RH), real ou simulado. */
   rh: ClienteRh;

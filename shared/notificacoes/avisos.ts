@@ -28,6 +28,12 @@ export const AVISOS_DE_SUGESTAO_DE_MATERIAIS = [
   "sugestao_materiais_recusada",
 ] as const;
 
+/** Os avisos do convite de participação na APR (`docs/operacao-de-campo.md`, seção 4.9): apontam para a OS. */
+export const AVISOS_DE_CONVITE_DE_APR = ["apr_convite", "apr_convite_aceito", "apr_convite_recusado", "apr_convite_cancelado"] as const;
+
+/** Os avisos do botão de emergência (`docs/operacao-de-campo.md`, seção 5.9): apontam para a OS. */
+export const AVISOS_DE_EMERGENCIA = ["emergencia", "emergencia_atendida"] as const;
+
 /** Os avisos de que o representante assumiu a equipe ou de que o supervisor voltou: apontam para a equipe. */
 export const AVISOS_DE_REPRESENTACAO = ["representacao_iniciada", "representacao_encerrada"] as const;
 
@@ -53,6 +59,10 @@ export const TIPOS_DE_AVISO = [
   "conferencia_tempo_esgotado",
   // Execução e assinaturas (Reunião 3)
   "apr_para_assinar",
+  // Convite para participar da APR (antes de ela existir): o convidado, o aceite e a recusa (para quem convidou) e o convite desfeito
+  ...AVISOS_DE_CONVITE_DE_APR,
+  // O botão de emergência: o acionamento (supervisor e administradores) e o atendimento (para quem acionou)
+  ...AVISOS_DE_EMERGENCIA,
   "direito_de_recusa",
   "lesao_ou_enfermidade",
   "os_para_assinar",
@@ -168,6 +178,12 @@ export const ROTULO_DO_AVISO: Record<TipoDeAviso, string> = {
   conferencia_ressalva: "Ressalva na conferência da execução",
   conferencia_tempo_esgotado: "Conferência da execução fechada por prazo",
   apr_para_assinar: "APR aguardando a sua assinatura",
+  apr_convite: "Convite para participar de uma APR",
+  apr_convite_aceito: "Convite para a APR aceito",
+  apr_convite_recusado: "Convite para a APR recusado",
+  apr_convite_cancelado: "Convite para a APR desfeito",
+  emergencia: "EMERGÊNCIA acionada",
+  emergencia_atendida: "Emergência atendida",
   direito_de_recusa: "Direito de recusa na APR",
   lesao_ou_enfermidade: "Lesão ou enfermidade na execução",
   os_para_assinar: "OS aguardando a sua assinatura",
@@ -252,6 +268,14 @@ export const CATEGORIA_DO_AVISO: Record<TipoDeAviso, CategoriaDeEmail | null> = 
   conferencia_tempo_esgotado: "equipe",
   // Só no sino: quem assina está ao lado de quem preencheu a APR.
   apr_para_assinar: null,
+  // Só no sino e no push: o convite vale por minutos (o prazo de resposta), e o e-mail não chegaria a tempo.
+  apr_convite: null,
+  apr_convite_aceito: null,
+  apr_convite_recusado: null,
+  apr_convite_cancelado: null,
+  // A emergência é aviso de segurança: o e-mail é obrigatório (como o impedimento e a lesão). O atendimento só informa quem acionou.
+  emergencia: "seguranca",
+  emergencia_atendida: null,
   // A lesão no trabalho, mesmo leve, é acidente de trabalho: o aviso por e-mail é obrigatório, como o do impedimento.
   direito_de_recusa: "seguranca",
   lesao_ou_enfermidade: "seguranca",
@@ -381,6 +405,15 @@ export function caminhoDoAviso(a: ReferenciasDoAviso): string {
       return "/app/usuarios#solicitacoes";
     case "apr_para_assinar":
       return a.osId ? `/app/os/${a.osId}/apr/aprovada` : "/app/lista";
+    case "emergencia":
+    case "emergencia_atendida":
+      return a.osId ? `/app/os/${a.osId}` : "/app/lista";
+    // O convite se responde, e o aceite se acompanha, na tela da nova APR (a etapa dos participantes).
+    case "apr_convite":
+    case "apr_convite_aceito":
+    case "apr_convite_recusado":
+    case "apr_convite_cancelado":
+      return a.osId ? `/app/os/${a.osId}/apr` : "/app/lista";
     // A conferência da execução: a tela dela é da OS (a execução compartilhada, etapa 3).
     case "conferencia_aberta":
     case "conferencia_cobranca":

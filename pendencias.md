@@ -1,83 +1,67 @@
-# Pendências do SYNQ OS — 21/10/2026
+# Pendências do SYNQ OS — 22/10/2026
 
-O que falta para dar o MVP por completo, o que depende de terceiros, o que espera uma decisão e o que está fora do MVP. Cada item concluído é marcado aqui; a regra em si fica no documento do assunto, em [docs/](docs/). Os ajustes de interface e acabamento ficam para a rodada antes da apresentação e não estão listados.
-
-## 1. Critério de conclusão do MVP
-
-O critério de sucesso pede o caminho **ler OS → APR → executar → PDF**, com a OS encerrada aparecendo no painel na hora:
-
-| Onde | Situação |
-|---|---|
-| No navegador, online | **Atende** |
-| No app Android, online | **Atende no código**; falta ver num aparelho ou emulador |
-| Num Android em modo avião, chegando ao painel quando o sinal volta | **Atende no código** (fila em SQLite, entrada sem sinal, envio com o app fechado); falta ver num aparelho, e o APK do `mobile/Dockerfile` nunca foi montado |
-
-O MVP está completo quando as três linhas atenderem num aparelho de verdade e os itens 🔴 abaixo estiverem feitos.
-
-## 2. Situação
+Só o que ainda não foi realizado. Ao concluir um item, apague-o daqui; a regra em si fica no documento do assunto, em [docs/](docs/).
 
 **Prioridade:** 🔴 bloqueia o MVP; 🟡 antes da apresentação; 🟢 extra ou depois do MVP. **Tipo:** código (o time faz), terceiros (espera alguém de fora) ou decisão (espera uma resposta).
 
-| # | Item | Tipo | Prioridade | Situação |
-|---|---|---|---|---|
-| 0 | Commitar as correções da Reunião 3 | código | 🔴 | [x] |
-| 1 | App: esqueleto, login e lista e detalhe das OS | código | 🔴 | [x] no código |
-| 2 | App: APR e execução online | código | 🔴 | [x] no código |
-| 3 | App: perfil, assinatura, avisos, ausência, pontos e Vitória | código | 🔴 | [x] no código |
-| 4 | Modo offline: cópia da equipe e fila em SQLite | código | 🔴 | [x] no código |
-| 5 | Modo offline: entrada sem sinal e aviso de pendentes | código | 🔴 | [x] no código |
-| 6 | Modo offline: envio com o app fechado | código | 🔴 | [x] no código |
-| 7 | Dockerfile que gera o APK | código | 🔴 | [x] escrito; o `docker build` nunca rodou |
-| 8 | Conquista de sincronização offline | código | 🟡 | [x] |
-| 9 | Digitalização: pergunta antes da importação | código | 🟢 | [x] |
-| 10 | Digitalização: PDF escaneado em lote (OCR e IA) | código | 🟢 | [x] |
-| 11 | Digitalização: foto de folhas avulsas | código | 🟢 | [x] |
-| 12 | Digitalização: APR em papel junto com a OS | código | 🟢 | [x] |
-| 13 | React Hook Form e Zod nos demais formulários | código | 🟡 | [x] |
-| 14 | Rodar a bateria inteira da Vitória (66 casos) contra a IA real | código | 🟡 | [ ] depende da cota da IA |
-| 15 | Documentação consolidada em [docs/](docs/) | código | 🟡 | [x] |
-| 16 | Servidor de e-mail (SMTP) | terceiros | 🟡 | [ ] |
-| 17 | Assinatura com validade jurídica | terceiros | 🟢 | [ ] |
-| 18 | Login corporativo (conta Microsoft com segundo fator) | terceiros | 🟢 | [ ] |
-| 19 | Dados reais (planilha de 2025, critério de bloqueio, materiais, ciclo no SAP, formulário de inspeção) | terceiros | 🟢 | [ ] |
-| 20 | Supervisor devolve a OS ao responsável em vez de assinar (questão 69) | decisão | 🟡 | [ ] |
-| 21 | Equipe com só 1 pessoa disponível (questão 72) | decisão | 🟡 | [ ] |
-| 22 | "Houve desvio?" e "Tempo parada" na folha do SAP (questão 70) | decisão | 🟢 | [ ] |
-| 23 | Mais de 3 executantes na folha do SAP (questão 71) | decisão | 🟢 | [ ] |
-| 24 | Execução compartilhada: acompanhar | código | 🟢 | [x] |
-| 25 | Execução compartilhada: agir (na hora ou por pedido de 2 min) | código | 🟢 | [x] |
-| 26 | Execução compartilhada: conferência do que foi feito sem sinal | código | 🟢 | [x] |
-| 27 | Página Validações no app | código | 🟡 | [ ] |
-| 28 | Textos de tela com regra antiga (pontuação, revisão do treinamento, simulador, IA desligada) | código | 🟡 | [x] |
+## 1. Situação
 
-## 3. O que falta antes da apresentação
+| # | Item | Tipo | Prioridade |
+|---|---|---|---|
+| 1 | Ver o app num aparelho, online e em modo avião (APK em montagem; o `docker build` do `mobile/Dockerfile` nunca rodou) | código | 🔴 |
+| 2 | Rodar a bateria inteira da Vitória (66 casos) contra a IA real; depende da cota | código | 🟡 |
+| 4 | Servidor de e-mail (SMTP) | terceiros | 🟡 |
+| 5 | Supervisor devolve a OS ao responsável em vez de assinar (questão 69) | decisão | 🟡 |
+| 6 | Equipe com só 1 pessoa disponível (questão 72) | decisão | 🟡 |
+| 10 | Reincidência | código | 🟢 |
+| 11 | Tempo típico de serviço | código | 🟢 |
+| 12 | Nota de passagem | código | 🟢 |
+| 13 | Assinatura com validade jurídica | terceiros | 🟢 |
+| 14 | Login corporativo (conta Microsoft com segundo fator) | terceiros | 🟢 |
+| 15 | Dados reais (planilha de 2025, critério de bloqueio, materiais, ciclo no SAP, formulário de inspeção) | terceiros | 🟢 |
+| 16 | "Houve desvio?" e "Tempo parada" na folha do SAP (questão 70) | decisão | 🟢 |
+| 17 | Mais de 3 executantes na folha do SAP (questão 71) | decisão | 🟢 |
 
-### 3.1 O app num aparelho
+O MVP está completo quando o caminho **ler OS → APR → executar → PDF**, com a OS encerrada no painel na hora, for visto num aparelho de verdade, online e sem sinal com o envio quando o sinal volta (item 1).
+
+## 2. O que falta antes da apresentação
+
+### 2.1 O app num aparelho
 
 - **Montar o APK** (`pnpm apk` na pasta `mobile`, com Docker) e corrigir o `Dockerfile` se algum passo falhar (download do SDK, Gradle, R8, `apksigner`). Ver [mobile/README.md](mobile/README.md).
 - **Roteiro da demo, ensaiado nos aparelhos da apresentação:** o caminho online no app e no navegador; o mesmo caminho em modo avião; a volta do sinal com a OS chegando ao painel; o envio com o app fechado.
-- **O que nunca foi visto rodando:** a assinatura desenhada com o dedo e o PNG gerado; a câmera, o seletor de PDF e o GPS; o banco SQLite abrindo; o NetInfo mudando no modo avião; a tarefa em segundo plano (a economia de bateria do fabricante pode adiá-la); o tempo da derivação da senha no Hermes; as figurinhas animadas da Vitória; o teclado nos campos longos e o botão voltar do Android.
+- **Nunca visto rodando:** a assinatura desenhada com o dedo e o PNG gerado; a câmera, o seletor de PDF e o GPS; o banco SQLite abrindo; o NetInfo mudando no modo avião; a tarefa em segundo plano (a economia de bateria do fabricante pode adiá-la); o tempo da derivação da senha no Hermes; as figurinhas animadas da Vitória; o teclado nos campos longos e o botão voltar do Android.
 - **Câmera da digitalização:** afinar `NITIDEZ_MINIMA` com fotos reais.
 
-### 3.2 IA real (só dados fictícios)
+### 2.2 IA real (só dados fictícios)
 
 - Rodar `pnpm vitoria:bateria` inteira (66 casos) e corrigir o que falhar ([ia-e-vitoria.md, seção 4.15](docs/ia-e-vitoria.md)). A primeira rodada parou na cota do Gemini gratuito.
 - Testar contra a IA real a recomendação do modelo de APR, a APR em papel da digitalização (`pnpm pdf:digitalizado`) e a leitura de dados autorizada do chatbot e da criação de jogos.
 - Depois do teste de leitura, escolher o modelo da digitalização e o limite de folhas por OS enviadas à IA.
-- Ligar a Recomendação e a Digitalização antes da demo: elas vêm desligadas e só ligam com a assinatura do admin (ver 5.6).
+- Ligar a Recomendação e a Digitalização antes da demo: vêm desligadas e só ligam com a assinatura do admin (ver 5.6).
 
-### 3.3 Conferência visual e serviços reais
+### 2.3 Conferência visual e serviços reais
 
 - Ver nas telas: controle da IA, validação dos treinamentos, Validações, mapa de calor (a radiação e as camadas), previsão do tempo (quadro, janela da APR, relatório), configurações e os formulários com React Hook Form (ordem do foco, mensagens dentro de tabelas e janelas).
 - Rodar a previsão do tempo contra o Open-Meteo de verdade (os testes usam um provedor em memória).
 - No banco da hospedagem oficial, se não for o de desenvolvimento: `pnpm demo:espalhar-gps` e, se quiser o mapa cheio, `pnpm demo:mais-os-mapa-calor`.
 
-### 3.4 Código
+### 2.4 Código
 
-- **Validações no app:** a mesma fila, ligada a `GET /me/validacoes` (a `api` e o contrato em `shared/api/validacoes.ts` estão prontos).
+- **Ver no aparelho (push, convite e emergência):** receber a notificação com o app fechado e abrir a tela certa ao toque; o convite entre dois aparelhos (aceitar, recusar, prazo de 15 minutos); o botão de emergência com e sem sinal (o aviso guardado que sobe depois) e o discador abrindo com o número.
+- **Convite e push, o que ficou de fora:** o push de "OS nova" (não há aviso por OS importada; avisaria a equipe a cada leitura do SAP), convidar alguém de outra equipe (questões 10 e 72) e a notificação sem os serviços do Google (cairia no que o app consulta com a tela aberta).
+
 - **Sugestão de materiais:** marcar "Cadastrar como novo" num item e depois tirá-lo no "Ajustar e aceitar" ainda cria o material (as `resolucoes` valem antes da `lista`).
 - **Teste automático** da conferência dentro da fila de Validações (o cenário de dois aparelhos está em `api/test/conferencia-execucao.test.ts`).
 - **Texto assinado do Chatbot:** `shared/ia/funcoes.ts` diz "da equipe", mas o código lê o escopo de quem pergunta. Alinhar o texto sobe a versão e exige nova assinatura do admin.
+
+## 3. Funcionalidades novas (depois do MVP)
+
+| # | Funcionalidade | O que é |
+|---|---|---|
+| 10 | **Reincidência** | Detectar OS corretiva repetida no mesmo local ou equipamento em N dias, mostrar no detalhe da OS e em "Precisa de atenção", e sugerir uma preventiva. N a definir com o Iago |
+| 11 | **Tempo típico de serviço** | Tempo médio e mediana das execuções encerradas, por serviço do catálogo, mostrado na programação e no detalhe da OS, com alerta de execução fora do padrão. É um indicador observado, sem meta; não é SLA |
+| 12 | **Nota de passagem** | Na OS pendente, quem interrompe ou suspende deixa uma nota estruturada ("onde parei, o que falta, o que já foi feito"), que a equipe lê ao retomar com a APR nova. Hoje quem retoma começa sem contexto |
 
 ## 4. Dependências de terceiros
 
@@ -97,6 +81,9 @@ O MVP está completo quando as três linhas atenderem num aparelho de verdade e 
 | Aprovação para enviar dados ao fornecedor de IA, e se a assinatura do admin no controle da IA basta como registro dela | Empresa | Vitória com dados, recomendação por IA e digitalização no piloto |
 | Ajustes do desenho da Vitória: marca da ES Gás, jugular do capacete, cabelo e cordão do crachá, a expressão `atencao` inteira | Empresa e Segurança do Trabalho | Avatar definitivo ([vitoria/README.md](vitoria/README.md)) |
 | Documento de arquitetura (SharePoint e Power Apps) e tabela de equipes | Iago e Mario (prometidos na Reunião 2) | Equipes reais |
+| Contatos do PAE (nome e telefone) | Segurança do Trabalho | Botão de emergência: o admin cadastra em Configurações › Sistema; até lá o botão mostra só SAMU e Bombeiros |
+| Google Play Services nos aparelhos do piloto (questão 41) | TI da empresa | Notificação push: sem ele o aparelho não recebe (os avisos seguem no sino) |
+| Projeto no Firebase, `google-services.json` e as credenciais do FCM na conta da Expo (`eas credentials`) | quem administra a conta da Expo | Notificação push chegando de verdade (e um APK novo, versão 0.2.0) |
 
 ## 5. Decisões a confirmar com o usuário
 
@@ -125,7 +112,7 @@ O código já faz o que está descrito; a confirmação só muda o valor ou a re
 - **Pedido de conta:** não traz a matrícula nem verifica que o e-mail é da própria pessoa.
 - **Fila de pendências do admin** (liberações, sugestões, treinamentos), como a Validações do supervisor.
 - **Supervisor devolve a OS ao responsável** em vez de assinar (questão 69).
-- **Equipe com só 1 pessoa disponível:** hoje a APR é recusada (`participantes_insuficientes`) e a OS espera; a alternativa é chamar alguém de outra equipe (questão 72, ligada à 10).
+- **Equipe com só 1 pessoa disponível:** hoje a APR é recusada (`participantes_insuficientes`) e a OS espera; a alternativa é chamar alguém de outra equipe (questão 72, ligada à 10; o convite de participação já existe, mas só para a equipe da OS).
 
 ### 5.4 Gamificação e treinamentos ([gamificacao-e-treinamentos.md](docs/gamificacao-e-treinamentos.md))
 
@@ -146,6 +133,11 @@ O código já faz o que está descrito; a confirmação só muda o valor ou a re
 ### 5.6 IA
 
 - **Quem assina para ligar a Recomendação e a Digitalização na demonstração** (ligar por script não teria a assinatura de uma pessoa real).
+
+### 5.7 Funcionalidades novas (seção 3)
+
+- **Convite de participação:** o aceite bloqueia o início do checklist e o registro da APR para quem foi convidado (feito; o convite em si é opcional). Confirmar o bloqueio e o prazo de resposta de 15 minutos (`PRAZO_DO_CONVITE_MIN`), e se o convite deve ser obrigatório no app com sinal.
+- **Reincidência:** em quantos dias, e por local, por equipamento ou pelos dois?
 
 ## 6. Perguntas em aberto aos especialistas
 
@@ -188,17 +180,15 @@ Os números são os da antiga lista de questões, para rastreio. Cada uma já te
 | 71 | Mais de 3 executantes na folha: o Iago disse (Reunião 2, 59:55) que no máximo 3 executam. Hoje os extras seguem em novas linhas de blocos; basta? | Iago |
 | — | Quem lê a aba Devolvidas e corrige a ordem no SAP | Iago |
 | — | Até quando vai o acervo de OS antigas e quem as digitaliza | Iago |
+| — | Existe prazo de atendimento por criticidade (SLA, por exemplo "local crítico em 24 h")? O sistema não tem hoje; mediria o cumprimento junto do tempo típico de serviço | Iago |
 
 ## 7. Fora do MVP
 
 - Escrita no SAP por API: a baixa é por planilha.
-- Notificação push no celular: a OS nova aparece quando a lista é atualizada.
 - iOS e terceiros no app.
 - MFA, SSO e vínculo do aparelho com o usuário (RFC).
 - Estoque, saldo e devolução de materiais, e baixa do material gasto.
-- Escolha automática do modelo da APR: o técnico escolhe a cada APR.
-- Atraso na entrega da OS para o supervisor triar antes da equipe: a reserva visível resolve.
-- Cadastro de equipamentos como entidade.
+- Cadastro de equipamentos como entidade (e o QR code que leria o equipamento no local).
 - Importação de OS pelo supervisor (questão 63): só o admin importa.
 - Horário individual por executante e função de trabalho na APR (questões 60 e 62).
 - Conquista de colaboração ("5 sugestões aceitas") e sugestão de materiais sem sinal.

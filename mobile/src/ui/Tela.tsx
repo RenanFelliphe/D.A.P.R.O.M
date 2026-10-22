@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, View, type ScrollViewInstance } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 import { FaixaDeConferencia } from "@/conferencia/FaixaDeConferencia";
+import { FaixaDeConvites } from "@/convites/FaixaDeConvites";
 import { FaixaDePedidos } from "@/execucao/FaixaDePedidos";
 import { FaixaDeSincronizacao } from "@/offline/FaixaDeSincronizacao";
 import { cores, espaco } from "@/tema/tema";
@@ -31,6 +32,7 @@ export function Tela({ children, bordas = ["top", "bottom"], rolavel = true, atu
       <KeyboardAvoidingView style={estilos.tela} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <FaixaDeSincronizacao />
         <FaixaDePedidos />
+        <FaixaDeConvites />
         <FaixaDeConferencia />
         {rolavel ? (
           <ScrollView

@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { clienteDeConsultas, ligarGerentesDoAparelho } from "@/estado/consultas";
 import { SincronizacaoProvider } from "@/offline/SincronizacaoProvider";
+import { Notificacoes } from "@/notificacoes/Notificacoes";
 import { SessaoProvider, useSessao } from "@/sessao/SessaoProvider";
 import { cores } from "@/tema/tema";
 import { AvisoRapidoHost } from "@/ui/AvisoRapido";
@@ -78,6 +79,8 @@ function Rotas() {
           <Stack.Screen name="os/[id]/bloqueio" options={{ headerShown: true, title: "Impedimento", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="os/[id]/execucao" options={{ headerShown: true, title: "Execução", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="os/[id]/conferencia" options={{ headerShown: true, title: "Conferência da execução", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="validacoes" options={{ headerShown: true, title: "Validações", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="convites" options={{ headerShown: true, title: "Convites para a APR", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="ausencias" options={{ headerShown: true, title: "Minhas ausências", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="materiais/index" options={{ headerShown: true, title: "Sugestões de materiais", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="materiais/nova" options={{ headerShown: true, title: "Sugerir lista", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
@@ -90,6 +93,7 @@ function Rotas() {
         </Stack.Protected>
       </Stack>
       {ativa && destino === "abas" ? <Vitoria /> : null}
+      {ativa && destino === "abas" ? <Notificacoes /> : null}
     </>
   );
 }

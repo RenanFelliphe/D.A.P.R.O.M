@@ -21,3 +21,5 @@ export * from "./solicitacao-conta";
 export * from "./vitoria";
 export * from "./ia";
 export * from "./clima";
+export * from "./push";
+export * from "./emergencia";

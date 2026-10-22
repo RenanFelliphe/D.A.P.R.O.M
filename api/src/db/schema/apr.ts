@@ -115,3 +115,49 @@ export const aprResposta = pgTable(
     index("apr_resposta_item_idx").on(t.itemId),
   ],
 ).enableRLS();
+
+export const APR_CONVITE_ESTADOS = ["pendente", "aceito", "recusado", "cancelado", "usado"] as const;
+
+/**
+ * O convite para participar de uma APR (`docs/operacao-de-campo.md`, seção 4.9), feito pelo responsável antes de a APR existir: o
+ * rascunho dela fica só no aparelho e nunca chega à `api`, então o convite é o único registro do que o responsável combinou.
+ * Cada pessoa tem, por OS, um convite em aberto (pendente ou aceito); recusado, cancelado e usado ficam de histórico.
+ * `pendente` vale até `expira_em` (o prazo de resposta); depois disso é "sem resposta" e só serve para ser trocado. O aceite vale no
+ * dia, como a própria APR. Quando a APR é registrada, os aceites dos participantes viram `usado` e apontam para ela.
+ */
+export const aprConvite = pgTable(
+  "apr_convite",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    osId: uuid()
+      .notNull()
+      .references(() => os.id),
+    /** Quem convida: o responsável da APR que vai ser aplicada. */
+    convidadoPorId: uuid()
+      .notNull()
+      .references(() => usuario.id),
+    usuarioId: uuid()
+      .notNull()
+      .references(() => usuario.id),
+    estado: text({ enum: APR_CONVITE_ESTADOS }).notNull().default("pendente"),
+    criadoEm: instante().notNull(),
+    /** Até quando o convite espera a resposta. */
+    expiraEm: instante().notNull(),
+    respondidoEm: instante(),
+    /** O motivo da recusa, curto (o responsável lê para trocar a pessoa). */
+    recusaMotivo: text(),
+    /** A APR em que o convite foi usado. */
+    aprId: uuid().references(() => apr.id),
+  },
+  (t) => [
+    check("apr_convite_estado_check", emLista(t.estado, APR_CONVITE_ESTADOS)),
+    check("apr_convite_nao_se_convida", sql`${t.usuarioId} <> ${t.convidadoPorId}`),
+    check("apr_convite_resposta_completa", sql`(${t.estado} in ('aceito', 'recusado', 'usado')) = (${t.respondidoEm} is not null) or ${t.estado} = 'cancelado'`),
+    check("apr_convite_recusa_com_motivo", sql`${t.estado} <> 'recusado' or nullif(btrim(${t.recusaMotivo}), '') is not null`),
+    check("apr_convite_usado_com_apr", sql`(${t.estado} = 'usado') = (${t.aprId} is not null)`),
+    // Um convite em aberto por pessoa e por OS.
+    uniqueIndex("apr_convite_em_aberto_idx").on(t.osId, t.usuarioId).where(sql`${t.estado} in ('pendente', 'aceito')`),
+    index("apr_convite_convidado_idx").on(t.usuarioId, t.estado),
+    index("apr_convite_os_idx").on(t.osId, t.convidadoPorId),
+  ],
+).enableRLS();

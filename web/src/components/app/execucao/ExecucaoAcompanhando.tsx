@@ -7,6 +7,7 @@ import { AvisoDeLocalizacao } from "@/components/app/execucao/AvisoDeLocalizacao
 import { FormularioInterromper } from "@/components/app/execucao/FormularioInterromper";
 import { JanelaDeMotivo } from "@/components/app/execucao/JanelaDeMotivo";
 import { MOTIVOS_DA_PAUSA, MOTIVOS_DA_SUSPENSAO, rotuloDoMotivo } from "@/components/app/execucao/motivos";
+import { BotaoDeEmergencia } from "@/components/app/execucao/BotaoDeEmergencia";
 import { PedidoDoParticipante } from "@/components/app/execucao/PedidoDoParticipante";
 import { ResumoTempo } from "@/components/app/execucao/ResumoTempo";
 import { Badge } from "@/components/ui/Badge";
@@ -228,6 +229,7 @@ export function ExecucaoAcompanhando({ os, usuarioId, situacao }: Props) {
           >
             Suspender
           </Button>
+          <BotaoDeEmergencia osId={os.id} execucaoId={execucao.id} />
           <LinkButton variant="ghost" block href={rotas.app.os(os.id)}>
             Voltar à OS
           </LinkButton>

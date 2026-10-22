@@ -11,6 +11,7 @@ import { DecisoesDaOs } from "./DecisoesDaOs";
 import { CausaDoBloqueio } from "./DetalheBloqueio";
 import { DetalheCicloPreventiva } from "./DetalheCicloPreventiva";
 import { DetalheAusencia } from "./DetalheAusencia";
+import { DetalheDaEmergencia } from "./DetalheDaEmergencia";
 import { DetalheAvisoGeral } from "./DetalheAvisoGeral";
 import { DetalheRepresentacao } from "./DetalheRepresentacao";
 import { DetalheFalhaImportacao } from "./DetalheFalhaImportacao";
@@ -31,6 +32,8 @@ const SO_INFORMAM: Alerta["tipo"][] = [
   "lesao_ou_enfermidade",
   "clima_extremo",
   "os_para_assinar",
+  "emergencia",
+  "emergencia_atendida",
 ];
 
 interface DetalheAlertaProps {
@@ -138,7 +141,9 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
 
       {bloqueio && detalhe && <CausaDoBloqueio aprs={detalhe.aprs} execucoes={detalhe.execucoes} />}
 
-      {os && ehDeSeguranca(alerta) && (
+      {os && (alerta.tipo === "emergencia" || alerta.tipo === "emergencia_atendida") && <DetalheDaEmergencia osId={osId} podeAtender={podeAgir} />}
+
+      {os && ehDeSeguranca(alerta) && alerta.tipo !== "emergencia" && (
         <div className="stack g8">
           <h3 style={{ fontSize: 16, fontWeight: 600 }}>O que fazer a seguir</h3>
           <p className="muted">

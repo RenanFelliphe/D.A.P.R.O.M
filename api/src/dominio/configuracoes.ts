@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Config } from "../config";
+import { MAX_CONTATOS_DO_PAE, telefoneValido, type ContatoDeEmergencia } from "../../../shared/api/emergencia";
 import { configuracao, type ConfiguracaoChave } from "../db/schema";
 import type { Deps } from "../deps";
 import { invalido, naoEncontrado } from "../http/erros";
@@ -30,10 +31,18 @@ const esquemaCidade = z.object({
   longitude: z.number().min(-180).max(180),
 });
 
+/** Um contato do PAE como o admin o cadastra (`docs/operacao-de-campo.md`, seção 5.9): nome, telefone para ligar e o que ele atende. */
+const esquemaContato = z.object({
+  nome: z.string().trim().min(2, "Informe o nome do contato").max(80),
+  telefone: z.string().trim().refine(telefoneValido, "Informe um telefone que dê para ligar (de 3 a 15 dígitos)"),
+  descricao: z.string().trim().max(120).nullish().transform((d) => d || null),
+});
+const esquemaContatosDoPae = z.array(esquemaContato).max(MAX_CONTATOS_DO_PAE, `No máximo ${MAX_CONTATOS_DO_PAE} contatos`);
+
 export type GrupoDeConfiguracao = "rotinas" | "ia";
 
 interface Numerica {
-  chave: Exclude<ConfiguracaoChave, "cidade_padrao">;
+  chave: Exclude<ConfiguracaoChave, "cidade_padrao" | "contatos_pae">;
   grupo: GrupoDeConfiguracao;
   rotulo: string;
   descricao: string;
@@ -185,6 +194,16 @@ export async function cidadePadrao(deps: Pick<Deps, "db">): Promise<CidadePadrao
 }
 
 /**
+ * Os contatos do PAE que o botão de emergência mostra: os que o admin cadastrou em Configurações. Vazio até ele cadastrar (a Segurança do
+ * Trabalho é quem fornece os números; o botão funciona sem eles e mostra só os números públicos).
+ */
+export async function contatosDoPae(deps: Pick<Deps, "db">): Promise<ContatoDeEmergencia[]> {
+  const [linha] = await deps.db.select().from(configuracao).where(eq(configuracao.chave, "contatos_pae"));
+  const lida = linha ? esquemaContatosDoPae.safeParse(linha.valor) : null;
+  return lida?.success ? lida.data : [];
+}
+
+/**
  * Escreve no `config` da `api` os valores que o admin mudou. Chamada na subida e depois de cada mudança; guarda antes o valor do
  * ambiente, que é a volta ao padrão. Um valor guardado que ficou fora do limite permitido é ignorado (vale o padrão).
  */
@@ -218,6 +237,7 @@ export async function lerConfiguracoes(deps: Pick<Deps, "db" | "config">) {
   const linhas = await lerLinhas(deps);
   const linhaDaCidade = linhas.get("cidade_padrao");
   const cidade = await cidadePadrao(deps);
+  const linhaDosContatos = linhas.get("contatos_pae");
   const itens: ConfiguracaoNumerica[] = NUMERICAS.map((n) => {
     const linha = linhas.get(n.chave);
     return {
@@ -235,6 +255,7 @@ export async function lerConfiguracoes(deps: Pick<Deps, "db" | "config">) {
     };
   });
   return {
+    contatos_pae: { contatos: await contatosDoPae(deps), personalizado: Boolean(linhaDosContatos), atualizado_em: linhaDosContatos?.atualizadoEm.toISOString() ?? null },
     cidade_padrao: { ...cidade, padrao: CIDADE_PADRAO_INICIAL, personalizado: Boolean(linhaDaCidade), atualizado_em: linhaDaCidade?.atualizadoEm.toISOString() ?? null },
     itens,
   };
@@ -248,6 +269,11 @@ export function validarConfiguracao(chave: string, valor: unknown): { chave: Con
     const c = lida.data;
     return { chave, valor: { nome: c.nome, latitude: Number(c.latitude.toFixed(4)), longitude: Number(c.longitude.toFixed(4)) }, rotulo: "Cidade padrão da previsão do tempo" };
   }
+  if (chave === "contatos_pae") {
+    const lidos = esquemaContatosDoPae.safeParse(valor);
+    if (!lidos.success) throw invalido("contatos_invalidos", lidos.error.issues[0]?.message ?? "Confira os contatos do PAE");
+    return { chave, valor: lidos.data, rotulo: "Contatos de emergência (PAE)" };
+  }
   const n = numericaDe(chave);
   if (!n) throw naoEncontrado("Configuração inexistente");
   const lido = z.number().int().min(n.min).max(n.max).safeParse(valor);
@@ -255,4 +281,4 @@ export function validarConfiguracao(chave: string, valor: unknown): { chave: Con
   return { chave: n.chave, valor: lido.data, rotulo: n.rotulo };
 }
 
-export const ehChaveDeConfiguracao = (chave: string): chave is ConfiguracaoChave => chave === "cidade_padrao" || Boolean(numericaDe(chave));
+export const ehChaveDeConfiguracao = (chave: string): chave is ConfiguracaoChave => chave === "cidade_padrao" || chave === "contatos_pae" || Boolean(numericaDe(chave));

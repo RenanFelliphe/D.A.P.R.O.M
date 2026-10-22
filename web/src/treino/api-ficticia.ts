@@ -19,6 +19,7 @@
  * (`treino/indicadores.ts`). Qualquer endereço que o campo não usa responde `404 indisponivel_no_treino`.
  */
 import type { ServicoDoCatalogo } from "../lib/catalogo";
+import { CONTATOS_PUBLICOS } from "../lib/emergencia";
 import { execucaoJaTerminou, type Usuario } from "../lib/tipos";
 import { obterEstado } from "./armazem";
 import { materiaisDoTreino, servicosDoTreino } from "./catalogo";
@@ -597,6 +598,7 @@ const EVENTO_TIPOS = [
   "execucao_interrompida",
   "execucao_suspensa",
   "execucao_cancelada",
+  "emergencia_acionada",
 ] as const;
 type EventoTipo = (typeof EVENTO_TIPOS)[number];
 const RESPOSTAS = ["sim", "nao", "na"];
@@ -1340,6 +1342,9 @@ function despachar(ctx: Contexto) {
       return aplicarExecucaoSuspensa(ctx, evento.payload);
     case "execucao_cancelada":
       return aplicarExecucaoCancelada(ctx, evento.payload);
+    // O botão de emergência no treino não avisa ninguém: o aviso real vai ao supervisor e aos administradores de verdade.
+    case "emergencia_acionada":
+      return;
   }
 }
 
@@ -1726,6 +1731,12 @@ rota("GET", "/arquivos/:id/url", ({ e, params }) => {
 });
 
 rota("POST", "/eventos", ({ e, eu, corpo, agora }) => ok(processarEventos(e, eu, corpo, agora)));
+
+// ---- Botão de emergência: no treino só se vê a lista de contatos (um PAE de exemplo e os números públicos) ----------
+
+rota("GET", "/emergencia/contatos", () =>
+  ok({ pae: [{ nome: "Brigada (exemplo do treino)", telefone: "(27) 99999-0000", descricao: "Contato fictício" }], publicos: CONTATOS_PUBLICOS }),
+);
 
 // ---- Catálogo de serviço (só leitura) ----------------------------------------------------------------------------
 

@@ -323,6 +323,20 @@
       "when": 1792623686322,
       "tag": "0045_previsao_do_tempo_e_configuracoes",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1792642123416,
+      "tag": "0046_push_e_convite_de_apr",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1792643787134,
+      "tag": "0047_botao_de_emergencia",
+      "breakpoints": true
     }
   ]
 }

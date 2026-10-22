@@ -35,7 +35,15 @@ export interface CidadePadraoDoSistema extends CidadePadrao {
   atualizado_em: string | null;
 }
 
+/** Os contatos do PAE que o botão de emergência mostra (`PUT /configuracoes/sistema/contatos_pae`); vazio até o admin cadastrar. */
+export interface ContatosDoPaeDoSistema {
+  contatos: { nome: string; telefone: string; descricao: string | null }[];
+  personalizado: boolean;
+  atualizado_em: string | null;
+}
+
 export interface ConfiguracoesDoSistema {
+  contatos_pae: ContatosDoPaeDoSistema;
   cidade_padrao: CidadePadraoDoSistema;
   itens: ConfiguracaoNumerica[];
 }

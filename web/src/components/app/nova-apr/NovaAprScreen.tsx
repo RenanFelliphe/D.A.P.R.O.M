@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { z } from "zod";
 import { Colunas, PainelAcoes } from "@/components/app/AppChrome";
+import { mensagemDoConvite, useConvitesDaOs } from "@/components/app/convites/useConvitesDaOs";
 import { EtapasApr } from "@/components/app/nova-apr/EtapasApr";
 import { JanelaDeModelos } from "@/components/app/nova-apr/JanelaDeModelos";
 import { ModeloAprCard } from "@/components/app/nova-apr/ModeloAprCard";
@@ -29,6 +30,7 @@ import {
   type Funcao,
   type ModeloCompleto,
 } from "@/lib/apr";
+import { conviteADesfazer, frasePendenteDosConvites, pendenciaDosConvites, quemConvidar } from "@/lib/apr-convite";
 import { rotas } from "@/lib/rotas";
 import { chamar, ErroCliente } from "@/lib/cliente-api";
 import { gravarRascunho, useRascunhoApr } from "@/state/rascunho-apr";
@@ -58,6 +60,8 @@ export function NovaAprScreen({ os, usuarioId, colegas, escolha }: NovaAprScreen
   const [erro, setErro] = useState<string | null>(null);
   const [responsavelId, setResponsavelId] = useState(usuarioId);
   const [riscos, setRiscos] = useState<string[]>([]);
+  const [convidando, setConvidando] = useState(false);
+  const { convites, convidar: convidarApi, desfazer } = useConvitesDaOs(os.id, rascunho === null);
 
   // Eu primeiro, depois a equipe por nome (a `api` já ordena por nome).
   const equipe = useMemo(() => [...colegas].sort((a, b) => Number(b.id === usuarioId) - Number(a.id === usuarioId)), [colegas, usuarioId]);
@@ -83,6 +87,9 @@ export function NovaAprScreen({ os, usuarioId, colegas, escolha }: NovaAprScreen
   const [, setModeloEscolhido] = useValorDoForm(form, "modelo");
   const erros = form.formState.errors;
   const janelaAberta = rascunho === null && (janela === "aberta" || (janela === "auto" && !modelo));
+  // Quem o responsável convidou precisa ter aceitado para o checklist começar; quem não foi convidado não é cobrado (o presencial segue valendo).
+  const fraseDosConvites = convites ? frasePendenteDosConvites(pendenciaDosConvites(convites, marcados)) : null;
+  const paraConvidar = convites ? quemConvidar(marcados, usuarioId, convites) : [];
 
   /** Carrega a versão publicada mais recente do modelo escolhido; na troca, os riscos de mesmo nome continuam marcados. */
   async function escolherModelo(codigo: string) {
@@ -101,8 +108,24 @@ export function NovaAprScreen({ os, usuarioId, colegas, escolha }: NovaAprScreen
     }
   }
 
+  /** Convida as pessoas marcadas que ainda não têm convite em aberto; o erro (uma pessoa ausente, de outra equipe) aparece junto da lista. */
+  async function convidar() {
+    setErro(null);
+    setConvidando(true);
+    try {
+      await convidarApi(paraConvidar);
+    } catch (e) {
+      setErro(mensagemDoConvite(e));
+    } finally {
+      setConvidando(false);
+    }
+  }
+
   function alternarParticipante(id: string) {
     if (id === usuarioId) return;
+    // Quem sai da lista com o convite ainda em aberto não fica esperando: o convite é desfeito e a pessoa é avisada.
+    const aDesfazer = marcados.includes(id) && convites ? conviteADesfazer(convites, id) : null;
+    if (aDesfazer) void desfazer(aDesfazer.id).catch(() => undefined);
     setMarcados((atuais) => (atuais.includes(id) ? atuais.filter((m) => m !== id) : [...atuais, id]));
     if (id === responsavelId) setResponsavelId(usuarioId);
   }
@@ -114,7 +137,7 @@ export function NovaAprScreen({ os, usuarioId, colegas, escolha }: NovaAprScreen
   const total = modelo ? totalDePerguntas(doModeloCompleto(modelo), riscos) : 0;
 
   const comecar = enviar(() => {
-    if (!modelo) return;
+    if (!modelo || fraseDosConvites) return;
     const participantes = marcados.map((id) => ({ usuarioId: id, funcao: (id === responsavelId ? "responsavel" : "executor") as Funcao }));
     gravarRascunho(novoRascunho({ osId: os.id, usuarioId, modelo: doModeloCompleto(modelo), participantes, riscos }));
     roteador.push(rotas.app.checklist(os.id));
@@ -183,7 +206,19 @@ export function NovaAprScreen({ os, usuarioId, colegas, escolha }: NovaAprScreen
                 {erro}
               </Notice>
             )}
-            <ParticipantesApr equipe={equipe} usuarioId={usuarioId} marcados={marcados} responsavelId={responsavelId} aoAlternar={alternarParticipante} aoTornarResponsavel={os.reservada ? undefined : setResponsavelId} erro={erros.participantes?.message} />
+            <ParticipantesApr
+              equipe={equipe}
+              usuarioId={usuarioId}
+              marcados={marcados}
+              responsavelId={responsavelId}
+              aoAlternar={alternarParticipante}
+              aoTornarResponsavel={os.reservada ? undefined : setResponsavelId}
+              erro={erros.participantes?.message}
+              convites={convites}
+              aoConvidar={() => void convidar()}
+              paraConvidar={paraConvidar.length}
+              convidando={convidando}
+            />
             {modelo && <RiscosApr riscos={modelo.riscos} itens={modelo.itens} marcados={riscos} aoAlternar={alternarRisco} />}
           </>
         }
@@ -196,6 +231,11 @@ export function NovaAprScreen({ os, usuarioId, colegas, escolha }: NovaAprScreen
                 <Icon name="check" size={16} />
                 {os.rotulo} · {marcados.length} {marcados.length === 1 ? "participante" : "participantes"} · {riscos.length} {riscos.length === 1 ? "risco marcado" : "riscos marcados"}
               </div>
+              {fraseDosConvites && (
+                <Notice tone="al" icon="users" role="status">
+                  {fraseDosConvites}
+                </Notice>
+              )}
               <ErroDeEnvio mensagem={erroEnvio} />
               <Button type="submit" variant="p" block disabled={Boolean(carregandoModelo)} data-treino="apr-comecar">
                 {modelo ? `Começar checklist · ${total} ${total === 1 ? "item" : "itens"}` : "Começar checklist"}
