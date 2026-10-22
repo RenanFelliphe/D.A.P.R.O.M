@@ -8,19 +8,21 @@
 import type { FotoDoRascunho, RascunhoApr } from "./apr";
 import { montarAvaliacao, montarPayload, trocarModelo, type ModeloDoRascunho } from "./apr";
 import { ErroCliente, chamar } from "./cliente-api";
-import { obterPosicao, type Posicao } from "./geolocalizacao";
+import { localizacaoNegada, obterPosicao, type Posicao } from "./geolocalizacao";
 import type { ClimaRegistrado, JanelaDoClima, PrevisaoDoTempo } from "./clima-comum";
 
 export * from "./clima-comum";
 
 // ---- Posição -------------------------------------------------------------------------------------------------------
 
-const CHAVE_DA_POSICAO = "synqos:posicao-do-clima";
+const CHAVE_DA_POSICAO = "synqos:posicao-do-clima-2";
 const VALIDADE_DA_POSICAO_MS = 10 * 60_000;
+/** Mais folga que os 8 s do registro da execução: a previsão aceita a posição aproximada, mas o navegador pode levar um tempo. */
+const TEMPO_DA_POSICAO_DO_CLIMA_MS = 15_000;
 
 interface PosicaoGuardada {
   em: number;
-  /** `null`: a pessoa negou (ou o aparelho não deu a posição); também vale por dez minutos, para não repetir o pedido de permissão. */
+  /** `null`: a pessoa negou a permissão (vale por dez minutos, para não repetir o pedido). Se o aparelho só não deu a posição, grava `em: 0` e a próxima consulta tenta de novo. */
   posicao: Posicao | null;
 }
 
@@ -56,9 +58,11 @@ export async function posicaoParaOClima(): Promise<Posicao | null> {
     guardada = guardadaAgora;
     return guardadaAgora.posicao;
   }
-  pedindo ??= obterPosicao()
-    .then((posicao) => {
-      guardada = { em: Date.now(), posicao };
+  pedindo ??= obterPosicao({ precisa: false, tempoMaximoMs: TEMPO_DA_POSICAO_DO_CLIMA_MS })
+    .then(async (posicao) => {
+      // Falha ou demora não é recusa: só a permissão negada de fato guarda o `null` por mais tempo; senão tenta de novo logo.
+      const validade = posicao || (await localizacaoNegada()) ? Date.now() : 0;
+      guardada = { em: validade, posicao };
       gravarNaSessao(guardada);
       return posicao;
     })
