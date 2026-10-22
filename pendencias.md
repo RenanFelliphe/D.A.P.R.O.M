@@ -130,6 +130,7 @@ O código já faz o que está descrito; a confirmação só muda o valor ou a re
 - **Pull incremental** (questão 4): hoje a cópia da equipe é um snapshot completo; o cursor fica para quando o volume pedir.
 - **Telas de gestão no app** (questão 55): hoje o app tem só as de campo.
 - **APR de hoje de outra pessoa:** reservar a OS a outra pessoa deixa sem uso a APR aprovada do dia.
+- **APR sem sinal não é validada na hora** (D1 do [mobile/README.md](mobile/README.md)): o aparelho não conhece o critério de bloqueio, que o técnico não pode ver, e o servidor só valida quando o sinal volta; se reprovar, a execução já feita é mantida e o supervisor recebe o alerta. Dúvida em aberto, sem decisão: levar o resultado ao aparelho (vazaria o critério, no aparelho e por tentativa e erro, a menos que as tentativas fossem registradas e avisadas ao supervisor) ou manter assim. Ligada a outra: **a APR deve ser sempre feita online** (e o sem sinal só valer para a execução)?
 
 ### 5.6 IA
 
