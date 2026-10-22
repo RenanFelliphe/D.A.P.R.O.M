@@ -23,3 +23,4 @@ export * from "./ia";
 export * from "./clima";
 export * from "./push";
 export * from "./emergencia";
+export * from "./assinatura-juridica";

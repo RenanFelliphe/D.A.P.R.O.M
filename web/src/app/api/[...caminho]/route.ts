@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
+import { CABECALHO_ASSINATURA_JURIDICA } from "@/lib/assinatura-juridica";
 import { COOKIE_ACESSO, apiUrl } from "@/lib/sessao-comum";
 import { reiniciarTreino } from "@/treino/armazem";
 import { arquivoDoTreino, emResponse, responderTreino } from "@/treino/api-ficticia";
@@ -46,6 +47,9 @@ async function encaminhar(req: NextRequest, contexto: { params: Promise<{ caminh
   const cabecalhos: Record<string, string> = { Authorization: `Bearer ${token}` };
   const tipo = req.headers.get("content-type");
   if (tipo) cabecalhos["Content-Type"] = tipo;
+  // O ato assinado leva o código da assinatura com validade jurídica (a janela de assinatura o põe no pedido); só a `api` o confere.
+  const assinaturaJuridica = req.headers.get(CABECALHO_ASSINATURA_JURIDICA);
+  if (assinaturaJuridica) cabecalhos[CABECALHO_ASSINATURA_JURIDICA] = assinaturaJuridica;
   const temCorpo = req.method !== "GET" && req.method !== "HEAD";
 
   let resposta: Response;

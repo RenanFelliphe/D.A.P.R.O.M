@@ -36,6 +36,11 @@ export interface OpcoesDoCliente {
    * `ErroDeRede` sem sair do aparelho (o login e a renovação, que não usam o token, seguem).
    */
   modoLocal?: () => boolean;
+  /**
+   * Cabeçalhos a mais nas chamadas que alteram (`POST`, `PUT`, `PATCH`, `DELETE`) autenticadas: o app leva por aqui o código da assinatura
+   * com validade jurídica do ato em curso (`X-Assinatura-Juridica`). Consultado a cada chamada.
+   */
+  cabecalhosDeEscrita?: () => Record<string, string>;
 }
 
 export interface OpcoesDeChamada {
@@ -165,7 +170,10 @@ export function criarClienteApi(opcoes: OpcoesDoCliente): ClienteApi {
     const url = endereco(caminho, o.consulta);
     const montar = (tokens: Tokens | null): RequestInit => {
       const cabecalhos: Record<string, string> = { Accept: "application/json" };
-      if (tokens) cabecalhos.Authorization = `Bearer ${tokens.accessToken}`;
+      if (tokens) {
+        cabecalhos.Authorization = `Bearer ${tokens.accessToken}`;
+        if (metodo !== "GET") Object.assign(cabecalhos, opcoes.cabecalhosDeEscrita?.());
+      }
       if (o.corpo !== undefined) cabecalhos["Content-Type"] = "application/json";
       return { method: metodo, headers: cabecalhos, body: o.formulario ?? (o.corpo === undefined ? undefined : JSON.stringify(o.corpo)) };
     };

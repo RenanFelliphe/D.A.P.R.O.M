@@ -23,6 +23,7 @@ import { atenderSolicitacao } from "../dominio/solicitacao-conta";
 import { atualizarSupervisaoDasEquipes } from "../dominio/representacao";
 import { avisarMembroDesativado } from "../dominio/rh";
 import { senhaNova } from "./auth";
+import { exigirAssinaturaJuridica } from "../dominio/assinatura-juridica";
 
 /** Identificação definitiva da pessoa na empresa; não é o login (o login é o e-mail institucional). */
 const matricula = z.string().trim().min(1).max(40);
@@ -275,7 +276,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     throw conflito("nao_pendente", "Este usuário não está aguardando liberação");
   }
 
-  r.post("/usuarios/:id/liberar", autenticar(), exigirPerfil("admin"), async (c) => {
+  r.post("/usuarios/:id/liberar", autenticar(), exigirPerfil("admin"), exigirAssinaturaJuridica(deps), async (c) => {
     const id = lerId(c);
     const eu = c.get("usuario");
     const agora = deps.agora();
@@ -290,7 +291,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
     return responder(c, {});
   });
 
-  r.post("/usuarios/:id/recusar", autenticar(), exigirPerfil("admin"), async (c) => {
+  r.post("/usuarios/:id/recusar", autenticar(), exigirPerfil("admin"), exigirAssinaturaJuridica(deps), async (c) => {
     const id = lerId(c);
     const { motivo } = await lerCorpo(c, z.object({ motivo: textoObrigatorio }));
     const eu = c.get("usuario");

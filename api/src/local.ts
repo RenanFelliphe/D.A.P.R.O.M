@@ -10,6 +10,8 @@
  * Tudo some quando o processo termina e a cada subida recomeça igual. Serve ao `web` e ao `mobile` em desenvolvimento
  * e aos testes manuais; nunca à produção.
  */
+import { readFileSync } from "node:fs";
+import { parseEnv } from "node:util";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { PGlite } from "@electric-sql/pglite";
@@ -31,6 +33,7 @@ import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servi
 import type { Deps } from "./deps";
 import { executarLeitura } from "./servicos/leitura-sap";
 import { ArmazenamentoEmMemoria } from "./servicos/armazenamento";
+import { criarProvedorDeAssinatura } from "./servicos/assinatura-juridica";
 import { DOMINIO_DEMO, emailDoNome } from "./dominio/usuarios";
 import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
@@ -56,6 +59,22 @@ const TOKEN_AVISO_RH = "token-aviso-rh-de-desenvolvimento";
 /** PNG de 1×1 pixel: serve de "assinatura" nos dados de exemplo. */
 const PNG = Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"));
 
+/**
+ * O modo local não lê os `.env` (não usa o Supabase nem as chaves de IA): só a assinatura com validade jurídica pega do `.env.local` e do
+ * `.env` da raiz, e só as variáveis `ASSINATURA_*` e `ZAPSIGN_*`. O que já está no terminal vale por cima.
+ */
+for (const arquivo of [".env.local", ".env"]) {
+  try {
+    for (const [chave, valor] of Object.entries(parseEnv(readFileSync(new URL(`../../${arquivo}`, import.meta.url), "utf8")))) {
+      if (/^(ASSINATURA|ZAPSIGN)_/.test(chave) && valor !== "" && process.env[chave] === undefined) process.env[chave] = valor;
+    }
+  } catch {
+    // Sem o arquivo, segue com o que o terminal trouxe.
+  }
+}
+
+const PROVEDOR_DE_ASSINATURA = process.env.ASSINATURA_PROVEDOR === "desligado" || process.env.ASSINATURA_PROVEDOR === "zapsign" ? process.env.ASSINATURA_PROVEDOR : "simulado";
+
 const config: Config = {
   porta: PORTA,
   versao: "local",
@@ -80,6 +99,16 @@ const config: Config = {
   climaApiUrl: "https://api.open-meteo.com/v1/forecast",
   climaApiChave: "",
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
+  // O modo local é o simulador: a página de assinatura é da própria api (sem validade jurídica). `ASSINATURA_PROVEDOR=desligado` a desliga e
+  // `ASSINATURA_PROVEDOR=zapsign` (com `ZAPSIGN_TOKEN`) usa o sandbox da ZapSign de verdade; o webhook não alcança o localhost, a tela consulta sozinha.
+  assinaturaJuridica: {
+    provedor: PROVEDOR_DE_ASSINATURA,
+    ligada: PROVEDOR_DE_ASSINATURA === "simulado" || (PROVEDOR_DE_ASSINATURA === "zapsign" && Boolean(process.env.ZAPSIGN_TOKEN?.trim())),
+    url: (process.env.ZAPSIGN_URL ?? "https://sandbox.api.zapsign.com.br/api/v1").replace(/\/$/, ""),
+    token: process.env.ZAPSIGN_TOKEN?.trim() ?? "",
+    segredoDoWebhook: "",
+    urlPublicaDaApi: `http://localhost:${PORTA}`,
+  },
   ia: lerConfigIA(),
   vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
   treinamentoIa: { limiteTreinamentos: 3, limiteRodadas: 4, maxTokens: 16000 },
@@ -110,6 +139,7 @@ async function main() {
     ia: controlarIA(db, criarProvedorIA(config.ia, config.vitoria.maxTokensResposta)),
     ocr: new MotorOcrTesseract(),
     clima: new ClienteOpenMeteo(config.climaApiUrl, config.climaApiChave),
+    provedorDeAssinatura: criarProvedorDeAssinatura(config.assinaturaJuridica),
     agora: () => new Date(),
   };
 
@@ -168,6 +198,11 @@ async function main() {
 
   // O SAP simulado: as ordens de exemplo (o modo local recomeça igual a cada subida).
   console.log(`SAP simulado: ${await carregarOrdensDeExemplo(db)} ordens de exemplo`);
+  console.log(
+    config.assinaturaJuridica.ligada
+      ? `Assinatura com validade jurídica: ${config.assinaturaJuridica.provedor === "zapsign" ? `ZapSign (${config.assinaturaJuridica.url})` : "simulada, a página de assinatura é da própria api"}`
+      : `Assinatura com validade jurídica desligada${PROVEDOR_DE_ASSINATURA === "zapsign" ? " (ASSINATURA_PROVEDOR=zapsign, mas ZAPSIGN_TOKEN está vazio)" : ""}`,
+  );
 
   // O registro de funcionários simulado: um funcionário para cada usuário acima, mais uns 30 sem conta para demonstrar o cadastro.
   const registro = await carregarRegistroDosUsuarios(db, { aleatorios: 30 });

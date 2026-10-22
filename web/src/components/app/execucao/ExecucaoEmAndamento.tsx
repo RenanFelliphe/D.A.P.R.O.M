@@ -174,6 +174,7 @@ export function ExecucaoEmAndamento({ os, situacao }: Props) {
                   resumo="A execução é apagada e a APR volta para uso."
                   rotuloConfirmar="Assinar e cancelar"
                   assinaturaPath={assinaturaPath}
+                  osId={os.id}
                   aoConfirmar={cancelar}
                   aoFechar={() => setAssinandoCancelamento(false)}
                 />

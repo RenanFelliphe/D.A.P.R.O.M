@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { exigirAssinaturaJuridica } from "../dominio/assinatura-juridica";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { OS_STATUS, OS_TIPOS } from "../db/schema";
@@ -74,7 +75,7 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
   });
 
   /** A assinatura final do supervisor (a "ciência"), depois de ler o relatório da execução: a OS passa de `aguardando_supervisor` a `encerrada`. */
-  r.post("/os/:id/ciencia", autenticar(), exigirPerfil("supervisor"), async (c) => {
+  r.post("/os/:id/ciencia", autenticar(), exigirPerfil("supervisor"), exigirAssinaturaJuridica(deps), async (c) => {
     const eu = c.get("usuario");
     const id = lerId(c);
     const agora = deps.agora();

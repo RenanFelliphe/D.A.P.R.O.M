@@ -106,6 +106,7 @@ export function FormularioInterromper({ osId, execucaoId, onCancelar }: { osId: 
           resumo="A atividade para, a OS fica pendente e o supervisor é avisado. Para retomar, faça uma APR nova."
           rotuloConfirmar="Assinar e interromper"
           assinaturaPath={assinaturaPath}
+          osId={osId}
           aoConfirmar={interromper}
           aoFechar={() => setAssinando(false)}
         >

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Deps } from "../deps";
+import { assinaturaJuridicaDoPedido } from "../dominio/assinatura-juridica";
 import { assinarConferencia, decidirConferencia, fecharConferencia, lerConferencia, minhasConferencias } from "../dominio/conferencia-execucao";
 import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { responder } from "../http/resposta";
@@ -43,7 +44,7 @@ export function rotasConferencias(deps: Deps, { autenticar }: Autenticacao) {
     const id = lerId(c);
     const { ressalva } = await lerCorpo(c, esquemaAssinatura);
     const agora = deps.agora();
-    await assinarConferencia(deps.db, eu, id, ressalva ?? null, agora);
+    await assinarConferencia(deps.db, eu, id, ressalva ?? null, agora, undefined, assinaturaJuridicaDoPedido(deps, c));
     return responder(c, await lerConferencia(deps.db, eu, id, agora));
   });
 

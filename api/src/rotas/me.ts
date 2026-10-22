@@ -68,6 +68,8 @@ export function rotasMe(deps: Deps, { autenticar }: Autenticacao) {
       }),
       /** As categorias de e-mail desligadas no perfil e se o servidor de e-mail está configurado (sem ele, os avisos ficam só no sino). */
       emails: { desligados: u!.emailsDesligados, servidorConfigurado: deps.email.configurado },
+      /** Se os atos assinados passam pelo provedor de assinatura com validade jurídica, e se ele é o simulado (sem validade). */
+      assinaturaJuridica: { ligada: deps.config.assinaturaJuridica.ligada, simulada: deps.config.assinaturaJuridica.provedor === "simulado" },
       /** A patente e os pontos da temporada para a barra superior; nulo para quem não joga (o admin). */
       gamificacao: await resumoParaMe(deps, eu),
     });

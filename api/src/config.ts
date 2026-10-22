@@ -34,6 +34,15 @@ const esquema = z.object({
   CLIMA_API_URL: z.string().default("https://api.open-meteo.com/v1/forecast"),
   CLIMA_API_CHAVE: z.string().trim().default(""),
   PAINEL_URL: z.string().default("http://localhost:3000"),
+  /** Assinatura com validade jurídica: `desligado` (só a assinatura desenhada), `zapsign` (o provedor) ou `simulado` (a página de assinatura é da própria api, sem validade). */
+  ASSINATURA_PROVEDOR: z.enum(["desligado", "zapsign", "simulado"]).default("desligado"),
+  /** O endereço da API da ZapSign: o sandbox (sem validade jurídica) até a conta de produção; trocar o endereço e o token basta. */
+  ZAPSIGN_URL: z.string().default("https://sandbox.api.zapsign.com.br/api/v1"),
+  ZAPSIGN_TOKEN: z.string().trim().default(""),
+  /** Segredo que a ZapSign leva na URL do webhook (`/webhooks/zapsign?segredo=...`); o webhook só avisa, a `api` sempre reconsulta o provedor. */
+  ASSINATURA_WEBHOOK_SEGREDO: z.string().trim().default(""),
+  /** Endereço da `api` que o navegador alcança: só o provedor simulado o usa, para a página de assinatura. */
+  API_URL_PUBLICA: z.string().default(""),
   VITORIA_LIMITE_POR_CONVERSA: z.coerce.number().int().positive().default(20),
   VITORIA_LIMITE_POR_CONTA_DIA: z.coerce.number().int().positive().default(40),
   VITORIA_LIMITE_GLOBAL_DIA: z.coerce.number().int().positive().default(1000),
@@ -99,6 +108,15 @@ export interface Config {
   climaApiUrl: string;
   climaApiChave: string;
   painelUrl: string;
+  /** A assinatura com validade jurídica (`docs/pessoas-e-equipes.md`, seção 3.3); `ligada` é o único ponto de decisão "o ato passa pelo provedor ou não". */
+  assinaturaJuridica: {
+    provedor: "desligado" | "zapsign" | "simulado";
+    ligada: boolean;
+    url: string;
+    token: string;
+    segredoDoWebhook: string;
+    urlPublicaDaApi: string;
+  };
   /** Módulo de IA genérico (`servicos/ia`): `ligada` é o único ponto de decisão "tem IA ou não" (`docs/ia-e-vitoria.md`, seção 2.1). */
   ia: {
     provedor: "anthropic" | "gemini";
@@ -189,6 +207,15 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     climaApiUrl: e.CLIMA_API_URL,
     climaApiChave: e.CLIMA_API_CHAVE,
     painelUrl: e.PAINEL_URL.replace(/\/$/, ""),
+    assinaturaJuridica: {
+      provedor: e.ASSINATURA_PROVEDOR,
+      // A ZapSign sem token não liga: a api sobe normalmente e a assinatura desenhada segue valendo.
+      ligada: e.ASSINATURA_PROVEDOR === "simulado" || (e.ASSINATURA_PROVEDOR === "zapsign" && Boolean(e.ZAPSIGN_TOKEN)),
+      url: e.ZAPSIGN_URL.replace(/\/$/, ""),
+      token: e.ZAPSIGN_TOKEN,
+      segredoDoWebhook: e.ASSINATURA_WEBHOOK_SEGREDO,
+      urlPublicaDaApi: (e.API_URL_PUBLICA || `http://localhost:${e.PORT}`).replace(/\/$/, ""),
+    },
     ia: lerConfigIA(env),
     vitoria: {
       limitePorConversa: e.VITORIA_LIMITE_POR_CONVERSA,

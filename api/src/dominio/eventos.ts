@@ -4,6 +4,8 @@ import { EVENTO_TIPOS, apr, eventoCampo, execucao, execucaoPausa, execucaoPedido
 import type { Deps } from "../deps";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { instanteIso, uuid } from "../http/validacao";
+import { EVENTOS_ASSINADOS } from "../../../shared/api/assinatura-juridica";
+import { conferirAssinaturaDoEvento } from "./assinatura-juridica";
 import { aplicarEmergenciaAcionada } from "./emergencia";
 import { aplicarAprAssinada, aplicarAprConcluida, aplicarAprRecusada } from "./eventos-apr";
 import { concederConquistas } from "./conquistas";
@@ -195,6 +197,11 @@ export async function processarEventos(
             }
           }
           return;
+        }
+
+        // O ato assinado passa pelo provedor de assinatura com validade jurídica (ou fica pendente, se veio sem sinal).
+        if (deps.config.assinaturaJuridica.ligada && (EVENTOS_ASSINADOS as readonly string[]).includes(e.tipo)) {
+          await conferirAssinaturaDoEvento(tx, usuario, { id: e.id, tipo: e.tipo, payload: e.payload, ocorridoEm: e.ocorrido_em }, osDoEnvelope, { offline, recebidoEm });
         }
 
         const ctx: Contexto = {

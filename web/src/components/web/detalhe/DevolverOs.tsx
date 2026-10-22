@@ -56,6 +56,7 @@ export function DevolverOs({ osId }: { osId: string }) {
           resumo="A OS sai do quadro da equipe e a sua justificativa vai na próxima planilha de baixa."
           rotuloConfirmar="Assinar e devolver"
           assinaturaPath={assinaturaPath}
+          osId={osId}
           aoConfirmar={async () => {
             await chamar("POST", `/os/${osId}/devolver`, { justificativa: justificativa.trim() });
           }}

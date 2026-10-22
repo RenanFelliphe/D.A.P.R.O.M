@@ -147,7 +147,7 @@ O Campo de treino é a interface inteira com dados fictícios, para aprender sem
 
 ## 3. Assinatura
 
-A assinatura é o desenho que a pessoa faz no perfil (com o mouse na web, com o dedo no app). Ela valida as ações importantes no lugar de um simples "confirmar" e vai impressa no PDF da OS. Não é certificado digital; a validade para auditoria está em [../pendencias.md](../pendencias.md).
+A assinatura é o desenho que a pessoa faz no perfil (com o mouse na web, com o dedo no app). Ela valida as ações importantes no lugar de um simples "confirmar" e vai impressa no PDF da OS. Sozinha, não é certificado digital: com o provedor de assinatura ligado (seção 3.3), cada ato online é assinado também no provedor, com validade jurídica; o desenho fica como carimbo no PDF e como a assinatura de quem está sem sinal.
 
 ### 3.1 Cadastro obrigatório depois da liberação
 
@@ -164,7 +164,7 @@ A assinatura é o desenho que a pessoa faz no perfil (com o mouse na web, com o 
 
 ### 3.2 Ações assinadas
 
-Cada ação abaixo copia a assinatura do perfil de quem age para o registro do ato. A janela mostra a imagem e pede a confirmação; a `api` copia a imagem sozinha (`assinaturaDoAto`, em [`api/src/dominio/assinatura.ts`](../api/src/dominio/assinatura.ts), ou o equivalente nos eventos de campo) e recusa com `assinatura_ausente` quem não tem assinatura.
+Cada ação abaixo copia a assinatura do perfil de quem age para o registro do ato. Com o provedor desligado, a janela mostra a imagem e pede a confirmação; com ele ligado, a janela leva à assinatura no provedor (seção 3.3), e a cópia da imagem continua sendo gravada; a `api` copia a imagem sozinha (`assinaturaDoAto`, em [`api/src/dominio/assinatura.ts`](../api/src/dominio/assinatura.ts), ou o equivalente nos eventos de campo) e recusa com `assinatura_ausente` quem não tem assinatura.
 
 | Ação | Quem | Onde fica a cópia |
 |---|---|---|
@@ -186,13 +186,38 @@ Cada ação abaixo copia a assinatura do perfil de quem age para o registro do a
 
 As regras de cada ato estão no documento do assunto: APR, execução, conferência e OS em [operacao-de-campo.md](operacao-de-campo.md); treinamentos em [gamificacao-e-treinamentos.md](gamificacao-e-treinamentos.md); IA em [ia-e-vitoria.md](ia-e-vitoria.md).
 
-### 3.3 Cópia e leitura
+### 3.3 Assinatura com validade jurídica
+
+Com o provedor ligado (`ASSINATURA_PROVEDOR`, ver [../.env.example](../.env.example)), **todo ato da tabela acima feito online passa pelo provedor de assinatura eletrônica** (a ZapSign). A `JanelaDeAssinatura` é o ponto único, na web e no app: no lugar da caixa "Confirmo… com a minha assinatura do perfil", ela assina o ato na página do provedor.
+
+**O caminho de um ato (online):**
+
+1. A pessoa confirma na janela. A janela cria a assinatura (`POST /assinaturas-juridicas` com o título e o resumo do ato e, quando há, a OS) e a `api` envia ao provedor o **termo do ato** em PDF (o que se assina, quem, a OS, quando; `servicos/pdf-termo-assinatura.ts`).
+2. A janela abre a página de assinatura do provedor (uma aba na web; o navegador no app) e fica "Aguardando a sua assinatura…", consultando `GET /assinaturas-juridicas/{id}`. A cada consulta a `api` reconsulta o provedor; o webhook (`POST /webhooks/zapsign?segredo=…`) só avisa que algo mudou, e a `api` nunca confia no conteúdo dele.
+3. Assinada, a `api` baixa o PDF assinado (a página de assinaturas com data, hora, IP e código de verificação) e o guarda no bucket `pdfs`; `GET /assinaturas-juridicas/{id}/pdf` devolve o link, para quem assinou, o supervisor da equipe da OS e o admin.
+4. A janela manda o ato com o código da assinatura: no cabeçalho `X-Assinatura-Juridica` das rotas, e no `payload.assinatura_juridica_id` dos eventos de campo assinados (`EVENTOS_ASSINADOS`).
+5. A `api` **consome** a assinatura: é da pessoa, está assinada, foi assinada há no máximo 30 minutos e ainda não foi usada. Serve a **um ato só**; `assinatura_juridica.ato` guarda qual (`POST /os/{id}/cancelar`, `evento:apr_assinada:{id}`…), como trilha de auditoria. Se a rota recusa o ato, a assinatura volta e vale para outro. Os erros são `assinatura_juridica_pendente` (sem código), `_nao_assinada`, `_usada`, `_vencida` e `_invalida`, todos `422`.
+
+**Onde a exigência está:** o middleware `exigirAssinaturaJuridica` nas rotas que sempre assinam (reprogramar, cancelar a OS de apoio, devolver ao SAP, assinatura final do supervisor, liberar e recusar cadastro, os atos da ausência, publicar e validar treinamento); nas que só às vezes assinam, o próprio ato consome a assinatura dentro da transação dele (conferência com divergência, função de IA que passa a ler dados, ausência registrada pelo supervisor); nos eventos de campo, `conferirAssinaturaDoEvento`. Código em [`api/src/dominio/assinatura-juridica.ts`](../api/src/dominio/assinatura-juridica.ts).
+
+**Sem sinal:** o provedor não alcança o aparelho. O evento que chega da fila (atraso maior que 60 segundos) sem código vale **com a assinatura desenhada** e fica registrado como `pendente_offline`. A faixa "N atos feitos sem sinal aguardam a assinatura com validade jurídica" leva à página `/app/assinaturas-pendentes` (web) e à tela `assinaturas-pendentes` (app), onde a pessoa assina cada um (`POST /assinaturas-juridicas/{id}/enviar`); o termo diz que o ato foi feito sem sinal e quando. O evento que chega com sinal e sem código fica pendente na fila do cliente.
+
+**Provedores:** `zapsign` (precisa de `ZAPSIGN_TOKEN`; o endereço padrão é o **sandbox, sem validade jurídica**; a produção troca só `ZAPSIGN_URL` e o token), `simulado` (a página de assinatura é da própria `api`, em `/assinatura-simulada/{id}`, sem conta e **sem validade jurídica**; é o do modo local) e `desligado` (padrão). `GET /me` traz `assinatura_juridica: {ligada, simulada}`: com `simulada`, as telas avisam que a assinatura não vale juridicamente. O Campo de treino nunca usa o provedor.
+
+**Para a ZapSign:** o signatário é a pessoa logada (nome e e-mail institucional), assina na tela, e a `api` pede que a ZapSign **não envie e-mail** (o link abre dentro do SYNQ OS); o e-mail só segue ao provedor se for um endereço de verdade (as contas `.local` da demonstração não são). No painel da ZapSign, cadastre o webhook `https://<api pública>/webhooks/zapsign?segredo=<ASSINATURA_WEBHOOK_SEGREDO>`; sem ele, a consulta da janela basta.
+
+**Limites conhecidos:**
+- O que o provedor recebe é o **termo do ato**, e não o PDF da OS: o título e o resumo vêm da janela que a pessoa confirmou, e o resto (a OS, a pessoa, a data) o servidor lê do banco.
+- Cada ato é um documento no provedor: o plano contratado limita quantos por mês. Confirmar o limite do sandbox e do plano de produção.
+- O que a lei aceita como prova (assinatura avançada, MP 2.200-2 e Lei 14.063/2020) é decisão do jurídico da empresa; ver [../pendencias.md](../pendencias.md).
+
+### 3.4 Cópia e leitura
 
 - **Cada ato guarda uma cópia da imagem usada.** Refazer a assinatura do perfil vale só para as próximas ações; as já assinadas não mudam.
 - **Eventos de campo** (APR, encerramento, interrupção, cancelamento) podem vir da fila offline do app: a `api` usa a assinatura que a pessoa tem no perfil ao aplicar o evento.
 - **Quem lê as imagens** (`GET /arquivos/{id}/url`): quem vê a equipe da OS lê as cópias ligadas à OS, à reprogramação e à execução; a da liberação, só o admin.
 
-### 3.4 O que não é assinado
+### 3.5 O que não é assinado
 
 Pausar, retomar e suspender a execução no fim do expediente; reservar a OS e liberar a reserva; importação (planilha, PDF da OS); modelos de APR e critério de bloqueio; redefinição de senha; desativação de usuário; catálogo e gamificação; aceitar ou recusar sugestão de materiais.
 

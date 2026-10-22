@@ -152,6 +152,7 @@ function JanelaDeAssinarConferencia({ c, aoFechar }: { c: ConferenciaDaApi; aoFe
   return (
     <JanelaDeAssinatura
       titulo={textos.janela}
+      osId={c.os.id}
       resumo={textos.resumo}
       rotuloConfirmar={rotuloDoBotaoDeAssinar(c.tipo, ressalva)}
       semAssinatura={c.tipo === "resumo"}

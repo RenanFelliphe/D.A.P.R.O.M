@@ -1,5 +1,6 @@
 import type { RespostaEventos } from "@shared/api/eventos";
 import type { RespostaMe } from "@shared/api/tipos";
+import { comAssinaturaJuridicaNoEvento } from "../assinatura/juridica";
 import { cliente, modoLocalAtivo, revogarSessaoLocal, subirArquivoSemFila } from "../api/api";
 import { ErroDeRede } from "../api/erros";
 import { apagarCopiaDaFila, guardarCopiaDoArquivo } from "./arquivos-nativos";
@@ -89,6 +90,7 @@ const envio = criarEnvioComFila({
   guardarCopiaDoArquivo,
   apagarArquivoLocal: apagarCopiaDaFila,
   aoMudar: () => void atualizarEstadoDaFila(),
+  comAssinaturaJuridica: (evento) => comAssinaturaJuridicaNoEvento(evento),
 });
 
 /** Toda escrita de campo do app passa por aqui (a fila grava antes de enviar). */

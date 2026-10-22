@@ -7,6 +7,7 @@ import { conflito, invalido } from "../http/erros";
 import { ProvedorIAControlado, type ProvedorIA } from "../servicos/ia";
 import type { UsuarioAutenticado } from "../http/autenticacao";
 import { assinaturaDoAto } from "./assinatura";
+import type { ExigirAssinaturaJuridica } from "./assinatura-juridica";
 import { registrarAuditoria } from "./auditoria";
 
 /*
@@ -97,6 +98,8 @@ export interface PedidoDeAlteracao {
   comDados?: boolean;
   /** A versão do texto de "o que ela lê" que a pessoa viu ao assinar (`versaoDoTexto`); exigida quando passa a ler dados. */
   versaoDoTexto?: number;
+  /** Quando o pedido assina (passa a ler dados), consome a assinatura com validade jurídica da rota. */
+  exigirAssinaturaJuridica?: ExigirAssinaturaJuridica;
 }
 
 /**
@@ -127,6 +130,7 @@ export async function alterarFuncaoDeIa(deps: Pick<Deps, "db" | "agora">, eu: Us
     if (pedido.versaoDoTexto !== def.versaoDoTexto) {
       throw conflito("texto_mudou", "O texto do que esta função lê mudou: abra a janela de novo, leia e assine outra vez");
     }
+    await pedido.exigirAssinaturaJuridica?.(db);
     autorizacao = { versaoDoTexto: def.versaoDoTexto, autorizadoPor: eu.id, autorizadoEm: agora, assinaturaPath: assinaturaDoAto(eu) };
   } else if (novaComDados) {
     autorizacao = {

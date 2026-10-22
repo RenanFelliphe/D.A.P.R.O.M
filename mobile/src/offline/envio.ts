@@ -29,6 +29,11 @@ export interface DependenciasDoEnvio {
   guardarCopiaDoArquivo(arquivo: ArquivoLocal, id: string): Promise<ArquivoLocal>;
   apagarArquivoLocal(uri: string): void;
   aoMudar(): void;
+  /**
+   * Acrescenta ao evento assinado o código da assinatura com validade jurídica em curso (`comAssinaturaJuridicaNoEvento`), antes de ele ir
+   * para a fila: o código fica no payload gravado, e o evento que esperar sinal sobe com ele. Sem isto, o evento segue como está.
+   */
+  comAssinaturaJuridica?(evento: EventoDeCampo): EventoDeCampo;
 }
 
 export function criarEnvioComFila(d: DependenciasDoEnvio) {
@@ -46,7 +51,7 @@ export function criarEnvioComFila(d: DependenciasDoEnvio) {
      */
     async enviarEvento(evento: EventoDeCampo): Promise<ResultadoDoEnvio> {
       const usuarioId = exigirUsuario();
-      const { id, corpo } = montarEnvioDoEvento(evento, d.agora);
+      const { id, corpo } = montarEnvioDoEvento(d.comAssinaturaJuridica ? d.comAssinaturaJuridica(evento) : evento, d.agora);
       const e = corpo.eventos[0]!;
       await guardarEvento(d.banco, { id, usuarioId, tipo: e.tipo, osId: e.os_id, payload: e.payload, ocorridoEm: e.ocorrido_em, criadoEm: d.agora().toISOString() });
       d.aoMudar();

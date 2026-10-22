@@ -94,6 +94,7 @@ export function FormularioInterromper({ osId, execucaoId, aoVoltar }: { osId: st
       {assinando ? (
         <JanelaDeAssinatura
           titulo="Interromper por risco"
+          osId={osId}
           tom="perigo"
           resumo={`A atividade para, a OS fica pendente e o supervisor é avisado. Para retomar, faça uma APR nova.\n\nMotivo: ${form.getValues("motivo").trim()}`}
           rotuloConfirmar="Assinar e interromper"

@@ -6,6 +6,7 @@ import type { Deps } from "../deps";
 import { ehSupervisorTitular, type UsuarioAutenticado } from "../http/autenticacao";
 import { ErroApi, conflito, invalido, naoEncontrado, proibido } from "../http/erros";
 import { limiteEDeslocamento, type Paginacao } from "../http/paginacao";
+import type { ExigirAssinaturaJuridica } from "./assinatura-juridica";
 import { registrarAuditoria } from "./auditoria";
 import { representacoesEmVigor } from "./representacao";
 import {
@@ -252,6 +253,8 @@ export interface DadosDoPedido extends PeriodoInformado {
   /** A pessoa da ausência, quando o supervisor a registra sem pedido; sem isto é a de quem chama. */
   usuarioId?: string;
   assinar?: boolean;
+  /** Quando o registro é assinado (o supervisor), consome a assinatura com validade jurídica da rota na transação do ato. */
+  exigirAssinaturaJuridica?: ExigirAssinaturaJuridica;
 }
 
 /**
@@ -306,6 +309,7 @@ export async function pedirOuRegistrarAusencia(deps: Deps, eu: UsuarioAutenticad
     }
     const assinatura = origem === "pedido" ? null : assinaturaDe(eu);
     if (origem !== "pedido" && dados.assinar !== true) throw invalido("assinatura_obrigatoria", "Confirme a assinatura para registrar a ausência");
+    if (origem !== "pedido") await dados.exigirAssinaturaJuridica?.(tx);
     await conferirSobreposicao(tx, alvoId, periodo.inicio, periodo.retorno);
 
     const registrada = origem !== "pedido";

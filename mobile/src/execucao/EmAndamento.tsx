@@ -228,6 +228,7 @@ export function EmAndamento({ osId, numeroOrdem, titulo, local, situacao, atuali
       {janela === "cancelar" ? (
         <JanelaDeAssinatura
           titulo="Cancelar a execução por engano"
+          osId={osId}
           tom="perigo"
           resumo="A execução é apagada e a APR volta para uso."
           rotuloConfirmar="Assinar e cancelar"

@@ -6,6 +6,7 @@ import { cache } from "react";
 import { emResponse, responderTreino } from "../treino/api-ficticia";
 import { rotaSempreReal, usuarioDoTreino } from "../treino/sessao";
 import { CABECALHO_ENDERECO, COOKIE_ACESSO, apiUrl } from "./sessao-comum";
+import type { ConfigDaAssinaturaJuridica } from "./assinatura-juridica";
 import type { MinhaAusencia } from "./ausencia";
 import type { EquipeRepresentada } from "./representacao";
 import type { ResumoDaBarra } from "./gamificacao";
@@ -102,9 +103,16 @@ export async function apiOuNulo<T = unknown>(caminho: string, opcoes: OpcoesApi 
 
 /** Usuário logado e a equipe dele (`GET /me`), lido uma vez por requisição. */
 export const usuarioAtual = cache(async () => {
-  const eu = await api<{ usuario: Usuario; equipe: Equipe | null; equipes_supervisionadas: { id: string; nome: string }[]; equipes_representadas?: EquipeRepresentada[]; gamificacao?: ResumoDaBarra | null; ausencia?: MinhaAusencia | null; emails?: EmailsDoPerfil }>("/me");
+  const eu = await api<{ usuario: Usuario; equipe: Equipe | null; equipes_supervisionadas: { id: string; nome: string }[]; equipes_representadas?: EquipeRepresentada[]; gamificacao?: ResumoDaBarra | null; ausencia?: MinhaAusencia | null; emails?: EmailsDoPerfil; assinatura_juridica?: ConfigDaAssinaturaJuridica }>("/me");
   // O resumo da gamificação não vem no campo de treino (a `api` fictícia não o conhece): sem ele a barra não mostra o selo.
   // A ausência (em curso ou vencida) vem à parte, com o motivo e o pedido de fim antecipado: a faixa e a tela de retorno a usam.
   // As preferências de e-mail também não vêm no campo de treino: sem elas a seção "E-mails" do perfil não aparece.
-  return { usuario: { ...eu.usuario, equipes_supervisionadas: eu.equipes_supervisionadas, equipes_representadas: eu.equipes_representadas ?? [], gamificacao: eu.gamificacao ?? null }, equipe: eu.equipe, ausencia: eu.ausencia ?? null, emails: eu.emails ?? null };
+  // O provedor de assinatura com validade jurídica também não: no treino a `api` fictícia não o conhece e a assinatura segue só a do perfil.
+  return {
+    usuario: { ...eu.usuario, equipes_supervisionadas: eu.equipes_supervisionadas, equipes_representadas: eu.equipes_representadas ?? [], gamificacao: eu.gamificacao ?? null },
+    equipe: eu.equipe,
+    ausencia: eu.ausencia ?? null,
+    emails: eu.emails ?? null,
+    assinaturaJuridica: eu.assinatura_juridica ?? { ligada: false, simulada: false },
+  };
 });

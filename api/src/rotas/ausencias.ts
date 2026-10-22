@@ -21,6 +21,7 @@ import type { Ambiente, Autenticacao } from "../http/autenticacao";
 import { esquemaPaginacao, meta } from "../http/paginacao";
 import { responder } from "../http/resposta";
 import { booleanoDaConsulta, dataExistente, lerConsulta, lerCorpo, lerId, textoObrigatorio, uuid } from "../http/validacao";
+import { assinaturaJuridicaDoPedido, exigirAssinaturaJuridica } from "../dominio/assinatura-juridica";
 
 const SITUACOES = ["pedida", "aguardando_confirmacao", "agendada", "em_curso", "vencida", "encerrada", "recusada", "cancelada"] as const;
 
@@ -80,62 +81,63 @@ export function rotasAusencias(deps: Deps, { autenticar }: Autenticacao) {
       retorno: dados.retorno,
       usuarioId: dados.usuario_id,
       assinar: dados.assinar,
+      exigirAssinaturaJuridica: assinaturaJuridicaDoPedido(deps, c),
     });
     return responder(c, resultado, 201);
   });
 
   /** O supervisor aprova o pedido, com ou sem ajuste das datas (`inicio`, `dias` ou `retorno`); o técnico ainda confirma. */
-  r.post("/ausencias/:id/aprovar", autenticar(), async (c) => {
+  r.post("/ausencias/:id/aprovar", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     const dados = await lerCorpo(c, assinado.extend({ inicio: dataExistente.optional(), dias: dias.optional(), retorno: dataExistente.optional() }));
     return responder(c, await aprovarAusencia(deps, c.get("usuario"), lerId(c), { inicio: dados.inicio, dias: dados.dias, retorno: dados.retorno }));
   });
 
-  r.post("/ausencias/:id/recusar", autenticar(), async (c) => {
+  r.post("/ausencias/:id/recusar", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     const dados = await lerCorpo(c, assinado.extend({ motivo }));
     return responder(c, await recusarAusencia(deps, c.get("usuario"), lerId(c), dados.motivo));
   });
 
   /** O técnico confirma a ausência aprovada: ela passa a valer. */
-  r.post("/ausencias/:id/confirmar", autenticar(), async (c) => {
+  r.post("/ausencias/:id/confirmar", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     await lerCorpo(c, assinado);
     return responder(c, await confirmarAusencia(deps, c.get("usuario"), lerId(c)));
   });
 
-  r.post("/ausencias/:id/recusar-ajuste", autenticar(), async (c) => {
+  r.post("/ausencias/:id/recusar-ajuste", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     const dados = await lerCorpo(c, assinado.extend({ motivo: motivo.optional() }));
     return responder(c, await recusarAjusteDaAusencia(deps, c.get("usuario"), lerId(c), dados.motivo));
   });
 
-  r.post("/ausencias/:id/cancelar", autenticar(), async (c) => {
+  r.post("/ausencias/:id/cancelar", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     await lerCorpo(c, assinado);
     return responder(c, await cancelarAusencia(deps, c.get("usuario"), lerId(c)));
   });
 
   /** O ausente pede o fim antecipado: a data de retorno que ele quer. Passa pelo bloqueio do ausente. */
-  r.post("/ausencias/:id/pedir-fim", autenticar({ permitirAusente: true }), async (c) => {
+  r.post("/ausencias/:id/pedir-fim", autenticar({ permitirAusente: true }), exigirAssinaturaJuridica(deps), async (c) => {
     const dados = await lerCorpo(c, assinado.extend({ data: dataExistente }));
     return responder(c, await pedirFimDaAusencia(deps, c.get("usuario"), lerId(c), dados.data));
   });
 
-  r.post("/ausencias/:id/responder-fim", autenticar(), async (c) => {
+  r.post("/ausencias/:id/responder-fim", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     const dados = await lerCorpo(c, assinado.extend({ aprovar: z.boolean(), motivo: motivo.optional() }));
     return responder(c, await responderFimDaAusencia(deps, c.get("usuario"), lerId(c), { aprovar: dados.aprovar, motivo: dados.motivo }));
   });
 
   /** O supervisor muda a data de retorno (inclusive a da ausência vencida). O supervisor ausente só altera a própria. */
-  r.post("/ausencias/:id/prorrogar", autenticar({ permitirAusente: true }), async (c) => {
+  r.post("/ausencias/:id/prorrogar", autenticar({ permitirAusente: true }), exigirAssinaturaJuridica(deps), async (c) => {
     const dados = await lerCorpo(c, assinado.extend({ retorno: dataExistente, motivo: motivo.optional() }));
     return responder(c, await prorrogarAusencia(deps, c.get("usuario"), lerId(c), dados.retorno, dados.motivo));
   });
 
   /** O supervisor encerra a ausência a qualquer momento; o supervisor ausente encerra a própria, em emergência. */
-  r.post("/ausencias/:id/encerrar", autenticar({ permitirAusente: true }), async (c) => {
+  r.post("/ausencias/:id/encerrar", autenticar({ permitirAusente: true }), exigirAssinaturaJuridica(deps), async (c) => {
     const dados = await lerCorpo(c, assinado.extend({ motivo: motivo.optional() }));
     return responder(c, await encerrarAusencia(deps, c.get("usuario"), lerId(c), dados.motivo));
   });
 
   /** O ausente confirma o retorno, depois da data: a conta volta ao normal na hora. */
-  r.post("/ausencias/:id/confirmar-retorno", autenticar({ permitirAusente: true }), async (c) => {
+  r.post("/ausencias/:id/confirmar-retorno", autenticar({ permitirAusente: true }), exigirAssinaturaJuridica(deps), async (c) => {
     await lerCorpo(c, assinado);
     return responder(c, await confirmarRetornoDaAusencia(deps, c.get("usuario"), lerId(c)));
   });

@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { exigirAssinaturaJuridica } from "../dominio/assinatura-juridica";
 import { z } from "zod";
 import type { Deps } from "../deps";
 import { ALERTA_TIPOS } from "../db/schema";
@@ -31,7 +32,7 @@ const dataValida = dataIso.refine((v) => {
 export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();
 
-  r.post("/os/:id/reprogramar", autenticar(), exigirPerfil("supervisor", "admin"), async (c) => {
+  r.post("/os/:id/reprogramar", autenticar(), exigirPerfil("supervisor", "admin"), exigirAssinaturaJuridica(deps), async (c) => {
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ data_inicio_prog: dataValida, equipe_id: uuid.optional(), justificativa }));
     const motivo = justificativaObrigatoria(dados.justificativa);
@@ -53,7 +54,7 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
     return responder(c, resultado);
   });
 
-  r.post("/os/:id/cancelar", autenticar(), exigirPerfil("admin"), async (c) => {
+  r.post("/os/:id/cancelar", autenticar(), exigirPerfil("admin"), exigirAssinaturaJuridica(deps), async (c) => {
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ justificativa }));
     const motivo = justificativaObrigatoria(dados.justificativa);
@@ -121,7 +122,7 @@ export function rotasImpedimento(deps: Deps, { autenticar, exigirPerfil }: Auten
   });
 
   /** Devolve a OS ao SAP com a justificativa do supervisor da equipe; ela vai na próxima planilha de baixa. */
-  r.post("/os/:id/devolver", autenticar(), async (c) => {
+  r.post("/os/:id/devolver", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     const id = lerId(c);
     const dados = await lerCorpo(c, z.object({ justificativa }));
     const motivo = justificativaObrigatoria(dados.justificativa);

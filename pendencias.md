@@ -16,7 +16,7 @@ Só o que ainda não foi realizado. Ao concluir um item, apague-o daqui; a regra
 | 10 | Reincidência | código | 🟢 |
 | 11 | Tempo típico de serviço | código | 🟢 |
 | 12 | Nota de passagem | código | 🟢 |
-| 13 | Assinatura com validade jurídica | terceiros | 🟢 |
+| 13 | Assinatura com validade jurídica: feita (api, web, app); falta a conta e o token da ZapSign, o teste no sandbox e decidir o plano de produção | terceiros | 🟡 |
 | 14 | Login corporativo (conta Microsoft com segundo fator) | terceiros | 🟢 |
 | 15 | Dados reais (planilha de 2025, critério de bloqueio, materiais, ciclo no SAP, formulário de inspeção) | terceiros | 🟢 |
 | 16 | "Houve desvio?" e "Tempo parada" na folha do SAP (questão 70) | decisão | 🟢 |
@@ -49,6 +49,7 @@ O MVP está completo quando o caminho **ler OS → APR → executar → PDF**, c
 ### 2.4 Código
 
 - **Ver no aparelho (push, convite e emergência):** receber a notificação com o app fechado e abrir a tela certa ao toque; o convite entre dois aparelhos (aceitar, recusar, prazo de 15 minutos); o botão de emergência com e sem sinal (o aviso guardado que sobe depois) e o discador abrindo com o número.
+- **Ver a assinatura com validade jurídica rodando:** nunca vista numa tela nem contra a ZapSign real. Conferir no sandbox: a aba do provedor abrindo no clique (pop-up da web) e o navegador do Android abrindo e voltando ao app; o formato de `GET /docs/{token}/` quando o signatário assina e quando recusa (a documentação só descreve `pending` e `signed`); se o sandbox limita documentos por mês; o webhook chegando à api publicada. A `AssinarConferencia` da web não recebe a OS, então o termo daquele ato sai sem o número dela.
 - **Convite e push, o que ficou de fora:** o push de "OS nova" (não há aviso por OS importada; avisaria a equipe a cada leitura do SAP), convidar alguém de outra equipe (questões 10 e 72) e a notificação sem os serviços do Google (cairia no que o app consulta com a tela aberta).
 
 - **Sugestão de materiais:** marcar "Cadastrar como novo" num item e depois tirá-lo no "Ajustar e aceitar" ainda cria o material (as `resolucoes` valem antes da `lista`).
@@ -68,7 +69,7 @@ O MVP está completo quando o caminho **ler OS → APR → executar → PDF**, c
 | O quê | De quem | O que destrava |
 |---|---|---|
 | SMTP: servidor, porta, conta, remetente, SPF e DKIM do domínio, e o aceite do que vai nos e-mails (questão 68) | TI da empresa, pelo Iago | Os e-mails dos avisos e o resumo diário. Basta preencher `SMTP_URL`, `EMAIL_REMETENTE` e `PAINEL_URL` e conferir com `pnpm --dir api email:testar` |
-| Assinatura com validade jurídica (ZapSign, token ou gov.br) | Conta e credenciais; o Iago diz se a desenhada vale (questão 38) | Assinatura aceita em auditoria |
+| Assinatura com validade jurídica (ZapSign): conta e token do sandbox (`ASSINATURA_PROVEDOR=zapsign`, `ZAPSIGN_TOKEN`, webhook `/webhooks/zapsign?segredo=`); depois, a conta de produção e o plano (um documento por ato, ver [pessoas-e-equipes.md, seção 3.3](docs/pessoas-e-equipes.md)) | Conta e credenciais; o Iago diz se a assinatura eletrônica vale em auditoria (questão 38) | Assinatura aceita em auditoria. Sem token a api sobe com o provedor desligado (ou `ASSINATURA_PROVEDOR=simulado` para mostrar o fluxo sem conta) |
 | Login corporativo (conta Microsoft com segundo fator) e vínculo do aparelho com o usuário | Diretório da empresa (TI) | Uso real; hoje o registro simulado garante que só funcionário tenha conta |
 | Planilha de OS de 2025 (questão 54) | Iago | Mapeamento definitivo da planilha e base fictícia mais fiel |
 | Um PDF de OS gerado pelo SAP com texto | Iago | Conferir a leitura do PDF real (os exemplos são digitalizações) |

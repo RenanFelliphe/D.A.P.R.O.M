@@ -249,6 +249,7 @@ function TelaDasAssinaturas({ osId, rotulo, local, usuario, equipe, registrada }
       {janela === "assinar" && apr ? (
         <JanelaDeAssinatura
           titulo="Assinar a APR"
+          osId={osId}
           resumo={`Você assina a APR da ${rotulo} (${modelo.codigo} v${modelo.versao}), declarando que concorda com ela e está em condições de executar o serviço.`}
           rotuloConfirmar="Assinar a APR"
           aoConfirmar={assinar}

@@ -1,6 +1,7 @@
 import type { Config } from "./config";
 import type { Db } from "./db/conexao";
 import type { Armazenamento } from "./servicos/armazenamento";
+import type { ProvedorDeAssinatura } from "./servicos/assinatura-juridica";
 import type { ProvedorAuth } from "./servicos/auth";
 import type { ClienteClima } from "./servicos/clima";
 import type { Email } from "./servicos/email";
@@ -28,6 +29,8 @@ export interface Deps {
   ocr: MotorOcr;
   /** O provedor da previsão do tempo (Open-Meteo); os testes usam o ClimaEmMemoria. */
   clima: ClienteClima;
+  /** O provedor da assinatura com validade jurídica (ZapSign ou o simulado); os testes usam o `ProvedorDeAssinaturaSimulado`. */
+  provedorDeAssinatura: ProvedorDeAssinatura;
   /** Relógio da `api`; os testes o fixam. */
   agora: () => Date;
 }

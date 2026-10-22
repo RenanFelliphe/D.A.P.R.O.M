@@ -155,6 +155,7 @@ export function FormularioEncerrar({ execucao, osId, checklist, onConcluida }: F
           resumo="Você assina como responsável pela execução. Depois da sua assinatura, a OS aguarda o supervisor."
           rotuloConfirmar="Assinar e concluir"
           assinaturaPath={assinaturaPath}
+          osId={osId}
           aoConfirmar={assinar}
           aoFechar={() => setAssinando(false)}
         />

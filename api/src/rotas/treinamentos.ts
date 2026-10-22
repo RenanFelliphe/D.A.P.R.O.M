@@ -55,6 +55,7 @@ import { ErroApi, invalido, naoEncontrado } from "../http/erros";
 import { esquemaPaginacao, limiteEDeslocamento, meta } from "../http/paginacao";
 import { emSnakeCase, responder } from "../http/resposta";
 import { booleanoDaConsulta, lerConsulta, lerCorpo, lerId, lerJson, textoObrigatorio, uuid } from "../http/validacao";
+import { exigirAssinaturaJuridica } from "../dominio/assinatura-juridica";
 
 /** O código do serviço na URL (pode ter pontos e barras, como em `/atividades/{codigo}`). */
 function codigoDoServico(bruto: string) {
@@ -249,7 +250,7 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
     return responder(c, salvo);
   });
 
-  r.post("/treinamentos/:atividade{.+}/publicar", autenticar(), soAdmin, async (c) => {
+  r.post("/treinamentos/:atividade{.+}/publicar", autenticar(), soAdmin, exigirAssinaturaJuridica(deps), async (c) => {
     const codigo = codigoDoServico(c.req.param("atividade"));
     const eu = c.get("usuario");
     const { arquivo_id, justificativa } = await lerCorpo(c, esquemaPublicar);
@@ -299,7 +300,7 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
 
   r.get("/treinamentos/:atividade{.+}/validacao", autenticar(), async (c) => responder(c, await situacaoDaValidacao(deps.db, c.get("usuario"), codigoDoServico(c.req.param("atividade")))));
 
-  r.post("/treinamentos/:atividade{.+}/validacao/enviar", autenticar(), async (c) => {
+  r.post("/treinamentos/:atividade{.+}/validacao/enviar", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     const eu = c.get("usuario");
     const codigo = codigoDoServico(c.req.param("atividade"));
     await exigirPodeEditar(deps.db, eu, codigo);
@@ -314,7 +315,7 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
     return responder(c, await situacaoDaValidacao(deps.db, eu, codigo));
   });
 
-  r.post("/treinamentos/:atividade{.+}/validacao/aprovar", autenticar(), async (c) => {
+  r.post("/treinamentos/:atividade{.+}/validacao/aprovar", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     const eu = c.get("usuario");
     const codigo = codigoDoServico(c.req.param("atividade"));
     const resultado = await decidirValidacao(deps, eu, codigo, { aprovar: true });
@@ -323,7 +324,7 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
     return responder(c, { ...(await situacaoDaValidacao(deps.db, eu, codigo)), publicada: false });
   });
 
-  r.post("/treinamentos/:atividade{.+}/validacao/recusar", autenticar(), async (c) => {
+  r.post("/treinamentos/:atividade{.+}/validacao/recusar", autenticar(), exigirAssinaturaJuridica(deps), async (c) => {
     const eu = c.get("usuario");
     const codigo = codigoDoServico(c.req.param("atividade"));
     const { motivo } = await lerCorpo(c, esquemaRecusa);

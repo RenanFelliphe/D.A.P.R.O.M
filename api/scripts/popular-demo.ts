@@ -21,6 +21,7 @@ import { AuthSupabase } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
 import { PushEmMemoria } from "../src/servicos/push";
 import { criarProvedorIA } from "../src/servicos/ia";
+import { ProvedorDeAssinaturaDesligado } from "../src/servicos/assinatura-juridica";
 import { ClimaIndisponivel } from "../src/servicos/clima";
 import { OcrEmMemoria } from "../src/servicos/ocr-memoria";
 import { ClienteRhHttp } from "../src/servicos/rh-http";
@@ -51,6 +52,8 @@ try {
     ocr: new OcrEmMemoria(),
     // A demonstração não consulta a previsão do tempo.
     clima: new ClimaIndisponivel(),
+    // A demonstração não assina nada com o provedor.
+    provedorDeAssinatura: new ProvedorDeAssinaturaDesligado(),
     agora: () => new Date(),
   }, { elenco });
   if (resultado.jaPopulado) {

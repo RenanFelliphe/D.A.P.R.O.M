@@ -18,6 +18,8 @@ export const rotas = {
     trocarSenha: "/app/trocar-senha",
     /** Cadastro da assinatura: a primeira coisa depois da liberação, antes de qualquer outra tela. */
     assinatura: "/app/assinatura",
+    /** Os atos feitos sem sinal, que valeram com a assinatura desenhada e esperam a assinatura com validade jurídica. */
+    assinaturasPendentes: "/app/assinaturas-pendentes",
     /** Técnico cadastrado por supervisor que ainda espera o admin liberar o acesso (só ele e o Campo de treino ficam abertos). */
     aguardando: "/app/aguardando",
     /** Quadro de OS (todos os perfis). */

@@ -2,7 +2,10 @@ import { Hono } from "hono";
 import type { Deps } from "./deps";
 import { criarAutenticacao } from "./http/autenticacao";
 import { tratarErro } from "./http/erros";
+import { ProvedorDeAssinaturaSimulado } from "./servicos/assinatura-juridica";
 import { rotasArquivos } from "./rotas/arquivos";
+import { rotasAssinaturasJuridicas } from "./rotas/assinaturas-juridicas";
+import { rotasAssinaturaSimulada } from "./rotas/assinatura-simulada";
 import { rotasAusencias } from "./rotas/ausencias";
 import { rotasConvitesDeApr } from "./rotas/apr-convites";
 import { rotasAuditoria } from "./rotas/auditoria";
@@ -80,6 +83,9 @@ export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa 
   app.route("/", rotasRh(deps, auth));
   app.route("/", rotasClima(deps, auth));
   app.route("/", rotasConfiguracoes(deps, auth));
+  app.route("/", rotasAssinaturasJuridicas(deps, auth));
+  // A página de assinatura do provedor simulado é da própria api (a da ZapSign fica no site dela).
+  if (deps.provedorDeAssinatura instanceof ProvedorDeAssinaturaSimulado) app.route("/assinatura-simulada", rotasAssinaturaSimulada(deps.provedorDeAssinatura));
   if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps, auth));
   if (deps.config.rhSimulado) app.route("/rh-simulado", rotasRhSimulado(deps, auth, opcoes.enviarAvisoRh ?? avisoPorHttp(deps)));
 

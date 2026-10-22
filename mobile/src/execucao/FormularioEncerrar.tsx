@@ -150,6 +150,7 @@ export function FormularioEncerrar({ execucao, osId, checklist, aoConcluir }: Fo
       {assinando ? (
         <JanelaDeAssinatura
           titulo="Assinar o encerramento"
+          osId={osId}
           resumo="Você assina como responsável pela execução. Depois da sua assinatura, a OS aguarda o supervisor."
           rotuloConfirmar="Assinar e concluir"
           aoConfirmar={assinar}

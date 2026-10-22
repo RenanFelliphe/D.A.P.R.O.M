@@ -48,6 +48,7 @@ export function CancelarOs({ osId }: { osId: string }) {
           resumo="A OS de apoio é cancelada e sai do quadro da equipe."
           rotuloConfirmar="Assinar e cancelar"
           assinaturaPath={assinaturaPath}
+          osId={osId}
           aoConfirmar={async () => {
             await chamar("POST", `/os/${osId}/cancelar`, { justificativa: justificativa.trim() });
           }}

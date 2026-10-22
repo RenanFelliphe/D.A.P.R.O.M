@@ -6,6 +6,7 @@ import { FaixaDeAusencia } from "@/os/FaixaDeAusencia";
 import { FaixaDeAssinaturas } from "@/os/FaixasDaLista";
 import { useDetalheDaOs } from "@/os/consultas";
 import { AcoesDaOs } from "@/os/detalhe/AcoesDaOs";
+import { AssinaturasJuridicasDaOs } from "@/os/detalhe/AssinaturasJuridicas";
 import { ChecklistDaOsCard, DadosSapCard, InstrucoesCard, LocalCard, MateriaisCard } from "@/os/detalhe/Blocos";
 import { AprExigidaCard, CabecalhoDaOs, FaixasDaOs } from "@/os/detalhe/Cabecalho";
 import { CicloDaOs } from "@/os/detalhe/CicloDaOs";
@@ -67,6 +68,7 @@ export default function DetalheDaOs() {
       <InstrucoesCard descricao={os.descricao} titulo={os.titulo} />
       <MateriaisCard servico={servico ?? null} />
       <HistoricoAprs aprs={aprs} execucoes={execucoes} />
+      <AssinaturasJuridicasDaOs osId={os.id} />
       <HistoricoDoLocal os={os} />
     </Tela>
   );

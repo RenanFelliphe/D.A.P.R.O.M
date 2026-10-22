@@ -337,6 +337,13 @@
       "when": 1792643787134,
       "tag": "0047_botao_de_emergencia",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792666169430,
+      "tag": "0048_assinatura_juridica",
+      "breakpoints": true
     }
   ]
 }

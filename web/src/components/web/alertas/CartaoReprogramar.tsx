@@ -111,6 +111,7 @@ export function CartaoReprogramar({ osId, dataAtual, equipeAtualId, equipes, hoj
           resumo={`A OS passa para ${dataDoDia(data)}${equipeId !== equipeAtualId ? ", com outra equipe" : ""}.`}
           rotuloConfirmar="Assinar e reprogramar"
           assinaturaPath={assinaturaPath}
+          osId={osId}
           aoConfirmar={reprogramar}
           aoFechar={() => setAssinando(false)}
         >

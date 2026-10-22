@@ -103,6 +103,7 @@ export function BotaoCiencia({ osId }: { osId: string }) {
           resumo="Você leu o relatório da execução e assina a OS por último. A sua assinatura vai para o PDF da OS, que é gerado agora; a OS fica concluída e entra na planilha de baixa do SAP."
           rotuloConfirmar="Assinar e concluir a OS"
           assinaturaPath={assinaturaPath}
+          osId={osId}
           aoConfirmar={assinar}
           aoFechar={fechar}
         />

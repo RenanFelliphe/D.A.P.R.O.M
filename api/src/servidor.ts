@@ -9,6 +9,7 @@ import { garantirImagensDaGamificacao } from "./db/seed/imagens-gamificacao";
 import { garantirImagensDeSincronizacaoOffline } from "./db/seed/sincronizacao-offline-imagens";
 import { garantirImagensDeTreinamentoServico } from "./db/seed/treinamento-servico-imagens";
 import { ArmazenamentoSupabase } from "./servicos/armazenamento";
+import { criarProvedorDeAssinatura } from "./servicos/assinatura-juridica";
 import { AuthSupabase } from "./servicos/auth";
 import { EmailSemServidor, EmailSmtp } from "./servicos/email";
 import { PushDesligado, PushExpo } from "./servicos/push";
@@ -79,8 +80,11 @@ async function main() {
     ia: controlarIA(db, criarProvedorIA(config.ia, config.vitoria.maxTokensResposta)),
     ocr: new MotorOcrTesseract(),
     clima: new ClienteOpenMeteo(config.climaApiUrl, config.climaApiChave),
+    provedorDeAssinatura: criarProvedorDeAssinatura(config.assinaturaJuridica),
     agora: () => new Date(),
   };
+  if (config.assinaturaJuridica.ligada) console.log(`Assinatura com validade jurídica ligada: ${config.assinaturaJuridica.provedor}${config.assinaturaJuridica.provedor === "zapsign" ? ` (${config.assinaturaJuridica.url})` : " (simulada, sem validade jurídica)"}.`);
+  else console.warn(`Assinatura com validade jurídica desligada${config.assinaturaJuridica.provedor === "zapsign" ? " (ZAPSIGN_TOKEN vazio)" : ""}: os atos seguem só com a assinatura desenhada.`);
   if (config.ia.ligada) console.log(`IA ligada: ${config.ia.provedor} (Vitória: ${config.ia.modelos.chatbot})`);
   else console.warn(`Chave de IA vazia para IA_PROVEDOR=${config.ia.provedor} (${config.ia.provedor === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY"}): o módulo de IA fica desligado (fallback sem IA).`);
 

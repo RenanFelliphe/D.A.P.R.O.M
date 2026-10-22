@@ -88,6 +88,7 @@ function Rotas() {
           <Stack.Screen name="historico" options={{ headerShown: true, title: "OS que encerrei", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="configuracoes" options={{ headerShown: true, title: "Configurações", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="emails" options={{ headerShown: true, title: "Preferências de e-mail", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
+          <Stack.Screen name="assinaturas-pendentes" options={{ headerShown: true, title: "Assinar com validade jurídica", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="recusados" options={{ headerShown: true, title: "Registros recusados", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
           <Stack.Screen name="senha" options={{ headerShown: true, title: "Trocar a senha", headerStyle: { backgroundColor: cores.escuro }, headerTintColor: cores.branco, headerBackButtonDisplayMode: "minimal" }} />
         </Stack.Protected>

@@ -18,6 +18,7 @@ import { Screen } from "@/components/ui/Screen";
 import { DecisoesDaOs } from "@/components/web/alertas/DecisoesDaOs";
 import { AbasDaOs, abaDaConsulta } from "@/components/web/detalhe/AbasDaOs";
 import { AlertasDaOs } from "@/components/web/detalhe/AlertasDaOs";
+import { AssinaturasJuridicasDaOs } from "@/components/web/detalhe/AssinaturasJuridicasDaOs";
 import { AprsDaOs } from "@/components/web/detalhe/AprsDaOs";
 import { BaixaSap } from "@/components/web/detalhe/BaixaSap";
 import { BotaoCritico } from "@/components/web/detalhe/BotaoCritico";
@@ -59,7 +60,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   const { id } = await params;
   const sp = await searchParams;
 
-  const [{ usuario, ausencia }, detalhe] = await Promise.all([usuarioAtual(), carregarDetalhe(id)]);
+  const [{ usuario, ausencia, assinaturaJuridica }, detalhe] = await Promise.all([usuarioAtual(), carregarDetalhe(id)]);
   // O ausente só visualiza: as ações de campo e de supervisão desta tela ficam recolhidas, com o motivo.
   const ausente = Boolean(ausencia);
   // OS que não existe ou é de outra equipe: a `api` responde 404.
@@ -73,6 +74,8 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
   const executa = !admin;
   // Sugerir e contestar a lista de materiais: todo perfil menos o admin (que edita a lista no catálogo); no campo de treino, nada.
   const colaboracao = (await emTreino()) ? null : admin ? "ver" : "sugerir";
+  // As assinaturas com validade jurídica dos atos da OS: só no sistema real (`colaboracao` é nulo apenas no Campo de treino).
+  const assinaturasDaOs = colaboracao !== null && <AssinaturasJuridicasDaOs osId={id} ligada={assinaturaJuridica.ligada} />;
 
   // As ações de campo e o card da APR exigida usam os tipos do técnico, que são um recorte do detalhe completo.
   const campo = detalhe as unknown as DetalheDoCampo;
@@ -145,6 +148,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
               <InstrucoesCard descricao={os.descricao} titulo={os.titulo} />
               <MateriaisCard servico={servico ?? null} colaboracao={colaboracao} />
               <HistoricoAprs aprs={campo.aprs} execucoes={campo.execucoes} osId={os.id} />
+              {assinaturasDaOs}
             </>
           }
           lateral={painelDeCampo}
@@ -258,6 +262,7 @@ export default async function DetalheOsPage({ params, searchParams }: PageProps<
           {podeDevolver && <DevolverOs osId={os.id} />}
           {admin && <BotaoCritico localId={os.local_instalacao.id} critico={os.local_instalacao.critico} />}
           <DocumentoOs os={os} podeVerRelatorio={podeVerRelatorio} />
+          {assinaturasDaOs}
           <CienciaSupervisor os={os} podeDarCiencia={supervisaEquipeDaOs && !ausente} conferencias={detalhe.conferencias} />
           <BaixaSap os={os} podeExportar={admin} />
         </aside>

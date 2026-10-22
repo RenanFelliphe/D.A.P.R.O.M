@@ -1,5 +1,6 @@
 /** Tipos das respostas da `api` que várias telas usam (os demais ficam junto da tela que os consome). Chaves em snake_case, como a `api` devolve. */
 
+import type { ConfigDaAssinaturaJuridica } from "./assinatura-juridica";
 import type { AusenciaDaPessoa, MinhaAusencia } from "./ausencia";
 import type { EquipeRepresentada, RepresentacaoDaEquipe } from "./representacao";
 import type { ResumoDaBarra } from "./gamificacao";
@@ -67,6 +68,8 @@ export interface RespostaMe {
   ausencia?: MinhaAusencia | null;
   /** As categorias de e-mail desligadas no perfil e se o servidor de e-mail está configurado. */
   emails?: { desligados: string[]; servidor_configurado: boolean };
+  /** Se os atos assinados passam pelo provedor de assinatura com validade jurídica (`shared/api/assinatura-juridica.ts`). */
+  assinatura_juridica?: ConfigDaAssinaturaJuridica;
 }
 
 /** Situação da pessoa no registro de funcionários (RH); `fora_do_registro` é a matrícula que sumiu de lá. */

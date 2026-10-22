@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AcessoRecusado } from "@/components/aguardando/AcessoRecusado";
 import { FaixaDeAusencia } from "@/components/ausencia/FaixaDeAusencia";
+import { FaixaDeAssinaturasPendentes } from "@/components/app/FaixaDeAssinaturasPendentes";
 import { FaixaDeConvites } from "@/components/app/FaixaDeConvites";
 import { FaixaDePedidos } from "@/components/app/FaixaDePedidos";
 import { FaixaDeRepresentacao } from "@/components/representacao/FaixaDeRepresentacao";
@@ -49,7 +50,7 @@ export async function exigirGestao() {
  * parte, no fim. As telas compartilhadas têm um endereço só.
  */
 export async function Casca({ children }: { children: ReactNode }) {
-  const { usuario, equipe, ausencia } = await usuarioAtual();
+  const { usuario, equipe, ausencia, assinaturaJuridica } = await usuarioAtual();
   const admin = ehAdmin(usuario);
   const supervisor = ehSupervisor(usuario);
   // Cadastro recusado com a sessão ainda aberta: só o motivo e o botão de sair.
@@ -112,7 +113,8 @@ export async function Casca({ children }: { children: ReactNode }) {
   const rodape = admin || !equipe ? `${rotuloDoPerfil[usuario.perfil]} · mat. ${usuario.matricula}` : `Equipe ${equipe.nome}`;
 
   return (
-    <ProvedorDeAssinatura assinaturaPath={usuario.assinatura_path ?? null}>
+    // Os atos assinados passam pelo provedor de assinatura com validade jurídica só no sistema real e com o acesso liberado.
+    <ProvedorDeAssinatura assinaturaPath={usuario.assinatura_path ?? null} juridica={liberado ? assinaturaJuridica : { ligada: false, simulada: false }}>
       <Shell
         faixa={treino ? <FaixaDoTreino /> : undefined}
         topbar={
@@ -135,6 +137,8 @@ export async function Casca({ children }: { children: ReactNode }) {
         {!admin && liberado && !treino && !ausencia && <FaixaDePedidos />}
         {/* Convite de participação na APR: um colega escolheu a pessoa como participante e espera a resposta dela (15 minutos). */}
         {!admin && liberado && !treino && !ausencia && <FaixaDeConvites />}
+        {/* Atos feitos sem sinal, que valeram com a assinatura desenhada: esperam a assinatura com validade jurídica (a lista tem a tela própria). */}
+        {!admin && liberado && assinaturaJuridica.ligada && endereco !== rotas.app.assinaturasPendentes && <FaixaDeAssinaturasPendentes />}
         {children}
         {gamificacao && gamificacao.avisos_pendentes > 0 && <AvisoConquista />}
         {!admin && <TreinoRaiz emTreino={treino} primeiroAcesso={primeiroAcesso} pendente={pendente} />}

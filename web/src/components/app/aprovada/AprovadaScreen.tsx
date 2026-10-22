@@ -277,6 +277,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada }: AprovadaS
           resumo={`Você assina a APR da ${os.rotulo} (${modelo.codigo} v${modelo.versao}), declarando que concorda com ela e está em condições de executar o serviço.`}
           rotuloConfirmar="Assinar a APR"
           assinaturaPath={assinaturaPath}
+          osId={os.id}
           aoConfirmar={assinar}
           aoFechar={() => setJanela(null)}
         />

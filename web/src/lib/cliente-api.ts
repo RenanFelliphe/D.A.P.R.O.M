@@ -1,5 +1,6 @@
 "use client";
 
+import { assinaturaJuridicaAtiva, CABECALHO_ASSINATURA_JURIDICA, CAMPO_ASSINATURA_JURIDICA_DO_EVENTO, EVENTOS_ASSINADOS } from "./assinatura-juridica";
 import { interpretarRespostaDoEvento, montarEnvioDoEvento, type EventoDeCampo, type RespostaEventos } from "./eventos";
 import { novoUuid } from "./uuid";
 
@@ -45,16 +46,26 @@ async function lerResposta(resposta: Response) {
   return dados;
 }
 
+/**
+ * A assinatura com validade jurídica do ato em curso (`lib/assinatura-juridica.ts`) vai no cabeçalho de toda chamada que altera: a `api`
+ * só a confere nas rotas dos atos assinados e ignora nas demais.
+ */
+function cabecalhoDaAssinatura(metodo: string): Record<string, string> {
+  const codigo = assinaturaJuridicaAtiva();
+  return codigo && metodo !== "GET" ? { [CABECALHO_ASSINATURA_JURIDICA]: codigo } : {};
+}
+
 /** `enviarFormulario("/importacoes", form)`: POST multipart (arquivos); `"PUT"` troca um arquivo já enviado. Lança `ErroCliente` com a mensagem da `api`. */
 export async function enviarFormulario<T = unknown>(caminho: string, form: FormData, metodo: "POST" | "PUT" = "POST"): Promise<T> {
-  return lerResposta(await fetch(`/api${caminho}`, { method: metodo, body: form, cache: "no-store" })) as Promise<T>;
+  return lerResposta(await fetch(`/api${caminho}`, { method: metodo, body: form, headers: cabecalhoDaAssinatura(metodo), cache: "no-store" })) as Promise<T>;
 }
 
 /** `chamar("POST", "/os/123/ciencia")`; o corpo vai como JSON. Lança `ErroCliente` com a mensagem da `api`. */
 export async function chamar<T = unknown>(metodo: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", caminho: string, corpo?: unknown): Promise<T> {
+  const cabecalhos = { ...(corpo === undefined ? {} : { "Content-Type": "application/json" }), ...cabecalhoDaAssinatura(metodo) };
   const resposta = await fetch(`/api${caminho}`, {
     method: metodo,
-    headers: corpo === undefined ? undefined : { "Content-Type": "application/json" },
+    headers: Object.keys(cabecalhos).length > 0 ? cabecalhos : undefined,
     body: corpo === undefined ? undefined : JSON.stringify(corpo),
     cache: "no-store",
   });
@@ -156,6 +167,9 @@ export { ErroDeEvento, type EventoDeCampo, type RespostaEventos } from "./evento
  * item(ns)"…). Fotos e assinaturas precisam ter subido antes com `enviarArquivo`.
  */
 export async function enviarEvento(evento: EventoDeCampo): Promise<RespostaEventos & { id: string }> {
-  const { id, corpo } = montarEnvioDoEvento(evento);
+  // O evento assinado leva o código da assinatura com validade jurídica, quando a janela de assinatura tem uma de pé.
+  const assinatura = assinaturaJuridicaAtiva();
+  const assinado = assinatura && (EVENTOS_ASSINADOS as readonly string[]).includes(evento.tipo);
+  const { id, corpo } = montarEnvioDoEvento(assinado ? { ...evento, payload: { ...evento.payload, [CAMPO_ASSINATURA_JURIDICA_DO_EVENTO]: assinatura } } : evento);
   return interpretarRespostaDoEvento(await chamar<RespostaEventos>("POST", "/eventos", corpo), id);
 }

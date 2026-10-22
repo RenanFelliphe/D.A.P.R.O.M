@@ -199,6 +199,7 @@ A lista completa, com padrões e validação, está em `api/src/config.ts`; o mo
 | Push | `PUSH_LIGADO` (padrão `true`), `EXPO_PUSH_URL`, `EXPO_ACCESS_TOKEN` (só se a conta da Expo a exige) |
 | IA | `IA_PROVEDOR`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `*_MODELO_CHATBOT`, `*_MODELO_MINIGAMES`, `*_MODELO_RECOMENDACAO`, `*_MODELO_DIGITALIZACAO`, `GEMINI_MODELO_RESERVA`, limites `VITORIA_*` e `TREINAMENTO_IA_*` |
 | Previsão do tempo | `CLIMA_API_URL`, `CLIMA_API_CHAVE` |
+| Assinatura com validade jurídica | `ASSINATURA_PROVEDOR` (`desligado`, padrão; `zapsign`; `simulado`), `ZAPSIGN_URL` (padrão: o sandbox), `ZAPSIGN_TOKEN`, `ASSINATURA_WEBHOOK_SEGREDO`, `API_URL_PUBLICA` (só o simulado). Ver [pessoas-e-equipes.md, seção 3.3](pessoas-e-equipes.md) |
 | Servidor | `PORT` |
 | web | `API_URL` (só no servidor do `web`) |
 | mobile | `EXPO_PUBLIC_API_URL`, fixada no build do APK |

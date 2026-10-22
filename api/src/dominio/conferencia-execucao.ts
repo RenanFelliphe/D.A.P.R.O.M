@@ -20,6 +20,7 @@ import { podeSupervisionarEquipe, type UsuarioAutenticado } from "../http/autent
 import { criarAviso, destinatariosDaEquipe } from "./alertas";
 import { participantesDaApr } from "./apr-assinaturas";
 import { assinaturaDoAto } from "./assinatura";
+import type { ExigirAssinaturaJuridica } from "./assinatura-juridica";
 import { compararVersoes, escolhaValida, responsavelDaConferencia, tipoDaComparacao, type CanonicoDaExecucao } from "./conferencia-comparacao";
 import { recalcularStatusOs } from "./status-os";
 
@@ -528,7 +529,7 @@ export async function decidirConferencia(db: Db, eu: UsuarioAutenticado, confere
  * A ciência (resumo) ou a assinatura (com divergência) de um participante. A ressalva é opcional: não trava nada, vai ao supervisor com
  * aviso e ao relatório. O responsável não assina a própria conferência. Quando o último assina, a conferência está concluída.
  */
-export async function assinarConferencia(db: Db, eu: UsuarioAutenticado, conferenciaId: string, ressalva: string | null, agora: Date, saida?: Saida) {
+export async function assinarConferencia(db: Db, eu: UsuarioAutenticado, conferenciaId: string, ressalva: string | null, agora: Date, saida?: Saida, exigirAssinaturaJuridica?: ExigirAssinaturaJuridica) {
   await db.transaction(async (t) => {
     const tx = t as unknown as Db;
     const [conf] = await tx.select().from(conferenciaExecucao).where(eq(conferenciaExecucao.id, conferenciaId)).for("update");
@@ -538,6 +539,8 @@ export async function assinarConferencia(db: Db, eu: UsuarioAutenticado, confere
     const devem = await quemDeveAssinar(tx, conf, e!);
     if (!devem.includes(eu.id)) throw proibido(eu.id === conf.responsavelId ? "O responsável escolheu as versões: quem assina são os demais participantes" : "Só os participantes da execução dão a ciência ou assinam");
     const tipo = conf.tipo === "resumo" ? "ciencia" : "assinatura";
+    // Só a assinatura (com divergência) passa pelo provedor; a ciência do resumo não assina.
+    if (tipo === "assinatura") await exigirAssinaturaJuridica?.(tx);
     const assinaturaPath = tipo === "assinatura" ? assinaturaDoAto(eu) : null;
     const texto = ressalva?.trim() || null;
     const inserida = await tx

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { FUNCOES_DE_IA } from "../../../shared/ia/funcoes";
+import { assinaturaJuridicaDoPedido } from "../dominio/assinatura-juridica";
 import { alterarFuncaoDeIa, painelDaIa } from "../dominio/ia-funcoes";
 import { diagnosticoDaVitoria, listarPerguntasSemResposta, marcarPerguntaTratada, registrarEventoDaVitoria, responderVitoria, sobreAVitoria } from "../dominio/vitoria";
 import type { Deps } from "../deps";
@@ -102,7 +103,7 @@ export function rotasVitoria(deps: Deps, { autenticar, exigirPerfil }: Autentica
   r.put("/vitoria/ia/:funcao", autenticar(), soAdmin, async (c) => {
     const funcao = validar(z.enum(FUNCOES_DE_IA), c.req.param("funcao"));
     const dados = await lerCorpo(c, esquemaAlteracaoDaIa);
-    await alterarFuncaoDeIa(deps, c.get("usuario"), funcao, { ligada: dados.ligada, comDados: dados.com_dados, versaoDoTexto: dados.versao_do_texto });
+    await alterarFuncaoDeIa(deps, c.get("usuario"), funcao, { ligada: dados.ligada, comDados: dados.com_dados, versaoDoTexto: dados.versao_do_texto, exigirAssinaturaJuridica: assinaturaJuridicaDoPedido(deps, c) });
     return responder(c, await painelDaIa(deps));
   });
 

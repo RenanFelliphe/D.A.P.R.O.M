@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { rotuloDoStatus, type OsStatus } from "@shared/api/tipos";
 import { mensagemDoErro } from "@/api/erros";
+import { FaixaDeAssinaturasPendentes } from "@/assinatura/FaixaDeAssinaturasPendentes";
 import { PrevisaoNaLista } from "@/clima/PrevisaoNaLista";
 import { CartaoDaOs } from "@/os/CartaoDaOs";
 import { FaixaDeAusencia } from "@/os/FaixaDeAusencia";
@@ -46,6 +47,7 @@ export default function Lista() {
     <View style={estilos.cabecalho}>
       <FaixaDeAusencia />
       <FaixaDeAssinaturas />
+      <FaixaDeAssinaturasPendentes />
       <AtalhoDeExecucao />
       <PrevisaoNaLista />
       <View style={estilos.busca}>

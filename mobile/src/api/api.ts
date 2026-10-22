@@ -1,4 +1,5 @@
 import { URL_DA_API } from "@/config";
+import { cabecalhosDaAssinaturaJuridica } from "@/assinatura/juridica";
 import { armazemSeguro } from "./armazem-seguro";
 import { criarClienteApi } from "./cliente";
 import { criarEnvio } from "./eventos";
@@ -27,6 +28,8 @@ export const cliente = criarClienteApi({
   armazem: armazemSeguro,
   aoSessaoEncerrada: () => ouvintes.forEach((o) => o()),
   modoLocal: modoLocalAtivo,
+  // O ato assinado com validade jurídica leva o código da assinatura (`assinatura/juridica.ts`); fora dele, nada é acrescentado.
+  cabecalhosDeEscrita: cabecalhosDaAssinaturaJuridica,
 });
 
 /**
