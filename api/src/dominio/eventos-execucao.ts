@@ -4,6 +4,7 @@ import { PAUSA_MOTIVOS, SUSPENSAO_MOTIVOS, apr, aprParticipante, eventoCampo, ev
 import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas } from "./alertas";
 import { participantesDaApr, situacaoDasAssinaturas } from "./apr-assinaturas";
+import { esquemaClimaRegistrado, gravarClimaDaExecucao } from "./clima-registro";
 import { MAX_OBSERVACAO_DO_ITEM, checklistsDasOs, type DadosDeInspecao, type ItemRespondido } from "./checklist-inspecao";
 import {
   avisarConflitoDePlanejamento,
@@ -342,6 +343,8 @@ const esquemaEncerramentoAssinado = z.object({
   dados_inspecao: z.unknown().optional(),
   /** Fotos e PDFs, opcionais. */
   evidencias: z.array(evidenciaPayload).default([]),
+  /** A previsão do tempo no encerramento (`shared/api/clima.ts`): só informativa, vai para o relatório. */
+  clima: esquemaClimaRegistrado.nullish(),
 });
 
 /**
@@ -373,6 +376,7 @@ export async function aplicarEncerramentoAssinado(ctx: Contexto, bruto: unknown)
     .where(eq(execucao.id, e.id));
   await ctx.tx.insert(execucaoAssinatura).values({ execucaoId: e.id, usuarioId: ctx.usuario.id, assinaturaPath, assinadaEm: quando });
   await gravarEvidencias(ctx, e.id, p.evidencias);
+  if (p.clima) await gravarClimaDaExecucao(ctx.tx, e.id, ctx.usuario.id, p.clima);
 
   // Vale a primeira encerrada e assinada; a segunda (duplicada) fica guardada, sem pontuar.
   const [outraAssinada] = await ctx.tx

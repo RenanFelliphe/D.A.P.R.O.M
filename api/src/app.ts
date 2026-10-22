@@ -5,6 +5,8 @@ import { tratarErro } from "./http/erros";
 import { rotasArquivos } from "./rotas/arquivos";
 import { rotasAusencias } from "./rotas/ausencias";
 import { rotasAuditoria } from "./rotas/auditoria";
+import { rotasClima } from "./rotas/clima";
+import { rotasConfiguracoes } from "./rotas/configuracoes";
 import { rotasAuth } from "./rotas/auth";
 import { rotasBusca } from "./rotas/busca";
 import { rotasCatalogo } from "./rotas/catalogo";
@@ -68,6 +70,8 @@ export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa 
   app.route("/", rotasTreinamentos(deps, auth));
   app.route("/", rotasVitoria(deps, auth));
   app.route("/", rotasRh(deps, auth));
+  app.route("/", rotasClima(deps, auth));
+  app.route("/", rotasConfiguracoes(deps, auth));
   if (deps.config.sapSimulado) app.route("/sap-simulado", rotasSapSimulado(deps, auth));
   if (deps.config.rhSimulado) app.route("/rh-simulado", rotasRhSimulado(deps, auth, opcoes.enviarAvisoRh ?? avisoPorHttp(deps)));
 

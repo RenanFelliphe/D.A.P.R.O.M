@@ -20,3 +20,4 @@ export * from "./sugestao-materiais";
 export * from "./solicitacao-conta";
 export * from "./vitoria";
 export * from "./ia";
+export * from "./clima";

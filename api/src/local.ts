@@ -36,6 +36,8 @@ import { AuthEmMemoria } from "./servicos/auth";
 import { EmailEmMemoria } from "./servicos/email";
 import { controlarIA } from "./dominio/ia-funcoes";
 import { criarProvedorIA } from "./servicos/ia";
+import { aplicarConfiguracoes } from "./dominio/configuracoes";
+import { ClienteOpenMeteo } from "./servicos/clima";
 import { MotorOcrTesseract } from "./servicos/ocr";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
@@ -73,6 +75,8 @@ const config: Config = {
   smtpUrl: "",
   emailRemetente: "synqos@localhost",
   emailResumoHora: 7,
+  climaApiUrl: "https://api.open-meteo.com/v1/forecast",
+  climaApiChave: "",
   painelUrl: process.env.PAINEL_URL ?? "http://localhost:3000",
   ia: lerConfigIA(),
   vitoria: { limitePorConversa: 20, limitePorContaDia: 40, limiteGlobalDia: 1000, maxTokensResposta: 1024 },
@@ -89,6 +93,7 @@ async function main() {
 
   const auth = new AuthEmMemoria(SEGREDO_JWT, () => new Date(), 8 * 3600);
   const armazenamento = new ArmazenamentoEmMemoria(`http://localhost:${PORTA}/arquivos-locais`);
+  await aplicarConfiguracoes({ db, config });
   const deps: Deps = {
     db,
     config,
@@ -100,6 +105,7 @@ async function main() {
     rh: new ClienteRhHttp(config.rhApiUrl, TOKEN_RH),
     ia: controlarIA(db, criarProvedorIA(config.ia, config.vitoria.maxTokensResposta)),
     ocr: new MotorOcrTesseract(),
+    clima: new ClienteOpenMeteo(config.climaApiUrl, config.climaApiChave),
     agora: () => new Date(),
   };
 

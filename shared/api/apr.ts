@@ -33,6 +33,8 @@ export interface ItemDoModelo {
   ordem: number;
   texto: string;
   permite_na: boolean;
+  /** A pergunta mostra a previsão do tempo: ao responder "Sim" com risco previsto, a tela avisa antes (`exigenciaDoClima`). */
+  mostrar_clima?: boolean;
 }
 
 /**

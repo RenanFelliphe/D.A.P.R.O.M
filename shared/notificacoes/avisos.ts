@@ -56,6 +56,8 @@ export const TIPOS_DE_AVISO = [
   "direito_de_recusa",
   "lesao_ou_enfermidade",
   "os_para_assinar",
+  // A previsão apontou risco extremo e a pessoa seguiu com a APR mesmo assim (com a foto do local): o supervisor sabe na hora
+  "clima_extremo",
   ...AVISOS_DE_AUSENCIA,
   ...AVISOS_DE_REPRESENTACAO,
   // OS de uma pessoa
@@ -169,6 +171,7 @@ export const ROTULO_DO_AVISO: Record<TipoDeAviso, string> = {
   direito_de_recusa: "Direito de recusa na APR",
   lesao_ou_enfermidade: "Lesão ou enfermidade na execução",
   os_para_assinar: "OS aguardando a sua assinatura",
+  clima_extremo: "Risco climático extremo na APR",
   ausencia_pedida: "Ausência: pedido a responder",
   ausencia_aprovada: "Ausência aprovada",
   ausencia_recusada: "Ausência recusada",
@@ -252,6 +255,7 @@ export const CATEGORIA_DO_AVISO: Record<TipoDeAviso, CategoriaDeEmail | null> = 
   // A lesão no trabalho, mesmo leve, é acidente de trabalho: o aviso por e-mail é obrigatório, como o do impedimento.
   direito_de_recusa: "seguranca",
   lesao_ou_enfermidade: "seguranca",
+  clima_extremo: "seguranca",
   os_para_assinar: "os",
   ausencia_pedida: "ausencias",
   ausencia_aprovada: "ausencias",
@@ -308,7 +312,7 @@ export const ROTULO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
 };
 
 export const DESCRICAO_DA_CATEGORIA: Record<CategoriaDeEmail, string> = {
-  seguranca: "APR bloqueada, execução interrompida por risco, direito de recusa e lesão ou enfermidade na execução, nas equipes que você supervisiona.",
+  seguranca: "APR bloqueada, execução interrompida por risco, direito de recusa, lesão ou enfermidade na execução e APR seguida com risco climático extremo, nas equipes que você supervisiona.",
   conta: "Conta criada, acesso liberado ou recusado e senha redefinida.",
   os: "OS reservada para você ou tirada de você, assinatura final do supervisor na OS que você executou, OS aguardando a sua assinatura de supervisor, OS de apoio encerrada, inspeção com pendência, conflitos e execuções duplicadas.",
   preventivas: "Ciclo das preventivas próximo do vencimento ou vencido.",

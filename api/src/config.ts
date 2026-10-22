@@ -26,6 +26,9 @@ const esquema = z.object({
   SMTP_URL: z.string().default(""),
   EMAIL_REMETENTE: z.string().default("synqos@localhost"),
   EMAIL_RESUMO_HORA: z.coerce.number().int().min(0).max(23).default(7),
+  /** Previsão do tempo (Open-Meteo): o endereço muda só para o plano pago ou um espelho; a chave só existe no plano pago. */
+  CLIMA_API_URL: z.string().default("https://api.open-meteo.com/v1/forecast"),
+  CLIMA_API_CHAVE: z.string().trim().default(""),
   PAINEL_URL: z.string().default("http://localhost:3000"),
   VITORIA_LIMITE_POR_CONVERSA: z.coerce.number().int().positive().default(20),
   VITORIA_LIMITE_POR_CONTA_DIA: z.coerce.number().int().positive().default(40),
@@ -86,6 +89,9 @@ export interface Config {
   emailRemetente: string;
   /** Hora (de São Paulo) a partir da qual sai o resumo diário por e-mail. */
   emailResumoHora: number;
+  /** A previsão do tempo (funcionalidades/previsao-do-tempo.md). */
+  climaApiUrl: string;
+  climaApiChave: string;
   painelUrl: string;
   /** Módulo de IA genérico (`servicos/ia`): `ligada` é o único ponto de decisão "tem IA ou não" (vitoria.md, seção 1). */
   ia: {
@@ -173,6 +179,8 @@ export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
     smtpUrl: e.SMTP_URL,
     emailRemetente: e.EMAIL_REMETENTE,
     emailResumoHora: e.EMAIL_RESUMO_HORA,
+    climaApiUrl: e.CLIMA_API_URL,
+    climaApiChave: e.CLIMA_API_CHAVE,
     painelUrl: e.PAINEL_URL.replace(/\/$/, ""),
     ia: lerConfigIA(env),
     vitoria: {

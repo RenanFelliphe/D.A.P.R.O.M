@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import { atividade, itemModeloApr, modeloApr, orientacaoModeloApr, riscoModeloApr } from "../schema";
+import { ehPerguntaDeClima } from "../../../../shared/api/clima";
 import dados from "./modelos-apr.json" with { type: "json" };
 import { ORIENTACOES_INICIAIS } from "./orientacoes-modelos-apr";
 
@@ -49,6 +50,7 @@ export async function carregarDadosIniciais(db: PgDatabase<PgQueryResultHKT>): P
       await tx.insert(itemModeloApr).values(
         (m.itens as ItemDoSeed[]).map(({ risco, ...item }) => ({
           ...item,
+          mostrarClima: item.mostrarClima ?? ehPerguntaDeClima(item.texto),
           modeloAprId,
           riscoId: risco === null ? null : riscoPorOrdem.get(risco)!,
         })),

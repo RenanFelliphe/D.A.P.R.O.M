@@ -38,6 +38,7 @@ export async function gravarRiscosEItens(db: Db, modeloAprId: string, riscos: Ri
         tipo: i.tipo,
         evidencia: i.evidencia,
         permiteNa: i.permite_na,
+        mostrarClima: i.mostrar_clima,
       })),
     );
   }
@@ -61,6 +62,7 @@ export async function lerRiscosEItens(db: Db, modeloAprId: string) {
       tipo: i.tipo,
       evidencia: i.evidencia,
       permiteNa: i.permiteNa,
+      mostrarClima: i.mostrarClima,
     })),
   };
 }
@@ -113,6 +115,7 @@ export async function conteudoDe(db: Db, linha: typeof modeloApr.$inferSelect): 
       tipo: i.tipo,
       evidencia: i.evidencia,
       permite_na: i.permiteNa,
+      mostrar_clima: i.mostrarClima,
     })),
   };
 }

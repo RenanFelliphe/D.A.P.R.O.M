@@ -20,6 +20,7 @@ import { ArmazenamentoSupabase } from "../src/servicos/armazenamento";
 import { AuthSupabase } from "../src/servicos/auth";
 import { EmailEmMemoria } from "../src/servicos/email";
 import { criarProvedorIA } from "../src/servicos/ia";
+import { ClimaIndisponivel } from "../src/servicos/clima";
 import { OcrEmMemoria } from "../src/servicos/ocr-memoria";
 import { ClienteRhHttp } from "../src/servicos/rh-http";
 import { ClienteSapHttp } from "../src/servicos/sap-http";
@@ -45,6 +46,8 @@ try {
     ia: criarProvedorIA(config.ia, config.vitoria.maxTokensResposta),
     // A demonstração não lê folhas digitalizadas: o OCR de verdade só é aberto na api.
     ocr: new OcrEmMemoria(),
+    // A demonstração não consulta a previsão do tempo.
+    clima: new ClimaIndisponivel(),
     agora: () => new Date(),
   }, { elenco });
   if (resultado.jaPopulado) {

@@ -22,6 +22,7 @@ import { EmailEmMemoria } from "../src/servicos/email";
 import { definicaoDaFuncao, exigeDados, type FuncaoDeIA } from "../../shared/ia/funcoes";
 import { controlarIA } from "../src/dominio/ia-funcoes";
 import { ProvedorIAEmMemoria } from "../src/servicos/ia";
+import { ClimaEmMemoria } from "../src/servicos/clima";
 import { OcrEmMemoria } from "../src/servicos/ocr-memoria";
 import { RegistroIndisponivel, type ClienteRh, type FuncionarioRh } from "../src/servicos/rh";
 import type { ClienteSap, OrdemSap } from "../src/servicos/sap";
@@ -49,6 +50,8 @@ export const configDeTeste: Config = {
   smtpUrl: "",
   emailRemetente: "synqos@teste",
   emailResumoHora: 7,
+  climaApiUrl: "https://api.open-meteo.com/v1/forecast",
+  climaApiChave: "",
   painelUrl: "http://painel.local",
   // Sem chave real: os testes programam o `ProvedorIAEmMemoria` (amb.ia) quando precisam simular a IA ligada.
   ia: { provedor: "anthropic", apiKey: "", ligada: false, modelos: { chatbot: "modelo-chatbot-teste", minigames: "modelo-minigames-teste", recomendacao: "modelo-recomendacao-teste", digitalizacao: "modelo-digitalizacao-teste" } },
@@ -126,8 +129,11 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   const rh = new RhEmMemoria();
   const ia = new ProvedorIAEmMemoria();
   const ocr = new OcrEmMemoria();
+  const clima = new ClimaEmMemoria();
   // Como em produção, a IA passa pelo controle: `amb.ia` é a de memória que o teste programa, e `deps.ia` a que confere se a função está ligada.
-  const deps: Deps = { db, config: configDeTeste, auth, armazenamento, email, sap, rh, ia: controlarIA(db, ia), ocr, agora: () => relogio.agora };
+  // Uma cópia da configuração por ambiente: as configurações do sistema (`aplicarConfiguracoes`) escrevem nela.
+  const config = { ...configDeTeste, vitoria: { ...configDeTeste.vitoria }, treinamentoIa: { ...configDeTeste.treinamentoIa } };
+  const deps: Deps = { db, config, auth, armazenamento, email, sap, rh, ia: controlarIA(db, ia), ocr, clima, agora: () => relogio.agora };
   // O aviso que o simulador do RH manda ao SYNQ OS: fica anotado em `avisosRh` e, com `rhSimulador.encaminhar`, chega de verdade em `POST /rh/avisos`.
   const avisosRh: string[][] = [];
   const rhSimulador = { encaminhar: false };
@@ -244,7 +250,7 @@ export async function criarAmbiente(opcoes: { relogio?: Date; comCarga?: boolean
   /** A imagem da assinatura que está no perfil agora: é a que cada ato assinado copia para si. */
   const assinaturaDe = async (usuario: UsuarioDeTeste) => (await sql<{ assinatura_path: string | null }>("select assinatura_path from usuario where id = $1", [usuario.id]))[0]!.assinatura_path;
 
-  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, ocr, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, cadastrarAssinatura, assinaturaDe, ligarIa, sql, fechar: () => cliente.close() };
+  return { db, deps, app, relogio, auth, armazenamento, email, sap, rh, ia, ocr, clima, registrarFuncionario, avisosRh, rhSimulador, cliente, criarEquipe, criarUsuario, req, esperar, cadastrarAssinatura, assinaturaDe, ligarIa, sql, fechar: () => cliente.close() };
 }
 
 export type Ambiente = Awaited<ReturnType<typeof criarAmbiente>>;

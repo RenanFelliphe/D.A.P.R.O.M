@@ -1,5 +1,6 @@
 /** Tipos das respostas de OS usadas nas telas do técnico (lista, detalhe e APR) e pequenas regras sobre elas. Chaves em snake_case, como a `api` devolve. */
 
+import type { ClimaRegistrado } from "./clima";
 import type { ConferenciaDaOs } from "./conferencia-execucao";
 import type { PedidoDaApi } from "./execucao-pedidos";
 import type { TomDoSelo } from "./tipos";
@@ -83,6 +84,8 @@ export interface AprDaOs {
   participantes: ParticipanteDaApr[];
   respostas: { item_id: string; texto: string; reprovado: boolean }[];
   itens_reprovados: ItemReprovadoDaApr[];
+  /** A previsão do tempo que a pessoa viu na pergunta de clima (`previsao-do-tempo.md`); nula quando não houve. Só no que vem do servidor. */
+  clima?: ClimaRegistrado | null;
   /** Só no app, e só na APR feita sem sinal neste aparelho: o servidor ainda não a validou (ela sobe quando o sinal voltar). */
   aguardando_validacao?: boolean;
   /** Só no app: quantos itens a APR feita sem sinal respondeu (a cópia local não traz as respostas das APRs do servidor). */
@@ -105,6 +108,8 @@ export interface ExecucaoDaOs {
   finalizada_por?: { id: string; nome: string } | null;
   /** Os pedidos de participantes ao responsável; o aberto traz `restante_ms`. */
   pedidos?: PedidoDaApi[];
+  /** As condições do tempo no encerramento (`previsao-do-tempo.md`); nulas quando não houve. Só no que vem do servidor. */
+  clima?: ClimaRegistrado | null;
 }
 
 export interface OsDetalhada {

@@ -25,7 +25,7 @@ const VALIDADE_LINKS_S = 7 * 24 * 3600;
 /** Por que a pessoa recebe e como deixar de receber (as categorias obrigatórias não desligam). */
 export function rodapeDoEmail(categoria: CategoriaDeEmail, painelUrl: string): string {
   if (ehCategoriaObrigatoria(categoria)) return "Este aviso é enviado sempre: é sobre a segurança do campo ou sobre a sua conta no SYNQ OS.";
-  return `Você recebe este e-mail porque os avisos de "${ROTULO_DA_CATEGORIA[categoria]}" estão ligados no seu perfil. Para deixar de recebê-los, desligue em ${painelUrl}/app/perfil#emails; o aviso continua no sino do SYNQ OS.`;
+  return `Você recebe este e-mail porque os avisos de "${ROTULO_DA_CATEGORIA[categoria]}" estão ligados nas suas configurações. Para deixar de recebê-los, desligue em ${painelUrl}/app/configuracoes/conta#emails; o aviso continua no sino do SYNQ OS.`;
 }
 
 /** Um arquivo de evidência no e-mail: "Foto 2" ou "PDF 1: laudo.pdf", com o link assinado. */

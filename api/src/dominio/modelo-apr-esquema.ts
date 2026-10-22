@@ -21,6 +21,8 @@ export const esquemaItem = z.object({
   tipo: z.enum(ITEM_TIPOS),
   evidencia: z.enum(ITEM_EVIDENCIAS).default("foto"),
   permite_na: z.boolean().default(false),
+  /** A pergunta mostra a previsão do tempo (a pergunta de clima da APR). */
+  mostrar_clima: z.boolean().default(false),
 });
 
 /** O PAE é um JSON definido pelo cliente (`{titulo, subtitulo, fluxo, linhas}`); a api só exige que seja um objeto. */

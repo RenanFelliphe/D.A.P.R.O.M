@@ -491,7 +491,7 @@ describe("Preferências de e-mail e resumo diário", () => {
     assert.ok(de(tecnico.email)!.texto.includes("OS reservadas para você (1)"));
     assert.ok(de(admin.email)!.texto.includes("Cadastros aguardando a liberação (1)"));
     assert.ok(de(admin.email)!.texto.includes("Paulo Pendente"));
-    assert.ok(de(admin.email)!.texto.includes("perfil#emails"), "o rodapé diz como desligar");
+    assert.ok(de(admin.email)!.texto.includes("configuracoes/conta#emails"), "o rodapé diz como desligar");
     assert.equal(resumos.length, 3);
   });
 });

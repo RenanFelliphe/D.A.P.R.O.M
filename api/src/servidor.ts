@@ -13,6 +13,8 @@ import { AuthSupabase } from "./servicos/auth";
 import { EmailSemServidor, EmailSmtp } from "./servicos/email";
 import { controlarIA } from "./dominio/ia-funcoes";
 import { criarProvedorIA } from "./servicos/ia";
+import { aplicarConfiguracoes } from "./dominio/configuracoes";
+import { ClienteOpenMeteo } from "./servicos/clima";
 import { MotorOcrTesseract } from "./servicos/ocr";
 import { ClienteRhHttp } from "./servicos/rh-http";
 import { ClienteSapHttp } from "./servicos/sap-http";
@@ -57,6 +59,9 @@ async function main() {
   await garantirImagensDeTreinamentoServico(armazenamento).catch((erro) => console.warn(`Imagens dos treinamentos de serviço não verificadas: ${erro.message}`));
   await garantirImagensDeSincronizacaoOffline(armazenamento).catch((erro) => console.warn(`Imagem da conquista de sincronização offline não verificada: ${erro.message}`));
 
+  // O que o admin mudou em /app/configuracoes (horários, limites da IA) vale por cima do ambiente já na subida.
+  await aplicarConfiguracoes({ db, config });
+
   const deps = {
     db,
     config,
@@ -67,6 +72,7 @@ async function main() {
     rh: new ClienteRhHttp(config.rhApiUrl, config.rhApiToken),
     ia: controlarIA(db, criarProvedorIA(config.ia, config.vitoria.maxTokensResposta)),
     ocr: new MotorOcrTesseract(),
+    clima: new ClienteOpenMeteo(config.climaApiUrl, config.climaApiChave),
     agora: () => new Date(),
   };
   if (config.ia.ligada) console.log(`IA ligada: ${config.ia.provedor} (Vitória: ${config.ia.modelos.chatbot})`);

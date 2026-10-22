@@ -9,6 +9,7 @@ import {
   aprRisco,
   equipe,
   eventoCampo,
+  climaRegistro,
   evidencia,
   execucao,
   execucaoAssinatura,
@@ -36,6 +37,7 @@ import { buscaDeOs } from "./busca";
 import { checklistsDasOs } from "./checklist-inspecao";
 import { conferenciaEsperandoDados, conferenciasDaOs } from "./conferencia-execucao";
 import { servicoDaAtividade } from "./catalogo";
+import { climaParaApi } from "./clima-registro";
 import { colunasDeEvidencia, separarEvidencias } from "./evidencias";
 import { ganhosDe } from "./lancamentos";
 import { assinaturaDoAto } from "./assinatura";
@@ -269,6 +271,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
   if (linhas.length === 0) return [];
   const ids = linhas.map((l) => l.id);
 
+  const climas = await db.select().from(climaRegistro).where(inArray(climaRegistro.aprId, ids));
   const [participantes, riscos, respostas, arquivos] = await Promise.all([
     db
       .select({
@@ -356,6 +359,8 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
       concluidaEm: l.concluidaEm,
       preenchidaPor: { id: l.preenchidaPorId, nome: l.preenchidaPorNome },
       modelo: { codigo: l.modeloCodigo, versao: l.modeloVersao, titulo: l.modeloTitulo },
+      /** A previsão do tempo que a pessoa viu na pergunta de clima (`previsao-do-tempo.md`); nula quando não houve. */
+      clima: ((c) => (c ? climaParaApi(c) : null))(climas.find((c) => c.aprId === l.id)),
       participantes: participantes
         .filter((p) => p.aprId === l.id)
         .map(({ aprId: _a, ...p }) => p),
@@ -407,6 +412,7 @@ async function carregarExecucoes(db: Db, osId: string, agora: Date) {
   if (linhas.length === 0) return [];
   const ids = linhas.map((l) => l.id);
 
+  const climas = await db.select().from(climaRegistro).where(inArray(climaRegistro.execucaoId, ids));
   const [pausas, assinaturas, arquivos, pedidos] = await Promise.all([
     db.select().from(execucaoPausa).where(inArray(execucaoPausa.execucaoId, ids)).orderBy(asc(execucaoPausa.inicio)),
     db
@@ -481,6 +487,8 @@ async function carregarExecucoes(db: Db, osId: string, agora: Date) {
       localizacaoInicio: l.inicioLatitude !== null && l.inicioLongitude !== null ? { latitude: l.inicioLatitude, longitude: l.inicioLongitude } : null,
       localizacaoFim: l.fimLatitude !== null && l.fimLongitude !== null ? { latitude: l.fimLatitude, longitude: l.fimLongitude } : null,
       dadosInspecao: l.dadosInspecao,
+      /** As condições do tempo no encerramento (`previsao-do-tempo.md`); nulas quando não houve. */
+      clima: ((c) => (c ? climaParaApi(c) : null))(climas.find((c) => c.execucaoId === l.id)),
       tempoLiquidoMin: tempo ? emMinutos(tempo.liquidoMs) : null,
       pausaMin: tempo ? emMinutos(tempo.pausaMs) : null,
       pausas: dela.map((p) => ({

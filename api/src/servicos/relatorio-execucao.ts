@@ -1,8 +1,9 @@
 import PDFDocument from "pdfkit";
-import { and, asc, eq, inArray, isNotNull, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import {
   apr,
   aprParticipante,
+  climaRegistro,
   equipe,
   evidencia,
   execucao,
@@ -15,8 +16,10 @@ import {
   os,
   usuario,
 } from "../db/schema";
+import { ROTULO_DO_NIVEL, type ClimaRegistrado } from "../../../shared/api/clima";
 import { ESCOLHA_DESCARTAR, ROTULO_DO_ESTADO_DA_CONFERENCIA, ROTULO_DO_TIPO_DA_CONFERENCIA, TOLERANCIA_MS } from "../../../shared/api/conferencia-execucao";
 import { PRAZO_DO_PEDIDO_MS, ROTULO_DO_ESTADO_DO_PEDIDO, ROTULO_DO_PEDIDO } from "../../../shared/api/execucao-pedidos";
+import { climaParaApi } from "../dominio/clima-registro";
 import { dadosDaConferenciaParaRelatorio, type DadosDaConferencia } from "../dominio/conferencia-execucao";
 import type { Deps } from "../deps";
 import { ROTULO_DA_PAUSA, ROTULO_DA_SUSPENSAO, descreverMotivo, ehMotivoDeSaude } from "../dominio/motivos-de-parada";
@@ -76,6 +79,8 @@ export interface DadosDoRelatorio {
     }[];
     /** A assinatura do responsável no encerramento (só a execução que encerrou tem). */
     assinaturaDoEncerramento: { nome: string; cargo: string | null; assinaturaPath: string; em: Date } | null;
+    /** A previsão do tempo que valia na APR e no encerramento (`previsao-do-tempo.md`); nula quando não houve (provedor fora do ar, sem sinal). */
+    clima: { apr: ClimaRegistrado | null; encerramento: ClimaRegistrado | null };
   }[];
   pausas: (typeof execucaoPausa.$inferSelect & { numeroDaExecucao: number; fimEfetivo: Date })[];
   /** O que os participantes que não iniciaram a execução fizeram nela (execução compartilhada), em ordem: pausas, retomadas, o fim e os pedidos ao responsável. */
@@ -160,6 +165,15 @@ export async function carregarDadosDoRelatorio(deps: Deps, osId: string): Promis
     .where(inArray(execucaoAssinatura.execucaoId, ids))
     .orderBy(asc(execucaoAssinatura.assinadaEm));
 
+  const linhasDeClima = await db
+    .select()
+    .from(climaRegistro)
+    .where(or(inArray(climaRegistro.aprId, execucoes.map((e) => e.aprId)), inArray(climaRegistro.execucaoId, ids)));
+  const climaDe = (l: (typeof linhasDeClima)[number] | undefined): ClimaRegistrado | null => {
+    if (!l) return null;
+    const { momento: _momento, ...clima } = climaParaApi(l);
+    return clima;
+  };
   const lista = execucoes.map((e) => {
     const fim = e.fim ?? e.inicio;
     const pausas = pausasBrutas.filter((p) => p.execucaoId === e.id);
@@ -177,6 +191,7 @@ export async function carregarDadosDoRelatorio(deps: Deps, osId: string): Promis
       aprConcluidaEm: modelo.concluidaEm,
       participantes: participantes.filter((p) => p.aprId === e.aprId),
       assinaturaDoEncerramento: assinante ? { nome: assinante.nome, cargo: assinante.cargo, assinaturaPath: assinante.assinaturaPath, em: assinante.em } : null,
+      clima: { apr: climaDe(linhasDeClima.find((l) => l.aprId === e.aprId)), encerramento: climaDe(linhasDeClima.find((l) => l.execucaoId === e.id)) },
     };
   });
   const fimDe = new Map(lista.map((x) => [x.e.id, x.fim]));
@@ -423,6 +438,39 @@ function caixasDeAssinatura(c: Cursor, d: DadosDoRelatorio, lista: { titulo: str
   }
 }
 
+/** A previsão do tempo guardada (a da APR e a do encerramento), como a seção do relatório a mostra. Só informativa: sem registro, a seção diz que não houve. */
+function climaDaExecucao(c: Cursor, d: DadosDoRelatorio) {
+  secao(c, "CONDIÇÕES CLIMÁTICAS");
+  const linhas = d.execucoes.flatMap((x) => [
+    ...(x.clima.apr ? [{ numero: x.numero, momento: `APR (${horaBr(new Date(x.clima.apr.consultada_em))})`, clima: x.clima.apr }] : []),
+    ...(x.clima.encerramento ? [{ numero: x.numero, momento: `Encerramento (${horaBr(new Date(x.clima.encerramento.consultada_em))})`, clima: x.clima.encerramento }] : []),
+  ]);
+  if (linhas.length === 0) {
+    linhaDeCelulas(c, [{ fracao: 1, valor: "Sem registro do clima: a previsão estava indisponível ou o aparelho estava sem sinal." }]);
+    c.y += 4;
+    return;
+  }
+  const f = [0.05, 0.16, 0.16, 0.43, 0.2];
+  const lp = larguras(c, f);
+  linhaDeCabecalho(c, ["Exec.", "Momento", "Situação", "Previsão e orientação", "Local"], f);
+  for (const { numero, momento, clima } of linhas) {
+    const ponto = { latitude: clima.local.latitude, longitude: clima.local.longitude };
+    const confirmou = clima.confirmou_apesar_do_aviso ? "A pessoa respondeu que o clima estava favorável e confirmou o aviso." : null;
+    linhaDeTabela(
+      c,
+      [
+        { largura: lp[0]!, texto: String(numero) },
+        { largura: lp[1]!, texto: momento },
+        { largura: lp[2]!, texto: ROTULO_DO_NIVEL[clima.nivel], negrito: clima.nivel !== "sem_risco" },
+        { largura: lp[3]!, texto: [clima.titulo, clima.orientacao, confirmou].filter(Boolean).join("\n") },
+        { largura: lp[4]!, texto: `${clima.local.nome}\n${coordenadas(ponto)}`, link: linkDoMapa(ponto) },
+      ],
+      { fundo: clima.nivel === "extremo" ? COR.reprovado : clima.nivel === "atencao" ? COR.alerta : undefined, respiro: 4, minimo: 12 },
+    );
+  }
+  c.y += 4;
+}
+
 /** Desenha o relatório no cursor e devolve o texto do rodapé (sem o número da página). */
 function desenharRelatorio(c: Cursor, d: DadosDoRelatorio, geradoEm: Date): string {
   const o = d.os;
@@ -511,6 +559,9 @@ function desenharRelatorio(c: Cursor, d: DadosDoRelatorio, geradoEm: Date): stri
     );
   }
   c.y += 4;
+
+  // Condições climáticas: a previsão que valia na APR e a do encerramento, uma linha para cada, por execução.
+  climaDaExecucao(c, d);
 
   // Pausas.
   secao(c, `PAUSAS (${d.pausas.length})`);

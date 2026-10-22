@@ -85,6 +85,8 @@ export const itemModeloApr = pgTable(
     tipo: text({ enum: ITEM_TIPOS }).notNull(),
     evidencia: text({ enum: ITEM_EVIDENCIAS }).notNull().default("foto"),
     permiteNa: boolean().notNull().default(false),
+    /** A pergunta mostra a previsão do tempo (a de clima): a tela consulta a previsão e, se há risco, avisa antes de aceitar "Sim". */
+    mostrarClima: boolean().notNull().default(false),
   },
   (t) => [
     unique("item_modelo_apr_modelo_apr_id_ordem_key").on(t.modeloAprId, t.ordem),

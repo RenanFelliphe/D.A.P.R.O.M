@@ -289,7 +289,7 @@ describe("E-mail de alerta de bloqueio", () => {
     assert.equal(amb.email.enviados.length, antes + 1);
     const m = amb.email.enviados.at(-1)!;
     assert.match(m.assunto, /^\[SYNQ OS\] Apoio encerrado — OS /);
-    for (const esperado of ["A OS de apoio 4099 foi encerrada", `http://painel.local/app/os/${o.osId}`, "http://painel.local/app/perfil#emails"]) {
+    for (const esperado of ["A OS de apoio 4099 foi encerrada", `http://painel.local/app/os/${o.osId}`, "http://painel.local/app/configuracoes/conta#emails"]) {
       assert.ok(m.texto.includes(esperado), `faltou "${esperado}" no texto`);
       assert.ok((m.html ?? "").includes(esperado), `faltou "${esperado}" no html`);
     }

@@ -6,6 +6,7 @@ import { instanteIso, uuid } from "../http/validacao";
 import { criarAlertas, criarAviso } from "./alertas";
 import { MIN_PARTICIPANTES, participantesDaApr, resolverAvisoDeAssinatura, situacaoDasAssinaturas } from "./apr-assinaturas";
 import { ausentesEm } from "./ausencia";
+import { esquemaClimaRegistrado, gravarClimaDaApr } from "./clima-registro";
 import { arquivoExigido } from "./evidencias";
 import { executouAteOFim } from "./status-os";
 import { diaDe } from "./tempo";
@@ -44,6 +45,8 @@ const esquemaApr = z.object({
   /** Fotos e PDFs dos itens reprovados. */
   evidencias: z.array(evidenciaPayload).default([]),
   observacao_geral: z.string().nullable().optional(),
+  /** A previsão do tempo que a pessoa viu na pergunta de clima (`shared/api/clima.ts`): só informativa, vai para o relatório. */
+  clima: esquemaClimaRegistrado.nullish(),
   concluida_em: instanteIso,
   /** Só conferido: o servidor recalcula o resultado. */
   resultado: z.enum(APR_RESULTADOS).optional(),
@@ -132,7 +135,7 @@ export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadAp
   if (faltando.length > 0) throw rejeitar("respostas_incompletas", `Faltam respostas em ${faltando.length} item(ns)`);
 
   const reprovados = itens.filter((i) => reprovou(i, respostaPorItem.get(i.id)?.resposta)).sort((a, b) => a.ordem - b.ordem);
-  return { ordem, mudou, desvio: divergencia, abertas, modelo, pessoas, respostaPorItem, reprovados };
+  return { ordem, mudou, desvio: divergencia, abertas, modelo, pessoas, respostaPorItem, reprovados, itens };
 }
 
 /** Respostas gravadas de uma APR, com o item do modelo; `reprovado` diz se o item reprovou a APR. */
@@ -230,7 +233,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
     return;
   }
 
-  const { ordem, mudou, desvio, abertas, modelo, pessoas, respostaPorItem, reprovados } = await conferirApr(ctx, osId, p);
+  const { ordem, mudou, desvio, abertas, modelo, pessoas, respostaPorItem, reprovados, itens } = await conferirApr(ctx, osId, p);
   ctx.saida.osAfetadas.add(ordem.id);
 
   // Item reprovado: exige observação e, se o item pede foto ou PDF, ao menos um arquivo desse tipo. O aparelho só conhece
@@ -245,6 +248,14 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   await exigirArquivosDasEvidencias(ctx, p.evidencias);
 
   const resultado = reprovados.length > 0 ? "bloqueada" : "aprovada";
+
+  // Previsão de risco extremo e a pergunta de clima respondida "Sim": a pessoa pode seguir (a previsão é regional e é só uma
+  // probabilidade), mas com a foto do local, que prova o tempo no ponto do serviço. Offline não dá para exigir (como a evidência).
+  const perguntaDeClima = itens.find((i) => i.mostrarClima);
+  const climaExtremoSeguido = resultado === "aprovada" && p.clima?.nivel === "extremo" && !!perguntaDeClima && respostaPorItem.get(perguntaDeClima.id)?.resposta === "sim";
+  if (climaExtremoSeguido && !ctx.offline && !ctx.evidenciaDepois && !p.evidencias.some((e) => e.item_id === perguntaDeClima!.id && e.tipo === "foto")) {
+    throw rejeitar("foto_do_clima_faltando", "Com risco climático extremo previsto, a APR só segue com a foto do local");
+  }
 
   await ctx.tx.insert(apr).values({
     id: p.id,
@@ -276,6 +287,7 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
   if (p.evidencias.length > 0) {
     await ctx.tx.insert(evidencia).values(p.evidencias.map((e) => linhaDeEvidencia(e, { aprId: p.id, itemId: e.item_id! })));
   }
+  if (p.clima) await gravarClimaDaApr(ctx.tx, p.id, ctx.usuario.id, p.clima);
   ctx.saida.aprs.push({ id: p.id, resultado });
   // A aprovada pontua quando todos assinaram (já aqui, se as assinaturas vieram presenciais; senão, na última `apr_assinada`); a
   // bloqueada, quando chega a evidência dos itens reprovados.
@@ -301,6 +313,17 @@ export async function aplicarAprConcluida(ctx: Contexto, osIdEnvelope: string | 
     });
     ctx.saida.alertas.push(
       ...(await criarAlertas(ctx.tx, { tipo: "bloqueio", osId: ordem.id, equipeId: ordem.equipeId, detalhe: `APR bloqueada (${reprovados.length} item(ns) reprovado(s)): ${itens.join("; ")}` })),
+    );
+  }
+  if (climaExtremoSeguido) {
+    ctx.saida.alertas.push(
+      ...(await criarAlertas(ctx.tx, {
+        tipo: "clima_extremo",
+        osId: ordem.id,
+        equipeId: ordem.equipeId,
+        detalhe: `OS ${ordem.numeroOrdem ?? ordem.titulo}: ${ctx.usuario.nome} registrou a APR com risco climático extremo previsto (${p.clima!.titulo}) e respondeu que o clima estava favorável. A foto do local está na APR. ${p.clima!.orientacao}`,
+        agora: ctx.recebidoEm,
+      })),
     );
   }
   if (mudou) await avisarConflitoDePlanejamento(ctx, ordem, "a APR foi aplicada depois que o planejamento mudou (equipe ou data)");

@@ -63,7 +63,7 @@ export function rotuloDoAlerta(a: Pick<Alerta, "tipo" | "detalhe">): string {
 }
 
 /** Os avisos de segurança do trabalho da Reunião 3: o direito de recusa na APR e a lesão ou enfermidade na execução. Têm o mesmo destaque do impedimento. */
-export const ehDeSeguranca = (a: Pick<Alerta, "tipo">) => a.tipo === "direito_de_recusa" || a.tipo === "lesao_ou_enfermidade";
+export const ehDeSeguranca = (a: Pick<Alerta, "tipo">) => a.tipo === "direito_de_recusa" || a.tipo === "lesao_ou_enfermidade" || a.tipo === "clima_extremo";
 
 /** Os avisos que pedem atenção (vermelho): o impedimento, a segurança, as falhas, o ciclo e a ausência vencidos e a equipe sem supervisor. */
 export const alertaUrgente = (a: Pick<Alerta, "tipo">): boolean =>
