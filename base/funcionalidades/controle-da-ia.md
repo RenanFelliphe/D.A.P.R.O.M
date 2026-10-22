@@ -21,7 +21,7 @@
 
 ## 2. A tela
 
-Na página da Vitória (`/app/perfil/vitoria`), antes do "Sobre", só para o admin: **Controle da IA**.
+Desde 21/10/2026 o bloco fica em **Configurações → Sistema** (`/app/configuracoes/sistema`, só para o admin; ver [configuracoes.md](configuracoes.md)); a página da Vitória (`/app/perfil/vitoria`) só tem um link para ele. Antes ficava na própria página da Vitória, antes do "Sobre". **Controle da IA**:
 
 - Um seletor com as quatro funções em dois grupos, cada função com uma bolinha (cinza = desligada, verde = ligada, âmbar = lendo dados).
 - Ao escolher uma função: o que ela é, um interruptor de ligar e desligar, o que a IA recebe e o que acontece com a função desligada.

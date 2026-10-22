@@ -191,6 +191,7 @@ Os modelos oficiais e o conteúdo deles são definidos e homologados pela Segura
 - [Plano do app mobile](./funcionalidades/mobile.md): as 20 etapas do app e do modo offline.
 - [Vitória](./base/funcionalidades/vitoria.md): a assistente, os treinamentos de serviço e a digitalização de OS antigas, com apoio da IA. O [controle da IA](./base/funcionalidades/controle-da-ia.md) e a [validação dos treinamentos](./base/funcionalidades/validacao-de-treinamento.md) estão em arquivos próprios.
 - [Gamificação](./base/funcionalidades/gameficacao.md): pontos, patentes, temporadas e conquistas.
+- [Previsão do tempo](./base/funcionalidades/previsao-do-tempo.md): a previsão no quadro, na APR e no relatório, com o aviso de risco. As [configurações](./base/funcionalidades/configuracoes.md) reúnem as preferências pessoais e, para o admin, a cidade padrão, os horários e os limites da IA.
 - [Execução compartilhada](./base/funcionalidades/execucao-compartilhada.md): acompanhar, agir e conferir o que foi feito sem sinal.
 - [Especificação funcional e técnica](./base/.design/especificacao.md): escopo, regras de negócio, arquitetura, contratos e decisões.
 - [Pontos a validar](./base/.design/pontos-a-validar.md) e [Questoes.md](./Questoes.md): questões que ainda dependem de confirmação.

@@ -45,6 +45,27 @@
   da IA (ou sem IA), o texto impresso continua sendo lido e o escrito à mão é digitado por você na conferência. [importacao]
 - A exportação para baixa no SAP fica num bloco à parte, no Dashboard de OS. [exportacao_sap]
 
+## Previsão do tempo
+
+- O quadro de OS mostra, ao lado dos contadores, a previsão do tempo das próximas horas do expediente, com uma orientação.
+  A previsão vem do GPS do aparelho; sem GPS, da cidade padrão, que você escolhe em Configurações, na aba "Sistema"
+  (padrão: Vitória, ES). [configuracoes_sistema]
+- Na pergunta de clima da APR, quem responde "favorável" com risco previsto vê um aviso e pode seguir; no risco extremo
+  só segue com a foto do local, e o supervisor da equipe recebe na hora o alerta "Risco climático extremo na APR", no sino e
+  por e-mail (segurança). O relatório da execução guarda a previsão da APR e a do encerramento. [alertas]
+- Qual pergunta mostra a previsão é uma marca do item no editor de modelos de APR ("Mostrar a previsão do tempo nesta
+  pergunta"); as perguntas de clima dos 8 modelos já vêm marcadas. [modelos_apr]
+
+## Configurações
+
+- No menu do seu nome, "Configurações" tem duas abas: "Minha conta" (assinatura, e-mails, senha) e "Sistema", só do
+  administrador. [configuracoes]
+- Em "Sistema": a cidade padrão da previsão do tempo (busque a cidade e escolha), os horários das rotinas (leitura do SAP,
+  leitura do registro de funcionários e resumo diário por e-mail), o Controle da IA e os limites de uso da IA. O que o
+  ambiente define é só o valor inicial: o que você muda aqui vale na hora, aparece como "alterado" e tem o botão de voltar
+  ao padrão. Cada mudança vai para a auditoria. Endereços, chaves e senhas dos sistemas ficam no ambiente, fora da tela.
+  [configuracoes_sistema]
+
 ## Mapa de calor
 
 - A aba "Mapa de Calor" da seção Ordem de Serviço mostra, sobre um mapa com as ruas, onde as OS de todas as equipes
@@ -70,9 +91,9 @@
   registro (com o botão "Reativar a conta" no próprio aviso: o sistema nunca devolve o acesso sozinho), equipe sem
   supervisor (o representante responde por ela até você escolher um), falha na leitura do SAP ou do registro de
   funcionários, PDF de OS que não saiu e a Vitória respondendo sem IA. [alertas]
-- Cada aviso também vai por e-mail, conforme o que cada pessoa deixou ligado em "E-mails", no perfil; os de segurança
+- Cada aviso também vai por e-mail, conforme o que cada pessoa deixou ligado em "E-mails", nas Configurações; os de segurança
   e os da conta sempre vão. De manhã sai um resumo diário com o que espera por cada um. Sem o servidor de e-mail
-  configurado (`SMTP_URL`), os avisos ficam só no sino. [perfil]
+  configurado (`SMTP_URL`), os avisos ficam só no sino. [configuracoes]
 
 ## Catálogo de serviços e materiais
 
@@ -165,14 +186,14 @@
 
 - A Vitória é a assistente virtual do SYNQ OS. O perfil dela mostra quem ela é, o que pode e o que não pode fazer no
   sistema e qual modelo de IA está respondendo agora. Também abre tocando no nome dela, no topo do chat. [vitoria_perfil]
-- Ela não vê as OS, as respostas da APR nem os dados de ninguém, a menos que o administrador tenha ligado a leitura de dados do Chatbot na página dela: aí ela passa a ler as OS em aberto que o seu perfil enxerga, quantas APRs esperam assinatura e, para o técnico, os pontos, e só usa isso nas perguntas sobre o trabalho de quem pergunta (nunca o nome de colegas). Os fatos do sistema vêm só deste manual (em conceitos gerais
+- Ela não vê as OS, as respostas da APR nem os dados de ninguém, a menos que o administrador tenha ligado a leitura de dados do Chatbot nas Configurações: aí ela passa a ler as OS em aberto que o seu perfil enxerga, quantas APRs esperam assinatura e, para o técnico, os pontos, e só usa isso nas perguntas sobre o trabalho de quem pergunta (nunca o nome de colegas). Os fatos do sistema vêm só deste manual (em conceitos gerais
   do ofício ela pode explicar com o que sabe, avisando que é uma informação geral e não uma regra da empresa). A conversa não fica guardada
   no servidor; só as perguntas que ela não soube responder, sem identificar quem perguntou.
 - Ela não aprova nem reprova APR, não assina nada e não decide nada por ninguém.
-- Só o administrador vê, na página da Vitória, o "Controle da IA": um seletor com as quatro funções dela (Chatbot e Criação de jogos, que funcionam sem
+- Só o administrador vê, em Configurações (aba "Sistema"), o "Controle da IA": um seletor com as quatro funções dela (Chatbot e Criação de jogos, que funcionam sem
   dados; Recomendação de modelo de APR e Digitalização de documentos, que só funcionam lendo dados), cada uma com uma explicação e um interruptor de ligar e
   desligar. Para ligar uma função com dados, ou a leitura de dados do Chatbot e da Criação de jogos, o administrador lê a lista do que será lido e assina com a
-  assinatura do perfil. Desligar não pede assinatura. Desligada, a função segue sem IA. [vitoria_perfil]
+  assinatura do perfil. Desligar não pede assinatura. Desligada, a função segue sem IA. [configuracoes_sistema]
 
 ## Por que o sistema funciona assim
 

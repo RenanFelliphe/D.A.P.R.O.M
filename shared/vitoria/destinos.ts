@@ -61,6 +61,9 @@ export const DESTINOS: Record<string, Destino> = {
   apr_nova: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}/apr", alvo: "os-nova-apr" },
   execucao: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}/execucao", alvo: "os-iniciar-execucao" },
   perfil: { forma: "fixo", caminho: "/app/perfil" },
+  // As configurações: a conta (assinatura, e-mails, senha, anonimato) de todos e, só do admin, a aba Sistema (cidade padrão, rotinas, IA).
+  configuracoes: { forma: "fixo", caminho: "/app/configuracoes/conta", alvo: "menu-configuracoes" },
+  configuracoes_sistema: { forma: "fixo", caminho: "/app/configuracoes/sistema", alvo: "menu-config-sistema" },
   vitoria_perfil: { forma: "fixo", caminho: "/app/perfil/vitoria" },
   equipe: { forma: "com_contexto", campo: "equipe_id", modelo: "/app/equipes/{equipe_id}" },
   busca: { forma: "fixo", caminho: "/app/busca" },

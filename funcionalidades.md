@@ -176,6 +176,8 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras"), das reuniõ
 | Controle da IA por função | Time, 20/10/2026 | **Pronto**, falta a conferência visual e a IA real ([controle-da-ia.md](base/funcionalidades/controle-da-ia.md)) |
 | Validação dos treinamentos pelos supervisores | Time, 20/10/2026 | **Pronta**, falta a conferência visual ([validacao-de-treinamento.md](base/funcionalidades/validacao-de-treinamento.md)) |
 | Mapa de calor das OS | Time, 21/10/2026 | **Pronto** na web, falta a conferência visual e rodar `pnpm demo:espalhar-gps` no banco da demo ([mapa-de-calor.md](base/funcionalidades/mapa-de-calor.md)) |
+| Previsão do tempo | Time, 21/10/2026 | **Pronta** na `api`, na web e no app, falta a conferência visual e o provedor real ([previsao-do-tempo.md](base/funcionalidades/previsao-do-tempo.md)) |
+| Página de configurações | Time, 21/10/2026 | **Pronta** na `api`, na web e no app, falta a conferência visual ([configuracoes.md](base/funcionalidades/configuracoes.md)) |
 
 ### 3.2 O que cada uma faz e o que falta
 

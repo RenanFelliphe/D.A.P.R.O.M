@@ -20,6 +20,19 @@
 - Use os filtros do quadro (status, urgência ou busca) para achar uma OS específica sem rolar a lista toda.
   [quadro_os]
 
+## Previsão do tempo
+
+- No quadro de OS, ao lado dos contadores, a previsão do tempo das próximas horas do expediente mostra o que esperar (chuva,
+  vento, trovoada, calor) e uma orientação, por exemplo "Prefira os serviços externos antes desse horário e leve capa e bota
+  de PVC". A previsão usa o GPS do aparelho; sem GPS, usa a cidade padrão que o administrador escolheu. [quadro_os]
+- Na APR, a pergunta sobre as condições climáticas mostra a previsão das próximas horas. Se você responder que o clima está
+  favorável e a previsão indicar risco, o sistema abre um aviso com as condições e a orientação: dá para revisar a resposta
+  ou confirmar e continuar. Se o risco for extremo (como tempestade com raios), para continuar é preciso tirar uma foto do
+  local, e o supervisor da equipe é avisado na hora. A previsão é uma estimativa da região: olhe o céu e decida com a
+  equipe; na dúvida, suspenda o serviço pelo motivo "Condição climática". [apr_nova]
+- Se a previsão não estiver disponível (sem sinal ou serviço fora do ar), a APR segue normalmente: observe o tempo no local.
+- O relatório da execução, que o supervisor lê antes de assinar, traz as condições do tempo da APR e do encerramento.
+
 ## Mapa de calor
 
 - A seção Ordem de Serviço tem a aba "Mapa de Calor": um mapa com as ruas mostrando onde as OS foram executadas no
@@ -122,16 +135,17 @@
 
 ## Meu perfil
 
-- Em "Meu perfil" você vê seus dados, troca a assinatura cadastrada e consulta o histórico de OS já executadas.
-  [perfil]
+- Em "Meu perfil" você vê seus dados, as ausências e o histórico de OS já executadas. [perfil]
+- Em "Configurações", no menu do seu nome, ficam a assinatura cadastrada, os e-mails, a troca de senha e a opção de
+  aparecer de forma anônima no ranking. [configuracoes]
 - A troca de senha e de assinatura valem a partir do momento em que são salvas; execuções anteriores não mudam.
 - A assinatura é a primeira coisa a fazer depois do primeiro acesso e da liberação do admin: sem ela nenhuma outra
   tela abre. Ela valida o que você faz de importante no sistema (APR, encerramento, interrupção, ausência).
 - Os avisos chegam no sino, no topo da tela: a OS reservada para você (ou tirada de você), a assinatura final do supervisor
   na OS que você executou, a APR que espera a sua assinatura, a sua ausência, o treinamento novo. Tocar no aviso leva à tela dele.
-- Em "E-mails", no perfil, você escolhe quais avisos também vão para o seu e-mail institucional, por assunto (OS,
+- Em "E-mails", nas Configurações, você escolhe quais avisos também vão para o seu e-mail institucional, por assunto (OS,
   ausências, equipe, treinamentos e o resumo diário). Os de segurança e os da sua conta sempre vão. Desligar um assunto
-  só tira o e-mail: o aviso continua no sino. [perfil]
+  só tira o e-mail: o aviso continua no sino. [configuracoes]
 
 ## Minha equipe
 
