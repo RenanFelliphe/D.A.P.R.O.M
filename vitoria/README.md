@@ -2,7 +2,7 @@
 
 Imagens da Vitória, a assistente do sistema: o chatbot que orienta o usuário e a narradora dos treinamentos de serviço.
 
-O desenho definitivo foi definido em 17/10/2026: uma técnica em 3D, com capacete, abafadores e crachá. O **briefing de design** que levou a ele está em [briefing-de-design.md](briefing-de-design.md) (a direção escolhida foi a "colega de campo", seção 6.1). Como a foto e as reações funcionam no sistema está em [vitoria.md](../funcionalidades/vitoria.md), seção 2.8.
+O desenho definitivo foi definido em 17/10/2026: uma técnica em 3D, com capacete, abafadores e crachá. A direção escolhida foi a "colega de campo": uma técnica da equipe, igual a quem usa o sistema, que conhece o sistema de cor. Como a foto e as reações funcionam no sistema está em [ia-e-vitoria.md](../docs/ia-e-vitoria.md), seção 4.13.
 
 ## O que fica aqui e o que a web serve
 
@@ -10,6 +10,9 @@ O desenho definitivo foi definido em 17/10/2026: uma técnica em 3D, com capacet
 |---|---|---|
 | `vitoria/NovaVitória/` | os **originais**: um PNG de 1254 px por expressão e um GIF de 800 px, 150 quadros, de 20 a 38 MB cada (cerca de 300 MB no total) | **não**: fica só na máquina de quem desenha |
 | `web/public/vitoria/` | o que a web serve: `icone.webp` e as 10 `reacao-<nome>.webp` | sim (cerca de 4,3 MB) |
+| `mobile/assets/vitoria/` | uma cópia dos mesmos WebP de `web/public/vitoria/`, empacotada no app (`mobile/src/vitoria/imagens.ts`, com `require` literal) | sim |
+
+Ao regerar as imagens, copie também os WebP para `mobile/assets/vitoria/`: o script só escreve em `web/public/vitoria/`.
 
 ## Como gerar as imagens da web
 
@@ -54,4 +57,4 @@ Cada reação é uma **figurinha**: aparece abaixo da mensagem da Vitória, toca
 
 ## Pendências do desenho
 
-Estão no [vitoria.md](../funcionalidades/vitoria.md), seção 2.8.6: a marca da ES Gás (aprovação da empresa e símbolo desenhado errado), a jugular do capacete, o cabelo solto e o cordão do crachá no pescoço (revisão da Segurança), e a `atencao` inteira, que termina com cara de brava.
+Estão no [pendencias.md](../pendencias.md) (ver também [ia-e-vitoria.md](../docs/ia-e-vitoria.md), seção 4.13): a marca da ES Gás (aprovação da empresa e símbolo desenhado errado), a jugular do capacete, o cabelo solto e o cordão do crachá no pescoço (revisão da Segurança), e a `atencao` inteira, que termina com cara de brava.

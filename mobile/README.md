@@ -1,105 +1,128 @@
 # mobile
 
-Aplicativo de campo do SYNQ OS (Android). Funciona online no dia a dia e tem um modo offline de contingência para aplicar a APR e executar a OS onde não há sinal.
+Aplicativo de campo do SYNQ OS (Android), em Expo SDK 58 com React Native e TypeScript. Funciona online no dia a dia e tem um modo offline de contingência para aplicar a APR e executar a OS onde não há sinal. É um cliente: as regras ficam na [`api`](../api/README.md), que é a mesma da [`web`](../web/README.md); o app mostra, coleta e envia.
 
-> **Em andamento (19/10/2026).** Feitas as [pendências 1 a 6](../pendencias.md): o esqueleto, o login, a lista e o detalhe das OS, a **APR e a execução**, a **assinatura, o perfil, os avisos, as ausências, a gamificação e a Vitória** (tudo **online**) e, agora, a **cópia da equipe e a fila em SQLite**: a APR, a execução e o encerramento **sem sinal** ficam guardados no aparelho e sobem quando o sinal volta. O caminho ler OS → APR → executar → PDF roda no app. O login sem sinal e o envio com o app fechado também estão no código, e o **APK sai de um Dockerfile** (pendência 7, ver "Gerar o APK"). Falta ver tudo num aparelho. O plano das 20 etapas e o andamento de cada uma estão em [funcionalidades/mobile.md](../funcionalidades/mobile.md).
+**Situação:** as pendências 1 a 8 do [pendencias.md](../pendencias.md) estão feitas (app online, modo offline, login sem sinal, envio com o app fechado, Dockerfile do APK e conquista de sincronização offline). Falta o teste num aparelho e o roteiro da demonstração. Tudo foi validado por código (`tsc`, ESLint, testes de unidade e os scripts `conferir:*` contra a `api` local), sem aparelho.
 
-Ver a [especificação](../base/.design/especificacao.md) para escopo, contratos e decisões técnicas.
+Regras de negócio: [docs/](../docs) (campo em [operacao-de-campo.md](../docs/operacao-de-campo.md)); o app sem sinal, a fila e a cópia local: [docs/especificacao.md](../docs/especificacao.md), seções 6.5 a 6.7.
 
-## O que já funciona
+## O que o app faz
 
-- **Entrar** pelo e-mail institucional e a senha; a sessão continua aberta ao fechar e reabrir o app (tokens no `expo-secure-store`) e se renova sozinha (`POST /auth/refresh`).
-- **Cada conta no destino certo** depois do `GET /me`: senha provisória → "Defina sua senha"; aguardando liberação → tela de espera; administrador → aviso de que a gestão é na web; liberado sem assinatura → tela da assinatura, onde ela é desenhada com o dedo; técnico → lista de OS. O ausente abre com a faixa "Ausente até DD/MM" e só consulta.
-- **Lista de OS da equipe** por status, com busca, "puxar para atualizar", a faixa "APR aguardando a sua assinatura" e o atalho para a execução aberta.
-- **Detalhe da OS**: dados do SAP, local com mapa, ciclo da preventiva, checklist de inspeção, instruções, materiais recomendados, APRs da OS e histórico do equipamento ou do local; o **botão certo** para cada situação (Nova APR, Assinar a APR, Iniciar a execução, Continuar a execução, Preencher o encerramento) ou o motivo no lugar dele; o PDF da OS encerrada abre no leitor do aparelho.
-- **Quatro abas** (OS, Avisos, Pontos, Perfil) e o indicador "Online" / "Sem conexão" no cabeçalho.
-- **Assinatura** (`src/assinatura/`): a caixa de desenho (600 × 180, como a da web), "Limpar" e "Salvar"; o PNG sobe por `PUT /arquivos/{id}` e vira a assinatura do perfil (`PUT /me/assinatura`, com o "+N pontos" da primeira vez). Aparece no primeiro acesso, no "Refazer" do perfil e no lugar do aviso "cadastre a assinatura" das janelas de ação e da tela de assinaturas faltando da APR.
-- **Perfil**: os dados (só leitura) e as linhas para **Minhas ausências**, **Sugestões de materiais**, **OS que encerrei** (60 dias, com o PDF) e **Configurações**; o Sair.
-- **Configurações** (`src/app/configuracoes.tsx`): as preferências pessoais num lugar só, antes espalhadas pelo Perfil: a **assinatura** (ver e refazer), as **preferências de e-mail** (as categorias obrigatórias travadas), **Trocar a senha** e o **anonimato no ranking**. Cada assunto continua com a sua tela (`emails`, `senha`). O que é do sistema todo (a cidade padrão da previsão do tempo e o controle da IA) é do admin e fica só na web: o admin não usa o app.
-- **Previsão do tempo** (`src/clima/`, `src/campo/clima*.ts`, `src/apr/clima-da-apr.ts`; `GET /clima`, ver [previsao-do-tempo.md](../base/funcionalidades/previsao-do-tempo.md)): na **lista de OS**, o cartão "Previsão do tempo" do expediente (nível, frase e orientação da `api`, chips das horas com ícone, local e "atualizada às"), que atualiza ao puxar a lista e ao voltar à tela depois de 5 minutos; na **APR**, a pergunta marcada com `mostrar_clima` mostra a previsão das próximas horas, e responder "Sim" com risco previsto abre uma janela com as condições e a orientação ("Revisar a minha resposta" ou "Confirmar e continuar"; no risco extremo, confirmar pede a **foto do local**, que vai como evidência do item de clima, e a `api` avisa o supervisor na hora); no **encerramento**, a previsão do momento vai junto de `encerramento_assinado`; no **detalhe da OS**, o clima guardado da APR e do encerramento. A posição é a do aparelho só se a permissão já foi dada (aqui não se pede), senão a `api` usa a cidade padrão. A última previsão de cada janela fica no banco do aparelho (`meta`) e vale sem sinal, **se for de hoje** e ainda tiver horas pela frente; sem nenhuma, a tela some em silêncio e a APR segue sem o aviso: o app nunca bloqueia por falta de previsão. O texto da janela nunca fala em "eliminatório" nem em bloqueio.
-- **Avisos** (o sino): `GET /alertas` com "Não lidos" e "Todos"; tocar num aviso o marca como lido e, se ele tem tela no app (a OS, as assinaturas da APR, as ausências), leva a ela; o número na aba se atualiza a cada minuto. Não há push, por decisão do projeto.
-- **Ausências**: pedir (o supervisor titular registra a própria, assinando), acompanhar com a linha do tempo, cancelar o pedido, confirmar o que o supervisor aprovou, recusar as datas, pedir o fim antecipado e confirmar o retorno. As datas são digitadas como `dd/mm/aaaa`. As respostas do supervisor aos pedidos dos outros ficam na web.
-- **Pontos** (`src/gamificacao/`): Minha pontuação (patente com a barra até a próxima, pontos, posição, últimas conquistas e o extrato por temporada), Ranking de pessoas e de equipes (por temporada ou geral, com a própria linha em destaque) e Conquistas (as obtidas e o progresso das que faltam); a janela "Parabéns!" de conquista e de nova patente. Os cadastros de pontos, patentes e conquistas ficam só na web.
-- **Vitória** (`src/vitoria/`): o botão flutuante em todas as telas de campo e o painel de conversa, com as sugestões fixas da tela (sem IA), as respostas locais (saudação, agradecimento, "fique triste"), a mensagem à `api`, as figurinhas e o "Me leve lá" para a tela equivalente do app; o que só existe na web abre no navegador quando `EXPO_PUBLIC_WEB_URL` está definida. Os treinamentos de serviço continuam na web.
+- **Entrar** pelo e-mail institucional; a sessão continua aberta entre aberturas (tokens no `expo-secure-store`) e se renova sozinha. Depois do `GET /me`, cada conta vai ao seu destino ([`src/sessao/destino.ts`](src/sessao/destino.ts)): senha provisória → "Defina sua senha"; aguardando liberação → espera; admin → aviso de que a gestão é na web; sem assinatura → desenho da assinatura; técnico → lista de OS. O ausente só consulta.
+- **Abas** OS, Avisos, Pontos e Perfil, com o indicador "Online" / "Sem conexão" / "Sincronizado hh:mm".
+- **Lista e detalhe da OS:** filtros por status, busca, a faixa "APR aguardando a sua assinatura", o atalho para a execução aberta, o cartão de previsão do tempo; no detalhe, dados do SAP, local, ciclo da preventiva, materiais recomendados, APRs, histórico e o botão certo para cada situação ([`src/os/detalhe/acao.ts`](src/os/detalhe/acao.ts)); o PDF da OS concluída abre no leitor do aparelho.
+- **APR:** escolha do modelo com a recomendação, participantes (mínimo 2) e riscos, checklist com todas as perguntas iguais, troca do modelo, "Concluir e validar" (`POST /aprs/avaliar`), evidência dos reprovados, assinatura ou recusa de cada participante na própria conta.
+- **Execução:** iniciar, cronômetro calculado do início e das pausas, pausar e suspender com motivo, interromper por risco, cancelar por engano, a execução esquecida de outro dia e o encerramento em dois passos com checklist de inspeção e assinatura. GPS nos cinco momentos, sem bloquear quando falta.
+- **Execução compartilhada:** quem participa da APR e não iniciou acompanha a execução ([`src/execucao/Acompanhando.tsx`](src/execucao/Acompanhando.tsx)); pausar, continuar, interromper e suspender por saúde valem na hora; encerrar e suspender por outro motivo, com sinal, viram pedido de 2 minutos ao responsável, que aprova ou recusa ([`PedidoParaResponder.tsx`](src/execucao/PedidoParaResponder.tsx); a faixa de pedidos pergunta a cada 10 s). Regras: [operacao-de-campo.md](../docs/operacao-de-campo.md), seção 6.
+- **Conferência da execução** ([`src/conferencia/`](src/conferencia), rota `os/[id]/conferencia`): o que a equipe registrou sem sinal em aparelhos diferentes, campo a campo e por pessoa; o responsável escolhe, os demais dão a ciência ou assinam. Uma faixa discreta lembra quando é a vez da pessoa. Regras: [operacao-de-campo.md](../docs/operacao-de-campo.md), seções 6.6 e 6.7.
+- **Câmera, galeria e PDF:** foto comprimida (lado maior ~1600 px, qualidade 70%) que sobe por `PUT /arquivos/{id}` antes do evento que a cita; reenviar usa o mesmo id e não duplica.
+- **Previsão do tempo** ([`src/clima/`](src/clima), `GET /clima`): o cartão do expediente na lista de OS; na APR, a pergunta marcada mostra a previsão e, com risco previsto, pede confirmação (no extremo, a foto do local); no encerramento, a previsão vai com o evento. A posição é a do aparelho só se a permissão já foi dada; senão, a cidade padrão. A última previsão do dia vale sem sinal; sem nenhuma, a tela some e nada é bloqueado. Regras: [operacao-de-campo.md](../docs/operacao-de-campo.md), seção 4.7.
+- **Sugestão de materiais** (rotas `materiais/`): sugerir ou contestar a lista de um serviço em etapas, acompanhar as minhas e, para quem supervisiona, avaliar. Regras: [operacao-de-campo.md](../docs/operacao-de-campo.md), seção 10.2.
+- **Perfil e Configurações:** dados (só leitura), Minhas ausências, Sugestões de materiais, OS que encerrei (60 dias, com o PDF), Registros recusados e Sincronizar; em Configurações, a assinatura, as preferências de e-mail, a troca de senha e o anonimato no ranking. O que é do sistema todo (cidade padrão, controle da IA) fica só na web.
+- **Avisos** (o sino), **ausências** do próprio técnico (pedir, acompanhar, confirmar, pedir o fim, confirmar o retorno), **Pontos** (Minha pontuação, Ranking, Conquistas e a janela "Parabéns!") e a **Vitória** (botão flutuante, conversa, figurinhas e "Me leve lá" para a tela do app, ou para a web quando `EXPO_PUBLIC_WEB_URL` está definida). Não há push.
 
-- **APR em três etapas** (`src/app/os/[id]/apr.tsx`, `checklist.tsx`, `aprovada.tsx`): a janela de escolha do modelo, com a "Opção recomendada" e o aviso para conferir; os participantes da equipe (mínimo de 2; ausente não entra) e os riscos; o checklist com todas as perguntas iguais (Sim, Não e NA com observação), a grade para ir a qualquer pergunta, "Trocar o modelo" (as respostas iguais continuam) e a revisão com os materiais recomendados; "Concluir e validar" (`POST /aprs/avaliar`). **Aprovada**, é registrada na hora e cada participante assina na própria conta (ou recusa, com motivo); a execução só é liberada com todas as assinaturas. **Bloqueada**, já fica registrada, as respostas travam e a tela pede a evidência de cada item reprovado (observação e foto ou PDF, conforme o item); o técnico só descobre o que é eliminatório ao validar. O rascunho fica no aparelho até a APR ser concluída.
-- **Execução** (`src/app/os/[id]/execucao.tsx`): iniciar (número de pessoas e localização), o cronômetro calculado do início e das pausas (não depende do app aberto), pausar e continuar com o motivo, suspender com o motivo, interromper por risco (motivo, ao menos 1 foto e assinatura), cancelar por engano (até 10 minutos, sem pausa), a execução esquecida de outro dia (suspender com a hora real do fim) e o **encerramento em dois passos**: "Encerrar OS" para o tempo; depois o checklist de inspeção, a descrição, fotos e PDFs opcionais e a assinatura do responsável. Depois o supervisor assina na web; o PDF abre no app.
-- **Câmera, galeria e PDF** (`src/campo/`): a foto é comprimida (lado maior de ~1600 px, qualidade 70%) e sobe por `PUT /arquivos/{id}` **antes** do evento que a referencia; se o envio falhar, a foto fica guardada e "Enviar a foto de novo" repete o mesmo envio (o id é o mesmo, não duplica). A foto leva a posição quando a permissão de localização já foi dada.
-- **Localização** (`expo-location`) no início, na pausa, na suspensão, na interrupção e no encerramento; sem GPS ou sem permissão, o serviço segue "sem localização", sem bloquear.
+**Fica na web:** as telas de gestão (reservar e devolver OS, a assinatura final do supervisor, o relatório da execução, Validações, quadro e dashboards, responder ausências dos outros), os cadastros da gamificação, o Campo de treino e os treinamentos de serviço.
 
-- **Modo offline** (`src/offline/`): o banco SQLite do aparelho (`synqos.db`) guarda a **cópia da equipe** (`POST /sync/pull`: OS, APRs, execuções, locais, atividades, modelos de APR com a orientação e a equipe) e a **fila**. **Toda escrita de campo grava na fila antes de enviar:** com sinal, o envio é em seguida e a tela se comporta como sempre; sem sinal, o registro fica guardado e a tela segue em frente, lendo da cópia local (a OS vai a "em execução", a APR aparece "aguardando validação"). A **APR sem sinal** é registrada como concluída, com os participantes presentes assinando por este aparelho (`assinatura_presencial`); o servidor a valida quando o sinal voltar e, se ela reprovar, avisa o supervisor (a execução feita não se perde). Fotos e PDFs tirados sem sinal ficam guardados na pasta de documentos do app e sobem antes dos registros que os citam.
-- **Sincronização:** sobe a fila (arquivos primeiro, depois os eventos em ordem), baixa a cópia nova e nunca apaga uma OS que ainda tem registro esperando. Roda ao abrir o app, quando o sinal volta, ao voltar para o app, de minuto em minuto enquanto houver pendência e no botão **Sincronizar** do perfil, que também mostra quantos registros esperam e a hora da cópia. O registro que o servidor adia (por exemplo, a assinatura de outro aparelho que ainda não chegou) espera sem travar as outras OS; o que ele recusa de vez fica na lista **Registros recusados**, com o motivo, para o técnico mostrar ao supervisor.
+### Modo offline
 
-- **Entrar e abrir o app sem sinal** (`src/sessao/`): no login com sinal, o app guarda no armazenamento seguro o **hash salgado da senha** (PBKDF2-SHA256, 30 mil iterações, em JavaScript puro com `@noble/hashes`; nunca a senha) e, no banco do aparelho, o último `GET /me`. **Com a sessão aberta**, o app abre sem sinal pelo último `GET /me` guardado; **sem sessão** (depois do Sair), o login confere a senha com o hash. Em ambos vale a janela de **7 dias** desde a última vez que o servidor confirmou a conta (um login ou um `GET /me` com sinal); passado isso, "Conecte-se para entrar". Quem entra só pela senha guardada não tem token: trabalha pela cópia local, e quando o sinal volta o app **refaz o login sozinho** com a senha que a pessoa acabou de digitar (guardada só na memória) e a fila sobe. A senha trocada na web só vale no aparelho depois do próximo login com sinal (a trocada no app vale na hora); a conta que o servidor recusa (desativada, senha redefinida) deixa de entrar sem sinal.
-- **Aviso de pendentes e Sair:** uma faixa no alto de toda tela de campo diz **"Sem conexão — N registros pendentes"** (ou "N registros pendentes" enquanto a fila sobe, ou o erro que a pessoa precisa resolver), e o indicador do cabeçalho mostra **"Sincronizado hh:mm"**. O **Sair é recusado enquanto houver registro na fila** (a janela oferece "Sincronizar agora"): sair apagaria a sessão, e sem ela a fila não sobe.
+- **Cópia e fila em SQLite** ([`src/offline/`](src/offline), banco `synqos.db`): a cópia da equipe vem de `POST /sync/pull`; **toda escrita de campo grava na fila antes de enviar** (`enviarEvento` e `enviarArquivo` de `@/offline/app`), e com sinal o envio é em seguida. **Toda leitura de campo passa por `lerDeOndeDer`**, que lê da `api` e cai para a cópia. A cópia nunca apaga uma OS com registro esperando.
+- **APR sem sinal:** registrada como concluída, com os presentes assinando por este aparelho (`assinatura_presencial`), sem a validação na hora; a execução segue, e o servidor valida quando o sinal volta.
+- **Sincronização:** arquivos primeiro, depois os eventos em ordem; o adiado espera sem travar as outras OS; o recusado vai para "Registros recusados", com o motivo. Roda ao abrir, quando o sinal volta, ao voltar ao app, de minuto em minuto com pendência e no botão Sincronizar.
+- **Entrar sem sinal** ([`src/sessao/`](src/sessao)): o hash salgado da senha (PBKDF2-HMAC-SHA256, `@noble/hashes`) fica no armazenamento seguro, nunca a senha. Vale por 7 dias desde a última confirmação da conta pelo servidor (`JANELA_SEM_SINAL_DIAS`); depois, "Conecte-se para entrar". Quando o sinal volta, o app refaz o login com a senha digitada (só na memória).
+- **Faixa e Sair:** "Sem conexão — N registros pendentes" no alto das telas de campo; o Sair é recusado enquanto houver fila (oferece "Sincronizar agora").
+- **Com o app fechado:** a tarefa `synqos-envio-em-segundo-plano` ([`segundo-plano.ts`](src/offline/segundo-plano.ts), `segundo-plano-nativo.ts`) roda pelo `expo-background-task`, no mínimo a cada 15 minutos e só com rede, quando o Android libera. Por isso o app tem entrada própria ([`index.ts`](index.ts)), que registra a tarefa antes do Expo Router. Para testar num build de desenvolvimento: guarde um registro sem sinal, ligue o sinal, feche o app e espere; o perfil mostra "Enviado com o app fechado às hh:mm".
 
-**Ainda não conferido:** as telas rodando num aparelho ou emulador (o desenho com o dedo e o PNG que ele gera, o WebP animado das figurinhas, o teclado do chat, o layout, o banco abrindo no aparelho, a câmera sem sinal, o modo avião de verdade e o tempo da derivação da senha no Hermes, que não foi medido: no Node 30 mil iterações levam ~160 ms, e a conta é assíncrona para a tela não congelar). A validação até aqui foi por código, sem aparelho.
+## Decisões do app
 
-**Envio com o app fechado (pendência 6):** a tarefa `synqos-envio-em-segundo-plano` (`src/offline/segundo-plano.ts`, a regra, e `segundo-plano-nativo.ts`, a ligação com o Android) roda pelo `expo-background-task` (WorkManager): no mínimo a cada **15 minutos**, só com rede, e por conta do Android (a economia de bateria do fabricante pode atrasá-la). Ela lê os tokens do armazenamento seguro e a pessoa do último `GET /me` guardado, sobe a fila e baixa a cópia nova; não faz nada se a fila está vazia, se o app está na frente ou se não há sessão. O perfil mostra a última passada ("Enviado com o app fechado às hh:mm"). Como a tarefa tem de existir antes de qualquer tela, o app tem entrada própria (`index.ts`, que importa a tarefa e depois o `expo-router/entry`). Para testar num build de desenvolvimento: guarde um registro sem sinal, ligue o sinal, feche o app pelo gerenciador de tarefas e espere; o perfil mostra a hora da passada.
+| # | Decisão | No código |
+|---|---|---|
+| D1 | **APR sem sinal não perde a execução.** O aparelho não valida a APR (só o servidor sabe o que é eliminatório). Se ela chega bloqueada pela fila, a `api` aplica a execução mesmo assim e avisa o supervisor com um alerta de bloqueio; online, a execução sem APR aprovada continua recusada (`apr_invalida`) | `bloqueadaSemSinal` em `api/src/dominio/eventos-execucao.ts` |
+| D2 | **Sem telas de gestão no app.** O supervisor usa a web, que funciona no navegador do celular; o app mostra a reserva e a devolução, mas não as faz | — |
+| D3 | **Conta aguardando liberação** vê a espera, com o aviso de fazer o Campo de treino pela web, e nenhuma tela de campo | `src/app/aguardando.tsx` |
+| D4 | **Treinamentos de serviço** (os jogos) ficam na web | — |
+| D5 | **Um registro por pessoa no aparelho:** cada pessoa tem o seu hash de senha, o seu `GET /me` guardado, a sua cópia e a sua fila; outra pessoa entrar não apaga o da anterior | `src/sessao/credenciais.ts`, `src/offline/identidade.ts` |
+| D6 | **APK assinado instalado à mão** nos aparelhos da demonstração; sem loja | `mobile/Dockerfile` |
+
+Outras escolhas que valem: o modelo da APR vem de `GET /modelos-apr/{codigo}/versoes/publicada`, como na web; a assinatura é desenhada sobre `react-native-svg` (caixa de 600 × 180, a mesma da web), e o PNG sobe como arquivo; a janela de 7 dias conta desde a última confirmação do servidor (login ou `GET /me` com sinal), não só desde o login; a data da ausência e a hora da execução esquecida são digitadas (`dd/mm/aaaa`, `hh:mm`), sem seletor nativo.
 
 ## Pré-requisitos
 
-- Node 24 e `pnpm` (o mesmo da `api` e da `web`).
-- Para rodar no aparelho ou no emulador: Android Studio (SDK e um emulador) ou um celular Android com a depuração por USB. O app usa módulos nativos (armazenamento seguro, SQLite, câmera e, depois, o segundo plano), então **não roda no Expo Go**: precisa do *development build* (`pnpm android`).
+- Node 24 e `pnpm` (os mesmos da `api` e da `web`).
+- Para rodar no aparelho ou no emulador: Android Studio (SDK e emulador) ou um celular Android com depuração por USB. O app usa módulos nativos (armazenamento seguro, SQLite, câmera, segundo plano), então **não roda no Expo Go**: precisa do *development build* (`pnpm android`).
 
 ## Como rodar
 
 ```bash
 cd mobile
 pnpm install
-cp .env.example .env        # aponta o app para a api (veja abaixo)
+cp .env.example .env        # aponta o app para a api
 pnpm android                # compila o development build e abre no aparelho ou no emulador
-pnpm start                  # só o servidor do Metro, com o build já instalado
+pnpm start                  # só o Metro, com o build já instalado
 ```
 
-**O endereço da `api`** vem de `EXPO_PUBLIC_API_URL` (nada fixo no código). No emulador Android, a máquina é `10.0.2.2` (`http://10.0.2.2:3333`); num celular de verdade, use o IP da máquina na rede. `APP_PERMITIR_HTTP=true` libera `http://` no build de desenvolvimento; o APK de produção usa `https` e não define essa variável. **`EXPO_PUBLIC_WEB_URL`** (opcional) é o endereço da web: o "Me leve lá" da Vitória abre nele o que só existe na web; sem ela, a resposta fica só em texto.
+| Variável | O que faz |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | endereço da `api` (nada fixo no código). No emulador, a máquina é `10.0.2.2` (`http://10.0.2.2:3333`); no celular, o IP da máquina na rede |
+| `APP_PERMITIR_HTTP` | `true` libera `http://` no build de desenvolvimento; o APK de produção usa `https` e não a define |
+| `EXPO_PUBLIC_WEB_URL` | opcional: o endereço da web, para o "Me leve lá" da Vitória abrir o que só existe lá |
 
-**Sem Supabase:** `cd api && pnpm dev:local` sobe a `api` inteira em memória, com uma conta de cada perfil (senha `synqos123`): `tiago.tecnico@empresa.com.br`, `sandra.supervisora@empresa.com.br`, `admin@empresa.com.br`. Use `PORT=3399` se a `api` de desenvolvimento já estiver na 3333.
+**Sem Supabase:** `cd api && pnpm dev:local` sobe a `api` inteira em memória, com as contas de exemplo do [README da raiz](../README.md). Use `PORT=3399` se outra `api` já estiver na 3333.
 
 ## Scripts
+
+Os `conferir:*` rodam o mesmo cliente das telas contra uma `api` de verdade (`API_URL=http://localhost:3399`), **só a local em memória**: criam APRs e execuções. Reinicie a `api` antes de repetir os que consomem OS liberadas.
 
 | Comando | O que faz |
 |---|---|
 | `pnpm typecheck` | `tsc --noEmit` (estrito) |
-| `pnpm lint` | `expo lint` (ESLint com a regra do Expo e dos hooks) |
-| `pnpm test` | testes de unidade (`node --test`, 245 casos; 8 são do comando do APK e do plugin de assinatura): a janela de 7 dias, as credenciais e o hash da senha, o `GET /me` guardado e o carregador do app sem sinal, a faixa de pendentes, o Sair com fila, o esquema, a fila, a cópia, a projeção, a leitura local e o sincronizador do modo offline (num SQLite de verdade, o `node:sqlite`), cliente da `api`, eventos, destino da conta, o botão de ação do detalhe, o rascunho da APR no aparelho, a equipe da APR, a situação e o cronômetro da execução, os motivos, a hora real do fim, as rotas, o desenho da assinatura, as ausências, o destino dos avisos, a barra e as conquistas da gamificação e a Vitória (tela atual, "Me leve lá" e o fluxo SSE) |
+| `pnpm lint` | `expo lint` |
+| `pnpm test` | testes de unidade (`node --test`; o SQLite de verdade pelo `node:sqlite`) das partes puras: cliente, sessão e janela sem sinal, fila, cópia, projeção, sincronizador, APR, execução, ausências, avisos, gamificação, Vitória, comando do APK |
 | `pnpm apk` | gera o APK pelo Docker (ver "Gerar o APK"); `--simular` só mostra o comando |
-| `pnpm conferir:api` | roda o cliente do app contra uma `api` de verdade (`API_URL=http://localhost:3399`): login de cada tipo de conta, lista, detalhe, renovação do token e envio de evento. **Só contra a `api` local em memória** |
-| `pnpm conferir:campo` | percorre o fluxo de campo contra uma `api` de verdade: o modelo, a APR validada e registrada, as assinaturas de duas contas, iniciar, pausar, continuar, encerrar em dois passos com foto e PDF, cancelar por engano, interromper por risco, a APR bloqueada e a evidência. Usa as mesmas funções de `shared/` e o mesmo cliente das telas. **Só contra a `api` local em memória** (reinicie a `api` antes de repetir: o script consome OS liberadas) |
-| `pnpm conferir:offline` | confere o modo offline contra uma `api` de verdade, com duas contas e um SQLite: a cópia da equipe e a leitura local **iguais às da `api`** (lista, busca, detalhe, escolha do modelo, modelo, equipe), a APR, a execução, a pausa e o encerramento sem sinal (6 registros na fila), a subida ao voltar o sinal, o reenvio sem duplicar, o evento adiado até a assinatura de outro aparelho chegar, a APR sem sinal que o servidor bloqueia (a execução é aplicada, D1) e o registro recusado. **Só contra a `api` local em memória** (reinicie a `api` antes de repetir: o script consome OS liberadas) |
-| `pnpm conferir:sem-sinal` | confere o login sem sinal contra uma `api` de verdade: o login com sinal guarda o hash e o `GET /me`; sem sinal (um `fetch` que não chega) a senha certa entra e abre pelo `GET /me` guardado, igual ao do servidor, e a errada e a conta desconhecida não entram; o sinal volta e o login refeito abre a sessão; passados 7 dias, "Conecte-se para entrar"; e o erro da `api` nunca cai para a cópia. **Só contra a `api` local em memória** |
-| `pnpm conferir:perfil` | confere o que a pendência 3 usa: a assinatura enviada e gravada, os avisos, as preferências de e-mail, o anonimato, a troca de senha, o pedido e o cancelamento de uma ausência, a gamificação (pontuação, extrato, ranking, conquistas) e o fluxo SSE da Vitória. **Só contra a `api` local em memória** |
+| `pnpm conferir:api` | login de cada tipo de conta, lista, detalhe, renovação do token e envio de evento |
+| `pnpm conferir:campo` | o fluxo de campo: modelo, APR validada, assinaturas de duas contas, iniciar, pausar, encerrar em dois passos com foto e PDF, cancelar, interromper, APR bloqueada e evidência |
+| `pnpm conferir:perfil` | assinatura, avisos, e-mails, anonimato, senha, ausência, gamificação e o fluxo SSE da Vitória |
+| `pnpm conferir:offline` | a cópia e a leitura local iguais às da `api`, a APR e a execução sem sinal, a subida, o reenvio sem duplicar, o evento adiado, a APR sem sinal que o servidor bloqueia (D1) e o registro recusado |
+| `pnpm conferir:sem-sinal` | o login sem sinal: hash e `GET /me` guardados, senha certa e errada, login refeito quando o sinal volta, a janela de 7 dias |
+| `pnpm conferir:conferencia` | dois aparelhos registram a mesma execução sem sinal, com horários diferentes, sobem as filas em momentos diferentes; a conferência aparece com divergência, o responsável escolhe, o outro assina com ressalva e ela termina |
 
 ## Como o código está organizado
 
 ```
 mobile/
-  app.config.ts        nome SYNQ OS, pacote br.synqos.app, permissões, plugins
-  src/app/             rotas (Expo Router): entrar, trocar-senha, aguardando, assinatura, somente-web, (abas)/*, os/[id] e, dentro dele, apr, checklist, aprovada, bloqueio e execucao
-  src/api/             cliente da api (cliente.ts, puro e testado), erros, eventos e arquivos, tokens no SecureStore
-  src/sessao/          SessaoProvider (login com e sem sinal, sair, GET /me) e destino.ts (a regra de para onde cada conta vai); credenciais.ts (o hash da senha e a janela de 7 dias, puro e testado), derivar-senha.ts, eu.ts (o GET /me com e sem sinal, puro e testado) e sair.ts
-  src/os/              lista e detalhe das OS; detalhe/acao.ts decide o botão certo; rotas.ts leva cada botão à tela de campo
-  src/apr/             a APR: escolha do modelo, participantes e riscos, checklist, revisão, evidência, assinaturas; armazem.ts (o rascunho no aparelho, puro e testado) e rascunho.ts (o disco do app)
-  src/execucao/        a execução: iniciar, em andamento (cronômetro, pausa, suspensão, interrupção, cancelamento), encerramento e checklist de inspeção
-  src/campo/           o que a APR e a execução dividem: câmera, galeria e PDF (arquivos.ts, Evidencias.tsx), GPS, a janela de assinatura e o tratamento das falhas (useAcao); clima-previsoes.ts (a cópia da previsão para o modo sem sinal, puro e testado) e clima.ts (a ligação com a api e o GPS)
-  src/clima/           a previsão do tempo: o cartão, o esqueleto, a janela de confirmação da APR, o cartão da lista de OS, o hook (usePrevisao) e as regras de desenho (regras.ts, puro e testado)
+  index.ts             entrada: registra a tarefa de segundo plano e carrega o expo-router/entry
+  app.config.ts        nome SYNQ OS, pacote br.synqos.app, permissões, plugins, versionCode
+  plugins/             assinatura-android.js (o release do Gradle lê a chave do ambiente)
+  Dockerfile, docker/  o build do APK
+  scripts/             pnpm apk e os conferir:*
+  src/app/             rotas (Expo Router), abaixo
+  src/api/             cliente da api (puro e testado), erros, eventos e arquivos, tokens no SecureStore
+  src/sessao/          SessaoProvider, destino da conta, credenciais e hash da senha, janela de 7 dias, GET /me com e sem sinal, sair
+  src/os/              lista e detalhe das OS; detalhe/acao.ts decide o botão certo
+  src/apr/             escolha do modelo, participantes e riscos, checklist, revisão, evidência, assinaturas, rascunho, clima da APR
+  src/execucao/        iniciar, em andamento, acompanhar (execução compartilhada), pedidos, encerramento, checklist de inspeção
+  src/conferencia/     a conferência da execução: tela, faixa, regras
+  src/campo/           o que a APR e a execução dividem: câmera, galeria, PDF, GPS, janela de assinatura, useAcao, previsão guardada
+  src/clima/           previsão do tempo: cartões, janela da APR, usePrevisao, regras
+  src/materiais/       sugestão e contestação da lista de materiais
+  src/offline/         banco, fila, cópia, projeção, leitura local, sincronizador, envio, identidade, faixa, segundo plano
+  src/assinatura/      o desenho (react-native-svg) e o envio
+  src/avisos/          o sino e para onde cada aviso leva
+  src/ausencia/        regras, consultas, cartão, ações e formulário
+  src/gamificacao/     Minha pontuação, Ranking, Conquistas, selo de patente, "Parabéns!"
+  src/vitoria/         painel, botão flutuante, conversa, SSE, figurinhas
+  src/perfil/          o anonimato no ranking
   src/estado/          TanStack Query e o indicador de conexão (NetInfo)
-  src/offline/         o modo offline: banco (banco.ts, esquema.ts, banco-nativo.ts), fila (fila.ts), cópia da equipe (copia.ts), projeção das ações pendentes (projecao.ts), leitura local no formato da api (leitura.ts), sincronizador (sincronizar.ts), escrita com fila (envio.ts), o `GET /me` guardado (identidade.ts), a faixa de pendentes (faixa.ts), as instâncias do app (app.ts), o provider e o cartão "Sincronização". Tudo menos os arquivos `*-nativo(s)`, `app.ts` e os componentes é puro e testado
-  src/assinatura/      o desenho da assinatura (caixa com `react-native-svg`, `ControleDoDesenho` puro e testado) e o envio (`salvar.ts`)
-  src/avisos/          o sino: consultas, o cartão do aviso e para onde cada aviso leva no app (`destino.ts`)
-  src/ausencia/        as ausências: regras puras (`regras.ts`), consultas, o cartão, as ações assinadas e o formulário do pedido
-  src/gamificacao/     Minha pontuação, Ranking, Conquistas, o selo de patente e a janela "Parabéns!"
-  src/vitoria/         a Vitória: o painel, o botão flutuante, a conversa (`useConversa`), a tela atual, o SSE e as figurinhas
-  src/perfil/          o anonimato no ranking (mostrado em Configurações)
-  src/ui/              componentes base (botão, campo, cartão, selo, aviso, janela, formulário com RHF + Zod)
-  src/tema/            as cores da web
-  ../shared/           código que a web, a api e o app usam (importado como @shared/*)
+  src/ui/              componentes base (botão, campo, cartão, selo, aviso, janela, formulário RHF + Zod)
+  src/tema/            as cores da web (ver o "Sistema visual" do README da web)
+  src/config.ts        EXPO_PUBLIC_API_URL e EXPO_PUBLIC_WEB_URL
+  src/polyfills.ts     crypto do expo-crypto no Hermes (ids gerados no aparelho)
+  ../shared/           código comum à web, à api e ao app (importado como @shared/*)
 ```
 
-- **Rotas protegidas:** cada situação da conta abre só as telas dela (`Stack.Protected`); o `index` leva ao destino quando a situação muda.
-- **`shared/api/`** tem os tipos das respostas da `api` e as regras puras que a web e o app repetiriam (`tipos`, `os-app`, `apr`, `formatar`, `eventos`…). As telas ficam em cada lado, que é o que não dá para compartilhar entre o DOM e o React Native; `web/src/lib/<nome>.ts` só reexporta o de `shared/api/`.
-- **Toda escrita de campo passa por `enviarEvento` e `enviarArquivo` de `@/offline/app`**, que gravam na fila do aparelho antes de enviar (o `criarEnvio` de `src/api/eventos.ts` é o envio sem fila, só do sincronizador e da assinatura do perfil). **Toda leitura de campo passa por `lerDeOndeDer`** (`src/os/consultas.ts`, `src/apr/consultas.ts`, `src/execucao/consultas.ts`): lê da `api` e cai para a cópia local.
-- **O formulário nunca fica desativado por campo faltando** (só enquanto envia); a mensagem aparece junto do campo e o foco vai para o primeiro erro (`useFormulario`).
+**Rotas** (`src/app/`): `index` (leva ao destino da conta), `entrar`, `trocar-senha`, `aguardando`, `assinatura`, `somente-web`; as abas `(abas)/lista`, `avisos`, `pontos` e `perfil`; `os/[id]` e, dentro dele, `apr`, `checklist`, `aprovada`, `bloqueio`, `execucao` e `conferencia`; `materiais/index`, `materiais/nova` e `materiais/[id]`; `ausencias`, `historico`, `recusados`, `configuracoes`, `emails` e `senha`. Cada situação da conta abre só as telas dela (`Stack.Protected`).
+
+- **`shared/api/`** tem os tipos das respostas e as regras puras que a web e o app repetiriam; as telas ficam em cada lado. `web/src/lib/<nome>.ts` só reexporta o de `shared/api/`.
+- **O formulário nunca fica desativado por campo faltando** (só enquanto envia): a mensagem aparece junto do campo e o foco vai ao primeiro erro (`useFormulario`).
 
 ## Gerar o app
 
@@ -107,50 +130,44 @@ mobile/
 
 ## Gerar o APK
 
-O APK de produção sai do [Dockerfile](Dockerfile) do `mobile` (Decisão-chave 1 da especificação; não é publicado no Coolify). A imagem traz o JDK 17, o Android SDK (as versões que o React Native pede, lidas do arquivo dele), o Node e o pnpm, roda o `expo prebuild` e o Gradle (`assembleRelease`) e entrega **um arquivo**, `synq-os.apk`, já assinado e conferido com o `apksigner`. Só precisa do **Docker com BuildKit** (o Docker Desktop já vem assim); nada de Android Studio. A primeira vez baixa o SDK, o NDK e as dependências do Gradle e demora bem mais que as seguintes, que aproveitam o cache.
+O APK sai do [Dockerfile](Dockerfile) do `mobile`; ele não é publicado como serviço (nem no Coolify nem no Render). A imagem traz o JDK 17, o Android SDK (as versões que o React Native pede, lidas do arquivo dele), o Node e o pnpm, roda o `expo prebuild` e o Gradle (`assembleRelease`) e entrega **um arquivo**, `synq-os.apk`, assinado e conferido com o `apksigner`. Só precisa do **Docker com BuildKit**; nada de Android Studio. A primeira vez baixa o SDK, o NDK e as dependências do Gradle e demora bem mais que as seguintes. O `docker build` ainda não foi rodado (a máquina de desenvolvimento não tem Docker): quem tiver, rode `pnpm apk --simular` e depois o build de verdade.
 
-**O endereço da `api` é gravado no APK na hora do build** (`EXPO_PUBLIC_API_URL`) e é obrigatório. O build recusa `http://` (o APK de produção só fala `https`), a menos que se peça `--http`, só para um teste com a `api` local.
+**O endereço da `api` é gravado no APK no build** (`EXPO_PUBLIC_API_URL`) e é obrigatório. O build recusa `http://`, a menos que se peça `--http`, só para um teste com a `api` local.
 
 ```bash
 # na pasta mobile/ (o contexto do build é a raiz do repositório, por causa do shared/)
 pnpm apk --api https://api.exemplo.com.br                       # APK de demonstração, chave descartável
-pnpm apk --api https://api.exemplo.com.br --web https://app.exemplo.com.br          --chave ../chaves/synqos.keystore --senha ../chaves/synqos.senha --versao 2   # APK com a chave da empresa
+pnpm apk --api https://api.exemplo.com.br --web https://app.exemplo.com.br --chave ../chaves/synqos.keystore --senha ../chaves/synqos.senha --versao 2
 # resultado: mobile/apk/synq-os.apk
 ```
 
 O `pnpm apk` só monta e roda o `docker build`; o mesmo comando, direto, na raiz do repositório:
 
 ```bash
-docker build -f mobile/Dockerfile --target saida --output type=local,dest=./mobile/apk   --build-arg EXPO_PUBLIC_API_URL=https://api.exemplo.com.br   --secret id=chave,src=./chaves/synqos.keystore --secret id=chave_senha,src=./chaves/synqos.senha .
+docker build -f mobile/Dockerfile --target saida --output type=local,dest=./mobile/apk --build-arg EXPO_PUBLIC_API_URL=https://api.exemplo.com.br --secret id=chave,src=./chaves/synqos.keystore --secret id=chave_senha,src=./chaves/synqos.senha .
 ```
 
 | Opção (`pnpm apk`) | `--build-arg` / segredo | O que faz |
 |---|---|---|
-| `--api` | `EXPO_PUBLIC_API_URL` | Endereço da `api` (obrigatório) |
-| `--web` | `EXPO_PUBLIC_WEB_URL` | Endereço da web, para o "Me leve lá" da Vitória (opcional) |
-| `--http` | `APP_PERMITIR_HTTP=true` | Libera `http://`; só teste com a `api` local |
-| `--versao` | `APP_VERSION_CODE` | Número que cresce a cada APK distribuído; o Android só instala por cima um número maior (padrão 1) |
-| `--arquiteturas` | `ARQUITETURAS` | Padrão `arm64-v8a,armeabi-v7a,x86_64`; `arm64-v8a` sozinho, para celulares atuais, acelera o build |
-| `--chave` e `--senha` | segredos `chave` e `chave_senha` | O arquivo `.keystore` e um arquivo só com a senha (do arquivo e da chave; apelido `synqos`) |
-| `--saida` | — | Pasta do APK (padrão `mobile/apk`) |
+| `--api` | `EXPO_PUBLIC_API_URL` | endereço da `api` (obrigatório) |
+| `--web` | `EXPO_PUBLIC_WEB_URL` | endereço da web, para o "Me leve lá" (opcional) |
+| `--http` | `APP_PERMITIR_HTTP=true` | libera `http://`; só teste com a `api` local |
+| `--versao` | `APP_VERSION_CODE` | número que cresce a cada APK distribuído; o Android só instala por cima um número maior (padrão 1) |
+| `--arquiteturas` | `ARQUITETURAS` | padrão `arm64-v8a,armeabi-v7a,x86_64`; `arm64-v8a` sozinho acelera o build |
+| `--chave` e `--senha` | segredos `chave` e `chave_senha` | o `.keystore` e um arquivo só com a senha (do arquivo e da chave; apelido `synqos`) |
+| `--saida` | — | pasta do APK (padrão `mobile/apk`) |
 
-**A chave de assinatura.** Sem `--chave`, o build cria uma chave **descartável** de demonstração (o aviso aparece no log): serve para instalar e testar, mas cada build gera outra, e o Android não instala um APK por cima de outro assinado com chave diferente (desinstale o app antes). Para a demo e qualquer distribuição, gere a chave **uma vez** e guarde-a fora do repositório (o `.gitignore` e o `Dockerfile.dockerignore` já barram `*.keystore`); **perdê-la impede atualizar o app nos aparelhos que já o têm**:
+**A chave de assinatura.** Sem `--chave`, o build cria uma chave **descartável** (com aviso no log): serve para testar, mas cada build gera outra, e o Android não instala por cima de um APK assinado com chave diferente (desinstale antes). Para a demonstração e qualquer distribuição, gere a chave **uma vez** e guarde-a fora do repositório (o `.gitignore` e o `Dockerfile.dockerignore` já barram `*.keystore`); **perdê-la impede atualizar o app nos aparelhos que já o têm**:
 
 ```bash
 keytool -genkeypair -keystore synqos.keystore -alias synqos -keyalg RSA -keysize 2048 -validity 10000
 printf '%s' 'a-senha-escolhida' > synqos.senha      # a mesma senha para o arquivo e para a chave
 ```
 
-A chave e a senha entram como **segredos do BuildKit**: existem só durante o passo do Gradle e não ficam na imagem nem no histórico dela. O `plugins/assinatura-android.js` (plugin do Expo) faz o Gradle ler a chave de variáveis de ambiente (`SYNQOS_KEYSTORE`, `SYNQOS_KEYSTORE_SENHA`); sem elas (`pnpm android`), o release continua com a chave de depuração do template. O Dockerfile e o script `docker/gerar-apk.sh` ficam com LF (`.gitattributes`): com CRLF o script quebra no Linux.
+A chave e a senha entram como **segredos do BuildKit**: existem só durante o passo do Gradle e não ficam na imagem. O [`plugins/assinatura-android.js`](plugins/assinatura-android.js) faz o Gradle ler a chave de `SYNQOS_KEYSTORE` e `SYNQOS_KEYSTORE_SENHA`; sem elas (`pnpm android`), o release usa a chave de depuração do template. O Dockerfile e o `docker/gerar-apk.sh` ficam com LF (`.gitattributes`): com CRLF o script quebra no Linux.
 
-**Instalar:** `adb install synq-os.apk` (depuração USB ligada) ou copiar o arquivo para o aparelho e abri-lo (liberar "instalar apps desconhecidos" para o gerenciador de arquivos). Num celular com o app já instalado, use um `--versao` maior e a **mesma chave**.
+**Instalar:** `adb install synq-os.apk` (depuração USB ligada) ou copiar o arquivo para o aparelho e abri-lo (liberar "instalar apps desconhecidos"). Num celular com o app já instalado, use um `--versao` maior e a **mesma chave**.
 
-**Gamificação:** o app recebe só as páginas de consulta (Minha pontuação, Ranking e Conquistas), o aviso "Conquista desbloqueada" e "Nova patente", o "+N pontos" nas telas de APR e de execução (o `pontos_ganhos` de `POST /eventos`) e a opção de anonimato no perfil, tudo feito. Os cadastros de pontos, patentes e conquistas ficam só na web. A `api` já serve tudo (`/gamificacao/*`); ver [gameficacao.md](../base/funcionalidades/gameficacao.md), seção 8.4. A conquista de sincronização offline, "Sem sinal, sem problema" (pendência 8), é concedida pela `api` quando chega da fila o primeiro evento de uma OS feita sem sinal (a `api` o reconhece pela regra dos 60 s; o app não precisa dizer nada); vale 0 ponto e o aviso sai como o das demais conquistas.
+## Ainda não conferido
 
-**O que o app herda das correções da Reunião 3 (18/10/2026):** a `api` e a `web` já aplicam estas regras ([correcoes-da-reuniao-3.md](../base/funcionalidades/correcoes-da-reuniao-3.md)); o app só as cumpre do lado dele.
-
-- **Assinatura da APR por participante.** Online, cada participante assina a APR na própria conta (`apr_assinada`), vê o aviso "APR aguardando a sua assinatura" e o direito de recusa (`apr_recusada`, com motivo). No offline, que é contingência, o responsável registra a APR com `assinatura_presencial: true` no aparelho dele e as assinaturas dos perfis são copiadas na hora, marcadas como presenciais.
-- **Localização nos cinco momentos.** O app envia `latitude` e `longitude` (as duas, ou nenhuma) no início da execução, na pausa, na suspensão, na interrupção e no encerramento. Sem GPS (permissão negada ou local coberto), o serviço não é bloqueado: fica "sem localização". A tela avisa o técnico que a localização é registrada nesses momentos.
-- **Encerramento em dois passos.** O clique em "Encerrar OS", depois de uma confirmação, grava o fim (`execucao_encerrada`) e o tempo para; o preenchimento (descrição e fotos opcionais, checklist) e a assinatura do responsável vêm depois (`encerramento_assinado`) e não entram no tempo.
-- **Motivo obrigatório na pausa e na suspensão**, escolhido numa lista (com o complemento em "aguardando" e "outro"). Lesão e enfermidade avisam o supervisor na hora.
-- **Sincronização em segundo plano** (item 18 da Reunião 3). Com o app aberto, a fila é enviada assim que o sinal volta (**feito**, pendência 4). Com o app fechado (pendência 6, **feito**), é enviada no próximo intervalo que o Android libera para tarefas em segundo plano, por volta de 15 minutos. O `execucao_iniciada` que depende de uma assinatura dada em outro aparelho fica pendente na fila, em vez de ser recusado, até a assinatura chegar.
+As telas rodando num aparelho ou emulador: o desenho da assinatura com o dedo e o PNG gerado, o WebP animado das figurinhas, o teclado do chat, o layout, o banco abrindo no aparelho, a câmera sem sinal, o modo avião de verdade, o Android acordando o app fechado (a economia de bateria do fabricante pode adiar a tarefa) e o tempo da derivação da senha no Hermes (o custo está em `ITERACOES_DA_SENHA`; no Node leva ~160 ms).
