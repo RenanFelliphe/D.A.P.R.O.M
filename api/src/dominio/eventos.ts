@@ -33,7 +33,7 @@ export const esquemaEnvio = z.object({
   eventos: z
     .array(
       z.object({
-        /** Gerado no aparelho; a chave primária garante a idempotência (Decisão-chave 3). */
+        /** Gerado no aparelho; a chave primária garante a idempotência (decisão-chave 3, `docs/especificacao.md`, seção 2.3). */
         id: uuid,
         tipo: z.enum(EVENTO_TIPOS),
         os_id: uuid.nullable().optional(),
@@ -146,7 +146,7 @@ async function despachar(ctx: Contexto, e: EventoRecebido) {
 }
 
 /**
- * O canal único de escrita de campo (Decisão-chave 3), igual para web, app online e fila offline. Cada evento roda na
+ * O canal único de escrita de campo (decisão-chave 3, `docs/especificacao.md`, seção 2.3), igual para web, app online e fila offline. Cada evento roda na
  * própria transação, em ordem de `ocorrido_em`: insere em `evento_campo` com o id do aparelho (se o id já existe, o
  * evento já foi aplicado e só é confirmado de novo), grava o que o payload descreve, recalcula `apr.resultado` e
  * `os.status` no servidor e cria alertas e tarefas. Um evento recusado desfaz a própria transação e não impede os

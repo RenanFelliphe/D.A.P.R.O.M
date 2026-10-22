@@ -6,7 +6,7 @@ import { diaDe } from "../src/dominio/tempo";
 import { criarAmbiente, configDeTeste, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
- * `POST /vitoria/mensagens` (`vitoria.md`, seção 2): o fallback sem IA por padrão, a validação da ação contra o
+ * `POST /vitoria/mensagens` (`docs/ia-e-vitoria.md`, seção 4): o fallback sem IA por padrão, a validação da ação contra o
  * manifesto (chave inválida vira "não sei"; `com_contexto` sem o campo necessário só descarta a ação), os 3 limites, o
  * acesso de quem aguarda liberação e de quem está ausente, e que uma falha da IA nunca vira um 500.
  */

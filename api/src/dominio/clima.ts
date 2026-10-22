@@ -5,7 +5,7 @@ import { cidadePadrao } from "./configuracoes";
 import { diaDe } from "./tempo";
 
 /**
- * A previsão do tempo (`funcionalidades/previsao-do-tempo.md`): pede as horas do dia ao provedor, classifica cada hora com regras
+ * A previsão do tempo (`docs/operacao-de-campo.md`, seção 4.7): pede as horas do dia ao provedor, classifica cada hora com regras
  * fixas (sem IA), escolhe a janela que interessa (o resto do expediente ou as próximas 4 horas) e escreve o título e a orientação
  * que a web e o app mostram. O nível da janela é o da pior hora. Sem previsão (provedor fora do ar), nada é avisado nem bloqueado.
  */

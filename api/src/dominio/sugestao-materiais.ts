@@ -36,7 +36,7 @@ import { criarMaterial, materiaisDosServicos, salvarMateriaisDoServico, type Mat
 import { lancar, type Ganho } from "./lancamentos";
 
 /*
- * Sugestão e contestação da lista de materiais de um serviço (`funcionalidades/sugestao-de-materiais.md`).
+ * Sugestão e contestação da lista de materiais de um serviço (`docs/operacao-de-campo.md`, seções 10.2 a 10.5).
  *
  * Qualquer pessoa que não seja administradora (o admin edita a lista direto no catálogo) pode sugerir uma lista nova ou
  * corrigida, ou contestar a lista recomendada (com o motivo, e, se quiser, a lista certa). Quem avalia é o supervisor da equipe

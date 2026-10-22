@@ -1,12 +1,12 @@
 /**
- * Roda a bateria de perguntas da Vitória (`vitoria.md`, seção 2.9; os casos em `bateria-vitoria.ts`) contra a API real
+ * Roda a bateria de perguntas da Vitória (`docs/ia-e-vitoria.md`, seção 4.15; os casos em `bateria-vitoria.ts`) contra a API real
  * do provedor de IA (`IA_PROVEDOR`), de ponta a ponta: sobe a aplicação inteira num banco em memória (o mesmo ambiente dos
  * testes), troca a IA de teste pela de verdade e faz as perguntas pela rota `POST /vitoria/mensagens`. Os testes
  * automáticos usam um `fetch` falso e não pegam o que só a API real mostra: modelo que não existe, cota esgotada, resposta
  * fora do formato, provocação respondida, mês errado.
  *
  * Só dados fictícios: o manual do sistema e perguntas inventadas. O Gemini gratuito nunca recebe dado real
- * (`vitoria.md`, seção 1.6). O relógio é fixado por caso, para o mês esperado não mudar com o dia em que se roda.
+ * (`docs/ia-e-vitoria.md`, seção 2.3). O relógio é fixado por caso, para o mês esperado não mudar com o dia em que se roda.
  *
  *   pnpm vitoria:bateria                                  # a bateria inteira (cerca de 50 chamadas)
  *   pnpm vitoria:bateria -- --categoria=provocacao,datas  # só algumas categorias

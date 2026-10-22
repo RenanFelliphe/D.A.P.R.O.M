@@ -2,8 +2,8 @@ import { Notice } from "@/components/ui/Notice";
 import type { RascunhoDoEditor } from "@/lib/treinamento-servico";
 
 /**
- * Editar um treinamento já publicado cria a versão seguinte como rascunho, a partir da publicada (seção 3.9.6 do
- * `vitoria.md`): o aviso deixa claro que os técnicos continuam vendo a versão anterior até esta ser publicada.
+ * Editar um treinamento já publicado cria a versão seguinte como rascunho, a partir da publicada (seção 9.7 do
+ * `docs/gamificacao-e-treinamentos.md`): o aviso deixa claro que os técnicos continuam vendo a versão anterior até esta ser publicada.
  */
 export function AvisoDeVersaoNova({ rascunho }: { rascunho: Pick<RascunhoDoEditor, "tem_publicada" | "versao"> }) {
   if (!rascunho.tem_publicada) return null;

@@ -9,7 +9,7 @@ import { IAIndisponivel } from "../src/servicos/ia";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
- * O controle da IA (`controle-da-ia.md`): o estado de cada função, a assinatura de quem autoriza a leitura de dados, o bloqueio
+ * O controle da IA (`docs/ia-e-vitoria.md`, seção 3): o estado de cada função, a assinatura de quem autoriza a leitura de dados, o bloqueio
  * no módulo de IA e as telas que oferecem (ou escondem) a função conforme ela está ligada.
  */
 describe("Controle da IA — GET e PUT /vitoria/ia", () => {

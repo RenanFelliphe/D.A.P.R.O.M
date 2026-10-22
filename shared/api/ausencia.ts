@@ -1,4 +1,4 @@
-/** O estado "ausente" do usuário (ver `ausencia.md`): os tipos da `api` e os textos que as telas repetem. Chaves em snake_case, como a `api` devolve. */
+/** O estado "ausente" do usuário (ver `docs/pessoas-e-equipes.md`, seção 7): os tipos da `api` e os textos que as telas repetem. Chaves em snake_case, como a `api` devolve. */
 
 import type { TomDoSelo } from "./tipos";
 import { dataDoDia } from "./formatar";

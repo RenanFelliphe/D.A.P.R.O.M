@@ -1,5 +1,5 @@
 /**
- * Manifesto de destinos navegáveis da Vitória (`funcionalidades/vitoria.md`, seção 2.4): o único vocabulário que uma
+ * Manifesto de destinos navegáveis da Vitória (`docs/ia-e-vitoria.md`, seção 4.6): o único vocabulário que uma
  * ação "navegar" ou "destacar" pode citar. Nem a `api` nem a IA escrevem uma URL: elas só citam uma chave daqui, e é
  * este arquivo (lido pelos dois lados, por caminho relativo, sem symlink nem pacote interno) quem sabe montar o
  * caminho de verdade.
@@ -113,7 +113,7 @@ export interface AcaoBruta {
 /**
  * O que a api devolve ao cliente: a ação já resolvida, com a URL pronta. Leva também `destino` (e `valor`, quando veio
  * de um filtro) para a web conferir de nascisco com `resolverAcao` antes de navegar — a dupla checagem da
- * especificação não é só confiar na `url` pronta, é refazer a validação com o próprio contexto do cliente.
+ * seção 4.6 do `docs/ia-e-vitoria.md` não é só confiar na `url` pronta, é refazer a validação com o próprio contexto do cliente.
  */
 export interface AcaoResolvida {
   tipo: "navegar" | "destacar";
@@ -135,7 +135,7 @@ export interface ResultadoDaAcao {
 
 /**
  * Valida e monta a URL de uma ação bruta contra o manifesto. É a mesma função que a `api` usa antes de devolver a
- * ação e que a web usa de novo antes de navegar (dupla checagem, como a especificação pede): nenhum dos dois lados
+ * ação e que a web usa de novo antes de navegar (dupla checagem, como pede o `docs/ia-e-vitoria.md`, seção 4.6): nenhum dos dois lados
  * confia em uma URL que não tenha passado por aqui.
  */
 export function resolverAcao(bruta: AcaoBruta, contexto: Record<string, string> = {}): ResultadoDaAcao {

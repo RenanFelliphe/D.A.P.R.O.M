@@ -31,7 +31,7 @@ export type EventoTipo = (typeof EVENTO_TIPOS)[number];
 
 /**
  * O canal único de escrita de APR e execução (online e pela fila offline). A chave primária, gerada no
- * cliente, torna o reenvio inofensivo (Decisão-chave 3): a api insere aqui primeiro com
+ * cliente, torna o reenvio inofensivo (decisão-chave 3, `docs/especificacao.md`, seção 2.3): a api insere aqui primeiro com
  * `on conflict (id) do nothing` e só aplica o resto se a linha for nova.
  */
 export const eventoCampo = pgTable(

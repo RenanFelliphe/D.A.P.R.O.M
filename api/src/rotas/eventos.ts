@@ -12,7 +12,7 @@ import { lerCorpo, lerJson, uuid, validar } from "../http/validacao";
 
 /**
  * `POST /eventos`: o canal único de escrita de campo, igual para web, app online e fila offline. Só o perfil
- * `tecnico` aplica APR e executa OS (questão 56). Sempre `200`: o que cada evento teve (confirmado, rejeitado,
+ * `tecnico` aplica APR e executa OS (`pendencias.md`, pergunta 56). Sempre `200`: o que cada evento teve (confirmado, rejeitado,
  * pendente) vem no corpo.
  */
 const esquemaPull = z.object({ cursor: z.string().nullable().optional(), fila: z.array(z.object({ os_id: uuid, quantos: z.number().int().min(0).max(100_000) })).max(500).optional() });

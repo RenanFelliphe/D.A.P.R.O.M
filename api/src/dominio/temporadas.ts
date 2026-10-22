@@ -4,7 +4,7 @@ import { temporada } from "../db/schema";
 import { diaDe } from "./tempo";
 
 /**
- * Temporadas da gamificação (seção 4 do `gameficacao.md`): um trimestre do calendário no fuso de São Paulo. O nome vem da
+ * Temporadas da gamificação (seção 4 do `docs/gamificacao-e-treinamentos.md`): um trimestre do calendário no fuso de São Paulo. O nome vem da
  * estação que ocupa a maior parte do trimestre. A linha de `temporada` nasce quando a primeira pontuação do trimestre chega
  * (`garantirTemporada`) e é fechada 7 dias depois do último dia (`fechamento-temporada.ts`).
  */

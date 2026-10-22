@@ -1,7 +1,7 @@
 import type { AcaoBruta } from "./destinos";
 
 /**
- * As "3 sugestões fixas da tela atual" da Vitória (`vitoria.md`, seção 2.1 e 2.6): usadas tanto para abrir o painel sem
+ * As "3 sugestões fixas da tela atual" da Vitória (`docs/ia-e-vitoria.md`, seção 4.8): usadas tanto para abrir o painel sem
  * IA (a web mostra na hora, sem chamar a `api`) quanto pelo fallback sem IA da `api` quando a IA está fora do ar ou um
  * limite estourou. Por isso ficam aqui, no mesmo arquivo dos dois lados — nunca escritas duas vezes.
  *

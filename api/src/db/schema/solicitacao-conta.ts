@@ -8,7 +8,7 @@ export const SOLICITACAO_CONTA_ESTADOS = ["pendente", "atendida", "descartada"] 
 export type SolicitacaoContaEstado = (typeof SOLICITACAO_CONTA_ESTADOS)[number];
 
 /**
- * O pedido de conta feito na tela de entrada por um funcionário que ainda não tem conta (`funcionalidades/solicitacao-de-conta.md`):
+ * O pedido de conta feito na tela de entrada por um funcionário que ainda não tem conta (`docs/pessoas-e-equipes.md`, seção 2.2):
  * o nome, o e-mail e, se ele quiser, a equipe. Avisa os administradores e, com a equipe, quem responde por ela. Quem cadastra
  * a pessoa (`POST /usuarios` com o mesmo e-mail) atende o pedido sozinho. Um pedido pendente por e-mail.
  */

@@ -51,10 +51,10 @@ function sequenciaAte(retornos: (ResultadoDaResposta | null)[], ultima: number) 
 }
 
 /**
- * O treinamento de serviço numa janela por cima da tela (seção 3 do `vitoria.md`): capa, Parte 1 (a Vitória explicando),
+ * O treinamento de serviço numa janela por cima da tela (seção 8 do `docs/gamificacao-e-treinamentos.md`): capa, Parte 1 (a Vitória explicando),
  * a passagem para o jogo com a contagem, Parte 2 (as fases) e o resultado. O topo é o placar: a trilha das duas partes, os
  * pontos, os acertos e a sequência de acertos. Dá para voltar e avançar entre as fases sem responder; finalizar com fase
- * pendente pede confirmação (seção 12 do `treinamentos-de-servico.md`). Tem som (desligável) e vibração no celular. Ocupa a
+ * pendente pede confirmação (seção 8.6 do `docs/gamificacao-e-treinamentos.md`). Tem som (desligável) e vibração no celular. Ocupa a
  * tela inteira no celular e no celular deitado. Sair no meio, avançar sem confirmar a fase, recomeçar uma fase e jogar de
  * novo pedem confirmação (seção 13); o placar mostra o tempo do jogo todo.
  */

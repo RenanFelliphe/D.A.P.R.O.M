@@ -3,7 +3,7 @@ import { check, date, index, integer, pgTable, text, uniqueIndex, uuid } from "d
 import { emLista, instante } from "./comum";
 import { usuario } from "./usuarios";
 
-/** Situações de um funcionário no registro (`apifuncionarios.md`, seção 2.2). */
+/** Situações de um funcionário no registro (`docs/integracoes-simuladas.md`, seção 5.2). */
 export const SITUACOES_FUNCIONARIO = ["ativo", "afastado", "desligado"] as const;
 export type SituacaoFuncionario = (typeof SITUACOES_FUNCIONARIO)[number];
 

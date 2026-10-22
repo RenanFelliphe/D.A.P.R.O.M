@@ -1,5 +1,5 @@
 /**
- * Execução compartilhada (`funcionalidades/execucao-compartilhada.md`): qualquer participante da APR pode agir sobre a execução.
+ * Execução compartilhada (`docs/operacao-de-campo.md`, seção 6): qualquer participante da APR pode agir sobre a execução.
  * Pausar, continuar, interromper por risco e suspender por saúde valem na hora; encerrar e suspender por um motivo comum viram um
  * **pedido** ao responsável (quem iniciou a execução), que aceita ou recusa em até 2 minutos; sem resposta, o pedido é aprovado
  * sozinho. A `api`, a `web` e o app usam este arquivo.

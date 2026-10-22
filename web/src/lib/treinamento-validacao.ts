@@ -1,7 +1,7 @@
 import type { RascunhoDoEditor } from "./treinamento-servico";
 
 /**
- * A validação do treinamento pelos supervisores (`funcionalidades/validacao-de-treinamento.md`): as 3 equipes que mais fazem o
+ * A validação do treinamento pelos supervisores (`docs/gamificacao-e-treinamentos.md`, seção 8.10): as 3 equipes que mais fazem o
  * serviço (sem a de quem criou) escolhem, cada uma por um supervisor, e 2 dos 3 assinam para publicar; qualquer recusa devolve o
  * treinamento ao autor. Os tipos abaixo são as respostas de `/treinamentos/{codigo}/validacao` e das rotas vizinhas.
  */

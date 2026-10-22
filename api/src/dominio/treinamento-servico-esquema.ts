@@ -8,7 +8,7 @@ import { pendenciasAbertas } from "../../../shared/treinamento-servico/ia";
 import { PALAVRAS_DO_BANCO, SO_LETRAS, TETO_DE_FASES, letrasDaGrade, letrasDaPalavra } from "../../../shared/treinamento-servico/jogos";
 
 /**
- * Validação do conteúdo dos treinamentos de serviço (seção 3 do `vitoria.md`), no espírito de `modelo-apr-esquema.ts`: o
+ * Validação do conteúdo dos treinamentos de serviço (seção 8 do `docs/gamificacao-e-treinamentos.md`), no espírito de `modelo-apr-esquema.ts`: o
  * formato de cada jsonb é um `z.object`/`z.discriminatedUnion` simples, e as regras que cruzam campos (índice da opção
  * certa, material repetido, limites de publicação) ficam em funções `validar*` à parte, para o schema do banco não precisar
  * de `check` com `jsonb_array_length`.
@@ -221,7 +221,7 @@ export function validarConteudo(explicacao: PassoExplicacao[], fases: FaseEntrad
   });
 }
 
-/** Só vale na publicação (Decisão da seção 3 do `vitoria.md`): 1 a 12 passos, ao menos 3 fases e o banco cheio no Desembaralhe e no Termo. */
+/** Só vale na publicação (seção 8.10 do `docs/gamificacao-e-treinamentos.md`): 1 a 12 passos, ao menos 3 fases e o banco cheio no Desembaralhe e no Termo. */
 export function validarPublicavel(explicacao: PassoExplicacao[], fases: FaseEntrada[]): void {
   if (explicacao.length === 0) throw invalido("sem_explicacao", "A explicação precisa de ao menos 1 passo para publicar");
   if (fases.length < 3) throw invalido("fases_insuficientes", "O jogo precisa de ao menos 3 fases para publicar");
@@ -230,8 +230,8 @@ export function validarPublicavel(explicacao: PassoExplicacao[], fases: FaseEntr
 }
 
 /**
- * Pendência das conferências da IA ainda aberta (o item não foi editado nem confirmado) impede publicar (seção 3.6 do
- * `vitoria.md`). Vai nos `detalhes` do erro, para a tela apontar cada uma.
+ * Pendência das conferências da IA ainda aberta (o item não foi editado nem confirmado) impede publicar (seção 9.4 do
+ * `docs/gamificacao-e-treinamentos.md`). Vai nos `detalhes` do erro, para a tela apontar cada uma.
  */
 export function validarSemPendencias(explicacao: PassoExplicacao[], fases: FaseEntrada[]): void {
   const abertas = pendenciasAbertas({ explicacao, fases });

@@ -4,7 +4,7 @@ import { vitoriaPerguntaSemResposta } from "../src/db/schema";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
- * `GET /vitoria/sem-resposta` e `PATCH /vitoria/sem-resposta/{id}` (`vitoria.md`, seção 2.7): só o admin, e marcar como
+ * `GET /vitoria/sem-resposta` e `PATCH /vitoria/sem-resposta/{id}` (`docs/ia-e-vitoria.md`, seção 4.12): só o admin, e marcar como
  * tratada grava quem tratou e quando.
  */
 describe("Vitória — perguntas sem resposta", () => {

@@ -1,5 +1,5 @@
 /**
- * Tipos e textos da gamificação (`gameficacao.md`). Os dados vêm da `api` (`/gamificacao/*`, `GET /me`); chaves em snake_case,
+ * Tipos e textos da gamificação (`docs/gamificacao-e-treinamentos.md`). Os dados vêm da `api` (`/gamificacao/*`, `GET /me`); chaves em snake_case,
  * como ela devolve. Tudo aqui é só leitura: os pontos são calculados e gravados pelo servidor.
  */
 

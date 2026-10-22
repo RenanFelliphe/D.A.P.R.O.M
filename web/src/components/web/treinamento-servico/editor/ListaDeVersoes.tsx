@@ -12,7 +12,7 @@ const ESTADOS = {
   substituida: { tom: "neu", texto: "Substituída" },
 } as const;
 
-/** As versões do treinamento, da mais nova para a mais antiga, com quem assinou cada publicação (seção 3.7 do `vitoria.md`). */
+/** As versões do treinamento, da mais nova para a mais antiga, com quem assinou cada publicação (seção 8.10 do `docs/gamificacao-e-treinamentos.md`). */
 export function ListaDeVersoes({ codigo, versoes }: { codigo: string; versoes: VersaoAnterior[] }) {
   if (versoes.length === 0) {
     return (

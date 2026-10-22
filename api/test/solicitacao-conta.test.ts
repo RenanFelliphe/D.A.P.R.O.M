@@ -4,7 +4,7 @@ import { LIMITE_DE_PEDIDOS_POR_HORA } from "../src/dominio/solicitacao-conta";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
- * O pedido de conta feito na tela de entrada (`solicitacao-de-conta.md`): as duas rotas abertas, os avisos (admins e quem responde
+ * O pedido de conta feito na tela de entrada (`docs/pessoas-e-equipes.md`, seção 2.2): as duas rotas abertas, os avisos (admins e quem responde
  * pela equipe escolhida), a resposta que não revela nada, os pedidos que cada um vê, o descarte e o cadastro que atende o pedido.
  */
 describe("Pedido de conta na tela de entrada", () => {

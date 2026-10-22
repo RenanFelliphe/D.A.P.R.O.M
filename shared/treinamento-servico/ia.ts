@@ -1,5 +1,5 @@
 /**
- * As pendências do rascunho de treinamento feito pela IA (`funcionalidades/vitoria.md`, seção 3.6), lidas pelos dois
+ * As pendências do rascunho de treinamento feito pela IA (`docs/gamificacao-e-treinamentos.md`, seção 9.4), lidas pelos dois
  * lados por caminho relativo, como o manifesto da Vitória: a `api` recusa publicar com pendência aberta, e a web mostra
  * e atualiza as pendências enquanto o admin edita, sem esperar o servidor.
  *

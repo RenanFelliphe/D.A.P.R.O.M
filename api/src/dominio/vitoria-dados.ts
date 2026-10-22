@@ -10,7 +10,7 @@ import { OS_FINALIZADAS } from "./status-os";
 import { temporadaAtual } from "./temporadas";
 
 /*
- * O chatbot com dados (`funcionalidades/controle-da-ia.md`): com a leitura de dados do Chatbot autorizada pelo admin, a Vitória recebe,
+ * O chatbot com dados (`docs/ia-e-vitoria.md`, seção 4.10): com a leitura de dados do Chatbot autorizada pelo admin, a Vitória recebe,
  * junto do manual, um bloco com o trabalho de quem pergunta (shared/ia/funcoes.ts, campo `le` do chatbot):
  * - as OS em aberto da equipe da pessoa (e, para o supervisor e o admin, o escopo que eles já enxergam): número, título, serviço,
  *   local, situação e data prevista;

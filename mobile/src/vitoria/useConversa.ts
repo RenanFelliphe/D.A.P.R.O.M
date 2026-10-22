@@ -17,7 +17,7 @@ const PENSAR_TETO_MS = 900;
 const iniciarPausa = (letras = 0) => new Promise<void>((ok) => setTimeout(ok, PENSAR_MIN_MS + Math.random() * PENSAR_VARIACAO_MS + Math.min(letras * PENSAR_POR_LETRA_MS, PENSAR_TETO_MS)));
 
 /**
- * A conversa com a Vitória (`vitoria.md`, seção 2). Três caminhos: a **sugestão fixa** (pergunta e resposta prontas, nunca chama a `api`),
+ * A conversa com a Vitória (`docs/ia-e-vitoria.md`, seção 4). Três caminhos: a **sugestão fixa** (pergunta e resposta prontas, nunca chama a `api`),
  * a **resposta local** (saudação, agradecimento, "fique triste": o app responde e reage sozinho) e a **mensagem** para a `api`
  * (`POST /vitoria/mensagens`, que responde pelo manual do técnico, com a IA ou sem ela). A conversa vive enquanto o app está aberto.
  */
@@ -62,7 +62,7 @@ export function useConversa({ aberto, tela }: { aberto: boolean; tela: TelaAtual
   };
 
   /**
-   * Dupla checagem (vitoria.md, 2.4): refaz a validação contra o manifesto com o contexto que o app tem agora, antes de navegar. Devolve
+   * Dupla checagem (`docs/ia-e-vitoria.md`, seção 4.6): refaz a validação contra o manifesto com o contexto que o app tem agora, antes de navegar. Devolve
    * para onde ir, ou `null` (com a mensagem de erro) se não deu para confirmar.
    */
   const confirmarAcao = (acao: AcaoResolvida): DestinoNoApp | null => {

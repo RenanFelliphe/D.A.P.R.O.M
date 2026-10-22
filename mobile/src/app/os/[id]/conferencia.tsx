@@ -10,8 +10,8 @@ import { Carregando, Vazio } from "@/ui/Estados";
 import { Tela } from "@/ui/Tela";
 
 /**
- * A conferência da execução que a equipe registrou sem sinal, em aparelhos diferentes (`funcionalidades/execucao-compartilhada.md`, etapa
- * 3). O id da rota é o da OS; `c` diz qual conferência (a OS pode ter uma por execução) e, sem ele, abre a mais recente que ainda anda. É uma
+ * A conferência da execução que a equipe registrou sem sinal, em aparelhos diferentes (`docs/operacao-de-campo.md`,
+ * seção 6.6). O id da rota é o da OS; `c` diz qual conferência (a OS pode ter uma por execução) e, sem ele, abre a mais recente que ainda anda. É uma
  * tela só com sinal: a comparação e as escolhas vivem na `api`, e não há o que mostrar da cópia do aparelho.
  */
 export default function Conferencia() {

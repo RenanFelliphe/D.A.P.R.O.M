@@ -34,7 +34,7 @@ export async function consultarFuncionario(deps: Deps, matricula: string): Promi
 }
 
 /**
- * O que o cadastro de um usuário exige do registro (`apifuncionarios.md`, seção 4.2), na ordem das respostas: a matrícula existe
+ * O que o cadastro de um usuário exige do registro (`docs/pessoas-e-equipes.md`, seção 2.3), na ordem das respostas: a matrícula existe
  * (`404`), o e-mail é o dela (`422`, sem revelar qual é o certo) e ela não está afastada nem desligada (`409`). Devolve o
  * funcionário e a equipe que o setor sugere. Registro fora do ar é `503`.
  */
@@ -98,7 +98,7 @@ async function outrosAdminsAtivos(db: Db, exceto: string): Promise<number> {
 }
 
 /**
- * A conferência de uma pessoa com o registro (`apifuncionarios.md`, seção 5.3); o aviso, a leitura diária e o "Atualizar do
+ * A conferência de uma pessoa com o registro (`docs/integracoes-simuladas.md`, seção 5.8); o aviso, a leitura diária e o "Atualizar do
  * registro" fazem a mesma coisa. `funcionario` é o que o registro respondeu para a matrícula do usuário, ou `null` se ela não está
  * lá. Copia os dados pessoais, grava a situação e a hora da conferência e, para quem saiu da empresa, tira o acesso:
  * conta liberada e ativa é desativada, conta pendente vira recusada. Afastado só grava a situação, e a conferência nunca

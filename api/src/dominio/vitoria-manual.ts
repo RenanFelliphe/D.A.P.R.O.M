@@ -4,7 +4,7 @@ import path from "node:path";
 import type { Perfil } from "../db/schema";
 
 /**
- * Carrega e cacheia os manuais da Vitória (`vitoria.md`, seção 2.3): em Markdown, um por perfil, lidos uma única vez
+ * Carrega e cacheia os manuais da Vitória (`docs/ia-e-vitoria.md`, seção 4.4): em Markdown, um por perfil, lidos uma única vez
  * por processo (cerca de 20 mil tokens, cabem inteiros no pedido com cache — não precisa de banco vetorial). Perfil
  * `supervisor` não existe como perfil de verdade (é uma equipe supervisionada por um técnico), e quem aguarda
  * liberação (`pendente`) continua sendo um técnico: os dois caem no manual do técnico.
@@ -100,7 +100,7 @@ function palavrasDe(texto: string): Set<string> {
 }
 
 /**
- * Busca sem IA (`vitoria.md`, seção 2.6): conta quantas palavras da pergunta aparecem no item do manual (texto + a
+ * Busca sem IA (`docs/ia-e-vitoria.md`, seção 4.8): conta quantas palavras da pergunta aparecem no item do manual (texto + a
  * própria pergunta de exemplo, quando a entrada carrega uma); devolve a entrada com mais acertos, ou `null` sem
  * nenhum. Simples de propósito — é a reserva para quando não há IA, não a resposta principal.
  */

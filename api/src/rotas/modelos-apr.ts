@@ -81,7 +81,7 @@ const listaDeTextos = (maximo: number) =>
 /**
  * Modelos de APR versionados, a orientação de cada um e a tabela de atividades. Todo perfil autenticado lê (rascunho só
  * quem edita); só o administrador escreve (a Segurança do Trabalho não usa o sistema). Um modelo publicado é imutável
- * (Decisão-chave 6): editar é criar um rascunho da versão seguinte, ajustá-lo e publicá-lo; excluir um modelo publicado o
+ * (decisão-chave 6, `docs/especificacao.md`, seção 2.6): editar é criar um rascunho da versão seguinte, ajustá-lo e publicá-lo; excluir um modelo publicado o
  * arquiva. A orientação fica fora do versionamento.
  */
 export function rotasModelosApr(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {

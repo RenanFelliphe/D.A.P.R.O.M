@@ -16,7 +16,7 @@ const LIMITE_DE_MATRICULAS_POR_AVISO = 1000;
 /**
  * Integração com o registro de funcionários (RH): a prévia do cadastro, o aviso de mudanças que o registro envia, a leitura sob
  * demanda ("Ler agora") e o estado da sincronização. A conferência em si (do aviso e da leitura) roda no executor de tarefas,
- * em `dominio/rh.ts`. Ver `apifuncionarios.md`.
+ * em `dominio/rh.ts`. Ver `docs/integracoes-simuladas.md`, seções 5.5 a 5.7.
  */
 export function rotasRh(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();

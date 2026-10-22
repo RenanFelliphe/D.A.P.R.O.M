@@ -24,7 +24,7 @@ import { compararVersoes, escolhaValida, responsavelDaConferencia, tipoDaCompara
 import { recalcularStatusOs } from "./status-os";
 
 /**
- * A conferência da execução (execução compartilhada, etapa 3; `funcionalidades/execucao-compartilhada.md`, seção 5): o que a equipe
+ * A conferência da execução (execução compartilhada, etapa 3; `docs/operacao-de-campo.md`, seção 6.6): o que a equipe
  * registrou sem sinal, em aparelhos diferentes, vira um registro só, decidido pelo responsável e assinado pela equipe.
  *
  * O caminho de uma conferência:

@@ -1,7 +1,7 @@
 import type { Emblema } from "./gamificacao-dados";
 
 /**
- * As 3 conquistas dos treinamentos de serviço (seção 3.8 do `vitoria.md`, seção 13 do `gameficacao.md`), no mesmo espírito
+ * As 3 conquistas dos treinamentos de serviço (seções 8.8 e 7.4 do `docs/gamificacao-e-treinamentos.md`), no mesmo espírito
  * de `gamificacao-dados.ts`: os dados ficam aqui, viram `INSERT` colado na migração que os criou (`0027`, que não mexe em
  * `0016`/`0017`) e as imagens são geradas e gravadas pela subida da `api` (`treinamento-servico-imagens.ts`). Ficam num
  * arquivo à parte, e não dentro de `CONQUISTAS_DA_CARGA`, porque aquele array é o retrato fechado da migração `0016`

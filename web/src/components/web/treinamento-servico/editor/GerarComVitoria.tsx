@@ -37,7 +37,7 @@ const esquema = z.object({
 const ABRIR_REVISAO_MS = 3500;
 
 /**
- * "Gerar com a Vitória" (seção 3.6 do `vitoria.md`): como escrever o procedimento, com um exemplo logo abaixo; o texto; as
+ * "Gerar com a Vitória" (seção 9.1 do `docs/gamificacao-e-treinamentos.md`): como escrever o procedimento, com um exemplo logo abaixo; o texto; as
  * fases do jogo (quantas e o tipo de cada uma, ou "A Vitória escolhe"), logo abaixo do texto; e,
  * enquanto a IA trabalha, a Vitória pensando com o progresso. Pronto, ela comemora e a validação abre sozinha.
  */

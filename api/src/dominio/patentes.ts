@@ -4,7 +4,7 @@ import { patente } from "../db/schema";
 import type { Deps } from "../deps";
 
 /**
- * As patentes (seção 3 do `gameficacao.md`): a escada de níveis cadastrada pelo admin. A patente de uma pessoa é a de maior
+ * As patentes (seção 3 do `docs/gamificacao-e-treinamentos.md`): a escada de níveis cadastrada pelo admin. A patente de uma pessoa é a de maior
  * pontuação necessária que ela atingiu na temporada; a da equipe usa a mesma tabela aplicada à média por membro.
  */
 

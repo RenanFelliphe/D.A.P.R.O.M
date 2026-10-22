@@ -1,7 +1,7 @@
 /**
  * A página "Validações" do supervisor (`GET /me/validacoes`): tudo o que espera a decisão ou a assinatura dele, numa fila só.
  * Cada item vem de uma fonte que já existia (a OS aguardando a ciência, o treinamento de serviço, a sugestão de materiais, a
- * conferência da execução e os pedidos de ausência); a página só os reúne. O desenho está em `funcionalidades/validacoes.md`.
+ * conferência da execução e os pedidos de ausência); a página só os reúne. O desenho está em `docs/pessoas-e-equipes.md`, seção 5.
  */
 
 export const TIPOS_DE_VALIDACAO = ["os_ciencia", "treinamento", "sugestao_material", "conferencia", "ausencia"] as const;

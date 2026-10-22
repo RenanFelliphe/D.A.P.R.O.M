@@ -7,7 +7,7 @@ import { IAIndisponivel } from "../src/servicos/ia";
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
- * A recomendação do modelo de APR guardada por OS (`controle-da-ia.md`): palavras-chave para toda OS que entra, a IA depois (quando a
+ * A recomendação do modelo de APR guardada por OS (`docs/ia-e-vitoria.md`, seção 5): palavras-chave para toda OS que entra, a IA depois (quando a
  * função Recomendação está ligada), a análise refeita quando o texto da OS ou os modelos mudam, e a escolha da tela e do aplicativo
  * lendo o que ficou guardado.
  */

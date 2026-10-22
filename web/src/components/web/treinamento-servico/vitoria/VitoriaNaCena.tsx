@@ -24,7 +24,7 @@ interface VitoriaNaCenaProps {
 }
 
 /**
- * A Vitória falando dentro do treinamento: a foto ou a figurinha (`vitoria.md`, seção 2.8) e um balão com a fala. É a mesma
+ * A Vitória falando dentro do treinamento: a foto ou a figurinha (`docs/ia-e-vitoria.md`, seção 4.13) e um balão com a fala. É a mesma
  * personagem do assistente: nos passos ela mostra a reação escolhida pelo admin, no retorno das fases `certo` ou `errada`.
  */
 export function VitoriaNaCena({ reacao, chave, tamanho = 112, tom, empilhada, falando, className, children }: VitoriaNaCenaProps) {

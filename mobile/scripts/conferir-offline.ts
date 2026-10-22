@@ -2,7 +2,7 @@
  * Confere o modo offline do app contra uma `api` de verdade (sem aparelho): baixa a cópia da equipe (`POST /sync/pull`) para um SQLite,
  * confere que a leitura local devolve o mesmo que a `api` (lista, detalhe, escolha do modelo, modelo, equipe), faz sem sinal a APR, a
  * execução e o encerramento (tudo na fila), e sobe tudo quando o sinal volta, vendo o resultado no servidor. Depois confere o evento
- * adiado (a assinatura de outro aparelho), a APR sem sinal que o servidor bloqueia (D1: a execução não se perde e vira alerta) e o
+ * adiado (a assinatura de outro aparelho), a APR sem sinal que o servidor bloqueia (`mobile/README.md`, decisão D1: a execução não se perde e vira alerta) e o
  * reenvio (sem duplicar). Usa o mesmo cliente, as mesmas regras de `shared/` e o mesmo código do `src/offline/` que o app. Pensado para a
  * `api` local em memória:
  *
@@ -254,7 +254,7 @@ async function main() {
   assert.equal((await tiago.cliente.chamar<DetalheDaOs>(`/os/${osB!.id}`)).os.status, "em_execucao");
   ok("as duas assinaturas chegaram: na sincronização seguinte a execução adiada sobe");
 
-  // ================================================================ 5. a APR sem sinal que o servidor bloqueia (D1)
+  // ================================================================ 5. a APR sem sinal que o servidor bloqueia (`mobile/README.md`, decisão D1)
   // O que reprova: parte do que passa e inverte um item de cada vez, até a `api` reprovar (o técnico não sabe o que bloqueia; este script pergunta).
   let reprova: Map<string, Resposta> | null = null;
   for (const item of perguntasDe(modelo, [])) {

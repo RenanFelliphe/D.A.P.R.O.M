@@ -5,7 +5,7 @@ import { instante } from "./comum";
  * As ordens de manutenção do SAP simulado: o que o SAP teria, com dados fictícios, que o SYNQ OS lê pelo contrato (`GET /sap-simulado/ordens`).
  * Fica no banco do SYNQ OS (e não na memória) para sobreviver a um reinício, mas não tem chave para nenhuma tabela do SYNQ OS: o vínculo
  * com `os` é só o número da ordem, como seria com o SAP de verdade. Uma coluna para cada campo do contrato (`OrdemSap`), com o local de
- * instalação em quatro colunas. Vazia quando `SAP_SIMULADO=false`. Ver `apiSAP.md`.
+ * instalação em quatro colunas. Vazia quando `SAP_SIMULADO=false`. Ver `docs/integracoes-simuladas.md`, seção 2.
  */
 export const ordemSapSimulada = pgTable(
   "ordem_sap_simulada",

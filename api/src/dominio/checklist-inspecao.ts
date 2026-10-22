@@ -6,7 +6,7 @@ import { invalido } from "../http/erros";
 import { uuid } from "../http/validacao";
 
 /*
- * Checklist de inspeção das preventivas (`inspecao-preventivas.md`): as perguntas ficam no plano (`plano_preventiva_pergunta`)
+ * Checklist de inspeção das preventivas (`docs/operacao-de-campo.md`, seções 9.2 a 9.4): as perguntas ficam no plano (`plano_preventiva_pergunta`)
  * e o técnico as marca no encerramento de cada OS do plano. Aqui ficam a leitura, a gravação do checklist e a busca do
  * checklist de uma OS pela chave plano + item; a conferência das respostas é do encerramento (`eventos-execucao.ts`).
  */

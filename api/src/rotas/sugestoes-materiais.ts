@@ -24,7 +24,7 @@ import { textoObrigatorio } from "../http/validacao";
 import { z } from "zod";
 
 /**
- * Sugestão e contestação da lista de materiais de um serviço (`funcionalidades/sugestao-de-materiais.md`). Todo perfil que não é
+ * Sugestão e contestação da lista de materiais de um serviço (`docs/operacao-de-campo.md`, seções 10.2 a 10.5). Todo perfil que não é
  * o administrador envia; quem avalia é o supervisor da equipe que mais faz o serviço (e o administrador). Todos leem, para a
  * colaboração ficar à vista.
  */

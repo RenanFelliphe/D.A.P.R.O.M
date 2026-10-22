@@ -72,8 +72,8 @@ function MelhorNota({ nota, anterior }: { nota: number; anterior: number | null 
 }
 
 /**
- * O fim do treinamento: as estrelas (pelas fases certas), a Vitória comemorando, a nota (seção 12 do
- * `treinamentos-de-servico.md`), o tempo do jogo todo, os pontos da gamificação (só no jogo de verdade, na primeira vez),
+ * O fim do treinamento: as estrelas (pelas fases certas), a Vitória comemorando, a nota (seção 8.7 do
+ * `docs/gamificacao-e-treinamentos.md`), o tempo do jogo todo, os pontos da gamificação (só no jogo de verdade, na primeira vez),
  * o ranking do treinamento (só no jogo de verdade, com o atalho "Ver ranking" no rodapé) e cada fase.
  */
 export function ResultadoDoJogo({ resultado, fases, pontua, ranking, jaConcluiu, tempoTotalMs, aoJogarDeNovo, aoReverExplicacao, aoFechar }: ResultadoDoJogoProps) {

@@ -5,7 +5,7 @@ import { atividade } from "./modelos-apr";
 import { equipe, usuario } from "./usuarios";
 
 /**
- * Treinamentos de serviço (seção 3 do `vitoria.md`): o jogo por serviço do catálogo. Usa o prefixo `treinamento_servico` em
+ * Treinamentos de serviço (seção 8 do `docs/gamificacao-e-treinamentos.md`): o jogo por serviço do catálogo. Usa o prefixo `treinamento_servico` em
  * tudo para não colidir com o Campo de treino (tutorial fictício já existente, as colunas `treinamento_*` de `usuario` e
  * `api/test/treinamento.test.ts`), que é uma funcionalidade diferente e não é tocado aqui.
  *
@@ -64,7 +64,7 @@ export const treinamentoServicoVersao = pgTable(
      */
     autorId: uuid().references(() => usuario.id),
     /**
-     * A validação pelos supervisores (`funcionalidades/validacao-de-treinamento.md`): o rascunho enviado fica travado, à espera das
+     * A validação pelos supervisores (`docs/gamificacao-e-treinamentos.md`, seção 8.10): o rascunho enviado fica travado, à espera das
      * assinaturas. `validacao_enviada_*` vêm preenchidos juntos enquanto a versão está em validação; a assinatura é a do perfil de quem enviou.
      */
     validacaoEnviadaEm: instante(),
@@ -124,7 +124,7 @@ export const treinamentoServicoTentativa = pgTable(
     /** Fases certas (todos os acertos possíveis), até o total de fases da versão. A gamificação conta no máximo 10. */
     fasesCertas: integer().notNull().default(0),
     /**
-     * O cronômetro de cada fase (seção 12 do `treinamentos-de-servico.md`): os milissegundos acumulados por fase, a fase em que
+     * O cronômetro de cada fase (seção 8.6 do `docs/gamificacao-e-treinamentos.md`): os milissegundos acumulados por fase, a fase em que
      * a pessoa está agora (e desde quando) e o instante do último evento. Ao sair de uma fase o tempo dela fica guardado; ao
      * voltar, continua de onde parou. Tudo pelo relógio do servidor (`deps.agora()`).
      */
@@ -147,8 +147,8 @@ export const treinamentoServicoTentativa = pgTable(
 
 /**
  * A resposta de uma fase. PK composta (`tentativa_id`, `fase`): a segunda chamada à mesma fase não substitui a primeira
- * (`on conflict do nothing`), porque vale a primeira resposta (Decisão da seção 3.8 do `vitoria.md`). Com a nota (seção 12
- * do `treinamentos-de-servico.md`), guarda também os acertos, o tempo e os pontos da fase; `confirmada` é falsa na fase que
+ * (`on conflict do nothing`), porque vale a primeira resposta (seção 8.6 do `docs/gamificacao-e-treinamentos.md`). Com a nota (seção 8.7
+ * do `docs/gamificacao-e-treinamentos.md`), guarda também os acertos, o tempo e os pontos da fase; `confirmada` é falsa na fase que
  * a pessoa não confirmou e que foi corrigida, ao finalizar, pelo que tinha feito nela.
  */
 export const treinamentoServicoResposta = pgTable(

@@ -1,5 +1,5 @@
 /**
- * A previsão do tempo no navegador (`funcionalidades/previsao-do-tempo.md`): os tipos e as regras puras vêm de `shared/api/clima`
+ * A previsão do tempo no navegador (`docs/operacao-de-campo.md`, seção 4.7): os tipos e as regras puras vêm de `shared/api/clima`
  * (o app usa os mesmos); aqui ficam o pedido à `api` (`GET /clima`, com a posição do aparelho e, sem ela, a cidade padrão), a posição
  * guardada para não pedir permissão em loop e o que a APR faz com a previsão que a pessoa viu: o rascunho guarda uma cópia
  * (`ClimaDoRascunho`) e a manda junto do `apr_concluida`.

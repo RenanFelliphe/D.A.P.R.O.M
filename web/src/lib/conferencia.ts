@@ -1,5 +1,5 @@
 /**
- * A conferência da execução na web (`funcionalidades/execucao-compartilhada.md`, etapa 3). O contrato e os textos vêm de `shared/api`
+ * A conferência da execução na web (`docs/operacao-de-campo.md`, seções 6.5 a 6.7). O contrato e os textos vêm de `shared/api`
  * (o app `mobile` usa os mesmos); as regras puras do que cada tela mostra e habilita ficam aqui, sem React, para serem testadas
  * (`web/scripts/testar-conferencia.mts`).
  */

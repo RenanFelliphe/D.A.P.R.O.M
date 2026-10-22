@@ -28,7 +28,7 @@ interface RevisaoDoRascunhoProps {
 const rotuloDaReacao = (expressao: ExpressaoVitoria) => (reacaoNormal(expressao) ? "Normal" : (REACOES_DO_PASSO.find((r) => r.expressao === expressao)?.rotulo ?? "Normal"));
 
 /**
- * A validação do rascunho (aba Revisão): o treinamento inteiro como o técnico vai ver, com a resposta certa de cada fase. Nos
+ * A revisão do rascunho (aba Revisão): o treinamento inteiro como o técnico vai ver, com a resposta certa de cada fase. Nos
  * itens da Vitória, o trecho de origem e as pendências, que somem ao editar o item ou ao confirmá-lo como está (grava na hora).
  * Ao lado, os ajustes pelo chat e o caminho até publicar: testar o jogo e assinar.
  */

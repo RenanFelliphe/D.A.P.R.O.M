@@ -5,7 +5,7 @@ import { gravarMeta, lerMeta } from "../offline/copia";
 import type { Conexao } from "../offline/sincronizar";
 
 /**
- * A previsão do tempo no aparelho (`funcionalidades/previsao-do-tempo.md`). Online, vem da `api` (`GET /clima`) e a última resposta de cada
+ * A previsão do tempo no aparelho (`docs/operacao-de-campo.md`, seção 4.7). Online, vem da `api` (`GET /clima`) e a última resposta de cada
  * janela fica guardada no banco local; sem sinal, vale a guardada, desde que seja de hoje e ainda tenha horas pela frente. Sem nenhuma, não
  * há previsão: as telas simplesmente não a mostram. O app NUNCA bloqueia nem trava por falta de previsão.
  */

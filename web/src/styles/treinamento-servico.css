@@ -1,5 +1,5 @@
 /*
- * Treinamentos de serviço (seção 3 do `vitoria.md`): as peças comuns (a Vitória falando, chips, números), a capa `/treinar`
+ * Treinamentos de serviço (seção 8 do `docs/gamificacao-e-treinamentos.md`): as peças comuns (a Vitória falando, chips, números), a capa `/treinar`
  * e as telas do admin (`/treinamento/*`); a janela do jogo fica em `treinamento-jogo.css`. Tudo com o prefixo `ts-`. As cores
  * são as do sistema; o verde e o vermelho de acerto/erro são os de "encerrada" e "bloqueio". Com "reduzir movimento", nada
  * se mexe (fim do arquivo).

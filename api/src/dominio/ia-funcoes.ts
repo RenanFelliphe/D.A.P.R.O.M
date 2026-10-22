@@ -10,7 +10,7 @@ import { assinaturaDoAto } from "./assinatura";
 import { registrarAuditoria } from "./auditoria";
 
 /*
- * O controle da IA (`funcionalidades/controle-da-ia.md`): cada função de IA liga e desliga sozinha, e a leitura de dados reais é
+ * O controle da IA (`docs/ia-e-vitoria.md`, seção 3): cada função de IA liga e desliga sozinha, e a leitura de dados reais é
  * uma autorização assinada pelo admin. O estado fica em `ia_funcao`; sem linha vale o padrão ao instalar. Quem decide se uma
  * chamada sai é o módulo de IA (`ProvedorIAControlado`): nenhuma função consegue chamar o fornecedor desligada.
  */

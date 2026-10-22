@@ -11,7 +11,7 @@ import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 import { ajudaDeExecucao } from "./ajuda-execucao";
 
 /**
- * A previsão do tempo (`previsao-do-tempo.md`): a classificação do risco e as frases, `GET /clima` com o provedor trocado por uma
+ * A previsão do tempo (`docs/operacao-de-campo.md`, seção 4.7): a classificação do risco e as frases, `GET /clima` com o provedor trocado por uma
  * versão em memória, a pergunta de clima da APR (aviso, foto no risco extremo e aviso na hora ao supervisor) e o clima do
  * encerramento no relatório do supervisor.
  */

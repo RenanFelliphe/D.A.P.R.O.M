@@ -6,7 +6,7 @@ import type { Deps } from "../deps";
 import { invalido, naoEncontrado } from "../http/erros";
 
 /**
- * As configurações do sistema que o admin edita em `/app/configuracoes` (`funcionalidades/configuracoes.md`): a cidade padrão da
+ * As configurações do sistema que o admin edita em `/app/configuracoes` (`docs/operacao-de-campo.md`, seção 13): a cidade padrão da
  * previsão do tempo, os horários das rotinas e os limites de uso da IA. Até aqui eram variáveis de ambiente; agora o ambiente é só o
  * valor inicial (`padrao`) e o que o admin muda fica no banco (`configuracao`), por cima. A mudança vale na hora, sem reiniciar:
  * `aplicarConfiguracoes` escreve o valor no próprio `config` da `api`, que o agendador e as rotas leem a cada uso.

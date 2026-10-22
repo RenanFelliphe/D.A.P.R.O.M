@@ -289,7 +289,7 @@ async function cancelarNoSap(db: Db, ctx: Contexto, existente: typeof os.$inferS
     .limit(1);
 
   if (emAndamento) {
-    // A execução segue; conflito vira alerta, nunca sobrescrita (Decisão-chave 2).
+    // A execução segue; conflito vira alerta, nunca sobrescrita (decisão-chave 2, `docs/especificacao.md`, seção 2.2).
     await db.update(os).set({ statusSap }).where(eq(os.id, existente.id));
     const detalhe = `A ordem ${existente.numeroOrdem} foi cancelada ou encerrada no SAP (status ${statusSap ?? "vazio"}), mas tem execução em andamento; a execução segue`;
     const [repetido] = await db
@@ -308,7 +308,7 @@ async function cancelarNoSap(db: Db, ctx: Contexto, existente: typeof os.$inferS
 async function atualizarOrdem(db: Db, ctx: Contexto, existente: typeof os.$inferSelect, bruto: unknown): Promise<Resultado> {
   const ordem = validar(bruto);
 
-  // A reprogramação feita no sistema vence a data do SAP (questão 14).
+  // A reprogramação feita no sistema vence a data do SAP (`docs/integracoes-simuladas.md`, seção 3.2).
   if (existente.dataInicioProg !== ordem.data_inicio_prog) {
     const [reprogramada] = await db.select({ id: reprogramacao.id }).from(reprogramacao).where(eq(reprogramacao.osId, existente.id)).limit(1);
     if (reprogramada) throw new Ignorada(MOTIVO_REPROGRAMADA);

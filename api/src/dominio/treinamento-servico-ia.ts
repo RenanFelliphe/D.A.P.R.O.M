@@ -23,7 +23,7 @@ import {
 } from "./treinamento-servico-esquema";
 
 /**
- * O rascunho de treinamento pela IA (seção 3.6 do `vitoria.md`): o admin cola o texto do procedimento e a IA preenche
+ * O rascunho de treinamento pela IA (seção 9 do `docs/gamificacao-e-treinamentos.md`): o admin cola o texto do procedimento e a IA preenche
  * o rascunho no formato do editor; depois, ajustes pelo chat e "regerar esta fase". A IA é apoio: o editor manual
  * continua sendo a base, e sem a chave o botão some.
  *

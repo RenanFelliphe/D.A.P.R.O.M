@@ -25,7 +25,7 @@ interface Sobre {
 }
 
 /**
- * `GET /vitoria/sobre` (`vitoria.md`, seção 2.8.7): o lado verdadeiro do perfil da Vitória. Traz o provedor e os modelos
+ * `GET /vitoria/sobre` (`docs/ia-e-vitoria.md`, seção 4.14): o lado verdadeiro do perfil da Vitória. Traz o provedor e os modelos
  * da configuração (nunca a chave), os limites e o uso do dia de quem pergunta; abre para todos os perfis, inclusive quem
  * aguarda liberação.
  */

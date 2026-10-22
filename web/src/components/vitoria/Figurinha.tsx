@@ -13,7 +13,7 @@ interface Tocando {
 }
 
 /**
- * A reação da Vitória como figurinha, parte da própria mensagem (`vitoria.md`, seção 2.8): aparece com um "pop", toca a
+ * A reação da Vitória como figurinha, parte da própria mensagem (`docs/ia-e-vitoria.md`, seção 4.13): aparece com um "pop", toca a
  * animação uma vez e fica no quadro parado, como uma figurinha de WhatsApp. Um toque nela toca de novo, inteira.
  *
  * - `tocar`: a animação roda ao aparecer. Falso, a figurinha só mostra o quadro parado (mensagem antiga, painel

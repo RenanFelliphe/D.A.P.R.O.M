@@ -1,5 +1,5 @@
 /**
- * A nota de um treinamento de serviço (`funcionalidades/treinamentos-de-servico.md`, seção 12): cada fase vale até 10 pontos
+ * A nota de um treinamento de serviço (`docs/gamificacao-e-treinamentos.md`, seção 8.7): cada fase vale até 10 pontos
  * pelos acertos, vezes o multiplicador do tempo; a soma das fases vezes (fases × 10) dá a nota. É a nota do treinamento e
  * do ranking dele, não os pontos da gamificação (que seguem 5 pelo concluído + 1 por fase certa). A `api` calcula e grava; a
  * web usa as mesmas contas para mostrar a tabela do tempo e o detalhe do resultado.

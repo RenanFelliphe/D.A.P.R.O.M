@@ -1,5 +1,5 @@
 /**
- * Checklist de inspeção das preventivas (`inspecao-preventivas.md`): as perguntas ficam no plano de manutenção, ao lado do
+ * Checklist de inspeção das preventivas (`docs/operacao-de-campo.md`, seção 9): as perguntas ficam no plano de manutenção, ao lado do
  * intervalo, e o técnico as marca no encerramento de cada OS do plano. A execução guarda uma cópia de cada pergunta com a
  * resposta, então mudar o checklist depois não altera o que já foi respondido.
  */

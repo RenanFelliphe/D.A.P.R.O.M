@@ -1,7 +1,7 @@
 /**
  * Sugestão e contestação da lista de materiais de um serviço, como a `api` devolve (`/sugestoes-materiais`). Qualquer pessoa
  * que não seja administradora sugere uma lista nova ou corrigida, ou contesta a lista recomendada (com o motivo); quem avalia é
- * o supervisor da equipe que mais faz o serviço (`funcionalidades/sugestao-de-materiais.md`). Chaves em snake_case.
+ * o supervisor da equipe que mais faz o serviço (`docs/operacao-de-campo.md`, seções 10.2 a 10.5). Chaves em snake_case.
  */
 
 import type { CategoriaMaterial, MaterialDoServico } from "./catalogo";

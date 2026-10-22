@@ -7,7 +7,7 @@ import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 import { criarOs } from "./fixture-os";
 
 /**
- * Os minigames com dados (`controle-da-ia.md`): sem a leitura de dados autorizada o pedido do rascunho é o de sempre; com ela, leva
+ * Os minigames com dados (`docs/ia-e-vitoria.md`, seção 1.1): sem a leitura de dados autorizada o pedido do rascunho é o de sempre; com ela, leva
  * um resumo agregado das OS do serviço (motivos de pausa e de suspensão, itens de APR com problema e materiais sugeridos), sem
  * pessoa, sem texto livre e sem dado de outro serviço; sem dado nenhum não vai bloco, e uma falha na leitura nunca derruba o rascunho.
  */

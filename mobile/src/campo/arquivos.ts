@@ -6,7 +6,7 @@ import { LIMITE_DO_PDF_EM_BYTES } from "@shared/api/evidencias";
 import { novoUuid } from "@shared/api/uuid";
 import type { ArquivoLocal } from "@/api/eventos";
 
-/** A questão 16: o lado maior da foto vai a ~1600 px e a qualidade a 70% (~300 KB), para subir rápido mesmo com sinal fraco. */
+/** `docs/especificacao.md`, seção 3.4: o lado maior da foto vai a ~1600 px e a qualidade a 70% (~300 KB), para subir rápido mesmo com sinal fraco. */
 export const LADO_MAIOR_DA_FOTO = 1600;
 export const QUALIDADE_DA_FOTO = 0.7;
 

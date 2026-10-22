@@ -8,7 +8,7 @@ import { situacaoDaFuncao } from "./ia-funcoes";
 import { chaveDaAnalise, impressaoDosModelos, modelosParaEscolher, recomendarModelo, type TextosDaOs } from "./recomendacao-apr";
 
 /*
- * A recomendação do modelo de APR guardada por OS (`funcionalidades/controle-da-ia.md`). A varredura abaixo roda a cada poucos
+ * A recomendação do modelo de APR guardada por OS (`docs/ia-e-vitoria.md`, seção 5). A varredura abaixo roda a cada poucos
  * minutos e olha todas as OS que ainda podem receber APR, qualquer que tenha sido a entrada delas (SAP, planilha, PDF, OS de apoio):
  * assim nada precisa ser ligado nos pontos de inserção. Primeiro as palavras-chave, na hora e para todas; depois a IA, quando a função
  * Recomendação está ligada, em lotes pequenos. A IA que falha nunca derruba nada: a OS segue com as palavras-chave e a IA tenta de novo

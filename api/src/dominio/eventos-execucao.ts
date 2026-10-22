@@ -87,7 +87,7 @@ const gravarEvidencias = (ctx: Contexto, execucaoId: string, evidencias: Evidenc
 const esquemaIniciada = z.object({ id: uuid, os_id: uuid.optional(), apr_id: uuid, numero_pessoas: z.number().int().min(1).optional(), inicio: instanteIso, ...posicaoPayload });
 
 /**
- * `execucao_iniciada`: exige a APR aprovada, do dia, da própria OS e ainda não usada (Decisão-chave 4), assinada por todos os
+ * `execucao_iniciada`: exige a APR aprovada, do dia, da própria OS e ainda não usada (decisão-chave 4, `docs/especificacao.md`, seção 2.4), assinada por todos os
  * participantes que ficaram nela (cada um na própria conta; no offline, presencial), com ao menos 2 participantes e o responsável.
  * Grava a localização do início, se o aparelho deu.
  */
@@ -109,7 +109,7 @@ export async function aplicarExecucaoIniciada(ctx: Contexto, osIdEnvelope: strin
 
   const [a] = await ctx.tx.select().from(apr).where(eq(apr.id, p.apr_id));
   if (!a) throw adiar("apr_ausente", "A APR ainda não foi recebida");
-  // Sem sinal o aparelho não valida a APR (só o servidor sabe o que bloqueia): a execução feita assim não pode se perder (Decisão-chave 2).
+  // Sem sinal o aparelho não valida a APR (só o servidor sabe o que bloqueia): a execução feita assim não pode se perder (decisão-chave 2, `docs/especificacao.md`, seção 2.2).
   // Vinda da fila e amparada por uma APR do próprio técnico que o servidor bloqueou, ela é aplicada e vira alerta ao supervisor.
   const bloqueadaSemSinal = ctx.offline && a.resultado === "bloqueada" && a.preenchidaPor === ctx.usuario.id;
   if (a.osId !== ordem.id || (a.resultado !== "aprovada" && !bloqueadaSemSinal)) throw rejeitar("apr_invalida", "Preencha a APR antes de iniciar");

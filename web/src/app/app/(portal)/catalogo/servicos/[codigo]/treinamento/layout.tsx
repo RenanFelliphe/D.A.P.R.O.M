@@ -13,7 +13,7 @@ import { textoDoAndamento } from "@/lib/treinamento-validacao";
 import { ehAdmin } from "@/lib/tipos";
 
 /**
- * O treinamento de serviço de quem cria (seção 3.5 do `vitoria.md` e `validacao-de-treinamento.md`): o admin, e o supervisor de
+ * O treinamento de serviço de quem cria (seções 8.2 e 8.10 do `docs/gamificacao-e-treinamentos.md`): o admin, e o supervisor de
  * equipe que faz o serviço. O caminho, o título e a situação (no ar, rascunho em edição, em validação) valem para todas as telas.
  * As abas ficam em `(painel)`; Criar, Gerar, Publicar e Validar são telas de fluxo, sem abas, com a volta para a visão geral.
  * Quem não pode criar neste serviço vê o porquê, em vez de ser mandado para outra tela sem explicação.

@@ -20,7 +20,7 @@ import { buscarNoManual, manualDoPerfil } from "./vitoria-manual";
 import { diaDe, inicioDoDia, somarDias } from "./tempo";
 
 /**
- * O assistente de ajuda (`vitoria.md`, seção 2), níveis 1 a 3: responde pelo manual do perfil, oferece "Me leve lá" e
+ * O assistente de ajuda (`docs/ia-e-vitoria.md`, seção 4), níveis 1 a 3: responde pelo manual do perfil, oferece "Me leve lá" e
  * "mostrar na tela" (sempre por uma chave fechada do manifesto, nunca uma URL escrita pela IA) e, quando a pergunta dá
  * para resolver com um filtro validado (ex.: um período `AAAA-MM`), devolve a tela já filtrada. A conversa em si nunca
  * é persistida: cada pedido manda de novo as últimas mensagens. Tudo aqui é desenhado para nunca lançar: uma falha
@@ -564,7 +564,7 @@ export async function responderVitoria(deps: Pick<Deps, "db" | "ia" | "config" |
 
   const { resolvida, destinoDesconhecido } = resolverAcao({ ...acaoBruta, tipo: acaoBruta.tipo }, pedido.contexto);
   if (destinoDesconhecido) {
-    // A IA citou uma chave que não existe no manifesto: é uma alucinação, tratada como "não sei" (vitoria.md, seção 2.4).
+    // A IA citou uma chave que não existe no manifesto: é uma alucinação, tratada como "não sei" (`docs/ia-e-vitoria.md`, seção 4.6).
     await registrarPerguntaSemResposta(db, { pergunta: pedido.mensagem, tela: pedido.tela, perfil: pedido.perfil }, agora());
     await somarEstatistica(db, dia, { ...daIA, naoSei: 1 });
     return { texto: TEXTO_NAO_SEI, expressao: "ops", acao: null };

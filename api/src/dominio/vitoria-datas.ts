@@ -6,7 +6,7 @@ const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julh
 const RELATIVOS = ["este mês", "mês passado", "mês retrasado"] as const;
 
 /**
- * A data de hoje e os últimos 12 meses (`AAAA-MM`), do pedido à IA (`vitoria.md`, seção 2.10.5). A IA não sabe que dia é
+ * A data de hoje e os últimos 12 meses (`AAAA-MM`), do pedido à IA (`docs/ia-e-vitoria.md`, seção 4.7). A IA não sabe que dia é
  * hoje, e "mês passado" (com a virada do ano) e "maio" sem o ano são contas de calendário que ela erra: quem calcula é o
  * servidor, e a IA só consulta a tabela. Pelo nome, o mês vale a ocorrência mais recente, nunca no futuro.
  *

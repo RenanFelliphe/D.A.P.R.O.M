@@ -39,7 +39,7 @@ const esquemaConsulta = z.object({
  *   formato do contrato. É só leitura;
  * - **Gestão** (`/gestao/...`), com o admin logado no SYNQ OS: o CRUD das ordens que a tela `/simulador/ordens` usa, com criação manual
  *   e aleatória, edição, exclusão e ações em massa.
- * As ordens ficam na tabela `ordem_sap_simulada`, no banco do SYNQ OS, e o que `alteradas_desde` filtra é a `alterada_em` dela. Ver `apiSAP.md`.
+ * As ordens ficam na tabela `ordem_sap_simulada`, no banco do SYNQ OS, e o que `alteradas_desde` filtra é a `alterada_em` dela. Ver `docs/integracoes-simuladas.md`, seção 2.9.
  */
 export function rotasSapSimulado(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();

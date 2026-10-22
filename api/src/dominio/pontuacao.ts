@@ -5,7 +5,7 @@ import { lancar, type ContextoDePontos, type Entrada, type Ganho } from "./lanca
 import { diaDe } from "./tempo";
 
 /**
- * As regras de pontuação (seção 2 do `gameficacao.md`), calculadas só no servidor a partir dos registros gravados e na mesma
+ * As regras de pontuação (seção 2 do `docs/gamificacao-e-treinamentos.md`), calculadas só no servidor a partir dos registros gravados e na mesma
  * transação que os grava. Cada função lê o que precisa do banco e lança no extrato; reenviar um evento não pontua de novo
  * (a chave de cada lançamento é única por pessoa).
  *

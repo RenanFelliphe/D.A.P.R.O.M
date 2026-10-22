@@ -11,7 +11,7 @@ import { responder } from "../http/resposta";
 import { lerCorpo } from "../http/validacao";
 
 /**
- * As configurações do sistema (`funcionalidades/configuracoes.md`), só do admin: a cidade padrão da previsão do tempo, os horários das
+ * As configurações do sistema (`docs/operacao-de-campo.md`, seção 13), só do admin: a cidade padrão da previsão do tempo, os horários das
  * rotinas e os limites de uso da IA. O valor mudado vale na hora (`aplicarConfiguracoes`) e cada mudança vai à trilha de auditoria.
  */
 export function rotasConfiguracoes(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {

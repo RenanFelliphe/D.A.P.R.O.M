@@ -87,7 +87,7 @@ const INFORMACOES: [string, string][] = [
   ["Assinatura", "não assina: quem assina são as pessoas"],
 ];
 
-/** O que ela pode e o que não pode fazer: as regras de verdade da Vitória (`vitoria.md`, seções 2.5 e "O que ela não deve fazer"). */
+/** O que ela pode e o que não pode fazer: as regras de verdade da Vitória (`docs/ia-e-vitoria.md`, seção 4.11). */
 const PODE = [
   "Consultar o manual do seu perfil (técnico ou administrador)",
   "Levar você à tela certa (\"Me leve lá\") e fazer piscar o botão (\"Mostrar na tela\")",
@@ -124,7 +124,7 @@ const NOME_DA_FIGURINHA: Record<Reacao, string> = {
 };
 
 /**
- * O perfil da Vitória (`/app/perfil/vitoria`, `vitoria.md`, seção 2.8.7), aberto pelo cabeçalho do chat. É fictício (a
+ * O perfil da Vitória (`/app/perfil/vitoria`, `docs/ia-e-vitoria.md`, seção 4.14), aberto pelo cabeçalho do chat. É fictício (a
  * equipe, a matrícula e o histórico são inventados), menos os 4 contadores do topo e o bloco "Modelo da IA", que vêm
  * de `GET /vitoria/sobre`, e a patente e as conquistas, que são as imagens reais da gamificação. Ela não é um usuário
  * do banco: não entra no ranking, nas equipes nem na auditoria.

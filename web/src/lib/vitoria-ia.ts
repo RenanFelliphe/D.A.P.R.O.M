@@ -1,6 +1,6 @@
 import type { FuncaoDeIA } from "../../../shared/ia/funcoes";
 
-/** Uma função de IA em `GET /vitoria/ia` e no retorno de `PUT /vitoria/ia/{funcao}` (só o admin; `controle-da-ia.md`). */
+/** Uma função de IA em `GET /vitoria/ia` e no retorno de `PUT /vitoria/ia/{funcao}` (só o admin; `docs/ia-e-vitoria.md`, seção 3). */
 export interface EstadoDaFuncaoDeIa {
   funcao: FuncaoDeIA;
   /** Pode chamar a IA agora (ligada e, quando só funciona com dados, com a leitura autorizada na versão atual do texto). */

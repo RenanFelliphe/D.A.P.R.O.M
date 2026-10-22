@@ -1,7 +1,7 @@
 import { celulasEntre, letrasDaGrade, type Celula } from "../../../shared/treinamento-servico/jogos";
 
 /**
- * As peças dos minijogos que precisam de mais que embaralhar uma lista (`treinamentos-de-servico.md`, tipos de fase): a
+ * As peças dos minijogos que precisam de mais que embaralhar uma lista (`docs/gamificacao-e-treinamentos.md`, seção 8.4): a
  * grade do caça-palavras, a partida da memória refeita no servidor e as letras do "desembaralhe". Tudo é sorteado na
  * abertura da tentativa e gravado na apresentação; a correção usa só o que foi gravado.
  */

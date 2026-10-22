@@ -1,5 +1,5 @@
 /**
- * Qualidade de uma foto de folha antes de mandá-la ler (Digitalização por câmera, vitoria.md seção 10.4): mede a luz e a nitidez
+ * Qualidade de uma foto de folha antes de mandá-la ler (Digitalização por câmera, `docs/ia-e-vitoria.md`, seção 6.1): mede a luz e a nitidez
  * na própria imagem, para o aviso "foto escura" ou "tremida" sair na hora e não depois de uma leitura ruim. Os avisos nunca
  * impedem o envio: uma folha quase em branco também tem pouca "nitidez" medida, e quem decide é a pessoa.
  */

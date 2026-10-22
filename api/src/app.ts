@@ -37,7 +37,7 @@ import { rotasVitoria } from "./rotas/vitoria";
  * Monta a aplicação HTTP. Toda rota, menos `GET /saude`, `/auth/login`, `/auth/refresh`, `POST /rh/avisos` (token do registro),
  * o simulador do SAP e o contrato do simulador do RH, passa por
  * `autenticar()` (JWT do Supabase + usuário ativo) e, quando preciso, por `exigirPerfil(...)`: sem token é `401`, com
- * perfil sem permissão é `403`. Cada fatia da especificação é um módulo em `rotas/`.
+ * perfil sem permissão é `403`. Cada fatia da especificação (`docs/especificacao.md`, seção 10) é um módulo em `rotas/`.
  */
 export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa o SYNQ OS; os testes trocam. */ enviarAvisoRh?: EnviarAvisoRh } = {}) {
   const auth = criarAutenticacao(deps);

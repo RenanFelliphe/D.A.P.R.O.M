@@ -34,7 +34,7 @@ const MINIMO_DO_MOTIVO = 10;
 const rotuloDaReacao = (expressao: ExpressaoVitoria) => (reacaoNormal(expressao) ? "Normal" : (REACOES_DO_PASSO.find((r) => r.expressao === expressao)?.rotulo ?? "Normal"));
 
 /**
- * A tela de quem valida o treinamento (`validacao-de-treinamento.md`): o treinamento inteiro como o técnico vai ver, com a resposta
+ * A tela de quem valida o treinamento (`docs/gamificacao-e-treinamentos.md`, seção 8.10): o treinamento inteiro como o técnico vai ver, com a resposta
  * certa de cada fase, o andamento da rodada e as duas decisões. Aprovar usa a assinatura do perfil e, se completar as assinaturas
  * necessárias, publica; recusar pede o motivo e devolve o treinamento a quem o criou. Só leitura: corrigir é com o autor.
  */

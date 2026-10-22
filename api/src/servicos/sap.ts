@@ -1,5 +1,5 @@
 /**
- * Contrato da API do SAP (ver "Integração SAP" na especificação). O simulador do próprio back-end responde no mesmo
+ * Contrato da API do SAP (ver `docs/especificacao.md`, seção 7.1). O simulador do próprio back-end responde no mesmo
  * formato, e o adaptador de leitura não sabe se fala com um ou com o outro.
  */
 export interface OrdemSap {

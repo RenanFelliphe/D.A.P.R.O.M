@@ -84,7 +84,7 @@ export interface AprDaOs {
   participantes: ParticipanteDaApr[];
   respostas: { item_id: string; texto: string; reprovado: boolean }[];
   itens_reprovados: ItemReprovadoDaApr[];
-  /** A previsão do tempo que a pessoa viu na pergunta de clima (`previsao-do-tempo.md`); nula quando não houve. Só no que vem do servidor. */
+  /** A previsão do tempo que a pessoa viu na pergunta de clima (`docs/operacao-de-campo.md`, seção 4.7); nula quando não houve. Só no que vem do servidor. */
   clima?: ClimaRegistrado | null;
   /** Só no app, e só na APR feita sem sinal neste aparelho: o servidor ainda não a validou (ela sobe quando o sinal voltar). */
   aguardando_validacao?: boolean;
@@ -108,7 +108,7 @@ export interface ExecucaoDaOs {
   finalizada_por?: { id: string; nome: string } | null;
   /** Os pedidos de participantes ao responsável; o aberto traz `restante_ms`. */
   pedidos?: PedidoDaApi[];
-  /** As condições do tempo no encerramento (`previsao-do-tempo.md`); nulas quando não houve. Só no que vem do servidor. */
+  /** As condições do tempo no encerramento (`docs/operacao-de-campo.md`, seção 7.1); nulas quando não houve. Só no que vem do servidor. */
   clima?: ClimaRegistrado | null;
 }
 

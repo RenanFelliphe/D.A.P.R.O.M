@@ -1,5 +1,5 @@
 /**
- * Os textos da conferência da execução que a web e o app mostram do mesmo jeito (`funcionalidades/execucao-compartilhada.md`, etapa 3).
+ * Os textos da conferência da execução que a web e o app mostram do mesmo jeito (`docs/operacao-de-campo.md`, seção 6.6).
  * Só português, sem tela: cada cliente desenha, e a frase é uma só.
  */
 import type { CampoDaConferencia, ConferenciaDaApi, OpcaoDoCampo } from "./conferencia-execucao";

@@ -1,5 +1,5 @@
 /**
- * Confere o rascunho de treinamento pela IA (`vitoria.md`, seção 3.6) contra a API real do provedor (`IA_PROVEDOR`), de
+ * Confere o rascunho de treinamento pela IA (`docs/gamificacao-e-treinamentos.md`, seção 9) contra a API real do provedor (`IA_PROVEDOR`), de
  * ponta a ponta: sobe a aplicação num banco em memória (o mesmo ambiente dos testes), troca a IA de teste pela de verdade,
  * cria um serviço fictício com materiais e chama `POST /treinamentos/{codigo}/rascunho/gerar` e depois `.../ajustar`,
  * mostrando o progresso conforme ele chega. Os testes automáticos usam respostas programadas e não pegam o que só o

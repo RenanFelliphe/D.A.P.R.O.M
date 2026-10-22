@@ -45,7 +45,7 @@ async function apresentar(deps: Deps, l: Linha, comLeitura: boolean) {
  * Digitalização de OS antigas (só o admin): o PDF escaneado das folhas já executadas no papel entra, é lido em segundo plano (OCR
  * local para o impresso, IA de visão para o manuscrito), o admin confere e a OS é registrada como encerrada, de histórico. Os
  * passos: `POST /digitalizacoes` (envia e enfileira a leitura), `GET /digitalizacoes/{id}` (andamento e, pronta, a leitura),
- * `POST /digitalizacoes/{id}/registro` (as OS conferidas) ou `DELETE` (descarta). Desenho na seção 10 do vitoria.md.
+ * `POST /digitalizacoes/{id}/registro` (as OS conferidas) ou `DELETE` (descarta). Desenho na seção 6 do `docs/ia-e-vitoria.md`.
  */
 export function rotasDigitalizacoes(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();

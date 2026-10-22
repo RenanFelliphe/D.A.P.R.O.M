@@ -178,8 +178,8 @@ function blocosDoPae(linhas: NonNullable<Pae["linhas"]>) {
 
 // ---------------------------------------------------------------------------------------------------------------------
 // A folha da OS do SAP ("Ordem de Manutenção"): 2 folhas, como o papel (a de dados da ordem e a de execução). O layout é o da
-// reconstrução em `test/fixture-pdf-os.ts`. Cada parte é preenchida como a tabela do item 14 de
-// `base/reunioes/correcoes-reuniao-3-resumo.md`; "Houve desvio?", "Tempo parada" e "Solicitante" ficam em branco, como no papel.
+// reconstrução em `test/fixture-pdf-os.ts`. Cada parte é preenchida como a tabela de
+// `docs/operacao-de-campo.md`, seção 8.3; "Houve desvio?", "Tempo parada" e "Solicitante" ficam em branco, como no papel.
 // ---------------------------------------------------------------------------------------------------------------------
 
 const M = 34;

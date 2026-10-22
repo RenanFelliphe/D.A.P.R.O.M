@@ -41,7 +41,7 @@ const esquema = z.object({
 
 /**
  * Módulo de IA: `IA_PROVEDOR` escolhe o fornecedor e cada um tem a sua chave e os seus modelos. Sem a chave do escolhido, a
- * api sobe normalmente e fica "desligada" (vitoria.md, seção 1). Separado do esquema geral para o `local.ts` reaproveitar.
+ * api sobe normalmente e fica "desligada" (`docs/ia-e-vitoria.md`, seção 2.1). Separado do esquema geral para o `local.ts` reaproveitar.
  */
 const esquemaIA = z.object({
   IA_PROVEDOR: z.enum(["anthropic", "gemini"]).default("anthropic"),
@@ -74,7 +74,7 @@ export interface Config {
   sapApiToken: string;
   sapSimulado: boolean;
   sapLeituraIntervaloMin: number;
-  /** Registro de funcionários (RH): simulado na própria api (`apifuncionarios.md`). */
+  /** Registro de funcionários (RH): simulado na própria api (`docs/integracoes-simuladas.md`, seção 6). */
   rhSimulado: boolean;
   rhApiUrl: string;
   rhApiToken: string;
@@ -89,11 +89,11 @@ export interface Config {
   emailRemetente: string;
   /** Hora (de São Paulo) a partir da qual sai o resumo diário por e-mail. */
   emailResumoHora: number;
-  /** A previsão do tempo (funcionalidades/previsao-do-tempo.md). */
+  /** A previsão do tempo (`docs/operacao-de-campo.md`, seção 4.7). */
   climaApiUrl: string;
   climaApiChave: string;
   painelUrl: string;
-  /** Módulo de IA genérico (`servicos/ia`): `ligada` é o único ponto de decisão "tem IA ou não" (vitoria.md, seção 1). */
+  /** Módulo de IA genérico (`servicos/ia`): `ligada` é o único ponto de decisão "tem IA ou não" (`docs/ia-e-vitoria.md`, seção 2.1). */
   ia: {
     provedor: "anthropic" | "gemini";
     /** A chave do provedor escolhido (`ANTHROPIC_API_KEY` ou `GEMINI_API_KEY`). */
@@ -112,7 +112,7 @@ export interface Config {
     maxTokensResposta: number;
   };
   /**
-   * Limites do rascunho de treinamento pela IA (vitoria.md, seção 3.6), separados dos da Vitória: quantos treinamentos
+   * Limites do rascunho de treinamento pela IA (`docs/gamificacao-e-treinamentos.md`, seção 9.6), separados dos da Vitória: quantos treinamentos
    * podem usar a IA, quantas rodadas cada um tem (pedido no chat, fase regerada ou nova geração) e o tamanho da resposta.
    */
   treinamentoIa: {
@@ -153,7 +153,7 @@ export function lerConfigIA(env: NodeJS.ProcessEnv = process.env): Config["ia"] 
   };
 }
 
-/** Lê as variáveis de ambiente da `api` (ver a seção Plataforma da especificação); falha na subida se faltar alguma. */
+/** Lê as variáveis de ambiente da `api` (ver `docs/especificacao.md`, seção 3.6); falha na subida se faltar alguma. */
 export function lerConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const e = esquema.parse(env);
   return {

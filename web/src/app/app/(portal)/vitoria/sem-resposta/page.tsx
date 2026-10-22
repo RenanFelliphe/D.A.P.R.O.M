@@ -14,7 +14,7 @@ const TAMANHO = 50;
 
 /**
  * A Vitória do admin: o diagnóstico da IA (ativa ou não, por quê, quando volta, quanto do dia já foi usado) e as perguntas que ela
- * não soube responder (`vitoria.md`, seção 2.7), para melhorar o manual. Fica em
+ * não soube responder (`docs/ia-e-vitoria.md`, seção 4.12), para melhorar o manual. Fica em
  * `/app` (como Usuários e Gamificação), não em `/web`, porque não é uma tela de campo nem de gestão de OS.
  */
 export default async function VitoriaSemRespostaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

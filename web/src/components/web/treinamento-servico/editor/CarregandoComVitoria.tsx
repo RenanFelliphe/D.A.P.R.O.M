@@ -9,7 +9,7 @@ import { VitoriaEmLoop } from "../vitoria/VitoriaEmLoop";
 /** O que a Vitória "conta" enquanto a IA ainda não mandou o plano: o modelo pode pensar alguns minutos antes do primeiro item. */
 const PENSAMENTOS = ["Lendo o procedimento", "Separando o que o serviço usa", "Achando os passos, na ordem", "Procurando os cuidados de segurança", "Pensando nas fases do jogo"];
 const TROCA_MS = 6000;
-/** Depois disso, avisa que a demora é normal: a pessoa sabe que não travou (seção 3.9.8 do `vitoria.md`: até ~4 min pensando). */
+/** Depois disso, avisa que a demora é normal: a pessoa sabe que não travou (seção 9.3 do `docs/gamificacao-e-treinamentos.md`: até ~4 min pensando). */
 const DEMORANDO_S = 45;
 
 function tempo(segundos: number) {

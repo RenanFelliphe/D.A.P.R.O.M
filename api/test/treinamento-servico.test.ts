@@ -21,7 +21,7 @@ import { letrasDaGrade, letrasDaPalavra } from "../../shared/treinamento-servico
 import { faixasDoTempo, multiplicadorDoTempo, pontosDaFase, type TipoDoJogo } from "../../shared/treinamento-servico/nota";
 
 /**
- * Testes dos treinamentos de serviço (seção 3 do `vitoria.md`): os 5 tipos de fase, o gabarito nunca exposto antes da
+ * Testes dos treinamentos de serviço (seção 8 do `docs/gamificacao-e-treinamentos.md`): os 5 tipos de fase, o gabarito nunca exposto antes da
  * resposta, o embaralhamento por tentativa, a pontuação (primeira conclusão, refazer, abandonar), quem aguarda liberação
  * jogando, as 3 conquistas, o admin pré-visualizando sem pontuar, as permissões e a auditoria da publicação.
  */

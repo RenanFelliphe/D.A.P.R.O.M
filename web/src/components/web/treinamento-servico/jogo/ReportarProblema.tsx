@@ -15,7 +15,7 @@ const esquema = z.object({
 });
 
 /**
- * "Reportar problema" de uma fase (seção 3.3 do `vitoria.md`): um texto livre que vira aviso para o admin. Abre por cima da
+ * "Reportar problema" de uma fase (seção 8.6 do `docs/gamificacao-e-treinamentos.md`): um texto livre que vira aviso para o admin. Abre por cima da
  * fase, sem sair do jogo; a resposta da fase não muda.
  */
 export function ReportarProblema({ atividadeCodigo, fase }: { atividadeCodigo: string; fase: number }) {

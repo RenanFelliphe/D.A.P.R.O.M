@@ -1,5 +1,5 @@
 /**
- * As configurações do sistema (`GET /configuracoes/sistema`, só o admin; `funcionalidades/configuracoes.md`): a cidade padrão da
+ * As configurações do sistema (`GET /configuracoes/sistema`, só o admin; `docs/operacao-de-campo.md`, seção 13): a cidade padrão da
  * previsão do tempo e os valores numéricos que antes eram variáveis de ambiente (horários das rotinas, limites da IA). O ambiente é só
  * o valor inicial (`padrao`); o que o admin muda vale na hora.
  */

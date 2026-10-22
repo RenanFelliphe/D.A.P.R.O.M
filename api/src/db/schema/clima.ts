@@ -10,7 +10,7 @@ export const CLIMA_MOMENTOS = ["apr", "encerramento"] as const;
 export const CLIMA_ORIGENS = ["aparelho", "padrao"] as const;
 
 /**
- * O clima na hora da APR e do encerramento da execução (`funcionalidades/previsao-do-tempo.md`): a cópia do que a pessoa viu, porque a
+ * O clima na hora da APR e do encerramento da execução (`docs/operacao-de-campo.md`, seção 4.7): a cópia do que a pessoa viu, porque a
  * previsão muda ao longo do dia e o relatório do supervisor precisa mostrar o que valia na hora. Uma linha por APR (a previsão da
  * pergunta de clima, com a confirmação do aviso) e uma por execução (as condições no encerramento). Só informativo: nada é bloqueado
  * por ela, e a APR e a execução valem sem a linha (provedor fora do ar, aparelho sem sinal).

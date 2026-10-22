@@ -11,7 +11,7 @@ import type { RascunhoIA } from "./useRascunhoIA";
 const SUGESTOES = ["Encurte a explicação para 5 passos", "Faça uma fase de decisão sobre vazamento", "Deixe as perguntas mais diretas"];
 
 /**
- * "Ajustes com a Vitória" (seção 3.9.4 do `vitoria.md`): pedidos em português que refazem o rascunho, até o limite de
+ * "Ajustes com a Vitória" (seção 9.5 do `docs/gamificacao-e-treinamentos.md`): pedidos em português que refazem o rascunho, até o limite de
  * rodadas. A conversa fica só na tela; o rascunho volta gravado, com as pendências recalculadas.
  */
 export function ChatDeAjustes({ ia, desabilitado }: { ia: RascunhoIA; desabilitado?: boolean }) {

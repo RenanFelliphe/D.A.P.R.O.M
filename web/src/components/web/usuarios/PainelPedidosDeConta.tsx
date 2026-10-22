@@ -23,7 +23,7 @@ export interface PedidoDeConta {
 }
 
 /**
- * Os pedidos de conta feitos na tela de entrada por quem ainda não tem conta (`solicitacao-de-conta.md`). O admin vê todos; quem
+ * Os pedidos de conta feitos na tela de entrada por quem ainda não tem conta (`docs/pessoas-e-equipes.md`, seção 2.2). O admin vê todos; quem
  * supervisiona, os que escolheram uma equipe dele. "Cadastrar" abre o cadastro de sempre com o e-mail preenchido (a matrícula
  * vem do registro de funcionários), e a conta criada atende o pedido sozinha; "Descartar" é para quem não é funcionário ou pediu
  * por engano. O aviso `conta_solicitada` leva até aqui (`#solicitacoes`).

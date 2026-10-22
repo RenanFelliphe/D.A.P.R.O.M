@@ -1,6 +1,6 @@
 /**
  * Os avisos do SYNQ OS (o sino) e os e-mails que saem deles, num lugar só para a `api` e a `web` não divergirem
- * (`funcionalidades/avisos-e-emails.md`). A `api` usa esta lista no `CHECK` de `alerta.tipo` e para decidir o e-mail; a
+ * (`docs/pessoas-e-equipes.md`, seção 8). A `api` usa esta lista no `CHECK` de `alerta.tipo` e para decidir o e-mail; a
  * `web`, para os rótulos, os filtros e as preferências do perfil.
  *
  * Todo e-mail nasce de um aviso do sino (menos o resumo diário): o aviso fica no sino e, se o tipo tem categoria de e-mail,

@@ -38,7 +38,7 @@ export const localInstalacao = pgTable("local_instalacao", {
 
 /**
  * A OS lida do SAP. O `status` é derivado no servidor a partir das APRs e execuções
- * (Decisão-chave 3); o banco só garante que o valor seja válido.
+ * (decisão-chave 3, `docs/especificacao.md`, seção 2.3); o banco só garante que o valor seja válido.
  */
 export const os = pgTable(
   "os",

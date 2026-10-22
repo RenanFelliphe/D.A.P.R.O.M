@@ -1,5 +1,5 @@
 /**
- * As funções de IA do SYNQ OS e o que cada uma lê (`base/funcionalidades/controle-da-ia.md`). É a única fonte do texto que o
+ * As funções de IA do SYNQ OS e o que cada uma lê (`docs/ia-e-vitoria.md`, seções 1 e 3.3). É a única fonte do texto que o
  * admin vê e assina: a `api` confere a versão assinada e a `web` mostra as mesmas frases. O nome de cada função é também o nome
  * lógico do uso no módulo de IA (`ModeloLogico`): a configuração traduz cada um para o modelo real do fornecedor.
  */

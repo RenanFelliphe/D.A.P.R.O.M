@@ -1,5 +1,5 @@
 /**
- * Contrato da API do registro de funcionários (ver `apifuncionarios.md`, seção 3): o que o SYNQ OS consulta do registro. O
+ * Contrato da API do registro de funcionários (ver `docs/integracoes-simuladas.md`, seção 5.5): o que o SYNQ OS consulta do registro. O
  * simulador do próprio back-end responde nesse formato.
  */
 export interface FuncionarioRh {

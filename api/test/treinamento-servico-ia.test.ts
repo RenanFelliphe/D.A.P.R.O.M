@@ -8,7 +8,7 @@ import { IAIndisponivel } from "../src/servicos/ia";
 import { criarAmbiente, configDeTeste, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
- * O rascunho de treinamento pela IA (seção 3.6 do `vitoria.md`): a geração em streaming com o progresso, as conferências
+ * O rascunho de treinamento pela IA (seção 9 do `docs/gamificacao-e-treinamentos.md`): a geração em streaming com o progresso, as conferências
  * que viram pendências (origem fora do texto, número fora do texto, fase sem opção certa, material fora do catálogo), a
  * publicação travada até o admin editar ou confirmar, os ajustes pelo chat, a fase regerada, os limites da demonstração,
  * a IA desligada ou falhando sem gravar nada e o jogador sem a meta da IA.

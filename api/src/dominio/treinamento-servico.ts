@@ -56,7 +56,7 @@ import { multiplicadorDoTempo, notaDoTreinamento, notaMaxima, pontosDaFase, type
 import { chaveDaPalavra, codificarTermo, letrasDaGrade, letrasDaPalavra, tentativasDoTermo } from "../../../shared/treinamento-servico/jogos";
 
 /**
- * Domínio dos treinamentos de serviço (seção 3 do `vitoria.md`). Segue o espírito de `modelo-apr-banco.ts`
+ * Domínio dos treinamentos de serviço (seção 8 do `docs/gamificacao-e-treinamentos.md`). Segue o espírito de `modelo-apr-banco.ts`
  * (rascunho → publicada → substituída), mas sem tabelas filhas: a explicação e as fases ficam em jsonb, validadas em
  * `treinamento-servico-esquema.ts`. O embaralhamento (`apresentacao`) é a parte mais sensível: tudo que o jogador recebe
  * antes de responder passa por `fasesParaJogar`, nunca pelo objeto `fases` cru (que é o gabarito).
@@ -394,7 +394,7 @@ export interface ResultadoDaFase extends ResultadoDaResposta {
 
 /**
  * Corrige uma fase. Aceita também a resposta pela metade (o progresso de uma fase não confirmada, corrigido ao finalizar):
- * os acertos contam o que já está certo, e a fase só é "certa" com todos eles (seção 12 do `treinamentos-de-servico.md`).
+ * os acertos contam o que já está certo, e a fase só é "certa" com todos eles (seção 8.7 do `docs/gamificacao-e-treinamentos.md`).
  */
 function corrigirFase(fase: FaseEntrada, ap: ApresentacaoFase, respostaBruta: unknown): ResultadoDaResposta {
   const tudoOuNada = (certa: boolean, gabarito: Record<string, unknown>): ResultadoDaResposta => ({ certa, explicacao: fase.explicacao, gabarito, acertos: certa ? 1 : 0, possiveis: 1 });
@@ -692,7 +692,7 @@ async function melhorNota(tx: Db, usuarioId: string, treinamentoId: string, exce
 
 /**
  * Conclui a tentativa (o "Finalizar"): as fases sem resposta confirmada são corrigidas pelo que a pessoa fez nelas (ou valem
- * zero), a nota é calculada (seção 12 do `treinamentos-de-servico.md`) e a gamificação pontua só na primeira conclusão do
+ * zero), a nota é calculada (seção 8.7 do `docs/gamificacao-e-treinamentos.md`) e a gamificação pontua só na primeira conclusão do
  * treinamento (nunca na pré-visualização do admin), como antes. Concluir de novo devolve o mesmo resultado.
  */
 export async function concluirTentativa(c: ContextoDePontos, usuarioId: string, tentativaId: string): Promise<ResultadoDaConclusao> {
@@ -946,7 +946,7 @@ export interface PublicarResultado {
   versaoId: string;
   versao: number;
   publicadaEm: Date;
-  /** Para a auditoria (seção 3.7 do `vitoria.md`): se o rascunho veio da IA e o texto de origem. */
+  /** Para a auditoria (seção 8.10 do `docs/gamificacao-e-treinamentos.md`): se o rascunho veio da IA e o texto de origem. */
   geradoComIa: boolean;
   textoOrigem: string | null;
 }

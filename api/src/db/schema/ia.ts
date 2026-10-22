@@ -6,7 +6,7 @@ import { os } from "./sap";
 import { usuario } from "./usuarios";
 
 /**
- * O controle da IA (`funcionalidades/controle-da-ia.md`): uma linha por função de IA, só depois que o admin mexe nela (sem linha
+ * O controle da IA (`docs/ia-e-vitoria.md`, seção 3): uma linha por função de IA, só depois que o admin mexe nela (sem linha
  * vale o padrão de `LIGADA_AO_INSTALAR`). O bloqueio é do módulo de IA: nenhuma chamada sai com a função desligada.
  */
 export const iaFuncao = pgTable(

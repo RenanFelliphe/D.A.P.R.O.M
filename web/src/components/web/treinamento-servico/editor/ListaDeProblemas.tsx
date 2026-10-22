@@ -13,7 +13,7 @@ import { useToast } from "@/state/toast";
 type Filtro = "abertos" | "tratados" | "todos";
 
 /**
- * Os problemas que os técnicos reportaram nas fases (seção 3.3 do `vitoria.md`): o texto, a fase, a versão, quem e quando.
+ * Os problemas que os técnicos reportaram nas fases (seção 8.6 do `docs/gamificacao-e-treinamentos.md`): o texto, a fase, a versão, quem e quando.
  * "Marcar como tratado" (`PATCH /treinamentos/reportes/{id}`) tira o problema da lista dos em aberto.
  */
 export function ListaDeProblemas({ reportes: iniciais }: { reportes: ReporteDeTreinamento[] }) {

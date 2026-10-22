@@ -5,7 +5,7 @@ import { leituraDeDadosLigada } from "./ia-funcoes";
 import { ROTULO_DA_PAUSA, ROTULO_DA_SUSPENSAO } from "./motivos-de-parada";
 
 /*
- * Os minigames com dados (`funcionalidades/controle-da-ia.md`): com a leitura de dados da função Criação de jogos autorizada pelo
+ * Os minigames com dados (`docs/ia-e-vitoria.md`, seção 1.1): com a leitura de dados da função Criação de jogos autorizada pelo
  * admin, o rascunho do treinamento de um serviço recebe, além do procedimento, um resumo AGREGADO do que acontece de verdade nas OS
  * desse serviço (shared/ia/funcoes.ts, campo `le` de minigames):
  * - os motivos de pausa e de suspensão das execuções, e quantas vezes cada um;

@@ -5,7 +5,7 @@ import { REGRAS } from "./regras-de-pontuacao";
 import { temporadaParaLancar } from "./temporadas";
 
 /**
- * O extrato de pontos (seção 2.4 do `gameficacao.md`). `lancar` é a única porta de escrita: cada pontuação é uma linha de
+ * O extrato de pontos (seção 2.6 do `docs/gamificacao-e-treinamentos.md`). `lancar` é a única porta de escrita: cada pontuação é uma linha de
  * `lancamento_pontos` com a chave única por pessoa (`apr:<os>`, `assinatura`, `conquista:<id>`…), então o limite de cada tarefa e
  * a proteção contra reenvio são a mesma restrição (`on conflict do nothing`). Só o servidor chama isto, dentro da transação do que
  * gerou a pontuação.

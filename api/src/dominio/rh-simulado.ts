@@ -10,7 +10,7 @@ import { algum, contem } from "./busca";
 import { emailDoNome } from "./usuarios";
 
 /*
- * O registro de funcionários simulado (`apifuncionarios.md`, seções 2 e 6): catálogo de setores e cargos, gerador de funcionários
+ * O registro de funcionários simulado (`docs/integracoes-simuladas.md`, seções 5.3, 5.4 e 5.9): catálogo de setores e cargos, gerador de funcionários
  * fictícios e as operações de gestão da tela do simulador. Nada aqui conhece o SYNQ OS além de duas consultas de demonstração: se
  * o funcionário já tem conta (`usuario`) e se o setor tem equipe. O SYNQ OS só fala com o simulador pelo contrato HTTP.
  */

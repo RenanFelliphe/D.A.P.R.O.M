@@ -30,7 +30,7 @@ function situacaoDe(e: EstadoDaFuncaoDeIa): keyof typeof ROTULO_DO_ESTADO {
 const quem = (e: EstadoDaFuncaoDeIa) => (e.autorizado_por && e.autorizado_em ? `${e.autorizado_por.nome}, em ${dataHora(e.autorizado_em)}` : null);
 
 /**
- * O controle da IA nas configurações do sistema (só o admin; `controle-da-ia.md`): um seletor com as quatro funções, agrupadas em
+ * O controle da IA nas configurações do sistema (só o admin; `docs/ia-e-vitoria.md`, seção 3): um seletor com as quatro funções, agrupadas em
  * "Sem dados" e "Com dados", e para cada uma o que ela é, o que recebe e um interruptor. Passar a ler dado real pede a assinatura
  * do perfil na janela que lista, função por função, o que será lido; desligar não pede nada e revoga a autorização. Quem decide
  * é a `api` (o módulo de IA recusa a chamada de função desligada): a tela só mostra o estado e envia o pedido.

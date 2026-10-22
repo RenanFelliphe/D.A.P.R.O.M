@@ -4,7 +4,7 @@ import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { RascunhoApr } from "@/lib/apr";
 
 /**
- * Rascunho da APR de uma OS, guardado no navegador até a APR ser concluída (a especificação: "na web, no navegador;
+ * Rascunho da APR de uma OS, guardado no navegador até a APR ser concluída (`docs/especificacao.md`, seção 6.7: "na web, no navegador;
  * nada é enviado até concluir"). Um por OS. Se o armazenamento do navegador estiver bloqueado, vale só enquanto a aba
  * ficar aberta.
  */

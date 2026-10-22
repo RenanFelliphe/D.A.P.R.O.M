@@ -265,7 +265,7 @@ export function mesmoNome(escrito: string, cadastrado: string): boolean {
 
 /**
  * Confere cada participante com o cadastro: a matrícula tem de ser de uma conta do sistema ou do registro de funcionários, e o
- * nome escrito tem de ser o dela. Quem não tem conta fica só com nome e matrícula (decisão 6 da seção 10.13 do vitoria.md).
+ * nome escrito tem de ser o dela. Quem não tem conta fica só com nome e matrícula (`docs/ia-e-vitoria.md`, seção 6.4).
  */
 export async function conferirParticipantes(deps: Deps, lidos: Pick<ParticipanteLido, "nome" | "matricula" | "funcao">[]): Promise<ParticipanteLido[]> {
   const conferidos: ParticipanteLido[] = [];

@@ -23,7 +23,7 @@ const esquemaPedido = z.object({
   numero_mensagem: z.number().int().positive().max(1_000_000).optional(),
 });
 
-/** O estado que o admin quer para a função; passar a ler dados reais leva a versão do texto que ele viu e assinou (`controle-da-ia.md`). */
+/** O estado que o admin quer para a função; passar a ler dados reais leva a versão do texto que ele viu e assinou (`docs/ia-e-vitoria.md`, seção 3.3). */
 const esquemaAlteracaoDaIa = z.object({
   ligada: z.boolean(),
   com_dados: z.boolean().optional(),
@@ -49,7 +49,7 @@ function dividirEmPedacos(texto: string): string[] {
 }
 
 /**
- * A Vitória (`vitoria.md`, seção 2): ajuda contextual por perfil, streaming via SSE. `POST /vitoria/mensagens` atende
+ * A Vitória (`docs/ia-e-vitoria.md`, seção 4): ajuda contextual por perfil, streaming via SSE. `POST /vitoria/mensagens` atende
  * todos os perfis, inclusive quem aguarda liberação e quem está ausente — ela só consulta o manual e o manifesto de
  * destinos, nunca lê nem grava dado de OS. As perguntas sem resposta (seção 2.7) são só do admin.
  */

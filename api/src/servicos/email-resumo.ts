@@ -54,8 +54,8 @@ const periodo = (inicio: string, retorno: string) => `${dataBr(inicio)} a ${data
 
 /**
  * O que espera pela pessoa hoje, em seções (só as que têm alguma coisa):
- * - quem supervisiona (titular ou representante no comando): as OS encerradas aguardando a ciência dela (menos as que ela mesma
- *   executou ou assinou), os pedidos de ausência e de fim antecipado a responder e as ausências vencidas da equipe;
+ * - quem supervisiona (titular ou representante no comando): todas as OS da equipe em `aguardando_supervisor`
+ *   (inclusive as que ela mesma executou ou assinou), os pedidos de ausência e de fim antecipado a responder e as ausências vencidas da equipe;
  * - o admin: os cadastros aguardando liberação, as equipes sem supervisor, as OS devolvidas que ainda não saíram na planilha de
  *   baixa, as perguntas à Vitória sem tratamento e os problemas reportados nos treinamentos;
  * - todo mundo: as OS reservadas para a pessoa e ainda não iniciadas e a ausência que espera a confirmação dela.

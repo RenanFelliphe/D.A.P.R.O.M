@@ -18,7 +18,7 @@ import { Tela } from "@/ui/Tela";
 /**
  * O detalhe da OS: tudo o que o técnico precisa saber antes de começar, e o ponto de partida da APR e da execução. O painel de
  * ação vem logo abaixo do cabeçalho (uma ação por tela); os dados, o ciclo da preventiva, as instruções, os materiais e os
- * históricos vêm depois. Reservar, devolver, assinar por último e ver o relatório da execução ficam na web (decisão D2).
+ * históricos vêm depois. Reservar, devolver, assinar por último e ver o relatório da execução ficam na web (`mobile/README.md`, decisão D2).
  */
 export default function DetalheDaOs() {
   const { id } = useLocalSearchParams<{ id: string }>();

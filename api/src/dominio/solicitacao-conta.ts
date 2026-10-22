@@ -9,7 +9,7 @@ import { adminsAtivos, criarAviso, destinatariosDaEquipe } from "./alertas";
 import { registrarAuditoria } from "./auditoria";
 
 /*
- * O pedido de conta feito na tela de entrada (`funcionalidades/solicitacao-de-conta.md`): quem trabalha na empresa e ainda não
+ * O pedido de conta feito na tela de entrada (`docs/pessoas-e-equipes.md`, seção 2.2): quem trabalha na empresa e ainda não
  * tem conta informa o nome, o e-mail e, se quiser, a equipe. Os administradores recebem o aviso e, com a equipe, quem responde
  * por ela (o supervisor, o representante no comando). A conta continua nascendo pelo cadastro de sempre (`POST /usuarios`, que
  * confere o registro de funcionários): o pedido só avisa, e cadastrar a pessoa com o mesmo e-mail o atende sozinho.

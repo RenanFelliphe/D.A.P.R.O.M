@@ -12,7 +12,7 @@ import { esquemaOrdem } from "./importacao-ordens";
 import { SETORES } from "./rh-simulado";
 
 /*
- * O SAP simulado (`apiSAP.md`): o contrato que o SYNQ OS lê (agora a partir da tabela `ordem_sap_simulada`), o catálogo e o gerador
+ * O SAP simulado (`docs/integracoes-simuladas.md`, seção 2): o contrato que o SYNQ OS lê (agora a partir da tabela `ordem_sap_simulada`), o catálogo e o gerador
  * de ordens fictícias e as operações de gestão da tela `/simulador/ordens`. O SYNQ OS só fala com o simulador pelo contrato HTTP; a
  * gestão consulta as tabelas `os` e `importacao` só para mostrar, na coluna "No SYNQ OS", como ele reagiu (atalho de demonstração).
  */
@@ -448,7 +448,7 @@ export async function criarAleatorias(db: Db, corpo: z.infer<typeof esquemaLotes
   return novas.length;
 }
 
-/** O que o SYNQ OS faz com cada edição, para a tela avisar antes de salvar (`apiSAP.md`, seção 7). */
+/** O que o SYNQ OS faz com cada edição, para a tela avisar antes de salvar (`docs/integracoes-simuladas.md`, seção 2.6). */
 export async function editarOrdem(db: Db, numero: string, dados: z.infer<typeof esquemaEdicaoDeOrdem>, agora: Date): Promise<Linha> {
   const atual = await obterOrdemSimulada(db, numero);
   if (!atual) throw naoEncontrado("Ordem não encontrada");

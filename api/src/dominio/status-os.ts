@@ -13,7 +13,7 @@ export const OS_FINALIZADAS: readonly OsStatus[] = [...STATUS_APOS_A_EXECUCAO, "
 export const executouAteOFim = (status: OsStatus) => STATUS_APOS_A_EXECUCAO.includes(status);
 
 /**
- * Deriva o `status` da OS a partir das APRs e Execuções (Decisão-chave 3: nenhum cliente o grava), nesta ordem:
+ * Deriva o `status` da OS a partir das APRs e Execuções (decisão-chave 3, `docs/especificacao.md`, seção 2.3: nenhum cliente o grava), nesta ordem:
  * `cancelada` se já foi cancelada (SAP ou OS de apoio, e fica) e `devolvida` se o supervisor a devolveu ao SAP (também fica);
  * depois, havendo Execução encerrada (o clique em "Encerrar OS", que para o tempo): `encerrando` até o responsável preencher e
  * assinar o encerramento, `aguardando_supervisor` até o supervisor ler o relatório e assinar (a ciência), e só então `encerrada`

@@ -14,7 +14,7 @@ function rolarAteAVista(el: HTMLElement) {
 }
 
 /**
- * A ação "mostrar na tela" da Vitória (`vitoria.md`, seção 2.1, nível 2): pisca um retângulo em volta do elemento
+ * A ação "mostrar na tela" da Vitória (`docs/ia-e-vitoria.md`, seção 4.1, nível 2): pisca um retângulo em volta do elemento
  * `data-treino="alvo"` por alguns segundos e some sozinho. Reaproveita a medição de `useAlvoDataTreino` (extraída de
  * `TutorialDirecionado.tsx`), mas é um componente novo e bem mais simples — sem balão, sem roteiro, sem progresso: o
  * tutorial do Campo de treino é um produto diferente.

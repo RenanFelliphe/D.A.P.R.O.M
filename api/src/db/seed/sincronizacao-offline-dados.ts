@@ -1,12 +1,12 @@
 import type { Emblema } from "./gamificacao-dados";
 
 /**
- * A conquista de sincronização offline (pendência 8; seção 7.4 do `gameficacao.md`), no mesmo espírito de
+ * A conquista de sincronização offline (pendência 8; seção 7.5 do `docs/gamificacao-e-treinamentos.md`), no mesmo espírito de
  * `treinamento-servico-dados.ts`: o dado fica aqui, vira `INSERT` colado na migração que o criou (`0037`, que não mexe nas
  * anteriores) e a imagem é gerada e gravada pela subida da `api` (`sincronizacao-offline-imagens.ts`). Fica num arquivo à
  * parte porque `CONQUISTAS_DA_CARGA` é o retrato fechado da migração `0016`.
  *
- * **Vale 0 ponto, de propósito:** a regra 2.2 do `gameficacao.md` diz que a sincronização não pontua (pontuaria desligar o
+ * **Vale 0 ponto, de propósito:** a seção 2.4 do `docs/gamificacao-e-treinamentos.md` diz que a sincronização não pontua (pontuaria desligar o
  * sinal de propósito). O troféu reconhece o trabalho feito em contingência que chegou ao painel; o admin pode dar pontos
  * a ele no cadastro de conquistas, se a empresa quiser.
  */

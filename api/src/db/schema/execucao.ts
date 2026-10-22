@@ -69,7 +69,7 @@ export const execucao = pgTable(
     motivo: text(),
     /**
      * Leituras e conformidades do formulário de inspeção da OS preventiva (OS 4019821: horímetro, tensões,
-     * "Conforme / Não conforme" por componente). A estrutura do formulário ainda não está definida (questão 57),
+     * "Conforme / Não conforme" por componente). A estrutura do formulário ainda não está definida (`pendencias.md`, pergunta 57),
      * por isso é JSON.
      */
     dadosInspecao: jsonb(),

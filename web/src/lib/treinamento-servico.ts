@@ -1,5 +1,5 @@
 /**
- * Treinamentos de serviço (seção 3 do `vitoria.md`): o jogo por serviço do catálogo. Tipos como a `api` os devolve
+ * Treinamentos de serviço (seção 8 do `docs/gamificacao-e-treinamentos.md`): o jogo por serviço do catálogo. Tipos como a `api` os devolve
  * (`/treinamentos/*`), os limites do esquema da `api` e as conferências que a web faz antes de salvar. Nomeado
  * `treinamento-servico` (nunca `treinamento` sozinho) para não colidir com o Campo de treino, que é outra funcionalidade
  * (`web/src/components/treino/`, `web/src/treino/`).
@@ -77,7 +77,7 @@ export interface PassoExplicacao {
   texto: string;
   expressao: ExpressaoVitoria;
   imagem_path?: string | null;
-  /** Só nos passos montados pela IA: o trecho de origem e as pendências (seção 3.6 do `vitoria.md`). */
+  /** Só nos passos montados pela IA: o trecho de origem e as pendências (seção 9.4 do `docs/gamificacao-e-treinamentos.md`). */
   ia?: MetaIA | null;
 }
 
@@ -539,7 +539,7 @@ export interface FaseDoResultado {
 export interface ResultadoDaConclusao {
   fases_certas: number;
   total_fases: number;
-  /** A nota do treinamento (seção 12 do `treinamentos-de-servico.md`) e a máxima possível. */
+  /** A nota do treinamento (seção 8.7 do `docs/gamificacao-e-treinamentos.md`) e a máxima possível. */
   nota: number;
   nota_maxima: number;
   /** A melhor nota da pessoa neste treinamento antes desta tentativa (nula na primeira). */
@@ -782,6 +782,6 @@ export function requisitosDePublicacao(conteudo: Pick<ConteudoDoRascunho, "expli
   ];
 }
 
-/** O termo que o admin aceita ao publicar (seção 3.7 do `vitoria.md`). */
+/** O termo que o admin aceita ao publicar (seção 8.10 do `docs/gamificacao-e-treinamentos.md`). */
 export const termoDePublicacao = (codigo: string, descricao: string) =>
   `Declaro que revisei este treinamento e que a explicação, as fases e as respostas estão de acordo com as normas da empresa e com o fluxo correto do serviço ${codigo} — ${descricao}.`;

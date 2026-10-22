@@ -7,7 +7,7 @@ import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 import { criarOs } from "./fixture-os";
 
 /**
- * O chatbot com dados (`controle-da-ia.md`): sem a leitura de dados autorizada o prompt da Vitória é o de sempre; com ela, leva as OS
+ * O chatbot com dados (`docs/ia-e-vitoria.md`, seção 4.10): sem a leitura de dados autorizada o prompt da Vitória é o de sempre; com ela, leva as OS
  * em aberto da equipe de quem pergunta, quantas APRs esperam assinatura e os pontos da temporada, sem nome de colega, sem dado de
  * outra equipe, e uma falha na leitura nunca derruba a resposta.
  */

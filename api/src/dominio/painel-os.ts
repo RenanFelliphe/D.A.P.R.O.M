@@ -359,7 +359,7 @@ async function carregarAprs(db: Db, osId: string, comClassificacao: boolean) {
       concluidaEm: l.concluidaEm,
       preenchidaPor: { id: l.preenchidaPorId, nome: l.preenchidaPorNome },
       modelo: { codigo: l.modeloCodigo, versao: l.modeloVersao, titulo: l.modeloTitulo },
-      /** A previsão do tempo que a pessoa viu na pergunta de clima (`previsao-do-tempo.md`); nula quando não houve. */
+      /** A previsão do tempo que a pessoa viu na pergunta de clima (`docs/operacao-de-campo.md`, seção 4.7); nula quando não houve. */
       clima: ((c) => (c ? climaParaApi(c) : null))(climas.find((c) => c.aprId === l.id)),
       participantes: participantes
         .filter((p) => p.aprId === l.id)
@@ -487,7 +487,7 @@ async function carregarExecucoes(db: Db, osId: string, agora: Date) {
       localizacaoInicio: l.inicioLatitude !== null && l.inicioLongitude !== null ? { latitude: l.inicioLatitude, longitude: l.inicioLongitude } : null,
       localizacaoFim: l.fimLatitude !== null && l.fimLongitude !== null ? { latitude: l.fimLatitude, longitude: l.fimLongitude } : null,
       dadosInspecao: l.dadosInspecao,
-      /** As condições do tempo no encerramento (`previsao-do-tempo.md`); nulas quando não houve. */
+      /** As condições do tempo no encerramento (`docs/operacao-de-campo.md`, seção 4.7); nulas quando não houve. */
       clima: ((c) => (c ? climaParaApi(c) : null))(climas.find((c) => c.execucaoId === l.id)),
       tempoLiquidoMin: tempo ? emMinutos(tempo.liquidoMs) : null,
       pausaMin: tempo ? emMinutos(tempo.pausaMs) : null,

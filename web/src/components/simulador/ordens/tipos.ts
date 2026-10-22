@@ -88,7 +88,7 @@ export interface RecusadaEmMassa {
 
 export type AcaoEmMassaDeOrdens = "mudar_status" | "mudar_centro" | "reprogramar" | "excluir";
 
-/** O que o SYNQ OS faz com uma ordem que muda no SAP, pelas regras da leitura (`apiSAP.md`, seção 7): o aviso da janela de edição. */
+/** O que o SYNQ OS faz com uma ordem que muda no SAP, pelas regras da leitura (`docs/integracoes-simuladas.md`, seção 2.6): o aviso da janela de edição. */
 export function efeitoDaEdicao(n: NoSynqOs["situacao"]): string | null {
   switch (n) {
     case "em_execucao":

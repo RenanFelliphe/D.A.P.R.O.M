@@ -25,7 +25,7 @@ import { lancar, type ContextoDePontos, type Ganho } from "./lancamentos";
 import { membrosDasEquipes } from "./ranking";
 
 /**
- * Conquistas (seção 7 do `gameficacao.md`): troféus de pessoa e de equipe, permanentes. O servidor confere a cada lançamento
+ * Conquistas (seção 7 do `docs/gamificacao-e-treinamentos.md`): troféus de pessoa e de equipe, permanentes. O servidor confere a cada lançamento
  * novo (para a pessoa e as equipes creditadas), no fechamento da temporada e quando o admin cria, edita ou reativa uma
  * conquista (aí confere todo mundo, e a data é a em que a meta foi batida, lida do extrato). Quem já tem a conquista não perde.
  */

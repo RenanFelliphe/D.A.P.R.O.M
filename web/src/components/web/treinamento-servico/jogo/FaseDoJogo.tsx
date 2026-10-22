@@ -103,10 +103,10 @@ function useRecomecarFase() {
 }
 
 /**
- * Uma fase do jogo (seção 3.3 do `vitoria.md`), de um dos 10 minijogos; `data-jogo` dá a cor e o fundo de cada um. A
+ * Uma fase do jogo (seção 8.4 do `docs/gamificacao-e-treinamentos.md`), de um dos 10 minijogos; `data-jogo` dá a cor e o fundo de cada um. A
  * Vitória dá a instrução no topo, ao lado do cronômetro da fase; ao confirmar, um painel sobe do rodapé com a reação dela
  * (`certo` com estrelinhas ou `errada`), a explicação, os pontos da fase e o "continuar". Dá para voltar e avançar sem
- * responder (seção 12 do `treinamentos-de-servico.md`): a resposta em andamento é guardada, e a confirmada fica travada. Tudo por toque, sem arrastar; no
+ * responder (seção 8.6 do `docs/gamificacao-e-treinamentos.md`): a resposta em andamento é guardada, e a confirmada fica travada. Tudo por toque, sem arrastar; no
  * computador também pelo teclado (1 a 4 ou A a D para escolher, Enter para confirmar e seguir). A seleção fica na tela
  * depois da resposta, colorida pelo gabarito, para quem joga ver onde errou.
  */
@@ -203,7 +203,7 @@ function Corpo({ corpoRef, topo, children, rodape }: { corpoRef: RefObject<HTMLD
 // ---- O cronômetro da fase ---------------------------------------------------------------------------------------------------
 
 /**
- * O tempo nesta fase e o multiplicador de agora (seção 12 do `treinamentos-de-servico.md`): conta desde que a fase apareceu,
+ * O tempo nesta fase e o multiplicador de agora (seção 8.7 do `docs/gamificacao-e-treinamentos.md`): conta desde que a fase apareceu,
  * somando as visitas anteriores; depois da resposta, mostra o tempo e o multiplicador que o servidor registrou. É só para quem
  * joga acompanhar: o tempo que vale é o do servidor.
  */

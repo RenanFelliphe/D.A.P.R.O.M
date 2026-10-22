@@ -246,7 +246,7 @@ for (const arquivo of arquivos) {
 atividadesBrutas = [...JSON.parse(tabelaDinamica), ...atividadesBrutas];
 
 // A atividade é única pelo código. Quando a mesma aparece em mais de um modelo (as APR 06 reaproveitam as listas
-// das APR 02 e 03, por exemplo), vale o primeiro, na ordem das APR; os outros ficam no aviso (questão 3).
+// das APR 02 e 03, por exemplo), vale o primeiro, na ordem das APR; os outros ficam no aviso (`pendencias.md`, pergunta 3).
 const atividades = new Map();
 for (const a of atividadesBrutas) {
   const ja = atividades.get(a.codigo);

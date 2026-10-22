@@ -84,7 +84,7 @@ const esquemaProgresso = z.object({ resposta: z.unknown() });
 const esquemaRanking = z.object({ limite: z.coerce.number().int().min(1).max(100).default(LINHAS_DO_RANKING) });
 
 /**
- * A resposta do rascunho pela IA (seção 3.6 do `vitoria.md`), em SSE: `progresso` a cada item que a IA termina ("montando a
+ * A resposta do rascunho pela IA (seção 9.3 do `docs/gamificacao-e-treinamentos.md`), em SSE: `progresso` a cada item que a IA termina ("montando a
  * fase 5 de 10…") e, a cada 5 s, o mesmo progresso com o tempo corrido (a IA pode pensar alguns minutos antes do
  * primeiro item, e a tela não pode parecer travada); no fim, `final` com o rascunho gravado, ou `erro`. Se o admin fechar a
  * tela no meio, a geração continua e é gravada: a chamada já foi paga.
@@ -126,9 +126,10 @@ function responderRascunhoIA(c: Context, deps: Deps, chamada: ChamadaDeRascunhoI
 }
 
 /**
- * Treinamentos de serviço (seção 3 do `vitoria.md`): o jogo por serviço do catálogo. Quem treina (inclusive pendente, que
- * ainda aguarda liberação) joga as rotas de jogo; só o admin edita, publica e trata reportes. O admin não joga (não abre
- * tentativas reais), só pré-visualiza o rascunho.
+ * Treinamentos de serviço (seção 8 do `docs/gamificacao-e-treinamentos.md`): o jogo por serviço do catálogo. Quem
+ * treina (inclusive pendente, que ainda aguarda liberação) joga as rotas de jogo; o admin e o supervisor do serviço
+ * editam; o admin publica direto e trata reportes, e a publicação também sai pela validação dos supervisores. O admin
+ * não joga (não abre tentativas reais), só pré-visualiza o rascunho.
  */
 export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Autenticacao) {
   const r = new Hono<Ambiente>();
@@ -160,7 +161,7 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
 
   // Entrar, guardar o progresso, responder e concluir servem tanto a tentativa real (técnico) quanto a pré-visualização do
   // admin; a posse da tentativa (conferida no domínio) é quem decide, não o perfil. O tempo de cada fase é pelo relógio do
-  // servidor (seção 12 do `treinamentos-de-servico.md`).
+  // servidor (seção 8.6 do `docs/gamificacao-e-treinamentos.md`).
   r.post("/treinamentos/tentativas/:id/fases/:fase/entrar", autenticar({ permitirPendente: true }), async (c) => {
     return responder(c, await entrarNaFase(deps.db, c.get("usuario").id, lerId(c), indiceDaFase(c.req.param("fase")), deps.agora()));
   });
@@ -195,7 +196,7 @@ export function rotasTreinamentos(deps: Deps, { autenticar, exigirPerfil }: Aute
   });
 
   /**
-   * O ranking do treinamento (quem já concluiu, pela nota da primeira conclusão), com a linha de quem pede mesmo fora das
+   * O ranking do treinamento (quem já concluiu, pela melhor nota), com a linha de quem pede mesmo fora das
    * primeiras. Todos veem, inclusive o admin (que não aparece) e quem aguarda liberação. Antes da rota "nua" lá embaixo.
    */
   r.get("/treinamentos/:atividade{.+}/ranking", autenticar({ permitirPendente: true }), async (c) => {

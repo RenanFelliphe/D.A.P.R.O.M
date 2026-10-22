@@ -14,8 +14,9 @@ import type { MensagemVitoria } from "./tipos";
 import { useConversa } from "./useConversa";
 
 /**
- * O botão flutuante e o painel de conversa da Vitória (`vitoria.md`, seção 2), presentes em todas as telas de campo. Ela só consulta o
- * manual e o manifesto de destinos: nunca lê nem grava dado de OS. A `api` decide o manual pelo perfil de quem está logado.
+ * O botão flutuante e o painel de conversa da Vitória (`docs/ia-e-vitoria.md`, seção 4), presentes em todas as telas de campo. Ela consulta o
+ * manual e o manifesto de destinos e nunca grava dado de OS; só lê os dados de OS de quem pergunta quando o admin autoriza a
+ * leitura (`docs/ia-e-vitoria.md`, seção 4.10). A `api` decide o manual pelo perfil de quem está logado.
  */
 export function Vitoria() {
   const router = useRouter();

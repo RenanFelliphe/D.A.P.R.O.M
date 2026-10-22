@@ -123,7 +123,7 @@ async function localizar(deps: Deps, id: string): Promise<{ bucket: Bucket; equi
 const podeLer = (u: UsuarioAutenticado, alvo: { equipeId: string | null; donoId?: string; publico?: boolean }) =>
   alvo.publico || alvo.donoId === u.id || (alvo.equipeId !== null ? podeVerEquipe(u, alvo.equipeId) : u.perfil === "admin");
 
-/** Fotos, assinaturas e PDFs sobem com o id gerado no cliente, antes do evento que os referencia (Decisão-chave 3). */
+/** Fotos, assinaturas e PDFs sobem com o id gerado no cliente, antes do evento que os referencia (decisão-chave 3, `docs/especificacao.md`, seção 2.3). */
 export function rotasArquivos(deps: Deps, { autenticar }: Autenticacao) {
   const r = new Hono<Ambiente>();
 

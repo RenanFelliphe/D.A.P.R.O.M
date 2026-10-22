@@ -3,7 +3,7 @@ import { hora } from "@shared/api/formatar";
 import { cores } from "../tema/tema";
 
 /**
- * O que a previsão do tempo mostra no app (`funcionalidades/previsao-do-tempo.md`), sem depender do React Native: as cores de cada nível
+ * O que a previsão do tempo mostra no app (`docs/operacao-de-campo.md`, seção 4.7), sem depender do React Native: as cores de cada nível
  * (sem vermelho nem amarelo puros), os chips das horas e a frase de "atualizada às". As telas só desenham.
  */
 

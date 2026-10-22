@@ -4,8 +4,8 @@ import { emLista, instante } from "./comum";
 import { PERFIS, usuario } from "./usuarios";
 
 /**
- * A Vitória, o assistente de ajuda (`vitoria.md`, seção 2). A conversa em si nunca é guardada no servidor (seção
- * 2.2): só o uso do dia, para os 3 limites de custo (seção 2.6), e as perguntas que ela não soube responder (2.7).
+ * A Vitória, o assistente de ajuda (`docs/ia-e-vitoria.md`, seção 4). A conversa em si nunca é guardada no servidor (seção
+ * 4.3): só o uso do dia, para os 3 limites de custo (seção 4.9), e as perguntas que ela não soube responder (4.12).
  */
 
 /**
@@ -55,7 +55,7 @@ export const vitoriaPerguntaSemResposta = pgTable(
 ).enableRLS();
 
 /**
- * Os números do perfil da Vitória (`vitoria.md`, seção 2.8.7), somados por dia. Só contadores: nenhum texto de conversa e
+ * Os números do perfil da Vitória (`docs/ia-e-vitoria.md`, seção 4.14), somados por dia. Só contadores: nenhum texto de conversa e
  * nenhuma pessoa, para continuar valendo que a conversa não é guardada (seção 2.2).
  * - `respondidas`: respostas com conteúdo, pela IA ou pelo manual, e as sugestões fixas tocadas na web;
  * - `naoSei`: as vezes em que ela disse que não sabia (pela IA, pelo manual ou por um destino inventado);

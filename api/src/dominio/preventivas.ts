@@ -248,7 +248,7 @@ export interface PlanoCalculado {
   atualizadoEm: Date;
   alertaProximoPara: string | null;
   alertaVencidoPara: string | null;
-  /** O checklist de inspeção do plano, na ordem (`inspecao-preventivas.md`). */
+  /** O checklist de inspeção do plano, na ordem (`docs/operacao-de-campo.md`, seção 9.2). */
   checklist: Pergunta[];
 }
 

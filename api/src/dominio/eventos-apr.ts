@@ -30,7 +30,7 @@ const esquemaApr = z.object({
   /** Id da APR, gerado no cliente. */
   id: uuid,
   os_id: uuid.optional(),
-  /** Versão exata do modelo que foi respondida (Decisão-chave 6). */
+  /** Versão exata do modelo que foi respondida (decisão-chave 6, `docs/especificacao.md`, seção 2.6). */
   modelo_apr_id: uuid,
   participantes: z.array(z.object({ usuario_id: uuid, funcao: z.enum(APR_FUNCOES), assinada_em: instanteIso.optional() })).min(1),
   /**
@@ -39,7 +39,7 @@ const esquemaApr = z.object({
    * e as assinaturas do perfil são copiadas já, marcadas como presenciais (`assinada_em` de cada um, se vier).
    */
   assinatura_presencial: z.boolean().default(false),
-  /** Riscos que a equipe marcou "( )": só as medidas deles são respondidas (questão 59). */
+  /** Riscos que a equipe marcou "( )": só as medidas deles são respondidas (`pendencias.md`, pergunta 59). */
   riscos: z.array(uuid).default([]),
   respostas: z.array(z.object({ item_id: uuid, resposta: z.enum(APR_RESPOSTAS), observacao: z.string().nullable().optional(), respondida_em: instanteIso.optional() })),
   /** Fotos e PDFs dos itens reprovados. */
@@ -74,7 +74,7 @@ export async function conferirApr(ctx: Contexto, osId: string, p: Omit<PayloadAp
   const { os: ordem, mudou } = await carregarOsDoUsuario(ctx, osId);
   const desvio = await conferirReserva(ctx, ordem);
 
-  // Conflitos de estado: online recusam; vindo da fila offline, aplicam e viram alerta (Decisão-chave 2).
+  // Conflitos de estado: online recusam; vindo da fila offline, aplicam e viram alerta (decisão-chave 2, `docs/especificacao.md`, seção 2.2).
   const abertas = (await ctx.tx.select({ resultado: execucao.resultado, executorId: execucao.executorId }).from(execucao).where(eq(execucao.osId, ordem.id))).filter((e) => e.resultado === null);
   if (abertas.length > 0 && !ctx.offline) throw rejeitar("os_em_execucao", "Esta OS já está em execução");
   if (executouAteOFim(ordem.status) && !ctx.offline) throw rejeitar("os_encerrada", "Esta OS já foi encerrada");

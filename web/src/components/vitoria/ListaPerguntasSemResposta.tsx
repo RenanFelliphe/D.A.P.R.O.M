@@ -25,7 +25,7 @@ interface ListaPerguntasSemRespostaProps {
   total: number;
 }
 
-/** Lista paginada das perguntas que a Vitória não soube responder (`vitoria.md`, seção 2.7), com o filtro tratada/pendente. */
+/** Lista paginada das perguntas que a Vitória não soube responder (`docs/ia-e-vitoria.md`, seção 4.12), com o filtro tratada/pendente. */
 export function ListaPerguntasSemResposta({ perguntas, tratada, pagina, tamanho, total }: ListaPerguntasSemRespostaProps) {
   return (
     <Panel>

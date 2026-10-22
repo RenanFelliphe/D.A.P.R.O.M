@@ -5,7 +5,7 @@ import { codigoDaRota, materiaisDoCatalogo, rascunhoDoTreinamento, servicoDoTrei
 
 export const metadata: Metadata = { title: "Revisão · Treinamento" };
 
-/** Aba Revisão: a validação do rascunho, item por item, antes de testar e publicar. */
+/** Aba Revisão: a revisão do rascunho, item por item, antes de testar e publicar. */
 export default async function RevisaoDoTreinamentoPage({ params }: { params: Promise<{ codigo: string }> }) {
   const codigo = codigoDaRota((await params).codigo);
   const [servico, rascunho, catalogo] = await Promise.all([servicoDoTreinamento(codigo), rascunhoDoTreinamento(codigo), materiaisDoCatalogo()]);

@@ -12,7 +12,7 @@ const esquemaDecisao = z.object({
 const esquemaAssinatura = z.object({ ressalva: z.string().trim().max(1000).nullable().optional() });
 
 /**
- * A conferência da execução registrada sem sinal em aparelhos diferentes (`funcionalidades/execucao-compartilhada.md`, etapa 3). Só os
+ * A conferência da execução registrada sem sinal em aparelhos diferentes (`docs/operacao-de-campo.md`, seções 6.5 a 6.7). Só os
  * participantes da execução e a supervisão da equipe leem; cada ação confere o papel de quem a faz (responsável, supervisor, participante).
  */
 export function rotasConferencias(deps: Deps, { autenticar }: Autenticacao) {

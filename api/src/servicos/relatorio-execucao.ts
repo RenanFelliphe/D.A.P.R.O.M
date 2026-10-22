@@ -79,7 +79,7 @@ export interface DadosDoRelatorio {
     }[];
     /** A assinatura do responsável no encerramento (só a execução que encerrou tem). */
     assinaturaDoEncerramento: { nome: string; cargo: string | null; assinaturaPath: string; em: Date } | null;
-    /** A previsão do tempo que valia na APR e no encerramento (`previsao-do-tempo.md`); nula quando não houve (provedor fora do ar, sem sinal). */
+    /** A previsão do tempo que valia na APR e no encerramento (`docs/operacao-de-campo.md`, seção 8.1); nula quando não houve (provedor fora do ar, sem sinal). */
     clima: { apr: ClimaRegistrado | null; encerramento: ClimaRegistrado | null };
   }[];
   pausas: (typeof execucaoPausa.$inferSelect & { numeroDaExecucao: number; fimEfetivo: Date })[];

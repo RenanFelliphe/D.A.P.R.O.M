@@ -1,5 +1,5 @@
 /**
- * A conferência da execução (`funcionalidades/execucao-compartilhada.md`, etapa 3): o que a equipe registrou sem sinal, em aparelhos
+ * A conferência da execução (`docs/operacao-de-campo.md`, seção 6.6): o que a equipe registrou sem sinal, em aparelhos
  * diferentes, vira **um** registro certo. Quando todos sincronizam, a `api` compara a versão de cada aparelho; sem divergência é um
  * resumo com ciência, com divergência o responsável escolhe a versão certa e os demais assinam. A `api`, a `web` e o app usam este arquivo.
  */

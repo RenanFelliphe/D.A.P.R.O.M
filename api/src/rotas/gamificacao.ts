@@ -45,7 +45,7 @@ async function lerFormulario(c: Context) {
 }
 
 /**
- * Gamificação (`gameficacao.md`): "Minha pontuação", extrato, rankings de pessoas e equipes, temporadas, perfis, e os
+ * Gamificação (`docs/gamificacao-e-treinamentos.md`, seções 2 a 7): "Minha pontuação", extrato, rankings de pessoas e equipes, temporadas, perfis, e os
  * cadastros do admin (tarefas, patentes e conquistas, com imagens). Todo perfil lê as páginas de consulta; quem não joga (o
  * admin) não tem pontuação própria. As rotas que geram pontos (`POST /eventos`, ciência, intervalo da preventiva, assinatura e
  * treino) devolvem `pontos_ganhos`.

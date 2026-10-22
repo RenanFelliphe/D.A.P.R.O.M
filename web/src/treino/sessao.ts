@@ -46,8 +46,9 @@ export async function usuarioDoTreino(token: string): Promise<Usuario | null> {
 
 /**
  * Chamadas que, mesmo no treino, vão à `api` real: `PUT /me/treinamento` (guarda o estado do próprio treino, não é dado
- * de campo) e tudo em `/vitoria` (o assistente de ajuda — `vitoria.md`, seção 2.1 — só consulta o manual e o manifesto
- * de destinos, nunca lê nem grava dado de OS, por isso funciona igual dentro e fora do Campo de treino).
+ * de campo) e tudo em `/vitoria` (o assistente de ajuda — `docs/ia-e-vitoria.md`, seção 4.1 — consulta o manual e o manifesto
+ * de destinos e só lê dados de OS com a leitura autorizada pelo admin, seção 4.10; nunca grava dado de campo, por isso
+ * funciona igual dentro e fora do Campo de treino).
  */
 export function rotaSempreReal(metodo: string, caminho: string): boolean {
   const limpo = caminho.split("?")[0]!.replace(/^\/+|\/+$/g, "");

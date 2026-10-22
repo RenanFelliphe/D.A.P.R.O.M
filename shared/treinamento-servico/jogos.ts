@@ -1,6 +1,6 @@
 /**
- * Regras dos minijogos que a `api` e a web precisam fazer igual (`funcionalidades/treinamentos-de-servico.md`, seção dos
- * tipos de fase), lidas pelos dois lados por caminho relativo, como `ia.ts`: como uma palavra vira letras da grade do
+ * Regras dos minijogos que a `api` e a web precisam fazer igual (`docs/gamificacao-e-treinamentos.md`,
+ * seção 8.4), lidas pelos dois lados por caminho relativo, como `ia.ts`: como uma palavra vira letras da grade do
  * caça-palavras e como vira as peças do "desembaralhe".
  */
 

@@ -23,7 +23,7 @@ import { horasParaChips, iconeDoClima, linhaDoLocal, rotuloDaHora, textoDeAtuali
 import { novoBancoDeTeste } from "./ajuda-offline";
 
 /**
- * A previsão do tempo no app (`previsao-do-tempo.md`): a cópia guardada para o modo sem sinal (validade de hoje), a decisão do que a
+ * A previsão do tempo no app (`docs/operacao-de-campo.md`, seção 4.7): a cópia guardada para o modo sem sinal (validade de hoje), a decisão do que a
  * pergunta de clima da APR exige, o que vai no evento (a previsão vista e a foto do local) e o que as telas desenham.
  */
 

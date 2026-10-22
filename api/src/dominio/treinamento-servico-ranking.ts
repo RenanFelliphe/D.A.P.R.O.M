@@ -8,7 +8,7 @@ import { mascararPessoa } from "./ranking";
 import { treinamentoDoCodigo, versaoPublicadaDoTreinamento } from "./treinamento-servico";
 
 /**
- * O ranking de um treinamento de serviço (seções 9 e 12 do `treinamentos-de-servico.md`): quem já concluiu, pela **melhor
+ * O ranking de um treinamento de serviço (seção 8.9 do `docs/gamificacao-e-treinamentos.md`): quem já concluiu, pela **melhor
  * nota** entre as suas tentativas (acertos, tempo e número de fases). Jogar de novo pode melhorar a posição aqui, mas não dá
  * pontos na gamificação, que conta só a primeira conclusão. No empate, quem chegou à nota primeiro (a mesma regra do ranking
  * da gamificação, "quem chegou primeiro").

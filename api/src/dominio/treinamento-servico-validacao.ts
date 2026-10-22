@@ -21,7 +21,7 @@ import { validarConteudo, validarFasesContraCatalogo, validarPublicavel, validar
 import { esquemaFases } from "./treinamento-servico-esquema";
 
 /*
- * A validação do treinamento pelos supervisores (`funcionalidades/validacao-de-treinamento.md`). O rascunho enviado fica travado e
+ * A validação do treinamento pelos supervisores (`docs/gamificacao-e-treinamentos.md`, seção 8.10). O rascunho enviado fica travado e
  * as 3 equipes que mais fazem o serviço (sem a de quem criou) validam, uma pessoa por equipe. Assinam 2 dos 3 (todos, quando só há
  * 1 ou 2 validadores): ao fechar o quórum o treinamento é publicado sozinho. Qualquer recusa, com motivo, devolve o rascunho ao autor.
  * O admin pode publicar direto (a exceção, com justificativa). O grupo é fixado ao enviar, porque o ranking das equipes muda.

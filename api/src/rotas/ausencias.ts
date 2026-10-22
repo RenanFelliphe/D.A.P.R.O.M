@@ -31,7 +31,7 @@ const assinado = z.object({ assinar: z.literal(true, { error: "Confirme a assina
 
 /**
  * O estado "ausente" do usuário: ele continua ativo e vê o sistema, mas não altera nada, não recebe reserva de OS e não entra
- * em APR (ver `ausencia.md`). O técnico pede, o supervisor da equipe aprova, ajusta, recusa, registra, prorroga e encerra, e o
+ * em APR (ver `docs/pessoas-e-equipes.md`, seção 7). O técnico pede, o supervisor da equipe aprova, ajusta, recusa, registra, prorroga e encerra, e o
  * ausente confirma o retorno. Toda ação, menos o pedido inicial, é assinada com a assinatura do perfil. O admin só consulta.
  */
 export function rotasAusencias(deps: Deps, { autenticar }: Autenticacao) {

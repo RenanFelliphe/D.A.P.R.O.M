@@ -1,7 +1,7 @@
 import type { RegraCodigo } from "../db/schema";
 
 /**
- * O catálogo das tarefas que pontuam (seção 2.1 do `gameficacao.md`). O banco guarda só o que o admin muda (`pontos` e
+ * O catálogo das tarefas que pontuam (seção 2.1 do `docs/gamificacao-e-treinamentos.md`). O banco guarda só o que o admin muda (`pontos` e
  * `ativa`, em `regra_pontuacao`); o nome, a descrição e as explicações de quem ganha, quando conta e qual é o limite são fixos
  * aqui, porque as regras em si estão no código (`pontuacao.ts`).
  */

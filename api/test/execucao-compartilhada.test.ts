@@ -11,7 +11,7 @@ import { POSICAO, ajudaDeExecucao } from "./ajuda-execucao";
 const DOIS_MINUTOS = 2 * 60_000;
 
 /**
- * Execução compartilhada, etapa 2 (`funcionalidades/execucao-compartilhada.md`): qualquer participante da APR age sobre a execução.
+ * Execução compartilhada, etapa 2 (`docs/operacao-de-campo.md`, seções 6.2 a 6.4): qualquer participante da APR age sobre a execução.
  * Pausar, continuar, interromper por risco e suspender por saúde valem na hora; encerrar e suspender por motivo comum viram um pedido
  * de 2 minutos ao responsável (quem iniciou a execução), aprovado sozinho se ele não responder; sem sinal nada é pedido; quem encerrou
  * assina o encerramento.

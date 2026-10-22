@@ -2,7 +2,7 @@ import { exigenciaDoClima, registrarClima, type ClimaRegistrado, type ExigenciaD
 import { adicionarFoto, montarAvaliacao, montarPayload, perguntasDe, removerFoto, responder, type FotoDoRascunho, type ItemDoModelo, type RascunhoApr, type Resposta } from "@shared/api/apr";
 
 /**
- * A pergunta de clima da APR no aparelho (`funcionalidades/previsao-do-tempo.md`). A pergunta que o modelo marca com `mostrar_clima` mostra
+ * A pergunta de clima da APR no aparelho (`docs/operacao-de-campo.md`, seção 4.7). A pergunta que o modelo marca com `mostrar_clima` mostra
  * a previsão; se o técnico responde "Sim" e a previsão aponta risco, a tela pede a confirmação (e, no risco extremo, a foto do local). Esta
  * parte é pura: guarda no rascunho a previsão que a pessoa viu e, na hora de enviar, acrescenta ao evento o `clima` e a foto do local. O
  * texto da tela nunca diz o que bloqueia a APR: o técnico não sabe o que é eliminatório.

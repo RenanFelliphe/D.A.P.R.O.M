@@ -17,7 +17,7 @@ interface OpcoesDoRascunhoIA {
 }
 
 /**
- * O rascunho de treinamento pela IA (seção 3.6 do `vitoria.md`): gerar a partir do texto do procedimento, pedir ajustes no
+ * O rascunho de treinamento pela IA (seção 9 do `docs/gamificacao-e-treinamentos.md`): gerar a partir do texto do procedimento, pedir ajustes no
  * chat e regerar uma fase, pelas rotas em streaming da `api`. Guarda o progresso ("Montando a fase 5 de 10…"), quando
  * começou, o erro e a conversa do chat (só na tela: o servidor guarda o rascunho, não a conversa).
  */

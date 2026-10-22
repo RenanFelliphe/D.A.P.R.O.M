@@ -6,7 +6,7 @@ import { alerta, atividade, auditoria, localInstalacao, os, treinamentoServico, 
 import { criarAmbiente, type Ambiente, type UsuarioDeTeste } from "./ajuda";
 
 /**
- * A validação do treinamento pelos supervisores (`validacao-de-treinamento.md`): quem pode criar, quem valida (as 3 equipes que mais
+ * A validação do treinamento pelos supervisores (`docs/gamificacao-e-treinamentos.md`, seção 8.10): quem pode criar, quem valida (as 3 equipes que mais
  * fazem o serviço, sem a do autor), o quórum de 2 dos 3, a recusa que devolve ao autor, o rascunho travado, e a publicação direta do admin,
  * que exige justificativa quando a validação era possível.
  */

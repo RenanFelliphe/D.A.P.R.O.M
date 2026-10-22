@@ -5,7 +5,7 @@ import { BotaoTreinar } from "@/components/web/treinamento-servico/jogo/BotaoTre
 import type { TreinamentoResumo } from "@/lib/treinamento-servico";
 
 /**
- * Bloco "Treinamentos de serviço" da tela de espera (seção 3.4 do `vitoria.md`): quem aguarda liberação já pode treinar
+ * Bloco "Treinamentos de serviço" da tela de espera (seção 8.11 do `docs/gamificacao-e-treinamentos.md`): quem aguarda liberação já pode treinar
  * e pontuar, como no Campo de treino, enquanto espera o admin liberar o acesso de verdade. O jogo abre numa janela.
  */
 export function TreinamentosDeServicoAguardando({ treinamentos }: { treinamentos: TreinamentoResumo[] }) {

@@ -7,7 +7,7 @@ import { servicoDoCatalogo } from "@/lib/sugestao-materiais-servidor";
 import { codigoDaRota } from "@/lib/treinamento-servico-servidor";
 
 /**
- * As telas de sugestão e contestação da lista de materiais de um serviço (`sugestao-de-materiais.md`): o caminho e o nome do
+ * As telas de sugestão e contestação da lista de materiais de um serviço (`docs/operacao-de-campo.md`, seção 10.2): o caminho e o nome do
  * serviço valem para todas. São telas de fluxo, sem abas, com a volta para a lista de sugestões.
  */
 export default async function MateriaisDoServicoLayout({ children, params }: { children: ReactNode; params: Promise<{ codigo: string }> }) {

@@ -72,7 +72,7 @@ export function validarConteudo(riscos: RiscoEntrada[], itens: ItemEntrada[]): v
   }
 }
 
-/** Regras de publicação (Decisão-chave 5): só um modelo que pode bloquear uma APR e cujas verificações têm critério. */
+/** Regras de publicação (decisão-chave 5, `docs/especificacao.md`, seção 2.5): só um modelo que pode bloquear uma APR e cujas verificações têm critério. */
 export function exigirPublicavel(itens: Pick<ItemEntrada, "secao" | "tipo" | "resposta_bloqueante">[]): void {
   if (!itens.some((i) => i.tipo === "eliminatorio")) {
     throw invalido("sem_item_eliminatorio", "Modelo precisa de ao menos um item eliminatório");

@@ -6,7 +6,7 @@ import { responder } from "../http/resposta";
 import { lerCorpo, lerId } from "../http/validacao";
 
 /**
- * O pedido de conta da tela de entrada (`funcionalidades/solicitacao-de-conta.md`). Duas rotas abertas, sem login: as equipes
+ * O pedido de conta da tela de entrada (`docs/pessoas-e-equipes.md`, seção 2.2). Duas rotas abertas, sem login: as equipes
  * para escolher e o pedido. As outras são de quem cadastra: os pedidos pendentes (o admin vê todos; quem responde por equipes,
  * os delas) e descartar um.
  */

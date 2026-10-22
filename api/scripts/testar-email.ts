@@ -1,5 +1,5 @@
 /**
- * Confere a configuração do e-mail de ponta a ponta (`funcionalidades/avisos-e-emails.md`): conecta no servidor de `SMTP_URL`,
+ * Confere a configuração do e-mail de ponta a ponta (`docs/pessoas-e-equipes.md`, seção 8.5): conecta no servidor de `SMTP_URL`,
  * autentica e envia, de `EMAIL_REMETENTE`, um e-mail de teste no mesmo modelo dos avisos. É o passo que falta depois de
  * preencher o `.env.local`: se este e-mail chega, os avisos e o resumo diário também chegam.
  *

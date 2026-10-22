@@ -1,7 +1,7 @@
 import type { Criterio } from "../schema";
 
 /**
- * A carga inicial da gamificação (seções 3.3 e 7.4 do `gameficacao.md`): as 5 patentes e as 23 conquistas. As linhas entram
+ * A carga inicial da gamificação (seções 3.3 e 7.4 do `docs/gamificacao-e-treinamentos.md`): as 5 patentes e as 23 conquistas. As linhas entram
  * pela migração `0016_gamificacao` (uma única vez por banco, então o que o admin apagar não volta); este arquivo guarda os
  * mesmos dados para gerar as imagens (`imagens-gamificacao.ts`) e para o teste que confere a migração. Os ids são fixos: o
  * `imagem_path` de cada linha é o id do arquivo no bucket `gamificacao`, que a subida da `api` grava se ainda não existir.

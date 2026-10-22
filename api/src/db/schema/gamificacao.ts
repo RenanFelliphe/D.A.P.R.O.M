@@ -5,7 +5,7 @@ import { os } from "./sap";
 import { equipe, usuario } from "./usuarios";
 
 /**
- * Gamificação (decisões em `gameficacao.md`): o extrato de pontos (`lancamento_pontos`), as temporadas (trimestres), as
+ * Gamificação (decisões em `docs/gamificacao-e-treinamentos.md`, seções 1 a 7): o extrato de pontos (`lancamento_pontos`), as temporadas (trimestres), as
  * patentes, as conquistas e o fechamento de cada temporada. Só o servidor grava; nenhum cliente envia pontuação.
  */
 

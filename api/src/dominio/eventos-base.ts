@@ -61,7 +61,7 @@ export async function resolverExecucaoId(tx: Db, id: string): Promise<string> {
 
 /**
  * Evento que chega com mais atraso que isto veio da fila offline (ou de um relógio errado): o aparelho decidiu sem
- * conhecer o que mudou no servidor. Nesses casos o conflito não recusa o evento, vira alerta (Decisão-chave 2).
+ * conhecer o que mudou no servidor. Nesses casos o conflito não recusa o evento, vira alerta (decisão-chave 2, `docs/especificacao.md`, seção 2.2).
  */
 export const ATRASO_OFFLINE_MS = 60_000;
 
@@ -179,7 +179,7 @@ export async function carregarOsDoUsuario(ctx: Contexto, osId: string) {
 /**
  * A OS reservada a uma pessoa (atribuição individual) só tem APR e execução do responsável, e a OS devolvida ao SAP não
  * recebe mais nada. Online o evento é recusado; vindo da fila offline (o aparelho decidiu sem saber da reserva ou da
- * devolução) ele é aplicado e a função devolve o motivo para virar alerta ao supervisor (Decisão-chave 2).
+ * devolução) ele é aplicado e a função devolve o motivo para virar alerta ao supervisor (decisão-chave 2, `docs/especificacao.md`, seção 2.2).
  */
 export async function conferirReserva(ctx: Contexto, o: typeof os.$inferSelect): Promise<string | null> {
   if (o.status === "devolvida") {

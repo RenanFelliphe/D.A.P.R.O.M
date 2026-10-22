@@ -14,7 +14,7 @@ interface FigurinhaProps {
 }
 
 /**
- * A reação da Vitória como figurinha, parte da própria mensagem (`vitoria.md`, seção 2.8): toca a animação uma vez e fica no quadro
+ * A reação da Vitória como figurinha, parte da própria mensagem (`docs/ia-e-vitoria.md`, seção 4.13): toca a animação uma vez e fica no quadro
  * parado, como uma figurinha de WhatsApp. Um toque nela toca de novo, inteira. A animação é um WebP animado; cada rodada remonta a
  * imagem (`key`) para recomeçar do primeiro quadro.
  */

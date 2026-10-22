@@ -18,7 +18,7 @@ import { minhasValidacoes } from "@/lib/validacoes-servidor";
 export const metadata: Metadata = { title: "Validações" };
 
 /**
- * Validações: tudo o que espera a decisão ou a assinatura do supervisor, numa fila só (`funcionalidades/validacoes.md`): a OS
+ * Validações: tudo o que espera a decisão ou a assinatura do supervisor, numa fila só (`docs/pessoas-e-equipes.md`, seção 5): a OS
  * que espera a ciência, o treinamento de serviço, a sugestão de materiais, a conferência da execução e os pedidos de ausência.
  * A página não decide nada: cada item leva à tela onde a decisão já existia, com a janela de assinatura de sempre. Os urgentes
  * vêm primeiro; `?tipo=` filtra por um dos cinco tipos.

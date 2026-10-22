@@ -4,7 +4,7 @@ import { blocoDeDatas } from "../src/dominio/vitoria-datas";
 import { criarAmbiente } from "./ajuda";
 
 /**
- * A data de hoje no pedido à IA (`vitoria.md`, seção 2.10.5): "mês passado" e o mês sem o ano ("maio") dependem de saber
+ * A data de hoje no pedido à IA (`docs/ia-e-vitoria.md`, seção 4.7): "mês passado" e o mês sem o ano ("maio") dependem de saber
  * que dia é hoje, e quem faz a conta de calendário é o servidor, não a IA.
  */
 describe("Vitória — datas no pedido à IA", () => {

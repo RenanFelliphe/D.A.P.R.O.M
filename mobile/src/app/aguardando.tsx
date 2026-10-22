@@ -10,7 +10,7 @@ import { Tela } from "@/ui/Tela";
 
 /**
  * O técnico cadastrado por um supervisor espera a liberação de um administrador. Nesse tempo o app não abre as telas de campo
- * (decisão D3 do plano): o Campo de treino é feito na web. Quando o admin libera, "Verificar de novo" leva à lista de OS.
+ * (`mobile/README.md`, decisão D3): o Campo de treino é feito na web. Quando o admin libera, "Verificar de novo" leva à lista de OS.
  */
 export default function Aguardando() {
   const { eu, recarregarEu, sair } = useSessao();

@@ -1,6 +1,6 @@
 /**
  * Formatos das respostas de `/digitalizacoes` (a Digitalização de OS antigas, só o admin): a leitura em segundo plano e a
- * conferência antes do registro. O desenho está na seção 10 do vitoria.md.
+ * conferência antes do registro. O desenho está na seção 6 do `docs/ia-e-vitoria.md`.
  */
 
 import type { OsStatus } from "@/lib/tipos";

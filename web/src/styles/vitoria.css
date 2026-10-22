@@ -1,4 +1,4 @@
-/* A Vitória: botão flutuante, painel de conversa e o destaque de "mostrar na tela" (vitoria.md, seção 2). */
+/* A Vitória: botão flutuante, painel de conversa e o destaque de "mostrar na tela" (docs/ia-e-vitoria.md, seção 4). */
 
 /* ---------- Botão flutuante ---------- */
 
@@ -1126,7 +1126,7 @@
   }
 }
 
-/* ---------- Controle da IA (ControleDaIa.tsx, só o admin; controle-da-ia.md) ---------- */
+/* ---------- Controle da IA (ControleDaIa.tsx, só o admin; docs/ia-e-vitoria.md, seção 3) ---------- */
 
 .ci {
   display: flex;

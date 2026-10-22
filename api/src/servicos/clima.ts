@@ -1,5 +1,5 @@
 /**
- * O provedor da previsão do tempo (`funcionalidades/previsao-do-tempo.md`). A `api` pede a previsão hora a hora de um ponto e
+ * O provedor da previsão do tempo (`docs/especificacao.md`, seção 7.9). A `api` pede a previsão hora a hora de um ponto e
  * classifica o risco sozinha (`dominio/clima.ts`); quem fala com o provedor só devolve as horas, no formato abaixo.
  */
 

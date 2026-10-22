@@ -14,7 +14,7 @@ const HORA = 3_600_000;
 const DIA = 24 * HORA;
 
 /**
- * Execução compartilhada, etapa 3 (`funcionalidades/execucao-compartilhada.md`, seção 5): o que a equipe registra sem sinal, em
+ * Execução compartilhada, etapa 3 (`docs/operacao-de-campo.md`, seções 6.5 a 6.7): o que a equipe registra sem sinal, em
  * aparelhos diferentes, é guardado sem recusar nada, e quando todos sincronizam o servidor compara as versões. Sem divergência é um
  * resumo com ciência; com divergência o responsável escolhe, e os demais assinam.
  */

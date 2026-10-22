@@ -39,7 +39,7 @@ interface OrigemDaVitoriaProps {
 }
 
 /**
- * O que a Vitória diz de um passo ou de uma fase que ela montou (seção 3.6 do `vitoria.md`): o trecho do procedimento de onde
+ * O que a Vitória diz de um passo ou de uma fase que ela montou (seção 9.4 do `docs/gamificacao-e-treinamentos.md`): o trecho do procedimento de onde
  * saiu e as pendências das conferências. Uma pendência some quando o admin edita o item ou o confirma como está.
  */
 export function OrigemDaVitoria({ item, aoConfirmar, acoes, desabilitado }: OrigemDaVitoriaProps) {

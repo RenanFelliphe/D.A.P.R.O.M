@@ -18,7 +18,7 @@ const esquemaClima = z
 const esquemaBuscaDeCidade = z.object({ busca: z.string().trim().min(2).max(80) });
 
 /**
- * A previsão do tempo (`funcionalidades/previsao-do-tempo.md`), para todo perfil liberado. `GET /clima` nunca falha por causa do
+ * A previsão do tempo (`docs/operacao-de-campo.md`, seção 4.7), para todo perfil liberado. `GET /clima` nunca falha por causa do
  * provedor: sem resposta dele devolve `disponivel: false`, e as telas dizem "Previsão indisponível" sem avisar nem bloquear nada.
  * `GET /clima/cidades` é do admin, para escolher a cidade padrão em Configurações.
  */

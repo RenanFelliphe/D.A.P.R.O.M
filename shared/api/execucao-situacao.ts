@@ -2,7 +2,7 @@ import { quemEncerrou } from "./execucao-pedidos";
 import { situacaoDaApr } from "./os-app";
 import { diaDe, type AprDaApi, type ExecucaoAberta, type ExecucaoDaApi, type ParticipanteDaApr } from "./execucao-tempo";
 
-/** O que a tela de execução mostra, decidido a partir dos dados da `api` (tabela de estados da especificação, seção "Execução"). */
+/** O que a tela de execução mostra, decidido a partir dos dados da `api` (tabela de estados em `docs/especificacao.md`, seção 5.3). */
 export type Situacao =
   /** Execução esquecida de outro dia (em qualquer OS): só resta suspendê-la, informando a hora real do fim. */
   | { tipo: "esquecida"; execucao: ExecucaoAberta }
@@ -15,7 +15,7 @@ export type Situacao =
   | { tipo: "encerrando"; execucao: ExecucaoDaApi }
   /**
    * Outra pessoa está executando esta OS e o usuário é participante da APR que a ampara: ele acompanha o andamento (cronômetro,
-   * pausas, participantes) sem poder agir. As ações dos participantes são a etapa 2 de `execucao-compartilhada.md`.
+   * pausas, participantes) sem poder agir. As ações dos participantes estão em `docs/operacao-de-campo.md`, seção 6.2.
    */
   | { tipo: "acompanhando"; execucao: ExecucaoDaApi; participantes: ParticipanteDaApr[] }
   /** Outra pessoa está executando esta OS (ou preenchendo o encerramento dela) e o usuário não participa dela. */

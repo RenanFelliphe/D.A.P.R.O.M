@@ -5,7 +5,7 @@ import { ErroDaApi, mensagemDoErro } from "@/api/erros";
 export const MENSAGEM_SEM_SINAL = "Sem conexão: tente quando o sinal voltar";
 
 /**
- * O texto de cada erro de negócio da sugestão de materiais (`sugestao-de-materiais.md`, seção 9). Os que a `api` já escreve bem
+ * O texto de cada erro de negócio da sugestão de materiais (`docs/operacao-de-campo.md`, seções 10.2 a 10.4). Os que a `api` já escreve bem
  * (o material desativado, o item sem material) usam a mensagem dela, que traz o nome do item; o resto cai no tratamento geral.
  */
 export function mensagemDaSugestao(e: unknown): string {

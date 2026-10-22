@@ -1,5 +1,5 @@
 /**
- * As reações da Vitória (`vitoria.md`, seção 2.8): a foto de perfil é sempre a mesma (`icone.webp`) e, de vez em quando, a
+ * As reações da Vitória (`docs/ia-e-vitoria.md`, seção 4.13): a foto de perfil é sempre a mesma (`icone.webp`) e, de vez em quando, a
  * mensagem dela ganha uma figurinha, que toca uma animação curta e fica no quadro parado. Este arquivo decide **quando** e **qual**,
  * sem IA: a web o usa para reagir ao que a `api` devolve (`alerta` e `ops`), para as saudações e agradecimentos e para os
  * pedidos para imitar uma emoção ("fique triste", "finja que está surpresa"). A `api` nunca vê esses pedidos.

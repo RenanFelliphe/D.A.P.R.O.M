@@ -45,7 +45,7 @@ export function rotasUsuarios(deps: Deps, { autenticar, exigirPerfil }: Autentic
   const r = new Hono<Ambiente>();
 
   /**
-   * Cadastra quem já está no registro de funcionários (`apifuncionarios.md`, seção 4). O corpo traz só a matrícula, o e-mail, o perfil
+   * Cadastra quem já está no registro de funcionários (`docs/pessoas-e-equipes.md`, seção 2.3). O corpo traz só a matrícula, o e-mail, o perfil
    * e a equipe (o admin) e a senha inicial: nome, cargo e registro profissional vêm do registro, que a `api` consulta de novo aqui
    * (não confia na prévia de `GET /rh/funcionarios/{matricula}`). Recusa matrícula fora do registro, e-mail que não é o dela e
    * funcionário afastado ou desligado. O supervisor cadastra só técnicos de um setor cuja equipe ele supervisiona, na equipe do setor.

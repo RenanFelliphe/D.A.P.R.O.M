@@ -5,7 +5,7 @@ import type { UsuarioAutenticado } from "../http/autenticacao";
 import { escadaDePatentes, maiorDasPatentes, patenteDosPontos, todasAsPatentes, type LinhaDePatente } from "./patentes";
 
 /**
- * Rankings (seção 5 do `gameficacao.md`): pessoas e equipes, na temporada (aberta ou fechada) e no geral. Quem aparece são os
+ * Rankings (seção 5 do `docs/gamificacao-e-treinamentos.md`): pessoas e equipes, na temporada (aberta ou fechada) e no geral. Quem aparece são os
  * técnicos ativos e liberados (o admin não joga, quem aguarda liberação não aparece, quem é desativado sai dos rankings
  * abertos e continua nas temporadas fechadas). O empate fica com quem chegou primeiro àquela pontuação (o último lançamento
  * mais antigo). A equipe é ordenada pela média por membro, para a maior não ganhar só por ser maior.

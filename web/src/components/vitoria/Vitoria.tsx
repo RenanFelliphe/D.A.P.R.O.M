@@ -46,7 +46,7 @@ interface RespostaFinalDaVitoria {
 }
 
 /**
- * O botão flutuante e o painel de conversa da Vitória (`vitoria.md`, seção 2): presente em toda tela do portal e da
+ * O botão flutuante e o painel de conversa da Vitória (`docs/ia-e-vitoria.md`, seção 4): presente em toda tela do portal e da
  * gestão, inclusive o Campo de treino (ela só consulta o manual e o manifesto de destinos, nunca lê nem grava dado de
  * OS). Monta sozinha: a `api` decide o manual pelo perfil de quem está logado.
  */
@@ -84,7 +84,7 @@ export function Vitoria() {
   const situacao = !carregando ? "Pronta para ajudar" : textoChegando ? "Escrevendo" : "Pensando";
 
   /**
-   * A reação como figurinha na mensagem (`vitoria.md`, seção 2.8). Só toca com o painel aberto e sem "reduzir movimento"; do
+   * A reação como figurinha na mensagem (`docs/ia-e-vitoria.md`, seção 4.13). Só toca com o painel aberto e sem "reduzir movimento"; do
    * contrário a figurinha fica no quadro parado, esperando a pessoa abrir.
    */
   function figurinhaDe(qual: Reacao, completa: boolean): FigurinhaDaMensagem {
@@ -109,7 +109,7 @@ export function Vitoria() {
     chamar("POST", "/vitoria/eventos", { tipo }).catch(() => {});
   }
 
-  /** Dupla checagem (vitoria.md, 2.4): refaz a validação contra o manifesto com o contexto que a web tem agora, antes de navegar. */
+  /** Dupla checagem (`docs/ia-e-vitoria.md`, seção 4.6): refaz a validação contra o manifesto com o contexto que a web tem agora, antes de navegar. */
   function irPara(acao: AcaoResolvida) {
     setErro(null);
     const { resolvida } = resolverAcao({ tipo: acao.tipo, destino: acao.destino, filtro: acao.valor }, contexto);

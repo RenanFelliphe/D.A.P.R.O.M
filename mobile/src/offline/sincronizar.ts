@@ -11,7 +11,7 @@ import type { ArquivoDaFila, SnapshotDaApi } from "./tipos";
  * nova da equipe. É a única parte que fala com a `api` por conta da fila; o que ele precisa de fora entra por `Dependencias`, então
  * roda igual no aparelho e nos testes.
  *
- * Regras (Decisão-chave 2: "a sincronização nunca descarta dado de campo"):
+ * Regras (decisão-chave 2, `docs/especificacao.md`, seção 2.2: "a sincronização nunca descarta dado de campo"):
  * - o evento confirmado sai da fila; reenviar não tem efeito (a `api` é idempotente pelo `id`);
  * - o evento que a `api` adia (`pendente`: falta um arquivo ou a assinatura de outro aparelho) continua na fila, e os que vêm depois
  *   **da mesma OS** esperam por ele; as outras OS seguem;

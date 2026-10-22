@@ -66,7 +66,7 @@ export const CHECKLIST_MAX_TEXTO = 300;
 
 /**
  * O checklist de inspeção de um plano de preventiva: as perguntas que o técnico marca no encerramento de cada OS do plano
- * (ver `inspecao-preventivas.md`). Ficam no plano, ao lado do intervalo, na ordem de `posicao`. A execução não aponta para
+ * (ver `docs/operacao-de-campo.md`, seção 9.2). Ficam no plano, ao lado do intervalo, na ordem de `posicao`. A execução não aponta para
  * elas: copia o texto de cada pergunta no momento do encerramento (`execucao.dados_inspecao`), então mudar o checklist depois
  * não altera o que já foi respondido.
  */

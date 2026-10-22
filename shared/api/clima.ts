@@ -1,5 +1,5 @@
 /**
- * A previsão do tempo (`funcionalidades/previsao-do-tempo.md`): o formato que a `api` devolve em `GET /clima` e o que a web e o app
+ * A previsão do tempo (`docs/operacao-de-campo.md`, seção 4.7): o formato que a `api` devolve em `GET /clima` e o que a web e o app
  * guardam junto da APR e do encerramento da execução. A `api` consulta o provedor, classifica o risco e escreve as frases, para a
  * web e o app mostrarem exatamente a mesma coisa; aqui ficam só os tipos e o que as telas decidem sozinhas.
  */

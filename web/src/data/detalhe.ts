@@ -162,7 +162,7 @@ export interface RespostaApr {
   alerta_marcado?: boolean;
 }
 
-/** A previsão do tempo que a pessoa viu na APR ou no encerramento (`previsao-do-tempo.md`), como a `api` a guardou. */
+/** A previsão do tempo que a pessoa viu na APR ou no encerramento (`docs/operacao-de-campo.md`, seção 4.7), como a `api` a guardou. */
 export type ClimaGuardadoDaOs = ClimaRegistrado & { momento: "apr" | "encerramento" };
 
 export interface AprDaOs {

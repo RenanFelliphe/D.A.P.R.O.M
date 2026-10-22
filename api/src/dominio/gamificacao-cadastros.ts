@@ -27,7 +27,7 @@ import { caminhoDaImagem, caminhosDasImagens, patenteParaApi, urlsDasImagens, ty
 import { REGRAS } from "./regras-de-pontuacao";
 
 /**
- * O cadastro do admin (seções 3.2, 7.2 e 2 do `gameficacao.md`): o valor e o estado de cada tarefa, as patentes e as
+ * O cadastro do admin (seções 3.2, 7.2 e 2.1 do `docs/gamificacao-e-treinamentos.md`): o valor e o estado de cada tarefa, as patentes e as
  * conquistas, cada um com a auditoria. As imagens (PNG, JPEG ou WebP, até 5 MB, quadradas) ficam no bucket `gamificacao`; cada
  * patente tem duas, uma para as pessoas e uma para as equipes.
  */

@@ -13,7 +13,7 @@ export const SUGESTAO_ESTADOS = ["pendente", "aceita", "recusada", "cancelada"] 
 export type SugestaoEstado = (typeof SUGESTAO_ESTADOS)[number];
 
 /**
- * A sugestão (ou contestação) de uma pessoa sobre a lista de materiais de um serviço (`funcionalidades/sugestao-de-materiais.md`).
+ * A sugestão (ou contestação) de uma pessoa sobre a lista de materiais de um serviço (`docs/operacao-de-campo.md`, seções 10.2 a 10.5).
  * Quem avalia é o supervisor da equipe que mais faz o serviço, guardada aqui no envio (`equipe_responsavel_id`); sem equipe
  * (o serviço sem nenhuma OS), avalia o admin. Aceita, a lista passa a ser a do serviço (`atividade_material`).
  */

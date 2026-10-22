@@ -6,7 +6,7 @@ import { climaRegistro, CLIMA_ORIGENS } from "../db/schema";
 import { instanteIso } from "../http/validacao";
 
 /**
- * O clima na hora da APR e do encerramento (`funcionalidades/previsao-do-tempo.md`): a cópia da previsão que a pessoa viu, que o
+ * O clima na hora da APR e do encerramento (`docs/operacao-de-campo.md`, seção 4.7): a cópia da previsão que a pessoa viu, que o
  * aparelho manda junto do evento (`apr_concluida` e `encerramento_assinado`). É só informativo: a `api` guarda o que veio, para o
  * relatório do supervisor mostrar o que valia na hora, e nunca recusa um evento por causa dele (sem previsão, o evento segue sem ela).
  */

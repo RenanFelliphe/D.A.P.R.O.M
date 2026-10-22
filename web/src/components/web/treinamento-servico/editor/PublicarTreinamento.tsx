@@ -22,7 +22,7 @@ interface PublicarTreinamentoProps {
   rascunho: RascunhoDoEditor | null;
   /** A versão no ar antes desta, se houver. */
   versaoNoAr: number | null;
-  /** A assinatura do perfil de quem publica (seção 3.7 do `vitoria.md`). */
+  /** A assinatura do perfil de quem publica (seção 8.10 do `docs/gamificacao-e-treinamentos.md`). */
   assinaturaPath: string | null;
   /** A validação pelos supervisores deste rascunho; `null` quando a pessoa não participa dela ou não há rascunho. */
   validacao?: ValidacaoDoTreinamento | null;
@@ -42,7 +42,7 @@ const ONDE_CORRIGIR: Record<RequisitoDePublicacao["chave"], "explicacao" | "fase
 };
 
 /**
- * Publicar (seção 3.7 do `vitoria.md` e `validacao-de-treinamento.md`): o que a publicação exige, o que vai ao ar e quem valida. Quem
+ * Publicar (seção 8.10 do `docs/gamificacao-e-treinamentos.md`): o que a publicação exige, o que vai ao ar e quem valida. Quem
  * cria envia para a validação dos supervisores (com a assinatura do perfil, na janela das outras ações assinadas) e acompanha o
  * andamento; o admin também pode publicar direto, como exceção, com justificativa. Publicado, a Vitória comemora.
  */

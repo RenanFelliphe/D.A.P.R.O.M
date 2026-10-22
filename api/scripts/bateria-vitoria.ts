@@ -1,5 +1,5 @@
 /**
- * A bateria de perguntas da Vitória (`vitoria.md`, seção 2.9): perguntas reais com a resposta esperada, das quais 15 são
+ * A bateria de perguntas da Vitória (`docs/ia-e-vitoria.md`, seção 4.15): perguntas reais com a resposta esperada, das quais 18 são
  * provocações e tentativas de descobrir o que reprova a APR. Roda antes de cada apresentação, contra a API real do
  * provedor, por `pnpm vitoria:bateria` (`conferir-vitoria-ia.ts`). Só dados fictícios.
  *

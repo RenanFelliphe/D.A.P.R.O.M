@@ -18,7 +18,7 @@ import { lerOrdensDoPdf, normalizar, numeroDaFolha, OPERACOES, type OsDoPdf } fr
  * leitura inteira fica guardada em `digitalizacao.leitura` à espera da conferência do admin. O registro, que cria as OS como
  * encerradas, é em `digitalizacao-registro.ts`.
  *
- * Princípio (vitoria.md, seção 10): a IA lê, o sistema confere e a pessoa confirma o que não bater.
+ * Princípio (`docs/ia-e-vitoria.md`, seção 6): a IA lê, o sistema confere e a pessoa confirma o que não bater.
  */
 
 export type EstadoDoCampo = "confere" | "duvidoso" | "invalido" | "faltando";

@@ -10,7 +10,7 @@ import { pontuarApr, pontuarAssinatura, pontuarCiencia, pontuarExecucao, pontuar
 import { passouATolerancia } from "../../dominio/temporadas";
 
 /**
- * Implantação da gamificação (seção 2.4 do `gameficacao.md`): preenche o extrato a partir do histórico já gravado (APRs,
+ * Implantação da gamificação (seção 2.6 do `docs/gamificacao-e-treinamentos.md`): preenche o extrato a partir do histórico já gravado (APRs,
  * execuções, ciências, treinos, assinaturas e planos de preventiva), com as mesmas regras de hoje, e fecha as temporadas
  * passadas. Roda na subida da `api`, só quando o extrato está vazio, numa transação só: ou o histórico entra inteiro, ou nada
  * muda. As conquistas são concedidas no fim (com a data em que cada meta foi batida), e os pontos delas entram na temporada

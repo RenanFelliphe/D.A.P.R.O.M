@@ -103,7 +103,7 @@ export async function chamarEmStream(caminho: string, corpo: unknown, aoReceber:
 const LADO_MAXIMO = 1600;
 const QUALIDADE_JPEG = 0.7;
 
-/** Reduz a foto para ~1600 px e JPEG 70% (≈300 KB), como a especificação pede; formatos que o navegador não decodifica passam como vieram. */
+/** Reduz a foto para ~1600 px e JPEG 70% (≈300 KB), como pede o `docs/especificacao.md`, seção 3.4; formatos que o navegador não decodifica passam como vieram. */
 export async function comprimirFoto(arquivo: Blob): Promise<Blob> {
   try {
     const imagem = await createImageBitmap(arquivo);

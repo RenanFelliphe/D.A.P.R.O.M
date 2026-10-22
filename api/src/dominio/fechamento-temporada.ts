@@ -8,7 +8,7 @@ import { diaDe } from "./tempo";
 import { dadosDaTemporada, passouATolerancia } from "./temporadas";
 
 /**
- * Fechamento da temporada (seção 4 do `gameficacao.md`): 7 dias depois do último dia do trimestre (tolerância para a fila
+ * Fechamento da temporada (seção 4 do `docs/gamificacao-e-treinamentos.md`): 7 dias depois do último dia do trimestre (tolerância para a fila
  * offline), grava os pontos, a patente e a posição de cada pessoa e de cada equipe; esse registro forma o histórico. Depois
  * confere as conquistas de temporada (posição, patente, pontos numa temporada, temporadas impecáveis…). O que chegar com
  * data da temporada fechada entra na aberta (`temporadaParaLancar`).

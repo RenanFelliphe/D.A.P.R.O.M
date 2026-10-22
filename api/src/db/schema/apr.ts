@@ -10,7 +10,7 @@ export const APR_FUNCOES = ["responsavel", "executor"] as const;
 export const APR_RESPOSTAS = ["sim", "nao", "na"] as const;
 
 /**
- * Uma APR vale para uma única OS e ampara uma única Execução (Decisão-chave 4).
+ * Uma APR vale para uma única OS e ampara uma única Execução (decisão-chave 4, `docs/especificacao.md`, seção 2.4).
  * Os ids nascem no cliente (app ou navegador), por isso não têm default: reenviar o mesmo id não duplica.
  * `resultado` é recalculado no servidor a partir das respostas e da versão do modelo.
  */

@@ -59,7 +59,7 @@ const esquemaBusca = esquemaPaginacao.extend({ busca: z.string().trim().min(1).o
  *   SYNQ OS lê;
  * - **Gestão** (`/gestao/...`), com o admin logado no SYNQ OS: o CRUD que a tela `/simulador/funcionarios` usa. Quando um
  *   funcionário passa a desligado, o simulador avisa o SYNQ OS (`enviarAviso`).
- * Os dados ficam na tabela `funcionario_simulado`, no banco do SYNQ OS. Ver `apifuncionarios.md`.
+ * Os dados ficam na tabela `funcionario_simulado`, no banco do SYNQ OS. Ver `docs/integracoes-simuladas.md`, seção 5.9.
  */
 export function rotasRhSimulado(deps: Deps, { autenticar, exigirPerfil }: Autenticacao, enviarAviso: EnviarAvisoRh) {
   const r = new Hono<Ambiente>();
