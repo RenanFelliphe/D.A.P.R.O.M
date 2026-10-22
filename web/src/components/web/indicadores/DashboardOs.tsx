@@ -3,17 +3,19 @@ import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
 import { Kpi, Panel } from "@/components/web/Panel";
 import type { ResumoDasImportacoes } from "@/components/web/importacao/tipos";
-import type { DashboardOs as Dados } from "@/data/dashboards";
+import type { DashboardOs as Dados, MapaDeCalorDoPeriodo } from "@/data/dashboards";
 import type { OsDoQuadro } from "@/data/quadro";
 import { dataHora } from "@/lib/formatar";
 import { aparenciaDaSituacao, type ContagemDosCiclos } from "@/lib/preventivas";
 import { rotas } from "@/lib/rotas";
 import { CabecalhoDoBloco, comparacao, plural, porcentagem, Secao } from "./blocos";
-import { COR_AVISO, COR_CORRETIVA, COR_CRITICA, COR_EM_DIA, COR_PREVENTIVA, COR_UNICA, MARCADOR_DO_STATUS } from "./cores";
+import { COR_AVISO, COR_CORRETIVA, COR_CRITICA, COR_EM_DIA, COR_PREVENTIVA, COR_UNICA } from "./cores";
 import { EntradaDeOs } from "./EntradaDeOs";
 import { ExportacaoSap } from "./ExportacaoSap";
 import { GraficoColunas, type SerieDoGrafico } from "./GraficoColunas";
-import { OsComMaisPausaNoPeriodo, PausasPorMotivo, TempoDoPeriodo } from "./TempoDeExecucao";
+import { MapaDoDashboard, type SituacaoDoMapa } from "./MapaDoDashboard";
+import { PrecisaDeAtencao } from "./PrecisaDeAtencao";
+import { TempoDoPeriodo } from "./TempoDeExecucao";
 
 export const nomeDaUnidade = { dia: "dia", semana: "semana", mes: "mês" } as const;
 
@@ -33,7 +35,7 @@ function PreventivasDoPeriodo({ preventivas }: { preventivas: Dados["preventivas
   return (
     <Panel>
       <CabecalhoDoBloco
-        titulo="Preventivas do período"
+        titulo="Programadas no período"
         descricao={total === 0 ? "Pela data programada; nenhuma encerrada ou atrasada" : `${plural(total, "preventiva programada", "preventivas programadas")}, pela data programada`}
       />
       {total === 0 ? (
@@ -80,7 +82,7 @@ function CiclosDasPreventivas({ ciclos, comAtalho }: { ciclos: ContagemDosCiclos
         titulo={
           <span className="row g8">
             <Icon name="clock" size={16} style={{ color: "var(--ink3)" }} />
-            Ciclo das preventivas
+            Ciclo dos planos, agora
           </span>
         }
         descricao={
@@ -89,7 +91,7 @@ function CiclosDasPreventivas({ ciclos, comAtalho }: { ciclos: ContagemDosCiclos
             : `${plural(ciclos.total, "plano de manutenção", "planos de manutenção")}${ciclos.sem_intervalo > 0 ? ` · ${ciclos.sem_intervalo} sem intervalo definido` : ""}${ciclos.pausado > 0 ? ` · ${ciclos.pausado} pausados` : ""}`
         }
       />
-      <div className="kpis k4">
+      <div className="kpis k2">
         {situacoes.map((s) => (
           <Kpi
             key={s}
@@ -176,6 +178,10 @@ export function Locais({ locais, descricao = "Onde as equipes mais trabalharam n
 interface DashboardOsProps {
   dados: Dados;
   rotuloAnterior: string;
+  /** O mapa de calor do período (`GET /os/mapa-calor`), com a situação das OS que ele mostra e o filtro do painel. */
+  mapa: MapaDeCalorDoPeriodo;
+  situacaoDoMapa: SituacaoDoMapa;
+  filtro: { periodo: string; equipeId?: string };
   /** Entrada de OS (`GET /importacoes/resumo`): só o admin. */
   entrada: ResumoDasImportacoes | null;
   /** Baixa no SAP (as encerradas ainda não exportadas): só o admin. */
@@ -184,79 +190,56 @@ interface DashboardOsProps {
   porTecnico: boolean;
   /** O ciclo das preventivas agora (`GET /preventivas`); nulo se não carregou. */
   ciclos?: ContagemDosCiclos | null;
+  /** Alertas não lidos de quem está vendo (os mesmos do sino); `null` para o técnico, que não os recebe. */
+  alertasNaoLidos: number | null;
 }
 
 /**
- * Dashboard de OS: a carteira de agora, as programadas e encerradas no período (por tipo e por faixa), as preventivas,
- * o tempo, as interrupções por risco e os locais; para o admin, a entrada de OS e a baixa no SAP.
+ * Dashboard de OS: o que precisa de atenção, o mapa de calor (o destaque, com as áreas mais movimentadas), as preventivas
+ * (o ciclo dos planos e as programadas no período), os resultados do período (OS encerradas, tempo de execução e
+ * interrupções por risco); para o admin, a entrada de OS e a baixa no SAP. A carteira de agora fica no quadro de OS.
  */
-export function DashboardOs({ dados, rotuloAnterior, entrada, exportacao, porTecnico, ciclos }: DashboardOsProps) {
-  const { carteira: c, programadas: prog, encerradas: e } = dados;
+export function DashboardOs({ dados, rotuloAnterior, mapa, situacaoDoMapa, filtro, entrada, exportacao, porTecnico, ciclos, alertasNaoLidos }: DashboardOsProps) {
+  const { encerradas: e } = dados;
   const unidade = nomeDaUnidade[dados.agrupamento];
   const pontos = dados.serie.map((p) => ({ inicio: p.inicio, fim: p.fim, valores: { corretivas: p.corretivas, preventivas: p.preventivas } }));
 
   return (
     <>
-      <Secao id="os-carteira-t" titulo="Carteira agora" descricao="As OS abertas neste momento; não depende do período.">
-        <div className="kpis k4">
-          <Kpi label="Liberadas" marker={<i style={{ background: MARCADOR_DO_STATUS.liberada }}></i>} value={c.liberadas} sub="à espera de APR e execução" />
-          <Kpi label="Em execução" marker={<i style={{ background: MARCADOR_DO_STATUS.em_execucao }}></i>} value={c.em_execucao} sub="em campo agora" />
-          <Kpi
-            label="Pendentes"
-            marker={<i style={{ background: MARCADOR_DO_STATUS.pendente }}></i>}
-            value={c.pendentes}
-            sub="à espera de uma APR nova"
-            subStyle={c.pendentes > 0 ? { color: "var(--blq)", fontWeight: 500 } : undefined}
-          />
-          <Kpi
-            label="Atrasadas"
-            marker={<Icon name="clock" size={13} style={{ color: c.atrasadas > 0 ? "var(--al)" : "var(--ink3)" }} />}
-            value={c.atrasadas}
-            sub={`${plural(c.criticas, "aberta", "abertas")} em local crítico${c.apoio_abertas > 0 ? ` · ${c.apoio_abertas} de apoio` : ""}`}
-          />
-        </div>
-        {ciclos && <CiclosDasPreventivas ciclos={ciclos} comAtalho={porTecnico} />}
+      <PrecisaDeAtencao dados={dados} alertasNaoLidos={alertasNaoLidos} verExportacao={exportacao !== null} acompanha={porTecnico} />
+
+      <MapaDoDashboard mapa={mapa} situacao={situacaoDoMapa} filtro={filtro} />
+
+      <Secao id="os-preventivas-t" titulo="Preventivas" descricao="Os planos de manutenção agora e as preventivas programadas no período.">
+        {ciclos ? (
+          <div className="two eq" style={{ alignItems: "stretch" }}>
+            <CiclosDasPreventivas ciclos={ciclos} comAtalho={porTecnico} />
+            <PreventivasDoPeriodo preventivas={dados.preventivas} />
+          </div>
+        ) : (
+          <PreventivasDoPeriodo preventivas={dados.preventivas} />
+        )}
       </Secao>
 
-      <Secao id="os-periodo-t" titulo="No período" descricao="Programadas pela data de início; encerradas pelo fim da execução.">
-        <div className="kpis k4">
-          <Kpi
-            label="Programadas"
-            marker={<Icon name="cal" size={13} style={{ color: "var(--ink3)" }} />}
-            value={prog.total}
-            sub={`${prog.corretivas} corretivas · ${prog.preventivas} preventivas${prog.canceladas > 0 ? ` · ${prog.canceladas} canceladas` : ""}`}
-          />
-          <Kpi label="Encerradas" marker={<Icon name="check" size={13} style={{ color: "var(--ink3)" }} />} value={e.total} sub={comparacao(e.total, e.anterior, rotuloAnterior)} />
-          <Kpi label="Reprogramações" marker={<Icon name="refresh" size={13} style={{ color: "var(--ink3)" }} />} value={dados.reprogramacoes} sub="datas ou equipes mudadas no período" />
-          <Kpi
-            label="Interrupções por risco"
-            marker={<Icon name="octagon" size={13} style={{ color: dados.interrupcoes.total > 0 ? "var(--blq)" : "var(--ink3)" }} />}
-            value={dados.interrupcoes.total}
-            sub="execuções paradas por risco"
-          />
-        </div>
+      <Secao id="os-resultados-t" titulo="Resultados do período" descricao="Encerradas pelo fim da execução; tempo e interrupções das execuções do período.">
         <Panel>
           <CabecalhoDoBloco
             titulo={`OS encerradas por ${unidade}`}
-            descricao={e.total === 0 ? "Corretivas e preventivas, pelo fim da execução" : `${e.corretivas} corretivas e ${e.preventivas} preventivas, pelo fim da execução`}
+            descricao={
+              e.total === 0
+                ? "Corretivas e preventivas, pelo fim da execução"
+                : `${e.corretivas} corretivas e ${e.preventivas} preventivas · ${comparacao(e.total, e.anterior, rotuloAnterior)}`
+            }
           />
           <GraficoColunas pontos={pontos} series={SERIES_POR_TIPO} agrupamento={dados.agrupamento} medida="OS encerradas" vazio="Nenhuma OS encerrada neste período." />
         </Panel>
-        <div className="two eq">
-          <PreventivasDoPeriodo preventivas={dados.preventivas} />
+        <div className="two eq" style={{ alignItems: "stretch" }}>
           <TempoDoPeriodo tempo={dados.tempo} rodape={porTecnico ? "Por equipe e por técnico no dashboard de equipes e usuários." : "Da equipe toda, sem separar por pessoa."} />
-        </div>
-        <div className="two eq">
-          <PausasPorMotivo motivos={dados.tempo.por_motivo} />
-          <OsComMaisPausaNoPeriodo lista={dados.tempo.os_com_mais_pausa} />
-        </div>
-        <div className="two eq">
           <Interrupcoes interrupcoes={dados.interrupcoes} />
-          <Locais locais={dados.locais} />
         </div>
       </Secao>
 
-      {entrada && <EntradaDeOs resumo={entrada} rotuloAnterior={rotuloAnterior} />}
+      {entrada && <EntradaDeOs resumo={entrada} />}
 
       {exportacao && (
         <section id="exportacao" className="stack g12" aria-label="Exportação para o SAP">

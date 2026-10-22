@@ -115,34 +115,28 @@ describe("Dashboards de Indicadores e exportação", () => {
 
   const pedir = (caminho: string, como: UsuarioDeTeste, consulta: Record<string, string> = {}) => amb.esperar(200, "GET", caminho, { como, consulta });
 
-  describe("GET /indicadores/geral", () => {
-    it("carteira de agora, resumo do período e pendências", async () => {
-      const r = await pedir("/indicadores/geral", u.admin!);
+  describe("GET /indicadores/os", () => {
+    it("carteira de agora, período e pendências", async () => {
+      const r = await pedir("/indicadores/os", u.admin!);
       assert.equal(r.de, "2026-09-16");
       assert.equal(r.ate, "2026-10-15");
       assert.deepEqual(r.carteira, { liberadas: 2, pendentes: 1, em_execucao: 1, atrasadas: 2, criticas: 1, apoio_abertas: 0 });
-      assert.deepEqual(r.encerradas, { total: 2, anterior: 1, corretivas: 1, preventivas: 1 });
       assert.deepEqual(r.preventivas, { encerradas: 1, atrasadas_justificadas: 1, atrasadas_sem_justificativa: 1 });
-      assert.deepEqual(r.aprs, { total: 5, bloqueadas: 1, anterior: 1, bloqueadas_anterior: 0 });
-      assert.deepEqual(r.tempo, { execucoes: 2, tempo_liquido_medio_min: 85, pausa_media_min: 5, proporcao_pausa: 0.0556 });
-      assert.equal(r.interrupcoes, 1);
       // A baixa no SAP espera a OS concluída (o1 e o8, com a assinatura do supervisor); a assinatura final pendente é só a da o9
       // (aguardando o supervisor), não a da o10, que ainda espera o responsável.
       assert.deepEqual(r.pendencias, { a_exportar: 2, sem_ciencia: 1, execucoes_esquecidas: 1 });
     });
 
     it("equipe_id e o supervisor limitam tudo à equipe", async () => {
-      const doSul = await pedir("/indicadores/geral", u.admin!, { equipe_id: sul });
+      const doSul = await pedir("/indicadores/os", u.admin!, { equipe_id: sul });
       assert.deepEqual(doSul.carteira, { liberadas: 1, pendentes: 1, em_execucao: 1, atrasadas: 1, criticas: 1, apoio_abertas: 0 });
       assert.equal(doSul.encerradas.total, 0);
-      const doSupervisor = await pedir("/indicadores/geral", u.supervisor!);
+      const doSupervisor = await pedir("/indicadores/os", u.supervisor!);
       assert.deepEqual(doSupervisor.carteira, { liberadas: 1, pendentes: 0, em_execucao: 0, atrasadas: 1, criticas: 0, apoio_abertas: 0 });
       assert.deepEqual(doSupervisor.encerradas, { total: 2, anterior: 1, corretivas: 1, preventivas: 1 });
       assert.equal(doSupervisor.pendencias.execucoes_esquecidas, 0);
     });
-  });
 
-  describe("GET /indicadores/os", () => {
     it("programadas, encerradas por faixa e tipo, preventivas, tempo, interrupções, reprogramações e locais", async () => {
       const r = await pedir("/indicadores/os", u.admin!);
       assert.deepEqual(r.programadas, { total: 5, corretivas: 2, preventivas: 3, canceladas: 1 });
@@ -279,7 +273,7 @@ describe("Dashboards de Indicadores e exportação", () => {
 
   describe("técnico (sem supervisão): só a equipe, sem desempenho de colegas", () => {
     it("vê o dashboard da própria equipe e sem as pendências de gestão", async () => {
-      const r = await pedir("/indicadores/geral", u.ana!);
+      const r = await pedir("/indicadores/os", u.ana!);
       assert.equal(r.encerradas.total, 2); // o1 e o2, da Equipe Norte
       assert.equal(r.pendencias.sem_ciencia, null);
       assert.equal(r.pendencias.a_exportar, null);
@@ -306,7 +300,7 @@ describe("Dashboards de Indicadores e exportação", () => {
     });
 
     it("não consulta outra equipe nem o dashboard do supervisor com nomes", async () => {
-      assert.equal((await amb.req("GET", "/indicadores/geral", { como: u.ana, consulta: { equipe_id: sul } })).status, 403);
+      assert.equal((await amb.req("GET", "/indicadores/os", { como: u.ana, consulta: { equipe_id: sul } })).status, 403);
       const doSupervisor = await pedir("/indicadores/os", u.carla!);
       assert.equal(doSupervisor.carteira.liberadas, 1); // só a Equipe Sul
     });
@@ -346,7 +340,7 @@ describe("Dashboards de Indicadores e exportação", () => {
   });
 
   it("perfis: sem login 401; supervisor pedindo outra equipe 403; período inválido 422", async () => {
-    for (const caminho of ["/indicadores/geral", "/indicadores/os", "/indicadores/equipes"]) {
+    for (const caminho of ["/indicadores/os", "/indicadores/equipes"]) {
       assert.equal((await amb.req("GET", caminho)).status, 401, caminho);
       assert.equal((await amb.req("GET", caminho, { como: u.supervisor, consulta: { equipe_id: sul } })).status, 403, caminho);
       assert.equal((await amb.req("GET", caminho, { como: u.admin, consulta: { periodo: "ontem" } })).status, 422, caminho);

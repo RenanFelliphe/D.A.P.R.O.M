@@ -1,12 +1,12 @@
 /**
- * Dashboards do Campo de treino (`GET /indicadores/geral`, `/indicadores/os`, `/indicadores/equipes`, `/indicadores/meus` e
+ * Dashboards do Campo de treino (`GET /indicadores/os`, `/indicadores/equipes`, `/indicadores/meus` e
  * `/aprs/resumo`), calculados sobre o estado em memória com as regras de `api/src/dominio/dashboards.ts`,
  * `painel-indicadores.ts`, `meus-resultados.ts`, `apr-resumo.ts` e `periodo.ts`. O treino é só do técnico que não supervisiona,
  * então vale o que a `api` devolve a ele: só a equipe do treino, nada por pessoa (sem o executor nas listas, sem a lista de
  * técnicos), sem as pendências de gestão e sem a classificação dos itens da APR. Não há reprogramação no treino: a preventiva
  * atrasada só se justifica pela OS pendente.
  */
-import type { DashboardEquipes, DashboardGeral, DashboardMeus, DashboardOs } from "../data/dashboards";
+import type { DashboardEquipes, DashboardMeus, DashboardOs } from "../data/dashboards";
 import type { ResumoDasAprs } from "../data/modelos";
 import type { AprReg, EstadoTreino, ExecucaoReg, OsReg } from "./dados";
 import { diaDe } from "./dados";
@@ -299,28 +299,6 @@ function locais(e: EstadoTreino, execucoes: ExecucaoReg[], porId: Map<string, Os
 // Dashboards
 // ---------------------------------------------------------------------------------------------------------------
 
-/** `GET /indicadores/geral`. */
-export function dashboardGeral(e: EstadoTreino, periodo: string, agora: Date): DashboardGeral {
-  const hoje = diaDe(agora);
-  const p = resolverPeriodo(periodo, hoje);
-  const { os, porId, execucoes, aprs } = escopo(e);
-  const { serie: _serie, ...fechadas } = encerradas(execucoes, porId, p);
-  void _serie;
-  const tempo = temposDeExecucao(e, execucoes, porId, p, false);
-  const esquecida = agora.getTime() - HORAS_DE_EXECUCAO_ESQUECIDA * 3_600_000;
-  return {
-    ...cabecalho(p),
-    carteira: carteira(e, os, hoje),
-    encerradas: fechadas,
-    preventivas: situacaoDasPreventivas(os, p, hoje),
-    aprs: contarAprs(aprs, p),
-    tempo: { execucoes: tempo.execucoes, tempo_liquido_medio_min: tempo.tempo_liquido_medio_min, pausa_media_min: tempo.pausa_media_min, proporcao_pausa: tempo.proporcao_pausa },
-    interrupcoes: interrupcoes(e, execucoes, porId, p, false).total,
-    // As pendências de gestão (baixa no SAP e ciência) não são do técnico.
-    pendencias: { a_exportar: null, sem_ciencia: null, execucoes_esquecidas: execucoes.filter((x) => x.resultado === null && ms(x.inicio) < esquecida).length },
-  };
-}
-
 /** `GET /indicadores/os`. */
 export function dashboardDeOs(e: EstadoTreino, periodo: string, agora: Date): DashboardOs {
   const hoje = diaDe(agora);
@@ -329,6 +307,7 @@ export function dashboardDeOs(e: EstadoTreino, periodo: string, agora: Date): Da
   const { serie, ...fechadas } = encerradas(execucoes, porId, p);
   const programadas = os.filter((o) => entre(o.data_inicio_prog, p.inicio, p.fim));
   const ativas = programadas.filter((o) => o.status !== "cancelada");
+  const esquecida = agora.getTime() - HORAS_DE_EXECUCAO_ESQUECIDA * 3_600_000;
   return {
     ...cabecalho(p),
     carteira: carteira(e, os, hoje),
@@ -345,6 +324,8 @@ export function dashboardDeOs(e: EstadoTreino, periodo: string, agora: Date): Da
     interrupcoes: interrupcoes(e, execucoes, porId, p, false),
     reprogramacoes: 0,
     locais: locais(e, execucoes, porId, p),
+    // As pendências de gestão (baixa no SAP e ciência) não são do técnico.
+    pendencias: { a_exportar: null, sem_ciencia: null, execucoes_esquecidas: execucoes.filter((x) => x.resultado === null && ms(x.inicio) < esquecida).length },
   };
 }
 

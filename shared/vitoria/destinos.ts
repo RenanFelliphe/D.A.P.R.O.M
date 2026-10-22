@@ -55,8 +55,8 @@ export const DESTINOS: Record<string, Destino> = {
   // ---- Comuns aos dois perfis -------------------------------------------------------------------------------------
   quadro_os: { forma: "fixo", caminho: "/app/lista", alvo: "menu-lista" },
   preventivas: { forma: "fixo", caminho: "/app/lista?preventivas=1", alvo: "menu-lista" },
-  // Todo mundo vê a aba: cada um no próprio escopo (a própria equipe, as supervisionadas, ou todas para o admin).
-  mapa_calor: { forma: "fixo", caminho: "/app/mapa-calor", alvo: "menu-mapa-calor" },
+  // Todo mundo vê o mapa, no dashboard de OS: cada um no próprio escopo (a própria equipe, as supervisionadas, ou todas para o admin).
+  mapa_calor: { forma: "fixo", caminho: "/app/dashboard/os", alvo: "menu-dashboard" },
   os_detalhe: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}" },
   apr_nova: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}/apr", alvo: "os-nova-apr" },
   execucao: { forma: "com_contexto", campo: "os_id", modelo: "/app/os/{os_id}/execucao", alvo: "os-iniciar-execucao" },
@@ -67,7 +67,6 @@ export const DESTINOS: Record<string, Destino> = {
   vitoria_perfil: { forma: "fixo", caminho: "/app/perfil/vitoria" },
   equipe: { forma: "com_contexto", campo: "equipe_id", modelo: "/app/equipes/{equipe_id}" },
   busca: { forma: "fixo", caminho: "/app/busca" },
-  dashboard_geral: { forma: "fixo", caminho: "/app/dashboard/geral", alvo: "menu-dashboard" },
   dashboard_meus: { forma: "fixo", caminho: "/app/dashboard/meus", alvo: "menu-dashboard" },
   dashboard_meus_periodo: { forma: "com_filtro", campo: "periodo", padrao: "\\d{4}-\\d{2}", modelo: "/app/dashboard/meus?periodo={periodo}" },
   usuarios: { forma: "fixo", caminho: "/app/usuarios", alvo: "menu-usuarios" },

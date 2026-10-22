@@ -9,7 +9,8 @@ import { rotas } from "@/lib/rotas";
 import { rotuloDoPerfil, type Perfil } from "@/lib/tipos";
 import { BarrasSituacao } from "./BarrasSituacao";
 import { CabecalhoDoBloco, plural, porcentagem, Secao } from "./blocos";
-import { KpisDoTempo, PausasPorMotivo, TempoPorGrupo } from "./TempoDeExecucao";
+import { TempoPorGrupo } from "./TempoDeExecucao";
+
 /** "3 (1 bloqueada)" ou só o número. */
 const comBloqueadas = (aprs: number, bloqueadas: number) => (bloqueadas > 0 ? `${aprs} (${plural(bloqueadas, "bloqueada", "bloqueadas")})` : String(aprs));
 
@@ -77,7 +78,7 @@ function SituacaoPorEquipe({ equipes }: { equipes: Dados["equipes"] }) {
 function TabelaDeEquipes({ equipes, acompanha }: { equipes: Dados["equipes"]; acompanha: boolean }) {
   return (
     <Panel>
-      <CabecalhoDoBloco titulo={acompanha ? "Equipes" : "Minha equipe"} descricao="O trabalho da equipe no período, nas OS dela" />
+      <CabecalhoDoBloco titulo={acompanha ? "Resumo por equipe" : "Resumo da equipe"} descricao="O trabalho da equipe no período, nas OS dela" />
       {equipes.length === 0 ? (
         <p className="muted">Nenhuma equipe cadastrada.</p>
       ) : (
@@ -128,8 +129,8 @@ function TabelaDeTecnicos({ tecnicos }: { tecnicos: Dados["tecnicos"] }) {
   return (
     <Panel>
       <CabecalhoDoBloco
-        titulo="Técnicos"
-        descricao="Os técnicos ativos das equipes e quem trabalhou nas OS delas no período; o tempo de cada um fica em Tempo de execução"
+        titulo="Resumo por técnico"
+        descricao="Os técnicos ativos das equipes e quem trabalhou nas OS delas no período; o tempo de cada um está no gráfico acima"
       />
       {tecnicos.length === 0 ? (
         <p className="muted">Nenhum técnico nas equipes da seleção.</p>
@@ -212,12 +213,12 @@ function Cadastro({ cadastro }: { cadastro: NonNullable<Dados["cadastro"]> }) {
 }
 
 /**
- * Dashboard de equipes e usuários: totais, a situação das preventivas por equipe, uma linha por equipe e por técnico e,
- * para o admin, o estado do cadastro. O técnico que não supervisiona vê só a equipe como um todo ("Minha equipe"): nada por
- * pessoa, que seria o desempenho de um colega.
+ * Dashboard de equipes e usuários: o resumo, as equipes (a situação das preventivas e o tempo de execução lado a lado, e a
+ * tabela de cada uma), os técnicos (o tempo de cada um e a tabela) e, para o admin, o estado do cadastro. O técnico que não
+ * supervisiona vê só a equipe como um todo ("Minha equipe"): nada por pessoa, que seria o desempenho de um colega.
  */
 export function DashboardEquipes({ dados, acompanha }: { dados: Dados; acompanha: boolean }) {
-  const { totais } = dados;
+  const { totais, tempo } = dados;
   const semSupervisor = dados.equipes.filter((e) => !e.supervisor_nome).length;
   return (
     <>
@@ -241,37 +242,40 @@ export function DashboardEquipes({ dados, acompanha }: { dados: Dados; acompanha
             label="Tempo líquido médio"
             marker={<Icon name="clock" size={13} style={{ color: "var(--ink3)" }} />}
             value={totais.tempo_liquido_medio_min === null ? "—" : duracao(totais.tempo_liquido_medio_min)}
-            sub="sem contar as pausas"
+            sub={tempo.execucoes === 0 ? "sem contar as pausas" : `sem contar as pausas · ${duracao(tempo.tempo_total_medio_min)} do início ao fim`}
           />
         </div>
       </Secao>
-      <SituacaoPorEquipe equipes={dados.equipes} />
-      <TabelaDeEquipes equipes={dados.equipes} acompanha={acompanha} />
+
       <Secao
-        id="equipes-tempo-t"
-        titulo="Tempo de execução"
-        descricao="Execuções encerradas iniciadas no período: o tempo total vai do início ao fim; a pausa soma as pausas registradas no app; o líquido é a diferença."
+        id="equipes-equipes-t"
+        titulo={acompanha ? "Equipes" : "Minha equipe"}
+        descricao="As preventivas programadas e o tempo das execuções encerradas no período, por equipe."
       >
-        <KpisDoTempo tempo={dados.tempo} />
-        <div className="two eq">
+        <div className="two eq" style={{ alignItems: "stretch" }}>
+          <SituacaoPorEquipe equipes={dados.equipes} />
           <TempoPorGrupo
             titulo={acompanha ? "Tempo por equipe" : "Tempo da equipe"}
-            descricao="Tempo médio por execução, nas OS de cada equipe"
+            descricao="Tempo médio por execução, nas OS de cada equipe; o líquido não conta as pausas"
             coluna="Equipe"
             linhas={dados.equipes.map((e) => ({ ...e, href: rotas.app.equipe(e.id) }))}
           />
-          <PausasPorMotivo motivos={dados.tempo.por_motivo} />
         </div>
-        {acompanha && (
+        <TabelaDeEquipes equipes={dados.equipes} acompanha={acompanha} />
+      </Secao>
+
+      {acompanha && (
+        <Secao id="equipes-tecnicos-t" titulo="Técnicos" descricao="O tempo das execuções que cada técnico encerrou e o trabalho dele no período.">
           <TempoPorGrupo
             titulo="Tempo por técnico"
             descricao="Tempo médio das execuções que cada técnico encerrou"
             coluna="Técnico"
             linhas={dados.tecnicos.map((t) => ({ ...t, href: rotas.app.perfilDe(t.id), detalhe: t.equipe_nome }))}
           />
-        )}
-      </Secao>
-      {acompanha && <TabelaDeTecnicos tecnicos={dados.tecnicos} />}
+          <TabelaDeTecnicos tecnicos={dados.tecnicos} />
+        </Secao>
+      )}
+
       {dados.cadastro && <Cadastro cadastro={dados.cadastro} />}
     </>
   );

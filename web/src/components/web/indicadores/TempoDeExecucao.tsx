@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { Kpi, Panel, TableWrap } from "@/components/web/Panel";
+import { Panel, TableWrap } from "@/components/web/Panel";
 import type { MedidaDeTempo, MotivoDaPausa, OsComMaisPausa, PausaPorMotivo } from "@/data/dashboards";
 import { dataHora, duracao } from "@/lib/formatar";
 import { rotuloDoMotivoDaPausa } from "@/lib/motivos-de-parada";
@@ -51,35 +51,6 @@ export function TempoDoPeriodo({ tempo, rodape }: { tempo: MedidaDeTempo; rodape
       </dl>
       {rodape && <span className="small">{rodape}</span>}
     </Panel>
-  );
-}
-
-/** As medidas de pausa do conjunto, em destaque: pausa média, a parte do tempo em pausa, quantas pausaram e o tempo total. */
-export function KpisDoTempo({ tempo }: { tempo: MedidaDeTempo }) {
-  const marcador = (icone: "clock" | "pause" | "refresh") => <Icon name={icone} size={13} style={{ color: "var(--ink3)" }} />;
-  const sem = tempo.execucoes === 0;
-  return (
-    <div className="kpis k4">
-      <Kpi
-        label="Pausa média"
-        marker={marcador("pause")}
-        value={duracao(tempo.pausa_media_min)}
-        sub={sem ? "nenhuma execução encerrada" : `${decimal(tempo.pausas_por_execucao)} pausa por execução, em média`}
-      />
-      <Kpi label="Pausa no total" marker={marcador("pause")} value={fracao(tempo.proporcao_pausa)} sub="do tempo das execuções ficou em pausa" />
-      <Kpi
-        label="Execuções com pausa"
-        marker={marcador("refresh")}
-        value={sem ? "—" : tempo.execucoes_com_pausa}
-        sub={sem ? "nenhuma execução encerrada" : `${porcentagem(tempo.execucoes_com_pausa, tempo.execucoes)}% de ${plural(tempo.execucoes, "execução", "execuções")}`}
-      />
-      <Kpi
-        label="Tempo total médio"
-        marker={marcador("clock")}
-        value={duracao(tempo.tempo_total_medio_min)}
-        sub={sem ? "do início ao fim" : `do início ao fim; ${duracao(tempo.tempo_liquido_medio_min)} sem as pausas`}
-      />
-    </div>
   );
 }
 
@@ -168,8 +139,6 @@ export function TempoPorGrupo({ titulo, descricao, coluna, linhas }: { titulo: s
                     <th className="r">Tempo total médio</th>
                     <th className="r">Tempo líquido médio</th>
                     <th className="r">Pausa média</th>
-                    <th className="r">Pausa no total</th>
-                    <th className="r">Com pausa</th>
                     <th className="r">Pausas por execução</th>
                   </tr>
                 </thead>
@@ -183,8 +152,6 @@ export function TempoPorGrupo({ titulo, descricao, coluna, linhas }: { titulo: s
                       <td className="r">{duracao(l.tempo_total_medio_min)}</td>
                       <td className="r">{duracao(l.tempo_liquido_medio_min)}</td>
                       <td className="r">{duracao(l.pausa_media_min)}</td>
-                      <td className="r">{fracao(l.proporcao_pausa)}</td>
-                      <td className="r">{l.execucoes_com_pausa}</td>
                       <td className="r">{decimal(l.pausas_por_execucao)}</td>
                     </tr>
                   ))}

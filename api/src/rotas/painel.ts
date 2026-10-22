@@ -4,7 +4,7 @@ import type { Deps } from "../deps";
 import { OS_STATUS, OS_TIPOS } from "../db/schema";
 import { resumoDasAprs } from "../dominio/apr-resumo";
 import { registrarAuditoria, rotuloDaOs } from "../dominio/auditoria";
-import { dashboardDeEquipes, dashboardDeOs, dashboardGeral } from "../dominio/dashboards";
+import { dashboardDeEquipes, dashboardDeOs } from "../dominio/dashboards";
 import { exportarParaSap, MENSAGEM_SEM_NOVAS, nomeDoArquivo, TIPO_XLSX } from "../dominio/painel-exportacao";
 import { mapaDeCalorOs } from "../dominio/mapa-calor";
 import { equipeDoIndicador, historicoDoLocal, indicadoresDeTempo, indicadoresMensais } from "../dominio/painel-indicadores";
@@ -112,12 +112,7 @@ export function rotasPainel(deps: Deps, { autenticar, exigirPerfil }: Autenticac
     return { periodo: f.periodo, equipeId: equipeDoIndicador(c.get("usuario"), f.equipe_id) };
   };
 
-  /** Dashboard geral: a carteira de agora, o resumo do período e as pendências. */
-  r.get("/indicadores/geral", autenticar(), gestao, async (c) => {
-    return responder(c, await dashboardGeral(deps.db, c.get("usuario"), lerFiltro(c), deps.agora()));
-  });
-
-  /** Dashboard de OS: carteira, programadas e encerradas, preventivas, tempo, interrupções, reprogramações e locais. */
+  /** Dashboard de OS: carteira, programadas e encerradas, preventivas, tempo, interrupções, reprogramações, locais e as pendências. */
   r.get("/indicadores/os", autenticar(), gestao, async (c) => {
     return responder(c, await dashboardDeOs(deps.db, c.get("usuario"), lerFiltro(c), deps.agora()));
   });

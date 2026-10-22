@@ -7,7 +7,7 @@ import { situacaoDasPreventivas, temposDeExecucao, type MedidaDeTempo } from "./
 import { diaDoInstante, diaEntre, faixaDoDia, instanteEntre, resolverPeriodo, type Periodo } from "./periodo";
 
 /**
- * Dashboards de Indicadores e exportação (geral, OS, equipes e usuários; o de APR fica em `apr-resumo.ts`). Todos
+ * Dashboards de Indicadores e exportação (OS, equipes e usuários; o de APR fica em `apr-resumo.ts`). Todos
  * recebem o mesmo filtro: o período (`periodo.ts`) e a equipe, já resolvida por `equipeDoIndicador` (o supervisor só
  * vê a dele). "Agora" é a foto do momento (não depende do período); o resto conta dentro do período.
  */
@@ -138,44 +138,16 @@ async function pendencias(db: Db, filtroOs: SQL | undefined, agora: Date, gestao
   return { aExportar: osPendentes?.aExportar ?? null, semCiencia: osPendentes?.semCiencia ?? null, execucoesEsquecidas: abertas!.total };
 }
 
-/** Dashboard geral: a carteira de agora, o resumo do período (OS, preventivas, APRs, tempo, interrupções) e as pendências. */
-export async function dashboardGeral(db: Db, eu: UsuarioAutenticado, f: FiltroDoDashboard, agora: Date) {
-  const hoje = diaNoFuso(agora);
-  const p = resolverPeriodo(f.periodo, hoje);
-  const filtroOs = daEquipe(eu, f.equipeId);
-  const [agoraOs, fechadas, preventivas, tempo, aprs, interrompidas, aFazer] = await Promise.all([
-    carteira(db, filtroOs, hoje),
-    encerradas(db, filtroOs, p),
-    situacaoDasPreventivas(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }, hoje),
-    temposDeExecucao(db, eu, { inicio: p.inicio, fim: p.fim, equipeId: f.equipeId }),
-    contarAprs(db, filtroOs, p),
-    interrupcoes(db, filtroOs, p),
-    pendencias(db, filtroOs, agora, acompanhaAEquipe(eu)),
-  ]);
-  return {
-    periodo: p.periodo,
-    agrupamento: p.agrupamento,
-    de: p.de,
-    ate: p.ate,
-    carteira: agoraOs,
-    encerradas: { total: fechadas.total, anterior: fechadas.anterior, corretivas: fechadas.corretivas, preventivas: fechadas.preventivas },
-    preventivas: { encerradas: preventivas.encerradas, atrasadasJustificadas: preventivas.atrasadasJustificadas, atrasadasSemJustificativa: preventivas.atrasadasSemJustificativa },
-    aprs,
-    tempo: { execucoes: tempo.execucoes, tempoLiquidoMedioMin: tempo.tempoLiquidoMedioMin, pausaMediaMin: tempo.pausaMediaMin, proporcaoPausa: tempo.proporcaoPausa },
-    interrupcoes: interrompidas.total,
-    pendencias: aFazer,
-  };
-}
-
 /**
  * Dashboard de OS: a carteira de agora, as OS programadas e encerradas no período (por tipo e por faixa), a situação
- * das preventivas, o tempo de execução, as interrupções por risco, as reprogramações e os locais com mais OS encerradas.
+ * das preventivas, o tempo de execução, as interrupções por risco, as reprogramações, os locais com mais OS encerradas e
+ * as pendências (o que pede ação agora).
  */
 export async function dashboardDeOs(db: Db, eu: UsuarioAutenticado, f: FiltroDoDashboard, agora: Date) {
   const hoje = diaNoFuso(agora);
   const p = resolverPeriodo(f.periodo, hoje);
   const filtroOs = daEquipe(eu, f.equipeId);
-  const [agoraOs, fechadas, [programadas], preventivas, tempo, interrompidas, [reprogramadas], locais] = await Promise.all([
+  const [agoraOs, fechadas, [programadas], preventivas, tempo, interrompidas, [reprogramadas], locais, aFazer] = await Promise.all([
     carteira(db, filtroOs, hoje),
     encerradas(db, filtroOs, p),
     db
@@ -200,6 +172,7 @@ export async function dashboardDeOs(db: Db, eu: UsuarioAutenticado, f: FiltroDoD
       .groupBy(localInstalacao.id, localInstalacao.codigo, localInstalacao.critico)
       .orderBy(sql`count(*) desc`, localInstalacao.codigo)
       .limit(LOCAIS_NO_RANKING),
+    pendencias(db, filtroOs, agora, acompanhaAEquipe(eu)),
   ]);
   const { serie, ...osEncerradas } = fechadas;
   return {
@@ -216,6 +189,7 @@ export async function dashboardDeOs(db: Db, eu: UsuarioAutenticado, f: FiltroDoD
     interrupcoes: interrompidas,
     reprogramacoes: reprogramadas?.total ?? 0,
     locais,
+    pendencias: aFazer,
   };
 }
 

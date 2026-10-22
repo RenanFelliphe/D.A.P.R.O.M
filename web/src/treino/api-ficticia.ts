@@ -41,7 +41,7 @@ import {
 import { idTreino } from "./ids";
 import { ROTULO_DA_PAUSA, ROTULO_DA_SUSPENSAO, PAUSA_MOTIVOS, SUSPENSAO_MOTIVOS, descreverMotivo, ehMotivoDeSaude, pedeComplemento, type MotivoDaPausa, type MotivoDaSuspensao } from "./motivos";
 import { orientacaoDoTreino, recomendarModelo } from "./recomendacao";
-import { dashboardDeEquipes, dashboardDeOs, dashboardGeral, meusResultados, periodoDoFiltro, resumoDasAprs } from "./indicadores";
+import { dashboardDeEquipes, dashboardDeOs, meusResultados, periodoDoFiltro, resumoDasAprs } from "./indicadores";
 
 // ---------------------------------------------------------------------------------------------------------------
 // Resposta e erros
@@ -1610,7 +1610,6 @@ function periodoDosIndicadores(e: EstadoTreino, q: Record<string, string>): stri
   return periodo;
 }
 
-rota("GET", "/indicadores/geral", ({ e, q, agora }) => ok(dashboardGeral(e, periodoDosIndicadores(e, q), agora)));
 rota("GET", "/indicadores/os", ({ e, q, agora }) => ok(dashboardDeOs(e, periodoDosIndicadores(e, q), agora)));
 rota("GET", "/indicadores/equipes", ({ e, q, agora }) => ok(dashboardDeEquipes(e, periodoDosIndicadores(e, q), agora)));
 rota("GET", "/indicadores/meus", ({ e, eu, q, agora }) => ok(meusResultados(e, eu.id, periodoDosIndicadores(e, q), agora)));

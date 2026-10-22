@@ -7,8 +7,8 @@ import { usuarioAtual } from "@/lib/api";
 import { abasDoDashboard } from "@/components/web/indicadores/secao";
 
 /**
- * Seção Dashboard, a mesma tela para todos os perfis: o título e as abas dos dashboards (geral, equipes, OS e APR; mais "Meus
- * resultados" para quem executa OS). O filtro (período e equipe) acompanha a troca de aba. Os números atualizam sozinhos.
+ * Seção Dashboard, a mesma tela para todos os perfis: o título e as abas dos dashboards ("Meus resultados" para quem executa OS,
+ * que é a abertura, e OS, APR e equipes). O filtro (período e equipe) acompanha a troca de aba. Os números atualizam sozinhos.
  */
 export default async function SecaoIndicadoresLayout({ children }: { children: ReactNode }) {
   const { usuario } = await usuarioAtual();

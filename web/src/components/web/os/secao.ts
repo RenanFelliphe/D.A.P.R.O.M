@@ -10,10 +10,9 @@ export const veImportacao = (u: Pick<Usuario, "perfil">) => ehAdmin(u);
 
 const quadro: AbaDaSecao = { href: rotas.app.lista, rotulo: "Quadro", icone: "grid" };
 const importacao: AbaDaSecao = { href: rotas.web.importacao, rotulo: "Importação", icone: "upload", chave: "menu-importacao" };
-const mapaDeCalor: AbaDaSecao = { href: rotas.app.mapaCalor, rotulo: "Mapa de Calor", icone: "pin", chave: "menu-mapa-calor" };
 
 /**
- * As abas da seção Ordem de Serviço que a pessoa vê: o admin, Quadro, Importação e Mapa de Calor; os demais (supervisor e
- * técnico comum), Quadro e Mapa de Calor — cada um no escopo de sempre (a `api` já limita o que cada um enxerga).
+ * As abas da seção Ordem de Serviço que a pessoa vê: o admin, Quadro e Importação; os demais (supervisor e técnico comum), só o
+ * Quadro (sem abas). O mapa de calor, antes uma aba daqui, está no dashboard de OS.
  */
-export const abasDoPerfil = (u: Pick<Usuario, "perfil">): AbaDaSecao[] => (veImportacao(u) ? [quadro, importacao, mapaDeCalor] : [quadro, mapaDeCalor]);
+export const abasDoPerfil = (u: Pick<Usuario, "perfil">): AbaDaSecao[] => (veImportacao(u) ? [quadro, importacao] : [quadro]);

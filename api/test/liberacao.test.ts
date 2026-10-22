@@ -150,7 +150,6 @@ describe("Cadastro pelo supervisor e liberação de acesso", () => {
         ["GET", "/historico"],
         ["GET", "/indicadores"],
         ["GET", "/indicadores/tempo"],
-        ["GET", "/indicadores/geral"],
         ["GET", "/indicadores/os"],
         ["GET", "/indicadores/equipes"],
         ["GET", "/aprs/resumo"],

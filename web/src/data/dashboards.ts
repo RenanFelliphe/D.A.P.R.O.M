@@ -1,6 +1,7 @@
-/** Formatos de `GET /indicadores/geral`, `/os`, `/equipes` e `/meus` (o de APR fica em `data/modelos.ts`). */
+/** Formatos de `GET /indicadores/os`, `/equipes`, `/meus` e `/os/mapa-calor` (o de APR fica em `data/modelos.ts`). */
 
 import type { Agrupamento } from "@/components/web/importacao/tipos";
+import type { CelulaDoMapa } from "@/components/web/os/MapaDeCalor";
 import type { Perfil } from "@/lib/tipos";
 
 interface PeriodoResolvido {
@@ -84,15 +85,23 @@ export interface SituacaoDasPreventivas {
   atrasadas_sem_justificativa: number;
 }
 
-export interface DashboardGeral extends PeriodoResolvido {
-  carteira: Carteira;
-  encerradas: Encerradas;
-  preventivas: SituacaoDasPreventivas;
-  aprs: { total: number; bloqueadas: number; anterior: number; bloqueadas_anterior: number };
-  tempo: Pick<MedidaDeTempo, "execucoes" | "tempo_liquido_medio_min" | "pausa_media_min" | "proporcao_pausa">;
-  interrupcoes: number;
-  /** O que pede ação agora. Fora `execucoes_esquecidas`, é de gestão: `null` para quem não acompanha a equipe (técnico). */
-  pendencias: { a_exportar: number | null; sem_ciencia: number | null; execucoes_esquecidas: number };
+/** O que pede ação agora. Fora `execucoes_esquecidas`, é de gestão: `null` para quem não acompanha a equipe (técnico). */
+export interface Pendencias {
+  a_exportar: number | null;
+  sem_ciencia: number | null;
+  execucoes_esquecidas: number;
+}
+
+/** `GET /os/mapa-calor`: onde as OS do período foram executadas, pelo GPS da execução, em células de cerca de 1 km. */
+export interface MapaDeCalorDoPeriodo {
+  periodo: string;
+  de: string;
+  ate: string;
+  os_no_periodo: number;
+  com_localizacao: number;
+  sem_localizacao: number;
+  /** Da mais movimentada para a menos. */
+  celulas: CelulaDoMapa[];
 }
 
 export interface DashboardOs extends PeriodoResolvido {
@@ -109,6 +118,7 @@ export interface DashboardOs extends PeriodoResolvido {
   };
   reprogramacoes: number;
   locais: { id: string; codigo: string; critico: boolean; encerradas: number }[];
+  pendencias: Pendencias;
 }
 
 interface MedidasDeTrabalho extends MedidaDeTempo {

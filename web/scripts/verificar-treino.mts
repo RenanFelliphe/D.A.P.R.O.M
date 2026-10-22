@@ -351,10 +351,9 @@ ok("reiniciarTreino volta ao estado inicial");
 // ---- Dashboards (sobre a massa inicial) -----------------------------------------------------------------------------
 // O que a `api` devolve ao técnico que não supervisiona: só a equipe, nada por pessoa e sem a classificação dos itens da APR.
 {
-  const geral = await ler<any>("GET", "/indicadores/geral");
+  const geral = await ler<any>("GET", "/indicadores/os");
   assert.equal(geral.periodo, "30d", "sem `periodo`, 30 dias");
   assert.equal(geral.encerradas.total, 2);
-  assert.deepEqual(geral.aprs, { total: 4, bloqueadas: 1, anterior: 0, bloqueadas_anterior: 0 });
   assert.equal(geral.carteira.em_execucao, 1);
   assert.equal(geral.carteira.pendentes, 1);
   assert.equal(geral.tempo.execucoes, 2);
@@ -386,9 +385,9 @@ ok("reiniciarTreino volta ao estado inicial");
   assert.deepEqual([aprs.itens_que_bloqueiam, aprs.alertas_registrados, aprs.totais.alertas], [null, null, null]);
   assert.equal(aprs.por_modelo.reduce((n: number, m: any) => n + m.aprs, 0), aprs.totais.aprs);
 
-  assert.equal((await chamar("GET", "/indicadores/geral", undefined, { periodo: "ontem" })).status, 422);
+  assert.equal((await chamar("GET", "/indicadores/os", undefined, { periodo: "ontem" })).status, 422);
   assert.equal((await chamar("GET", "/indicadores/os", undefined, { equipe_id: idTreino("e", 99) })).status, 403);
 }
-ok("dashboards geral, OS, equipe, APR e Meus resultados respondem sobre a massa do treino");
+ok("dashboards OS, equipe, APR e Meus resultados respondem sobre a massa do treino");
 
 console.log(`\n${passos} verificações passaram.`);

@@ -1,0 +1,56 @@
+/* ===== Validações (a fila do supervisor) ===== */
+
+.vl-filtro {
+  flex-wrap: wrap
+}
+
+.vl-contagem {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--tint);
+  color: var(--ink3);
+  font-size: 12px
+}
+
+.sg-filtro a[aria-current="page"] .vl-contagem {
+  background: var(--brand);
+  color: #fff
+}
+
+.vl-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr))
+}
+
+.vl-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: space-between
+}
+
+.vl-item[data-urgente] {
+  border-color: var(--blq)
+}
+
+.vl-selos .badge {
+  gap: 4px
+}
+
+.vl-titulo {
+  font-size: 16px;
+  overflow-wrap: anywhere
+}
+
+.vl-meta {
+  color: var(--ink4)
+}

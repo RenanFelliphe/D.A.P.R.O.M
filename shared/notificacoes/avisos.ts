@@ -395,7 +395,7 @@ export function caminhoDoAviso(a: ReferenciasDoAviso): string {
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento/problemas` : "/app/catalogo/servicos";
     // A validação pelos supervisores: quem valida abre a tela de validar; o autor, a visão geral (o motivo da devolução está lá); a publicação leva às versões.
     case "treinamento_para_validar":
-      return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento/validar` : "/app/treinamentos/validar";
+      return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento/validar` : "/app/validacoes?tipo=treinamento";
     case "treinamento_devolvido":
       return a.treinamentoCodigo ? `/app/catalogo/servicos/${encodeURIComponent(a.treinamentoCodigo)}/treinamento` : "/app/catalogo/servicos";
     case "treinamento_validado":

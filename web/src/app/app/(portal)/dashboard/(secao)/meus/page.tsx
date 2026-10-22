@@ -10,10 +10,10 @@ import { ehAdmin } from "@/lib/tipos";
 
 export const metadata: Metadata = { title: "Meus resultados" };
 
-/** Meus resultados: o dashboard da própria pessoa (técnico e supervisor). O admin não executa OS e volta ao geral. */
+/** Meus resultados: o dashboard da própria pessoa (técnico e supervisor) e a abertura do Dashboard. O admin não executa OS e vai ao dashboard de OS. */
 export default async function MeusResultadosPage({ searchParams }: PageProps<"/app/dashboard/meus">) {
   const painel = await prepararDashboard(searchParams);
-  if (ehAdmin(painel.usuario)) redirect(rotas.app.dashboard);
+  if (ehAdmin(painel.usuario)) redirect(rotas.app.dashboardOs);
   const dados = await api<Dados>("/indicadores/meus", { consulta: { periodo: painel.filtro.periodo } });
   return (
     <>

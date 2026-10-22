@@ -25,11 +25,6 @@ export const rotas = {
     /** Quadro com a janela "OS preventivas" aberta (intervalo entre ciclos de cada preventiva). */
     preventivas: "/app/lista?preventivas=1",
     /**
-     * Aba Mapa de Calor da seção Ordem de Serviço, a mesma para todos os perfis: onde as OS foram executadas, pelo
-     * escopo de sempre (técnico, a própria equipe; supervisor, as que supervisiona; admin, todas).
-     */
-    mapaCalor: "/app/mapa-calor",
-    /**
      * Configurações, as mesmas para todos os perfis liberados: "Minha conta" (assinatura, e-mails, senha e anonimato no ranking) e,
      * só para o admin, "Sistema" (cidade padrão da previsão do tempo, horários das rotinas e controle da IA). `/app/configuracoes`
      * sozinho leva a "Minha conta".
@@ -57,11 +52,11 @@ export const rotas = {
     /** Resultados da busca global (`?q=`). */
     busca: "/app/busca",
     /**
-     * Seção Dashboard, a mesma para todos os perfis: geral, equipes, OS (com a entrada de OS e a baixa no SAP, só do admin) e
-     * APR, com o mesmo filtro (`?periodo=` e `?equipe_id=`), mais "Meus resultados" (técnico e supervisor). `/app/dashboard`
-     * sozinho leva ao geral.
+     * Seção Dashboard, a mesma para todos os perfis: OS (com o que precisa de atenção, a entrada de OS e a baixa no SAP, estas
+     * duas só do admin), equipes e APR, com o mesmo filtro (`?periodo=` e `?equipe_id=`), mais "Meus resultados" (técnico e
+     * supervisor). `/app/dashboard` sozinho abre a primeira aba da pessoa: "Meus resultados" para quem executa OS, OS para o admin.
      */
-    dashboard: "/app/dashboard/geral",
+    dashboard: "/app/dashboard",
     dashboardEquipes: "/app/dashboard/equipes",
     dashboardOs: "/app/dashboard/os",
     /** Bloco "Exportação para baixa no SAP" do dashboard de OS (só o admin o vê). */
@@ -82,8 +77,13 @@ export const rotas = {
      * (enviar para validação ou, o admin, publicar direto) e `validar` (a decisão de quem valida).
      */
     treinamentoServico: (codigo: string, tela?: TelaDoTreinamento) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinamento${tela ? `/${tela}` : ""}`,
+    /**
+     * Validações, do supervisor: a fila de tudo o que espera a decisão ou a assinatura dele (OS para assinar, treinamentos, sugestões
+     * de materiais, conferências e pedidos de ausência); `?tipo=` filtra por um dos cinco.
+     */
+    validacoes: "/app/validacoes",
     /** Os treinamentos que esperam a validação do supervisor (as 3 equipes que mais fazem o serviço validam; 2 assinam). */
-    treinamentosParaValidar: "/app/treinamentos/validar",
+    treinamentosParaValidar: "/app/validacoes?tipo=treinamento",
     /** A capa do treinamento de serviço (técnico, inclusive pendente); o jogo abre numa janela por cima. */
     treinarServico: (codigo: string) => `/app/catalogo/servicos/${encodeURIComponent(codigo)}/treinar`,
     /** Sugestões e contestações da lista de materiais (todos os perfis; o admin só avalia): `?aba=avaliar` abre a fila de quem avalia. */
@@ -114,7 +114,7 @@ export const rotas = {
     vitoriaSemResposta: "/app/vitoria/sem-resposta",
   },
   web: {
-    /** Aba Importação da seção Ordem de Serviço (as outras abas, o quadro e o mapa de calor, ficam em `/app`). */
+    /** Aba Importação da seção Ordem de Serviço (o quadro fica em `/app`; o mapa de calor, no dashboard de OS). */
     importacao: "/web/os/importacao",
     alertas: "/web/alertas",
     /** Seção APR, Análise Preliminar de Risco (menu "APR"): duas abas. `/web/apr` sozinho leva aos modelos. */

@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Quadro de OS" };
 
 /**
  * Quadro de OS: um endereço só para admin, supervisor e técnico (a `api` entrega a cada um o que ele enxerga). O título e as
- * abas da seção (Quadro, Importação e Mapa de Calor, conforme o perfil) ficam com `CabecalhoSecaoOs`. Acima do quadro, a
+ * abas da seção (Quadro e, para o admin, Importação) ficam com `CabecalhoSecaoOs`. Acima do quadro, a
  * faixa "APR aguardando a sua assinatura" aparece só para quem tem APR pendente. Atualiza sozinho.
  */
 export default async function ListaPage({ searchParams }: PageProps<"/app/lista">) {

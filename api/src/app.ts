@@ -11,6 +11,7 @@ import { rotasAuth } from "./rotas/auth";
 import { rotasBusca } from "./rotas/busca";
 import { rotasCatalogo } from "./rotas/catalogo";
 import { rotasConferencias } from "./rotas/conferencias";
+import { rotasValidacoes } from "./rotas/validacoes";
 import { rotasSolicitacoesConta } from "./rotas/solicitacoes-conta";
 import { rotasSugestoesMateriais } from "./rotas/sugestoes-materiais";
 import { rotasEquipes } from "./rotas/equipes";
@@ -61,6 +62,7 @@ export function criarApp(deps: Deps, opcoes: { /** Como o simulador do RH avisa 
   app.route("/", rotasSugestoesMateriais(deps, auth));
   app.route("/", rotasEventos(deps, auth));
   app.route("/", rotasConferencias(deps, auth));
+  app.route("/", rotasValidacoes(deps, auth));
   app.route("/", rotasImpedimento(deps, auth));
   app.route("/", rotasPainel(deps, auth));
   app.route("/", rotasPreventivas(deps, auth));

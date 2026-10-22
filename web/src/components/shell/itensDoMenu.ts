@@ -9,16 +9,16 @@ import { ehAdmin, ehSupervisor, type Usuario } from "@/lib/tipos";
 import type { ItemMenu } from "./MenuLateral";
 
 /**
- * Itens do menu de quem usa o sistema já liberado (fora do campo de treino). "Ordem de Serviço" reúne Quadro, Importação (só o
- * admin) e Mapa de Calor (todos, cada um no próprio escopo), "APR" reúne Modelos e Atividades, "Catálogo" reúne Serviços e Materiais,
+ * Itens do menu de quem usa o sistema já liberado (fora do campo de treino). "Ordem de Serviço" reúne Quadro e Importação (só o
+ * admin), "APR" reúne Modelos e Atividades, "Catálogo" reúne Serviços e Materiais,
  * "Gamificação" reúne Minha pontuação, Ranking,
  * Conquistas, Patentes e Como pontuar, e "Dashboard" reúne os dashboards; o menu também lista as abas como dropdown. Quais abas
  * aparecem fica com cada seção (`secao.ts` em `components/web/os`, `apr`, `catalogo`, `gamificacao` e `indicadores`).
  * - Admin: Ordem de Serviço, APR, Catálogo, Equipes e usuários, Auditoria, Vitória, Gamificação (sem Minha pontuação:
  *   o admin não joga) e Dashboard.
  * - Supervisor e técnico: Ordem de Serviço (o técnico, "OS da equipe"), Minha equipe, Catálogo (só para consulta), Gamificação e
- *   Dashboard; o supervisor com cadastro de técnicos e o técnico só para consulta, e mais "Para validar" (os treinamentos de serviço
- *   que esperam a decisão do supervisor).
+ *   Dashboard; o supervisor com cadastro de técnicos e o técnico só para consulta, e mais "Validações" (tudo o que espera a decisão
+ *   ou a assinatura do supervisor).
  * O Dashboard é sempre o último; o Campo de treino vem depois, num grupo à parte (ver `Casca`).
  */
 export function itensDeNavegacao(usuario: Usuario, pendentes?: number, perguntasSemResposta?: number, paraValidar?: number): ItemMenu[] {
@@ -34,15 +34,15 @@ export function itensDeNavegacao(usuario: Usuario, pendentes?: number, perguntas
   // A gamificação é para todos; quem joga abre em "Minha pontuação" e o admin, no Ranking (a primeira aba de cada um).
   const abasDaGamificacaoDeQuem = abasDaGamificacao(usuario);
   const gamificacao = comAbas({ href: abasDaGamificacaoDeQuem[0]!.href, icone: "trophy", rotulo: "Gamificação", prefixos: ["/app/gamificacao"], chave: "menu-gamificacao" }, abasDaGamificacaoDeQuem);
-  // O supervisor valida os treinamentos de serviço das equipes que mais fazem o serviço: o selo conta os que esperam a decisão dele.
+  // O supervisor tem a página Validações: tudo o que espera a decisão ou a assinatura dele; o selo conta os itens da fila.
   const validar: ItemMenu[] = ehSupervisor(usuario)
     ? [
         {
-          href: rotas.app.treinamentosParaValidar,
+          href: rotas.app.validacoes,
           icone: "check",
-          rotulo: "Para validar",
+          rotulo: "Validações",
           chave: "menu-validar",
-          ...(paraValidar ? { contador: paraValidar, rotuloDoContador: `${paraValidar} treinamentos para validar` } : {}),
+          ...(paraValidar ? { contador: paraValidar, rotuloDoContador: `${paraValidar} ${paraValidar === 1 ? "validação esperando" : "validações esperando"} você` } : {}),
         },
       ]
     : [];
