@@ -32,21 +32,35 @@ export const intensidadeDa = (total: number, maior: number): Intensidade => {
 };
 
 /**
- * Pontos de cor da radiação: já bem visível cedo (pouco "lavado"), até a mais forte na área mais movimentada, nas
- * mesmas três cores de `CORES`. A barra da legenda é pintada com este mesmo gradiente.
+ * Pontos de cor da radiação, do halo quase invisível ao núcleo mais forte — vários degraus em vez de poucos, para a
+ * transição ficar gradual (o que lê como "brilho irradiando") e não um salto rápido para a cor cheia (o que lê como
+ * "mancha sólida"). A barra da legenda é pintada com este mesmo gradiente.
  */
 const PONTOS_DO_GRADIENTE: [number, string][] = [
   [0, "rgba(227, 166, 59, 0)"],
-  [0.22, "rgba(227, 166, 59, 0.8)"],
-  [0.55, CORES.media],
+  [0.16, "rgba(227, 166, 59, 0.12)"],
+  [0.34, "rgba(227, 166, 59, 0.5)"],
+  [0.52, CORES.baixa],
+  [0.72, CORES.media],
+  [0.88, "#c8512e"],
   [1, CORES.alta],
 ];
 const BARRA_DO_GRADIENTE = `linear-gradient(to right, ${PONTOS_DO_GRADIENTE.map(([p, cor]) => `${cor} ${p * 100}%`).join(", ")})`;
 
-/** Por baixo do valor da área mais movimentada, nenhum ponto some: mesmo uma OS isolada fica bem visível. */
-const OPACIDADE_MINIMA_DA_RADIACAO = 0.55;
-const RAIO_DA_RADIACAO = 26;
-const DESFOQUE_DA_RADIACAO = 16;
+/**
+ * Nenhuma área some de todo, mas a opacidade e o tamanho do brilho (`ESCALA_MINIMA_DA_RADIACAO`) crescem com o
+ * volume: é esse crescimento que dá a sensação de radiação. Um piso alto demais (como antes) deixa uma OS isolada
+ * com o mesmo brilho de uma área cheia, e tudo vira uma mancha uniforme.
+ */
+const OPACIDADE_MINIMA_DA_RADIACAO = 0.3;
+const ESCALA_MINIMA_DA_RADIACAO = 0.55;
+/**
+ * O quanto a mancha se espalha (pixels de tela, não metros reais — cresce ou encolhe junto com o zoom do mapa). O
+ * núcleo sólido (`RAIO_DA_RADIACAO`) é pequeno de propósito: quem dá a forma de brilho é o desfoque, bem maior que o
+ * núcleo — um núcleo grande com borda borrada vira um disco de bordas suaves, não um brilho que se dissipa.
+ */
+const RAIO_DA_RADIACAO = 14;
+const DESFOQUE_DA_RADIACAO = 50;
 
 const chaveDa = (c: CelulaDoMapa) => `${c.latitude}:${c.longitude}`;
 
@@ -110,10 +124,10 @@ interface EstadoDaCamada {
 
 /**
  * A radiação do mapa de calor, como camada própria do Leaflet (`L.Layer.extend`, a mesma API que o `leaflet.heat`
- * usa por baixo): cada ponto desenha o carimbo borrado com a opacidade do seu peso; onde várias mancham se
- * sobrepõem, a opacidade se acumula (a "energia" se somando), e por fim cada pixel troca a opacidade acumulada pela
- * cor equivalente do gradiente. Esse código é nosso, e não de um plugin de antes dos empacotadores de módulo (que
- * conta com um `L` global): aquele funcionava só depois do build de produção, nunca no ambiente de teste.
+ * usa por baixo): cada ponto desenha o carimbo borrado, maior e mais opaco quanto mais perto do peso máximo; onde
+ * vários se sobrepõem, a opacidade se acumula (a "energia" se somando), e por fim cada pixel troca a opacidade
+ * acumulada pela cor equivalente do gradiente. Esse código é nosso, e não de um plugin de antes dos empacotadores de
+ * módulo (que conta com um `L` global): aquele funcionava só depois do build de produção, nunca no ambiente de teste.
  */
 function criarCamadaDeRadiacao(L: typeof import("leaflet"), pontos: PontoDaRadiacao[], maiorPeso: number) {
   const carimbo = carimboDoPonto(RAIO_DA_RADIACAO, DESFOQUE_DA_RADIACAO);
@@ -151,8 +165,11 @@ function criarCamadaDeRadiacao(L: typeof import("leaflet"), pontos: PontoDaRadia
       for (const ponto of pontos) {
         const p = this._mapaDoLeaflet.latLngToContainerPoint([ponto.lat, ponto.lng]);
         if (p.x < -r || p.x > largura + r || p.y < -r || p.y > altura + r) continue;
-        ctx.globalAlpha = Math.max(ponto.peso / maiorPeso, OPACIDADE_MINIMA_DA_RADIACAO);
-        ctx.drawImage(carimbo, p.x - r, p.y - r);
+        const fracao = ponto.peso / maiorPeso;
+        const escala = ESCALA_MINIMA_DA_RADIACAO + (1 - ESCALA_MINIMA_DA_RADIACAO) * fracao;
+        const tamanho = carimbo.width * escala;
+        ctx.globalAlpha = Math.max(fracao, OPACIDADE_MINIMA_DA_RADIACAO);
+        ctx.drawImage(carimbo, p.x - tamanho / 2, p.y - tamanho / 2, tamanho, tamanho);
       }
       if (pontos.length === 0) return;
       const imagem = ctx.getImageData(0, 0, largura, altura);
