@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { ClimaRegistrado } from "@/lib/clima-comum";
 import type { PedidoDaApi } from "@/lib/execucao-pedidos";
 import { api, apiOuNulo } from "@/lib/api";
 import type { ServicoDaOs } from "@/lib/catalogo";
@@ -161,6 +162,9 @@ export interface RespostaApr {
   alerta_marcado?: boolean;
 }
 
+/** A previsão do tempo que a pessoa viu na APR ou no encerramento (`previsao-do-tempo.md`), como a `api` a guardou. */
+export type ClimaGuardadoDaOs = ClimaRegistrado & { momento: "apr" | "encerramento" };
+
 export interface AprDaOs {
   id: string;
   os_id: string;
@@ -169,6 +173,8 @@ export interface AprDaOs {
   concluida_em: string;
   preenchida_por: { id: string; nome: string };
   modelo: { codigo: string; versao: number; titulo: string };
+  /** A previsão do tempo da pergunta de clima; nula quando não houve (provedor fora do ar, aparelho sem sinal, APR de antes da previsão). */
+  clima?: ClimaGuardadoDaOs | null;
   participantes: ParticipanteApr[];
   riscos: { id: string; classificacao: string; nome: string }[];
   respostas: RespostaApr[];
@@ -196,6 +202,8 @@ export interface ExecucaoDaOs {
   descricao_atividade: string | null;
   motivo: string | null;
   dados_inspecao: unknown;
+  /** As condições do tempo no encerramento; nulas quando não houve. */
+  clima?: ClimaGuardadoDaOs | null;
   tempo_liquido_min: number | null;
   pausa_min: number | null;
   pausas: PausaDaExecucao[];

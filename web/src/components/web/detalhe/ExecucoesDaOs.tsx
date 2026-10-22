@@ -7,6 +7,7 @@ import { itensDaInspecao } from "@/lib/checklist-inspecao";
 import { dataHora, duracao, hora } from "@/lib/formatar";
 import { ROTULO_DO_ESTADO_DO_PEDIDO, ROTULO_DO_PEDIDO } from "@/lib/execucao-pedidos";
 import { descreverMotivo, ehMotivoDeSaude, rotuloDoMotivoDaSuspensao } from "@/lib/motivos-de-parada";
+import { BlocoDeClima } from "./ClimaDaExecucao";
 import { ChecklistDaExecucao } from "./ChecklistDaExecucao";
 import { FotosDaEvidencia } from "./FotosDaEvidencia";
 import { LocalizacaoNoMapa } from "./LocalizacaoNoMapa";
@@ -136,6 +137,8 @@ function ExecucaoCartao({ execucao: e, numero, total }: { execucao: ExecucaoDaOs
 
       <FotosDaEvidencia fotos={e.fotos} descricao="Foto da execução" />
       <DocumentosAnexados documentos={e.documentos ?? []} />
+
+      {e.clima && <BlocoDeClima titulo="Condições no encerramento" clima={e.clima} />}
 
       {e.assinaturas.length > 0 && (
         <div className="row g12 wrap">

@@ -15,7 +15,8 @@ import { Notice } from "@/components/ui/Notice";
 import { Screen } from "@/components/ui/Screen";
 import { ErroDeEnvio } from "@/components/ui/useFormulario";
 import { PontosGanhos } from "@/components/web/gamificacao/PontosGanhos";
-import { estaTravada, montarPayload, resumoDe, type Colega } from "@/lib/apr";
+import { estaTravada, resumoDe, type Colega } from "@/lib/apr";
+import { montarPayloadComClima } from "@/lib/clima";
 import { enviarEvento } from "@/lib/cliente-api";
 import { dataHora } from "@/lib/formatar";
 import type { RespostaComPontos } from "@/lib/gamificacao";
@@ -133,7 +134,7 @@ export function AprovadaScreen({ os, usuarioId, colegas, registrada }: AprovadaS
   const registrar = () =>
     executar(async () => {
       const r = pendente!;
-      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r) });
+      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayloadComClima(r) });
       const resultado = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
       descartar();
       // A `api` é quem decide: se ela bloqueou, vale o impedimento.

@@ -24,7 +24,7 @@ export const ehAvisoGeral = (a: Pick<Alerta, "tipo">) => {
 };
 
 /**
- * Impedimento, o direito de recusa e a lesão ou enfermidade, as falhas (importação, registro de funcionários, PDF), o ciclo e a
+ * Impedimento, o direito de recusa, a lesão ou enfermidade e a APR seguida com risco climático extremo, as falhas (importação, registro de funcionários, PDF), o ciclo e a
  * ausência vencidos e a equipe sem supervisor pedem atenção (vermelho); os demais só informam (azul).
  */
 export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; urgente: boolean } {
@@ -35,6 +35,8 @@ export function aparenciaDoAlerta(a: Pick<Alerta, "tipo">): { icone: IconName; u
       return { icone: "shield", urgente: true };
     case "lesao_ou_enfermidade":
       return { icone: "alert", urgente: true };
+    case "clima_extremo":
+      return { icone: "trovoada", urgente: true };
     case "pedido_de_acao":
       return { icone: "clock", urgente: true };
     case "pedido_decidido":

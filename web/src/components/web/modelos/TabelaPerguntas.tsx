@@ -18,6 +18,14 @@ function LinhaItem({ item }: { item: ItemModelo }) {
             </Badge>
           </>
         )}
+        {item.mostrar_clima && (
+          <>
+            {" "}
+            <Badge tone="neu" style={{ padding: "0 7px", fontSize: 11, marginLeft: 6 }}>
+              Mostra a previsão do tempo
+            </Badge>
+          </>
+        )}
       </td>
       <td>
         <span className="pill line">{item.resposta_bloqueante ? rotuloResposta[item.resposta_bloqueante] : "—"}</span>

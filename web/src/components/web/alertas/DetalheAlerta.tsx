@@ -19,7 +19,7 @@ import { aparenciaDoAlerta, ehAvisoGeral, ehDeAusencia, ehDeCiclo, ehDeRepresent
 
 /**
  * Avisos de OS que só informam (a reserva, a assinatura final, o PDF, a APR para assinar, o direito de recusa, a lesão ou enfermidade e
- * a OS para assinar): não pedem decisão sobre a OS, mesmo encerrada.
+ * a OS para assinar e o risco climático extremo seguido na APR): não pedem decisão sobre a OS, mesmo encerrada.
  */
 const SO_INFORMAM: Alerta["tipo"][] = [
   "os_reservada",
@@ -29,6 +29,7 @@ const SO_INFORMAM: Alerta["tipo"][] = [
   "apr_para_assinar",
   "direito_de_recusa",
   "lesao_ou_enfermidade",
+  "clima_extremo",
   "os_para_assinar",
 ];
 
@@ -143,10 +144,12 @@ export async function DetalheAlerta({ alerta, usuario, equipes, marcarAoAbrir }:
           <p className="muted">
             {alerta.tipo === "lesao_ou_enfermidade"
               ? "A lesão no trabalho, mesmo leve, é acidente de trabalho e a empresa precisa registrá-la. Abra a OS e veja, na aba APRs e execuções, o motivo, o horário e a localização (o relatório da execução traz o mesmo quando o serviço terminar); acione a Segurança do Trabalho conforme o procedimento da empresa."
-              : "A pessoa que recusou saiu da APR e deixou o motivo. Abra a OS para ler o motivo e decidir como a equipe segue: se restarem menos de 2 participantes, ou se quem recusou foi o responsável, é preciso uma APR nova."}
+              : alerta.tipo === "clima_extremo"
+                ? "A previsão apontava risco climático extremo e a equipe seguiu com a APR, respondendo que o clima estava favorável e anexando a foto do local. Abra a OS, veja a previsão e a foto na aba APRs e execuções e converse com a equipe: se a condição piorar no local, oriente a suspender o serviço (motivo “Condição climática”)."
+                : "A pessoa que recusou saiu da APR e deixou o motivo. Abra a OS para ler o motivo e decidir como a equipe segue: se restarem menos de 2 participantes, ou se quem recusou foi o responsável, é preciso uma APR nova."}
           </p>
           <div className="row g8 wrap">
-            <Link className="btn btn-p btn-sm" href={alerta.tipo === "lesao_ou_enfermidade" ? `${rotas.app.os(osId)}?aba=aprs` : rotas.app.os(osId)}>
+            <Link className="btn btn-p btn-sm" href={alerta.tipo === "lesao_ou_enfermidade" || alerta.tipo === "clima_extremo" ? `${rotas.app.os(osId)}?aba=aprs` : rotas.app.os(osId)}>
               Abrir a OS
             </Link>
           </div>

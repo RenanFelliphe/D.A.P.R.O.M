@@ -132,6 +132,8 @@ export interface ItemModelo {
   tipo: TipoItem;
   evidencia: EvidenciaItem;
   permite_na: boolean;
+  /** A pergunta mostra a previsão do tempo (a pergunta de clima da APR). */
+  mostrar_clima?: boolean;
 }
 
 /** Plano de atendimento a emergências: JSON definido pelo cliente (`{titulo, subtitulo, fluxo, linhas}`). */

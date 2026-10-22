@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
 import { Panel, TableWrap } from "@/components/web/Panel";
-import { OpcaoAnonimato } from "@/components/web/gamificacao/OpcaoAnonimato";
 import { SeloPatente } from "@/components/web/gamificacao/SeloPatente";
 import { data } from "@/lib/formatar";
 import { mediaDeEquipe, numero, ordinal, type ConquistaObtida, type PerfilDaEquipeNaGamificacao, type PerfilDaPessoa, type ResumoDaBarra } from "@/lib/gamificacao";
@@ -64,10 +63,10 @@ export function BlocoDaPessoa({ perfil }: { perfil: PerfilDaPessoa | null }) {
 }
 
 /**
- * A gamificação da própria pessoa, no Meu perfil: a patente e os pontos da temporada (que levam a "Minha pontuação") e a opção
- * de aparecer como anônimo no ranking.
+ * A gamificação da própria pessoa, no Meu perfil: a patente e os pontos da temporada (que levam a "Minha pontuação"). A opção de
+ * aparecer como anônimo no ranking fica em Configurações, na aba "Minha conta".
  */
-export function CartaoDaMinhaPontuacao({ resumo, anonimo }: { resumo: ResumoDaBarra; anonimo: boolean }) {
+export function CartaoDaMinhaPontuacao({ resumo }: { resumo: ResumoDaBarra }) {
   return (
     <section className="panel gam-bloco" aria-labelledby="gam-minha">
       <h2 id="gam-minha">Gamificação</h2>
@@ -83,7 +82,9 @@ export function CartaoDaMinhaPontuacao({ resumo, anonimo }: { resumo: ResumoDaBa
       <Link href={rotas.app.gamificacaoMinha} className="small">
         Ver minha pontuação, o extrato e as conquistas
       </Link>
-      <OpcaoAnonimato anonimo={anonimo} />
+      <Link href={rotas.app.configuracoesConta} className="small">
+        Aparecer como anônimo no ranking: mudar nas configurações
+      </Link>
     </section>
   );
 }

@@ -7,7 +7,7 @@ import { sair } from "@/lib/acoes-sessao";
 import { rotas } from "@/lib/rotas";
 import type { UsuarioDaBarra } from "./Barras";
 
-/** Usuário da barra superior: abre um menu com Perfil, Minha pontuação (de quem joga) e Sair. */
+/** Usuário da barra superior: abre um menu com Perfil, Configurações, Minha pontuação (de quem joga) e Sair. */
 export function MenuUsuario({ iniciais, nome, cargo, comPontuacao }: UsuarioDaBarra & { comPontuacao?: boolean }) {
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
@@ -55,6 +55,10 @@ export function MenuUsuario({ iniciais, nome, cargo, comPontuacao }: UsuarioDaBa
           <Link href={rotas.app.perfil} className="usuario-item" onClick={fechar}>
             <Icon name="user" size={16} />
             Perfil
+          </Link>
+          <Link href={rotas.app.configuracoes} className="usuario-item" onClick={fechar} data-treino="menu-configuracoes">
+            <Icon name="engrenagem" size={16} />
+            Configurações
           </Link>
           {comPontuacao && (
             <Link href={rotas.app.gamificacaoMinha} className="usuario-item" onClick={fechar}>

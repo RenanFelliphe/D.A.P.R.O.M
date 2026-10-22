@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { z } from "zod";
 import { ChecklistDeInspecao } from "@/components/app/execucao/ChecklistDeInspecao";
 import { FotosExecucao, PdfsExecucao, comoEvidencia, pdfComoEvidencia, type FotoDaExecucao, type PdfDaExecucao } from "@/components/app/execucao/FotosExecucao";
+import { LinhaDeCondicoes } from "@/components/clima/CartaoDaPrevisao";
+import { usePrevisao } from "@/components/clima/usePrevisao";
 import { JanelaDeAssinatura } from "@/components/ausencia/JanelaDeAssinatura";
 import { Button } from "@/components/ui/Button";
 import { Field, MensagemDeErro, ligarAoErro } from "@/components/ui/Field";
@@ -11,6 +13,7 @@ import { Icon } from "@/components/ui/Icon";
 import { Notice } from "@/components/ui/Notice";
 import { useFormulario, useValorDoForm } from "@/components/ui/useFormulario";
 import { dadosDaInspecao, faltaObservacao, type PerguntaDoChecklist, type RespostaDoItem } from "@/lib/checklist-inspecao";
+import { registrarClima } from "@/lib/clima";
 import { enviarEvento } from "@/lib/cliente-api";
 import { hora } from "@/lib/formatar";
 import type { RespostaComPontos } from "@/lib/gamificacao";
@@ -49,6 +52,8 @@ function resumoDasPerguntas(perguntas: PerguntaDoChecklist[]) {
 export function FormularioEncerrar({ execucao, osId, checklist, onConcluida }: FormularioEncerrarProps) {
   const assinaturaPath = useMinhaAssinatura();
   const [assinando, setAssinando] = useState(false);
+  // As condições do tempo no encerramento vão para o relatório do supervisor; sem previsão (provedor fora do ar, treino) o encerramento segue sem elas.
+  const estadoDaPrevisao = usePrevisao("proximas_horas");
 
   const esquema = useMemo(
     () =>
@@ -82,6 +87,7 @@ export function FormularioEncerrar({ execucao, osId, checklist, onConcluida }: F
 
   async function assinar() {
     const { descricao } = form.getValues();
+    const clima = estadoDaPrevisao.fase === "pronta" ? registrarClima(estadoDaPrevisao.previsao) : null;
     const resposta = await enviarEvento({
       tipo: "encerramento_assinado",
       os_id: osId,
@@ -90,6 +96,7 @@ export function FormularioEncerrar({ execucao, osId, checklist, onConcluida }: F
         ...(descricao.trim() ? { descricao_atividade: descricao.trim() } : {}),
         evidencias: [...fotos.map(comoEvidencia), ...pdfs.map(pdfComoEvidencia)],
         ...(checklist.length > 0 && { dados_inspecao: dadosDaInspecao(checklist, respostas) }),
+        ...(clima ? { clima } : {}),
       },
     });
     onConcluida(resposta);
@@ -102,6 +109,7 @@ export function FormularioEncerrar({ execucao, osId, checklist, onConcluida }: F
         {tempo ? ` (tempo líquido ${horasMinutos(tempo.liquidoMs)})` : ""}. Falta {checklist.length > 0 ? "responder o checklist, " : ""}a descrição e as fotos (opcionais) e a sua assinatura, como
         responsável. Esse preenchimento não conta no tempo.
       </Notice>
+      <LinhaDeCondicoes estado={estadoDaPrevisao} />
       <form ref={ref} noValidate onSubmit={enviar(() => setAssinando(true))} className="stack g12">
         {checklist.length > 0 && (
           <div className="panel stack g8" data-erro={erroDoChecklist ? "" : undefined}>

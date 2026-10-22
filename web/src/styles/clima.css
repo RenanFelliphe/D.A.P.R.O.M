@@ -1,0 +1,392 @@
+/* Previsão do tempo (ver previsao-do-tempo.md): o cartão do quadro de OS e da pergunta da APR, a janela de confirmação do risco
+   e as configurações do sistema. O tom de cada nível é o da paleta do projeto, sem vermelho nem amarelo puros. */
+
+.clima-cartao {
+  --clima-cor: var(--brand);
+  --clima-fundo: var(--tint);
+  --clima-borda: var(--brand-bd);
+  background: var(--clima-fundo);
+  border: 1px solid var(--clima-borda);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0
+}
+
+.clima-cartao.compacto {
+  padding: 12px 14px;
+  gap: 8px
+}
+
+.clima-sem_risco {
+  --clima-cor: var(--brand);
+  --clima-fundo: var(--tint);
+  --clima-borda: var(--brand-bd)
+}
+
+.clima-atencao {
+  --clima-cor: var(--crit);
+  --clima-fundo: var(--crit-bg);
+  --clima-borda: var(--crit-bd)
+}
+
+.clima-extremo {
+  --clima-cor: var(--blq);
+  --clima-fundo: var(--blq-bg);
+  --clima-borda: var(--blq-bd)
+}
+
+.clima-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px
+}
+
+.clima-selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--clima-cor);
+  text-transform: uppercase
+}
+
+.clima-local {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--ink3)
+}
+
+.clima-horas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+  gap: 6px
+}
+
+.clima-hora {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink2)
+}
+
+.clima-hora.clima-atencao,
+.clima-hora.clima-extremo {
+  border-color: var(--clima-borda);
+  color: var(--clima-cor)
+}
+
+.clima-hora-h {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink3)
+}
+
+.clima-hora.clima-atencao .clima-hora-h,
+.clima-hora.clima-extremo .clima-hora-h {
+  color: var(--clima-cor)
+}
+
+.clima-hora-chuva {
+  font-size: 11.5px;
+  color: var(--ink4)
+}
+
+.clima-titulo {
+  font-size: 15px;
+  line-height: 1.35;
+  color: var(--ink)
+}
+
+.clima-orientacao {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink2)
+}
+
+.clima-rodape {
+  font-size: 12px;
+  color: var(--ink4)
+}
+
+.clima-indisponivel {
+  --clima-fundo: var(--surface2);
+  --clima-borda: var(--line);
+  --clima-cor: var(--ink3)
+}
+
+.clima-esqueleto {
+  --clima-fundo: var(--surface2);
+  --clima-borda: var(--line)
+}
+
+.clima-bloco {
+  display: block;
+  height: 14px;
+  border-radius: 6px;
+  background: var(--line2);
+  animation: clima-pulso 1.4s ease-in-out infinite
+}
+
+@keyframes clima-pulso {
+  50% {
+    opacity: .45
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clima-bloco {
+    animation: none
+  }
+}
+
+/* Contadores à esquerda e a previsão à direita; quando a previsão não existe (treino) ou a tela é estreita, cada um ocupa a linha. */
+.quadro-topo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: stretch
+}
+
+.quadro-topo > .kpis {
+  flex: 1 1 560px;
+  min-width: 0;
+  grid-template-columns: repeat(6, minmax(0, 1fr))
+}
+
+.quadro-topo > .kpis .kpi {
+  grid-column: span 2
+}
+
+.quadro-topo > .kpis .kpi:nth-child(n + 4) {
+  grid-column: span 3
+}
+
+.quadro-topo > .clima-cartao {
+  flex: 1 1 320px;
+  max-width: 460px
+}
+
+@media (max-width: 1100px) {
+  .quadro-topo > .clima-cartao {
+    max-width: none
+  }
+}
+
+@media (max-width: 640px) {
+  .quadro-topo > .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+
+  .quadro-topo > .kpis .kpi,
+  .quadro-topo > .kpis .kpi:nth-child(n + 4) {
+    grid-column: auto
+  }
+
+  .quadro-topo > .kpis .kpi:last-child:nth-child(odd) {
+    grid-column: 1 / -1
+  }
+}
+
+/* Pergunta de clima da APR: o cartão compacto abaixo do texto da pergunta. */
+.q-card .clima-cartao {
+  margin-top: 4px
+}
+
+/* Janela de confirmação do risco. */
+.clima-janela {
+  display: flex;
+  flex-direction: column;
+  gap: 14px
+}
+
+.clima-janela .clima-cartao {
+  background: var(--clima-fundo)
+}
+
+.clima-foto-local {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px dashed var(--clima-borda);
+  border-radius: 10px;
+  background: #fff
+}
+
+.clima-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end
+}
+
+@media (max-width: 520px) {
+  .clima-acoes {
+    flex-direction: column-reverse
+  }
+
+  .clima-acoes .btn {
+    width: 100%
+  }
+}
+
+/* Condições climáticas no detalhe da OS e no relatório. */
+.clima-registro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px
+}
+
+.clima-confirmou {
+  font-size: 13px;
+  color: var(--crit);
+  font-weight: 600
+}
+
+/* Configurações. */
+.cfg-bloco {
+  gap: 14px
+}
+
+.cfg-bloco > header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px
+}
+
+.cfg-bloco > header p {
+  font-size: 14px;
+  color: var(--ink3)
+}
+
+.cfg-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 8px 20px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line2)
+}
+
+.cfg-item:first-of-type {
+  border-top: 0;
+  padding-top: 4px
+}
+
+.cfg-item-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0
+}
+
+.cfg-item-texto p {
+  font-size: 13.5px;
+  color: var(--ink3)
+}
+
+.cfg-item-controle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px
+}
+
+.cfg-valor {
+  display: flex;
+  align-items: center;
+  gap: 8px
+}
+
+.cfg-valor .input {
+  max-width: 130px
+}
+
+.cfg-unidade {
+  font-size: 13px;
+  color: var(--ink3)
+}
+
+.cfg-ajuda {
+  font-size: 12.5px;
+  color: var(--ink4)
+}
+
+.cfg-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px
+}
+
+.cfg-cidades {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden
+}
+
+.cfg-cidades li + li {
+  border-top: 1px solid var(--line2)
+}
+
+.cfg-cidades button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  font: inherit;
+  text-align: left;
+  background: #fff;
+  border: 0;
+  cursor: pointer
+}
+
+.cfg-cidades button:hover,
+.cfg-cidades button:focus-visible {
+  background: var(--tint)
+}
+
+@media (max-width: 760px) {
+  .cfg-item {
+    grid-template-columns: minmax(0, 1fr)
+  }
+}
+
+/* Linha de condições no encerramento. */
+.clima-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--clima-borda, var(--line));
+  border-radius: 10px;
+  background: var(--clima-fundo, var(--surface2));
+  color: var(--clima-cor, var(--ink3));
+  font-size: 13.5px
+}
+
+.clima-linha span {
+  color: var(--ink2)
+}

@@ -35,7 +35,7 @@ export function FormularioAssinatura() {
       <h2>Cadastre a sua assinatura</h2>
       <p className="muted">
         É o primeiro passo para usar o sistema: ela valida o que você faz, como aplicar uma APR, encerrar uma execução ou dar ciência
-        numa OS. Desenhe com o mouse, a caneta ou o dedo. Você poderá refazê-la no perfil, e as ações já assinadas guardam a imagem que usaram.
+        numa OS. Desenhe com o mouse, a caneta ou o dedo. Você poderá refazê-la nas configurações, e as ações já assinadas guardam a imagem que usaram.
       </p>
       <AssinaturaCanvas onSalvar={salvar} rotuloSalvar="Salvar e continuar" />
       {erro && (

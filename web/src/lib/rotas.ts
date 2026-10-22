@@ -29,6 +29,14 @@ export const rotas = {
      * escopo de sempre (técnico, a própria equipe; supervisor, as que supervisiona; admin, todas).
      */
     mapaCalor: "/app/mapa-calor",
+    /**
+     * Configurações, as mesmas para todos os perfis liberados: "Minha conta" (assinatura, e-mails, senha e anonimato no ranking) e,
+     * só para o admin, "Sistema" (cidade padrão da previsão do tempo, horários das rotinas e controle da IA). `/app/configuracoes`
+     * sozinho leva a "Minha conta".
+     */
+    configuracoes: "/app/configuracoes",
+    configuracoesConta: "/app/configuracoes/conta",
+    configuracoesSistema: "/app/configuracoes/sistema",
     /** Detalhe da OS (todos os perfis). */
     os: (id: string) => `/app/os/${id}`,
     /** Nova APR da OS: participantes, riscos e modelo. */

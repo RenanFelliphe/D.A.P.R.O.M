@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import { CabecalhoPagina, Colunas } from "@/components/app/AppChrome";
 import { MinhasAusencias } from "@/components/ausencia/MinhasAusencias";
 import { LinhaHistorico, type ExecucaoDoHistorico } from "@/components/app/perfil/LinhaHistorico";
-import { MinhaAssinatura } from "@/components/app/perfil/MinhaAssinatura";
+import { AtalhoParaConfiguracoes } from "@/components/app/perfil/AtalhoParaConfiguracoes";
 import { ParaConferir } from "@/components/app/perfil/ParaConferir";
-import { PreferenciasDeEmail } from "@/components/app/perfil/PreferenciasDeEmail";
-import { TrocarSenha } from "@/components/app/perfil/TrocarSenha";
 import { Screen } from "@/components/ui/Screen";
 import { CartaoDaMinhaPontuacao } from "@/components/web/gamificacao/BlocosDoPerfil";
 import { api, apiOuNulo, usuarioAtual } from "@/lib/api";
@@ -17,12 +15,12 @@ import { ehAdmin, rotuloDoPerfil } from "@/lib/tipos";
 export const metadata: Metadata = { title: "Perfil" };
 
 /**
- * Perfil de quem está logado: um endereço só para admin, supervisor e técnico. Todos veem os próprios dados, a assinatura e a
- * troca de senha; quem executa OS (técnico e supervisor) vê também as ausências (pedir, confirmar, pedir o fim antecipado) e as OS que
- * encerrou nos últimos 60 dias, que o admin não tem.
+ * Perfil de quem está logado: um endereço só para admin, supervisor e técnico. Todos veem os próprios dados; quem executa OS (técnico e
+ * supervisor) vê também as ausências (pedir, confirmar, pedir o fim antecipado) e as OS que encerrou nos últimos 60 dias, que o admin não
+ * tem. A assinatura, os e-mails, a troca de senha e o anonimato no ranking ficam em Configurações (`/app/configuracoes`).
  */
 export default async function PerfilPage() {
-  const { usuario, equipe, ausencia, emails } = await usuarioAtual();
+  const { usuario, equipe, ausencia } = await usuarioAtual();
   const executa = !ehAdmin(usuario);
   const historico = executa ? (await api<{ execucoes: ExecucaoDoHistorico[] }>("/me/historico")).execucoes : null;
   // As minhas ausências; no campo de treino a rota não existe (404) e a seção não aparece.
@@ -110,10 +108,8 @@ export default async function PerfilPage() {
         }
         lateral={
           <>
-            {executa && usuario.gamificacao && <CartaoDaMinhaPontuacao resumo={usuario.gamificacao} anonimo={usuario.ranking_anonimo ?? false} />}
-            <MinhaAssinatura assinaturaPath={usuario.assinatura_path} assinaturaEm={usuario.assinatura_em} />
-            {emails && <PreferenciasDeEmail perfil={usuario.perfil} inicial={emails} />}
-            <TrocarSenha />
+            {executa && usuario.gamificacao && <CartaoDaMinhaPontuacao resumo={usuario.gamificacao} />}
+            <AtalhoParaConfiguracoes />
           </>
         }
       />

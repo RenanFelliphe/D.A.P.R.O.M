@@ -21,11 +21,12 @@ const rotuloDoAlerta: Record<string, string> = {
   apr_para_assinar: "APR aguardando assinatura",
   direito_de_recusa: "Direito de recusa na APR",
   lesao_ou_enfermidade: "Lesão ou enfermidade",
+  clima_extremo: "Risco climático extremo na APR",
   os_para_assinar: "OS aguardando assinatura",
 };
 
 /** Impedimento e os avisos de segurança do trabalho (recusa, lesão ou enfermidade) em vermelho; os demais em âmbar. */
-const TIPOS_CRITICOS = ["bloqueio", "direito_de_recusa", "lesao_ou_enfermidade", "conferencia_para_decidir", "conferencia_cobranca", "conferencia_tempo_esgotado"];
+const TIPOS_CRITICOS = ["bloqueio", "direito_de_recusa", "lesao_ou_enfermidade", "clima_extremo", "conferencia_para_decidir", "conferencia_cobranca", "conferencia_tempo_esgotado"];
 
 /** Alertas gerados para esta OS (com o destinatário) e as reprogramações feitas nela. */
 export function AlertasDaOs({ alertas, reprogramacoes }: { alertas: AlertaDaOs[]; reprogramacoes: ReprogramacaoDaOs[] }) {

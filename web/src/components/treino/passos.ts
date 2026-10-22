@@ -175,7 +175,7 @@ export const passosDoTreino: PassoDoTreino[] = [
     id: "apr-assinar",
     titulo: "Assine a APR",
     texto:
-      "Toque em “Assinar a APR”: o sistema usa a assinatura que você cadastrou no perfil e grava a data e a hora. Você assina uma vez só, agora; quando todos tiverem assinado, o botão “Iniciar execução” aparece.",
+      "Toque em “Assinar a APR”: o sistema usa a assinatura que você cadastrou e grava a data e a hora. Você assina uma vez só, agora; quando todos tiverem assinado, o botão “Iniciar execução” aparece.",
     semAlvo: "Se o botão não aparece, você já assinou: siga para o próximo passo.",
     tarefa: "Toque em Assinar a APR.",
     alvo: "apr-assinar",

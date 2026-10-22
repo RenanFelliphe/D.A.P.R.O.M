@@ -27,15 +27,12 @@ import {
   estaTravada,
   faltaObservacaoNa,
   irPara,
-  montarAvaliacao,
-  montarPayload,
   observar,
   removerDocumento,
   removerFoto,
   resumoDe,
   responder,
   retirarParticipante,
-  trocarModelo,
   voltar,
   voltarDaRevisao,
   type Avaliacao,
@@ -46,6 +43,20 @@ import {
 } from "@/lib/apr";
 import { useAvisoDePontos } from "@/components/web/gamificacao/PontosGanhos";
 import type { MaterialDoServico } from "@/lib/catalogo";
+import { PrevisaoPorEstado } from "@/components/clima/CartaoDaPrevisao";
+import { JanelaDoRiscoClimatico } from "@/components/clima/JanelaDoRiscoClimatico";
+import { usePrevisao } from "@/components/clima/usePrevisao";
+import {
+  desmarcarResposta,
+  esquecerClima,
+  exigenciaDoClima,
+  guardarClima,
+  montarAvaliacaoComClima,
+  montarPayloadComClima,
+  registrarClima,
+  trocarModeloSemClima,
+  type PrevisaoDoTempo,
+} from "@/lib/clima";
 import { chamar, enviarEvento, novoId } from "@/lib/cliente-api";
 import { miniaturaDe, posicaoAtual } from "@/lib/foto-local";
 import { rotas } from "@/lib/rotas";
@@ -80,6 +91,10 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
   const [concluindo, setConcluindo] = useState(false);
   const [trocando, setTrocando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  // A pergunta de clima: a previsão das próximas horas e, quando a resposta "Sim" abre a janela de aviso, a pergunta e a previsão que a pessoa viu.
+  const [climaPendente, setClimaPendente] = useState<{ itemId: string; previsao: PrevisaoDoTempo } | null>(null);
+  const temPerguntaDeClima = rascunho?.modelo.itens.some((i) => i.mostrar_clima) ?? false;
+  const estadoDaPrevisao = usePrevisao("proximas_horas", temPerguntaDeClima);
 
   const resumo = useMemo(() => (rascunho ? resumoDe(rascunho) : null), [rascunho]);
   const modo = rascunho?.modo;
@@ -128,8 +143,45 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
   const participantes = r.participantes.map((p) => colegas.find((c) => c.id === p.usuarioId)).filter((c): c is Colega => Boolean(c));
   const semAssinatura = participantes.filter((c) => !assinaturaDe(c));
 
+  /**
+   * A pergunta de clima. "Sim" com risco previsto abre a janela com o aviso (a resposta só vale ao confirmar); "Sim" sem risco, ou sem
+   * previsão (provedor fora do ar, treino), segue direto, guardando o que a pessoa viu. "Não" e "NA" esquecem o clima e a foto.
+   */
+  function aoResponderClima(pergunta: NonNullable<typeof item>, valor: Resposta) {
+    if (valor !== "sim") {
+      alterar((atual) => {
+        const novo = esquecerClima(responder(atual, pergunta, valor), pergunta.id);
+        return valor === "na" ? novo : avancar(novo);
+      });
+      return;
+    }
+    const previsao = estadoDaPrevisao.fase === "pronta" && estadoDaPrevisao.previsao.disponivel ? estadoDaPrevisao.previsao : null;
+    if (previsao && exigenciaDoClima(previsao) !== "nada") {
+      setErro(null);
+      setClimaPendente({ itemId: pergunta.id, previsao });
+      return;
+    }
+    alterar((atual) => avancar(guardarClima(responder(atual, pergunta, "sim"), pergunta.id, registrarClima(previsao))));
+  }
+
+  function confirmarClima() {
+    const pergunta = resumo?.perguntas.find((p) => p.id === climaPendente?.itemId);
+    if (!climaPendente || !pergunta) return;
+    alterar((atual) => avancar(guardarClima(responder(atual, pergunta, "sim"), pergunta.id, registrarClima(climaPendente.previsao, true))));
+    setClimaPendente(null);
+  }
+
+  function revisarRespostaDoClima() {
+    if (climaPendente) alterar((atual) => desmarcarResposta(atual, climaPendente.itemId));
+    setClimaPendente(null);
+  }
+
   function aoResponder(valor: Resposta) {
     if (!item) return;
+    if (item.mostrar_clima) {
+      aoResponderClima(item, valor);
+      return;
+    }
     // "NA" pede observação e fica na pergunta; as demais seguem adiante.
     alterar((atual) => {
       const novo = responder(atual, item, valor);
@@ -159,14 +211,14 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
   async function validar() {
     setErro(null);
     const concluidaEm = new Date().toISOString();
-    const resultado = await chamar<RespostaDaAvaliacao>("POST", "/aprs/avaliar", montarAvaliacao({ ...r, concluidaEm }));
+    const resultado = await chamar<RespostaDaAvaliacao>("POST", "/aprs/avaliar", montarAvaliacaoComClima({ ...r, concluidaEm }));
     const avaliacao: Avaliacao = {
       resultado: resultado.resultado,
       reprovados: resultado.reprovados.map((x) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })),
     };
     atualizar((atual) => ({ ...atual, concluidaEm, avaliacao }));
     if (avaliacao.resultado !== "aprovada") return;
-    const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload({ ...r, concluidaEm, avaliacao }) });
+    const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayloadComClima({ ...r, concluidaEm, avaliacao }) });
     const registrada = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
     setConcluindo(true);
     descartar();
@@ -179,7 +231,7 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
     setErro(null);
     setConcluindo(true);
     try {
-      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayload(r) });
+      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: os.id, payload: montarPayloadComClima(r) });
       const resultado = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
       // A APR bloqueada pontua quando chega a evidência (a segurança não custa pontos): "+N pontos".
       avisarPontos(resposta);
@@ -208,10 +260,23 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
           osId={os.id}
           rascunho={r}
           aoTrocar={(novo, riscos) => {
-            atualizar((atual) => trocarModelo(atual, novo, riscos).rascunho);
+            atualizar((atual) => trocarModeloSemClima(atual, novo, riscos).rascunho);
             setTrocando(false);
           }}
           aoFechar={() => setTrocando(false)}
+        />
+      )}
+      {climaPendente && !travada && (
+        <JanelaDoRiscoClimatico
+          previsao={climaPendente.previsao}
+          exigencia={exigenciaDoClima(climaPendente.previsao) === "confirmar_com_foto" ? "confirmar_com_foto" : "confirmar"}
+          fotos={r.fotos[climaPendente.itemId] ?? []}
+          aoFotoEnviada={(foto) => void aoFotoEnviada(climaPendente.itemId, foto)}
+          aoRemoverFoto={(fotoId) => atualizar((atual) => removerFoto(atual, climaPendente.itemId, fotoId))}
+          aoErroDeFoto={setErro}
+          erro={erro}
+          aoConfirmar={confirmarClima}
+          aoRevisar={revisarRespostaDoClima}
         />
       )}
       <ChecklistCabecalho os={os} modelo={r.modelo} />
@@ -251,7 +316,13 @@ export function ChecklistScreen({ os, usuarioId, colegas, materiais }: Checklist
             />
           ) : (
             <>
-              <PerguntaCard numero={indice + 1} item={item} resposta={resposta?.resposta} aoResponder={aoResponder} />
+              <PerguntaCard
+                numero={indice + 1}
+                item={item}
+                resposta={resposta?.resposta}
+                aoResponder={aoResponder}
+                extra={item.mostrar_clima ? <PrevisaoPorEstado estado={estadoDaPrevisao} compacto cabecalho="Previsão para as próximas horas" /> : undefined}
+              />
               {resposta?.resposta === "na" && <ObservacaoNaCard observacao={resposta.observacao} aoObservar={(texto) => alterar((atual) => observar(atual, item.id, texto))} />}
               {erro && (
                 <Notice tone="blq" icon="alert">

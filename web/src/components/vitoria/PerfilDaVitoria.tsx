@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Trilha } from "@/components/app/AppChrome";
 import { Badge } from "@/components/ui/Badge";
 import { Icon } from "@/components/ui/Icon";
@@ -11,8 +12,6 @@ import { rotas } from "@/lib/rotas";
 import { estaPendente } from "@/lib/tipos";
 import { REACOES, type Reacao } from "@/lib/vitoria";
 import type { FuncaoDeIA } from "../../../../shared/ia/funcoes";
-import type { PainelDaIa } from "@/lib/vitoria-ia";
-import { ControleDaIa } from "./ControleDaIa";
 import { Figurinha } from "./Figurinha";
 
 /** Resposta de `GET /vitoria/sobre`: a única parte verdadeira do perfil (o provedor, os modelos, os limites e o uso de hoje). */
@@ -135,10 +134,8 @@ export async function PerfilDaVitoria() {
   // a patente e as conquistas não são consultadas. Qualquer falha ao consultar o modelo só esconde o bloco dele.
   const { usuario: eu } = await usuarioAtual();
   const consultaGamificacao = !estaPendente(eu);
-  const [sobre, painelDaIa, patentes, conquistas] = await Promise.all([
+  const [sobre, patentes, conquistas] = await Promise.all([
     apiOuNulo<SobreAVitoria>("/vitoria/sobre").catch(() => null),
-    // O controle da IA é só do admin: para os outros perfis a consulta nem é feita.
-    eu.perfil === "admin" ? apiOuNulo<PainelDaIa>("/vitoria/ia").catch(() => null) : null,
     consultaGamificacao ? lerOuNulo(lerPatentes) : null,
     consultaGamificacao ? lerOuNulo(lerConquistas) : null,
   ]);
@@ -184,7 +181,18 @@ export async function PerfilDaVitoria() {
 
       <div className="perfil-grade">
         <div className="col-main stack g16" style={{ minWidth: 0 }}>
-          {painelDaIa && <ControleDaIa painel={painelDaIa} />}
+          {eu.perfil === "admin" && (
+            <section className="panel" aria-labelledby="vp-controle" data-treino="vp-controle-da-ia">
+              <h2 id="vp-controle">Controle da IA</h2>
+              <p className="muted">Ligar e desligar cada função da IA, autorizar a leitura de dados e ajustar os limites de uso ficam agora nas configurações do sistema.</p>
+              <div>
+                <Link href={`${rotas.app.configuracoesSistema}#controle-da-ia`} className="btn btn-line btn-sm">
+                  <Icon name="engrenagem" size={16} />
+                  Abrir o controle da IA
+                </Link>
+              </div>
+            </section>
+          )}
 
           <section className="panel" aria-labelledby="vp-sobre">
             <h2 id="vp-sobre">Sobre</h2>

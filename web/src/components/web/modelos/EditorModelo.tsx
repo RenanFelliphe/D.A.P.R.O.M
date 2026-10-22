@@ -22,6 +22,8 @@ interface ItemEd {
   tipo: TipoItem;
   evidencia: EvidenciaItem;
   permite_na: boolean;
+  /** A pergunta mostra a previsão do tempo (a pergunta de clima): a tela do técnico consulta a previsão e avisa se houver risco. */
+  mostrar_clima: boolean;
 }
 
 interface RiscoEd {
@@ -54,6 +56,7 @@ function paraEstado(modelo: ModeloCompleto): Estado {
     tipo: i.tipo,
     evidencia: i.evidencia,
     permite_na: i.permite_na,
+    mostrar_clima: i.mostrar_clima ?? false,
   });
   return {
     titulo: modelo.titulo,
@@ -72,7 +75,7 @@ function paraEstado(modelo: ModeloCompleto): Estado {
   };
 }
 
-const itemNovo = (): ItemEd => ({ chave: novaChave(), texto: "", resposta_bloqueante: "", tipo: "alerta", evidencia: "foto", permite_na: false });
+const itemNovo = (): ItemEd => ({ chave: novaChave(), texto: "", resposta_bloqueante: "", tipo: "alerta", evidencia: "foto", permite_na: false, mostrar_clima: false });
 
 class ErroDeEdicao extends Error {}
 
@@ -104,6 +107,7 @@ function paraCorpo(estado: Estado) {
       tipo: i.tipo,
       evidencia: i.evidencia,
       permite_na: i.permite_na,
+      mostrar_clima: i.mostrar_clima,
     };
   };
   const itens = [
@@ -198,6 +202,10 @@ function LinhaItem({ item, numero, total, verificacao, aoMudar, aoMover, aoRemov
           <label className="chk">
             <input type="checkbox" checked={item.permite_na} onChange={(e) => aoMudar({ ...item, permite_na: e.target.checked })} />
             Permite NA
+          </label>
+          <label className="chk">
+            <input type="checkbox" checked={item.mostrar_clima} onChange={(ev) => aoMudar({ ...item, mostrar_clima: ev.target.checked })} />
+            Mostrar a previsão do tempo nesta pergunta
           </label>
           <span className="acoes">
             <button type="button" className="ibtn" aria-label="Subir item" disabled={numero === 1} onClick={() => aoMover(-1)}>

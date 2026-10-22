@@ -9,6 +9,7 @@ import { dataHora, duracao, hora } from "@/lib/formatar";
 import { descreverMotivo, ehMotivoDeSaude, rotuloDoMotivoDaPausa, rotuloDoMotivoDaSuspensao } from "@/lib/motivos-de-parada";
 import { urlDoRelatorio } from "@/lib/rotas";
 import { AssinaturasDaApr } from "./AssinaturasDaApr";
+import { CondicoesClimaticas } from "./ClimaDaExecucao";
 import { ChecklistDaExecucao } from "./ChecklistDaExecucao";
 import { Medida, resultado } from "./ExecucoesDaOs";
 import { FotosDaEvidencia } from "./FotosDaEvidencia";
@@ -53,7 +54,7 @@ const tituloDoFim: Record<NonNullable<ExecucaoDaOs["resultado"]>, string> = {
   cancelada: "Localização do fim",
 };
 
-function ExecucaoDoRelatorio({ execucao: e, numero, total, endereco }: { execucao: ExecucaoDaOs; numero: number; total: number; endereco: string | null }) {
+function ExecucaoDoRelatorio({ execucao: e, apr, numero, total, endereco }: { execucao: ExecucaoDaOs; apr: AprDaOs | undefined; numero: number; total: number; endereco: string | null }) {
   const r = e.resultado ? resultado[e.resultado] : null;
   const inspecao = itensDaInspecao(e.dados_inspecao);
   const totalMin = e.fim ? minutosEntre(e.inicio, e.fim) : null;
@@ -82,6 +83,8 @@ function ExecucaoDoRelatorio({ execucao: e, numero, total, endereco }: { execuca
         <LocalizacaoNoMapa titulo="Localização do início" ponto={e.localizacao_inicio} endereco={endereco} />
         {e.fim && e.resultado && <LocalizacaoNoMapa titulo={tituloDoFim[e.resultado]} ponto={e.localizacao_fim} endereco={endereco} />}
       </div>
+
+      <CondicoesClimaticas apr={apr} execucao={e} />
 
       <PausasDaExecucao pausas={e.pausas} />
 
@@ -192,7 +195,7 @@ export function RelatorioDaExecucao({ os, aprs, execucoes }: { os: OsDetalhe; ap
           </span>
         </div>
         {finalizadas.map((e, i) => (
-          <ExecucaoDoRelatorio key={e.id} execucao={e} numero={i + 1} total={finalizadas.length} endereco={endereco} />
+          <ExecucaoDoRelatorio key={e.id} execucao={e} apr={aprs.find((a) => a.id === e.apr_id)} numero={i + 1} total={finalizadas.length} endereco={endereco} />
         ))}
       </Panel>
 

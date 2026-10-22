@@ -71,7 +71,7 @@ export function JanelaDeAssinatura({
     setPendencia(null);
     if (validar && !(await validar())) return;
     if (faltaAssinatura) {
-      setPendencia({ onde: "confirmacao", texto: "Cadastre a sua assinatura no perfil para poder assinar." });
+      setPendencia({ onde: "confirmacao", texto: "Cadastre a sua assinatura nas configurações para poder assinar." });
       return;
     }
     if (!semAssinatura && !assino) {
@@ -112,7 +112,7 @@ export function JanelaDeAssinatura({
           {!semAssinatura &&
             (faltaAssinatura ? (
               <Notice tone="al" icon="alert">
-                Você ainda não cadastrou a assinatura. Cadastre-a no <Link href={rotas.app.perfil}>seu perfil</Link> antes de continuar.
+                Você ainda não cadastrou a assinatura. Cadastre-a nas <Link href={rotas.app.configuracoesConta}>configurações</Link> antes de continuar.
               </Notice>
             ) : (
               <div className="stack g8">

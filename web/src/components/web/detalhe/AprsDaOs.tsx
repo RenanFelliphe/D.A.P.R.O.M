@@ -5,6 +5,7 @@ import { Panel, TableWrap } from "@/components/web/Panel";
 import type { AprDaOs, RespostaApr } from "@/data/detalhe";
 import { dataHora } from "@/lib/formatar";
 import { iniciaisDe } from "@/lib/tipos";
+import { BlocoDeClima } from "./ClimaDaExecucao";
 import { FotosDaEvidencia } from "./FotosDaEvidencia";
 import { SituacaoDaAssinatura } from "./AssinaturasDaApr";
 
@@ -112,6 +113,8 @@ function AprCartao({ apr, numero, total }: { apr: AprDaOs; numero: number; total
           {reprovados} {reprovados === 1 ? "reprovado" : "reprovados"}
         </span>
       </div>
+
+      {apr.clima && <BlocoDeClima titulo="Previsão do tempo na APR" clima={apr.clima} />}
 
       {apr.itens_reprovados.map((item) => (
         <div key={item.item_id} className="stack g8" style={{ padding: "10px 12px", borderRadius: 10, background: "#fff", border: "1px solid #F0C9C3" }}>

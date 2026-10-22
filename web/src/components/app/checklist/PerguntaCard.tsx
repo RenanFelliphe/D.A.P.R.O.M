@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
 import type { ItemDoModelo, Resposta } from "@/lib/apr";
 
@@ -8,13 +9,15 @@ interface PerguntaCardProps {
   /** Resposta já dada, se houver. */
   resposta?: Resposta;
   aoResponder: (resposta: Resposta) => void;
+  /** O que vai entre o texto e os botões: na pergunta de clima, a previsão do tempo. */
+  extra?: ReactNode;
 }
 
 /**
  * Cartão da pergunta atual com o texto e os botões Sim/Não (e NA, só nos itens que o permitem). Todas as perguntas têm a
  * mesma aparência: o técnico não pode saber quais são eliminatórias.
  */
-export function PerguntaCard({ numero, item, resposta, aoResponder }: PerguntaCardProps) {
+export function PerguntaCard({ numero, item, resposta, aoResponder, extra }: PerguntaCardProps) {
   return (
     <section className="q-card" aria-label="Pergunta atual" data-treino="ck-pergunta" data-treino-item={item.id}>
       <div className="row between">
@@ -23,6 +26,7 @@ export function PerguntaCard({ numero, item, resposta, aoResponder }: PerguntaCa
         </span>
       </div>
       <p className="q">{item.texto}</p>
+      {extra}
       <div className="answer" data-treino="ck-resposta" style={item.permite_na ? { gridTemplateColumns: "1fr 1fr 1fr" } : undefined}>
         <button type="button" aria-pressed={resposta === "sim"} onClick={() => aoResponder("sim")}>
           <Icon name="check" size={22} />

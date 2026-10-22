@@ -7,6 +7,7 @@ import { FaixaAlertas } from "@/components/web/quadro/FaixaAlertas";
 import { FiltrosRecolhiveis } from "@/components/web/quadro/FiltrosRecolhiveis";
 import { FiltrosQuadro } from "@/components/web/quadro/FiltrosQuadro";
 import { OrdemDoQuadro } from "@/components/web/quadro/OrdemDoQuadro";
+import { PrevisaoDoQuadro } from "@/components/clima/PrevisaoDoQuadro";
 import { KpisQuadro } from "@/components/web/quadro/KpisQuadro";
 import { Paginas } from "@/components/web/quadro/Paginas";
 import { BotaoPreventivas } from "@/components/web/preventivas/BotaoPreventivas";
@@ -106,7 +107,11 @@ export async function PaginaQuadro({ searchParams }: { searchParams: Promise<Rec
       <span className="muted" style={{ fontSize: 14 }}>
         {subtitulo}
       </span>
-      <KpisQuadro contagem={quadro.contagem} periodo={filtros.periodo ? periodo : "todas as datas"} />
+      {/* Contadores à esquerda e a previsão do dia à direita (empilham em tela estreita). */}
+      <div className="quadro-topo">
+        <KpisQuadro contagem={quadro.contagem} periodo={filtros.periodo ? periodo : "todas as datas"} />
+        <PrevisaoDoQuadro />
+      </div>
       <div className="row between wrap g8" style={{ alignItems: "center" }}>
         <OrdemDoQuadro atual={filtros.ordem ?? "prioridade"} hrefDa={(ordem) => hrefDoQuadro(rota.quadro, filtros, { ordem: ordem === "prioridade" ? undefined : ordem, pagina: undefined })} />
         {gestao && <BotaoPreventivas atencao={preventivas} equipeId={filtros.equipe_id} abrirAoCarregar={abrirPreventivas} />}
