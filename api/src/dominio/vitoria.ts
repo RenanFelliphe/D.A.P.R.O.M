@@ -402,7 +402,7 @@ export async function diagnosticoDaVitoria(deps: Pick<Deps, "db" | "ia" | "confi
   if (situacaoDoChatbot === "desligada") {
     estado = "desligada";
     titulo = "Desligada pelo administrador";
-    porque = "A função Chatbot está desligada na página da Vitória, então ela responde só pelas sugestões fixas e pela busca no manual.";
+    porque = "A função Chatbot está desligada em Configurações › Sistema, então ela responde só pelas sugestões fixas e pela busca no manual.";
     volta = "Quando o administrador ligar a função Chatbot de novo.";
   } else if (situacaoDoChatbot === "sem_chave") {
     estado = "sem_chave";

@@ -92,9 +92,10 @@ export type AcaoEmMassaDeOrdens = "mudar_status" | "mudar_centro" | "reprogramar
 export function efeitoDaEdicao(n: NoSynqOs["situacao"]): string | null {
   switch (n) {
     case "em_execucao":
+      return "A OS está em execução: só o planejamento muda. Tirar o LIB gera um alerta de conflito, e o serviço segue.";
     case "encerrando":
     case "aguardando_supervisor":
-      return "A OS está em execução ou esperando as assinaturas do encerramento: só o planejamento muda. Tirar o LIB gera um alerta de conflito, e o serviço segue.";
+      return "A OS está esperando as assinaturas do encerramento: só o planejamento muda. Tirar o LIB só fica anotado, sem alerta, e o encerramento segue.";
     case "encerrada":
     case "cancelada":
       return "A OS já está encerrada ou cancelada no SYNQ OS: o SAP só acompanha, e nada muda lá.";

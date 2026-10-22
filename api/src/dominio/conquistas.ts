@@ -54,7 +54,7 @@ export const CRITERIOS_INFO: Record<Criterio, InfoDoCriterio> = {
   os_apoio: pessoa("OS de apoio", "OS"),
   tecnicos_novos: pessoa("Técnicos novos acompanhados", "técnicos"),
   locais_diferentes: pessoa("Locais diferentes", "locais"),
-  ciencias_no_prazo: pessoa("Ciências no prazo (supervisor)", "ciências"),
+  ciencias_no_prazo: pessoa("Assinaturas finais no prazo (supervisor)", "assinaturas finais"),
   intervalos_definidos: pessoa("Intervalos de preventiva definidos (supervisor)", "planos"),
   campo_de_treino: pessoa("Campo de treino concluído", "", { pedeQuantidade: false }),
   treinamentos_servico_concluidos: pessoa("Treinamentos de serviço concluídos", "treinamentos"),
@@ -101,7 +101,7 @@ export function textoDaMeta(c: { criterio: Criterio; quantidade: number }, paten
     case "locais_diferentes":
       return `Conclua serviços em ${n.toLocaleString("pt-BR")} ${n === 1 ? "local diferente" : "locais diferentes"}`;
     case "ciencias_no_prazo":
-      return `Dê ${pl(n, "ciência", "ciências")} no prazo`;
+      return `Assine ${pl(n, "OS", "OS")} por último no prazo`;
     case "intervalos_definidos":
       return `Defina o intervalo de ${pl(n, "plano", "planos")} de preventiva`;
     case "campo_de_treino":

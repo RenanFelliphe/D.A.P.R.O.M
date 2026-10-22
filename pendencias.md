@@ -48,7 +48,7 @@ O MVP está completo quando as três linhas atenderem num aparelho de verdade e 
 | 25 | Execução compartilhada: agir (na hora ou por pedido de 2 min) | código | 🟢 | [x] |
 | 26 | Execução compartilhada: conferência do que foi feito sem sinal | código | 🟢 | [x] |
 | 27 | Página Validações no app | código | 🟡 | [ ] |
-| 28 | Textos de tela com regra antiga (seção 3.4) | código | 🟡 | [ ] |
+| 28 | Textos de tela com regra antiga (pontuação, revisão do treinamento, simulador, IA desligada) | código | 🟡 | [x] |
 
 ## 3. O que falta antes da apresentação
 
@@ -75,7 +75,6 @@ O MVP está completo quando as três linhas atenderem num aparelho de verdade e 
 ### 3.4 Código
 
 - **Validações no app:** a mesma fila, ligada a `GET /me/validacoes` (a `api` e o contrato em `shared/api/validacoes.ts` estão prontos).
-- **Textos de tela com regra antiga:** `regras-de-pontuacao.ts` ainda diz que APR e execução pontuam e cita "Ciência no prazo"; `conquistas.ts` fala em "ciências"; o cartão "Validação" de `EscolhaDeCriacao.tsx` é, na verdade, a Revisão; o aviso do simulador (`efeitoDaEdicao`) promete um alerta que não existe.
 - **Sugestão de materiais:** marcar "Cadastrar como novo" num item e depois tirá-lo no "Ajustar e aceitar" ainda cria o material (as `resolucoes` valem antes da `lista`).
 - **Teste automático** da conferência dentro da fila de Validações (o cenário de dois aparelhos está em `api/test/conferencia-execucao.test.ts`).
 - **Texto assinado do Chatbot:** `shared/ia/funcoes.ts` diz "da equipe", mas o código lê o escopo de quem pergunta. Alinhar o texto sobe a versão e exige nova assinatura do admin.

@@ -10,7 +10,7 @@ import { VitoriaNaCena } from "../vitoria/VitoriaNaCena";
 /** O caminho até publicar, igual nos dois jeitos de começar. */
 export const CAMINHO_ATE_PUBLICAR: { icone: IconName; titulo: string; texto: string }[] = [
   { icone: "pencil", titulo: "Conteúdo", texto: "A explicação em passos e as fases do jogo." },
-  { icone: "check", titulo: "Validação", texto: "Cada item conferido, com o trecho de origem quando veio da Vitória." },
+  { icone: "check", titulo: "Revisão", texto: "Cada item conferido, com o trecho de origem quando veio da Vitória." },
   { icone: "play", titulo: "Teste", texto: "Você joga como o técnico, numa janela, sem pontuar." },
   { icone: "shield", titulo: "Publicação", texto: "Termo de revisão e a sua assinatura." },
 ];

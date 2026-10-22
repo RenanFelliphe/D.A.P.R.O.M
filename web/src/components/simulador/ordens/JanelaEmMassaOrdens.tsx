@@ -132,7 +132,8 @@ export function JanelaEmMassaOrdens({ acao, catalogo, numeros, todosDaBusca, fil
   const p = contagem?.porSituacao ?? {};
   const noSynqOs = contagem ? contagem.total - (p.nao_lida ?? 0) - (p.ignorada ?? 0) : 0;
   const ativas = (p.liberada ?? 0) + (p.pendente ?? 0);
-  const emExecucao = (p.em_execucao ?? 0) + (p.encerrando ?? 0) + (p.aguardando_supervisor ?? 0);
+  const emExecucao = p.em_execucao ?? 0;
+  const emEncerramento = (p.encerrando ?? 0) + (p.aguardando_supervisor ?? 0);
   const acompanhadas = (p.encerrada ?? 0) + (p.cancelada ?? 0);
   const quantas = contagem?.total ?? numeros.length;
   const resumo = (...partes: [number, string][]) => partes.filter(([n]) => n > 0).map(([n, texto]) => `${n} ${texto}`).join("; ");
@@ -194,13 +195,13 @@ export function JanelaEmMassaOrdens({ acao, catalogo, numeros, todosDaBusca, fil
             <span>
               {noSynqOs === 0
                 ? "Nenhuma delas está no SYNQ OS: nada muda lá até a próxima leitura criar as OS."
-                : `${noSynqOs} ${noSynqOs === 1 ? "já está" : "já estão"} no SYNQ OS (${resumo([ativas, "liberada(s) ou pendente(s)"], [emExecucao, "em execução"], [acompanhadas, "encerrada(s) ou cancelada(s)"])}).`}
+                : `${noSynqOs} ${noSynqOs === 1 ? "já está" : "já estão"} no SYNQ OS (${resumo([ativas, "liberada(s) ou pendente(s)"], [emExecucao, "em execução"], [emEncerramento, "em encerramento"], [acompanhadas, "encerrada(s) ou cancelada(s)"])}).`}
             </span>
             {acao === "excluir" && noSynqOs > 0 && <span>Estas não serão excluídas: no SAP uma ordem não é apagada, ela é encerrada (tire o LIB do status).</span>}
             {acao === "mudar_status" && noSynqOs > 0 && !status.toUpperCase().split(/\s+/).includes("LIB") && (
               <span>
                 Sem o LIB, na próxima leitura o SYNQ OS cancela as {ativas} OS liberadas ou pendentes
-                {emExecucao > 0 ? ` e gera um alerta de conflito nas ${emExecucao} em execução, que seguem` : ""}. {acompanhadas > 0 ? `As ${acompanhadas} encerradas ou canceladas só são acompanhadas.` : ""}
+                {emExecucao > 0 ? ` e gera um alerta de conflito nas ${emExecucao} em execução, que seguem` : ""}. {acompanhadas + emEncerramento > 0 ? `As ${acompanhadas + emEncerramento} encerradas, canceladas ou em encerramento só são acompanhadas.` : ""}
               </span>
             )}
             {acao === "mudar_status" && noSynqOs > 0 && status.toUpperCase().split(/\s+/).includes("LIB") && <span>Com o LIB, o planejamento das OS que o SYNQ OS já tem é atualizado na próxima leitura.</span>}

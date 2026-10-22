@@ -68,7 +68,7 @@ export interface SituacaoIATreinamento {
 }
 
 const MOTIVO_LIMITE = "Limite da demonstração atingido";
-const MOTIVO_DESLIGADA = "A função Criação de jogos está desligada na página da Vitória";
+const MOTIVO_DESLIGADA = "A função Criação de jogos está desligada em Configurações › Sistema";
 
 export async function situacaoDaIA(deps: DepsDaIA, atividadeCodigo: string): Promise<SituacaoIATreinamento> {
   const { limiteTreinamentos, limiteRodadas } = deps.config.treinamentoIa;

@@ -257,7 +257,7 @@ export async function processarDigitalizacao(deps: Deps, id: string, aoAndar?: (
         situacaoDaIa === "disponivel"
           ? null
           : situacaoDaIa === "desligada"
-            ? "A função Digitalização de documentos está desligada na página da Vitória: o escrito à mão é digitado na conferência."
+            ? "A função Digitalização de documentos está desligada em Configurações › Sistema: o escrito à mão é digitado na conferência."
             : "A IA não está configurada: o escrito à mão é digitado na conferência.",
     };
     const lerJpeg = async (n: number) => {
