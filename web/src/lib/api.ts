@@ -82,7 +82,8 @@ export async function chamarApi(caminho: string, opcoes: OpcoesApi = {}): Promis
 export async function api<T = unknown>(caminho: string, opcoes: OpcoesApi = {}): Promise<T> {
   const resposta = await chamarApi(caminho, opcoes);
   const texto = await resposta.text();
-  const dados = texto ? JSON.parse(texto) : {};
+  // Erro que não vem em JSON (um `404 Not Found` em texto, de uma `api` mais antiga que a tela ou de um proxy) segue como `ErroDaApi`, não como falha de leitura.
+  const dados = resposta.ok ? (texto ? JSON.parse(texto) : {}) : (() => { try { return texto ? JSON.parse(texto) : {}; } catch { return {}; } })();
   if (!resposta.ok) {
     throw new ErroDaApi(resposta.status, dados?.erro?.codigo ?? "erro", dados?.erro?.mensagem ?? "Erro ao falar com o servidor");
   }
