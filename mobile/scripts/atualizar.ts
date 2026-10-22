@@ -29,7 +29,8 @@ function principal(): number {
   }
 
   console.log(`Canal ${perfil.channel}, api ${perfil.env.EXPO_PUBLIC_API_URL}`);
-  const argumentos = ["dlx", "eas-cli", "update", "--channel", perfil.channel, "--platform", "android", ...process.argv.slice(2)];
+  // `--environment` puxa as variáveis do ambiente guardadas na Expo (hoje nenhuma); sem ele, o `eas update` sem terminal recusa.
+  const argumentos = ["dlx", "eas-cli", "update", "--channel", perfil.channel, "--environment", PERFIL, "--platform", "android", ...process.argv.slice(2)];
   const resultado = spawnSync("pnpm", process.platform === "win32" ? argumentos.map(entreAspas) : argumentos, {
     cwd: path.resolve(__dirname, ".."),
     env: { ...process.env, ...perfil.env },
