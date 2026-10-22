@@ -23,6 +23,7 @@
     "demo:popular": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/popular-demo.ts",
     "demo:espalhar-gps": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/espalhar-gps-demo.ts",
     "demo:mais-os-mapa-calor": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/mais-os-mapa-calor.ts",
+    "demo:criar-os": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/criar-os-apresentacao.ts",
     "pdf:exemplo": "tsx scripts/gerar-pdf-os.ts",
     "pdf:digitalizado": "tsx scripts/gerar-pdf-digitalizado.ts",
     "email:testar": "tsx --env-file-if-exists=../.env --env-file-if-exists=../.env.local scripts/testar-email.ts"
