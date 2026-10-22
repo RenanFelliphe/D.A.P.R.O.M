@@ -5,14 +5,12 @@ import { StyleSheet, Text, View } from "react-native";
 import Constants from "expo-constants";
 import { ehSupervisor, iniciaisDe, rotuloDoPerfil } from "@shared/api/tipos";
 import { useParaAvaliar } from "@/materiais/consultas";
-import { MinhaAssinatura } from "@/assinatura/MinhaAssinatura";
 import { CartaoParaConferir } from "@/conferencia/CartaoParaConferir";
 import { CartaoDeSincronizacao } from "@/offline/CartaoDeSincronizacao";
 import { useEstadoDaSincronizacao } from "@/offline/estado";
 import { useSincronizar } from "@/offline/SincronizacaoProvider";
 import { mensagemDeSairComFila } from "@/sessao/sair";
 import { FaixaDeAusencia } from "@/os/FaixaDeAusencia";
-import { OpcaoAnonimato } from "@/perfil/OpcaoAnonimato";
 import { useSessao } from "@/sessao/SessaoProvider";
 import { cores, espaco, raio } from "@/tema/tema";
 import { Botao } from "@/ui/Botao";
@@ -23,8 +21,8 @@ import { LinhaDeNavegacao } from "@/ui/LinhaDeNavegacao";
 import { Tela } from "@/ui/Tela";
 
 /**
- * O perfil da pessoa logada: os dados (só leitura: nome, cargo e equipe vêm do registro de funcionários), a assinatura, o caminho para as
- * ausências, o histórico e as preferências de e-mail, o anonimato no ranking, a troca de senha e o Sair. Cada assunto tem a sua tela.
+ * O perfil da pessoa logada: os dados (só leitura: nome, cargo e equipe vêm do registro de funcionários), o caminho para as ausências, as
+ * sugestões de materiais, o histórico e as Configurações (assinatura, e-mails, senha e anonimato no ranking), e o Sair. Cada assunto tem a sua tela.
  */
 export default function Perfil() {
   const router = useRouter();
@@ -85,8 +83,6 @@ export default function Perfil() {
         <Dado rotulo="Registro profissional" valor={u.registro_profissional} />
       </Cartao>
 
-      <MinhaAssinatura />
-
       <CartaoParaConferir />
 
       {eu.equipe && u.perfil === "tecnico" ? <CartaoDeSincronizacao /> : null}
@@ -94,9 +90,7 @@ export default function Perfil() {
       <LinhaDeNavegacao icone="calendar-outline" titulo="Minhas ausências" detalhe="Pedir, acompanhar e confirmar o retorno" aoPressionar={() => router.push("/ausencias")} />
       <LinhaDeNavegacao icone="list-outline" titulo="Sugestões de materiais" detalhe="Sugerir e contestar as listas recomendadas dos serviços" selo={paraAvaliar.data ?? 0} aoPressionar={() => router.push("/materiais")} />
       <LinhaDeNavegacao icone="document-text-outline" titulo="OS que encerrei" detalhe="Os últimos 60 dias, com o PDF" aoPressionar={() => router.push("/historico")} />
-      <LinhaDeNavegacao icone="mail-outline" titulo="Preferências de e-mail" detalhe="Quais avisos também vão para o seu e-mail" aoPressionar={() => router.push("/emails")} />
-      <LinhaDeNavegacao icone="key-outline" titulo="Trocar a senha" aoPressionar={() => router.push("/senha")} />
-      <OpcaoAnonimato />
+      <LinhaDeNavegacao icone="settings-outline" titulo="Configurações" detalhe="Assinatura, e-mails, senha e anonimato no ranking" aoPressionar={() => router.push("/configuracoes")} />
 
       <Botao titulo="Sair" variante="secundario" icone="log-out-outline" aoPressionar={pedirSaida} />
       <Text style={estilos.versao}>{`SYNQ OS ${Constants.expoConfig?.version ?? ""}`}</Text>

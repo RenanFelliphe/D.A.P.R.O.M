@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { z } from "zod";
 import { dadosDaInspecao, faltaObservacao, type PerguntaDoChecklist, type RespostaDoItem } from "@shared/api/checklist-inspecao";
 import { comoEvidencia, MAX_FOTOS_DA_EXECUCAO, MAX_PDFS_DA_EXECUCAO, pdfComoEvidencia, type FotoDaExecucao, type PdfDaExecucao } from "@shared/api/evidencias";
+import { registrarClima } from "@shared/api/clima";
 import { calcularTempo, horasMinutos, type ExecucaoDaApi } from "@shared/api/execucao-tempo";
 import { hora } from "@shared/api/formatar";
 import type { RespostaComPontos } from "@shared/api/gamificacao";
@@ -10,7 +11,9 @@ import { enviarEvento } from "@/offline/app";
 import { apagarArquivosLocais } from "@/campo/arquivos";
 import { CampoDeFotos, CampoDePdfs } from "@/campo/Evidencias";
 import { JanelaDeAssinatura } from "@/campo/JanelaDeAssinatura";
+import { obterPrevisao } from "@/campo/clima";
 import { useAtualizarDepoisDoEvento } from "@/campo/useAcao";
+import { usePrevisao } from "@/clima/usePrevisao";
 import { cores, espaco } from "@/tema/tema";
 import { Aviso } from "@/ui/Aviso";
 import { Botao } from "@/ui/Botao";
@@ -50,6 +53,8 @@ function resumoDasPerguntas(perguntas: PerguntaDoChecklist[]) {
 export function FormularioEncerrar({ execucao, osId, checklist, aoConcluir }: FormularioEncerrarProps) {
   const atualizarDepois = useAtualizarDepoisDoEvento();
   const [assinando, setAssinando] = useState(false);
+  // O tempo no encerramento vai para o relatório do supervisor: a previsão das próximas horas (a guardada, sem sinal) é buscada já ao abrir o passo.
+  const previsao = usePrevisao("proximas_horas");
 
   const esquema = useMemo(
     () =>
@@ -83,6 +88,8 @@ export function FormularioEncerrar({ execucao, osId, checklist, aoConcluir }: Fo
 
   async function assinar() {
     const { descricao } = form.getValues();
+    // Só informativo: sem previsão (indisponível, sem sinal e sem cópia de hoje), o encerramento segue sem ela.
+    const clima = registrarClima(previsao.data ?? (await obterPrevisao({ janela: "proximas_horas" })));
     const resposta = await enviarEvento({
       tipo: "encerramento_assinado",
       os_id: osId,
@@ -90,6 +97,7 @@ export function FormularioEncerrar({ execucao, osId, checklist, aoConcluir }: Fo
         execucao_id: execucao.id,
         ...(descricao.trim() ? { descricao_atividade: descricao.trim() } : {}),
         evidencias: [...fotos.map(comoEvidencia), ...pdfs.map(pdfComoEvidencia)],
+        ...(clima ? { clima } : {}),
         ...(checklist.length > 0 && { dados_inspecao: dadosDaInspecao(checklist, respostas) }),
       },
     });

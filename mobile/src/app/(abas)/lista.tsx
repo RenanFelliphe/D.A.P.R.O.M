@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { rotuloDoStatus, type OsStatus } from "@shared/api/tipos";
 import { mensagemDoErro } from "@/api/erros";
+import { PrevisaoNaLista } from "@/clima/PrevisaoNaLista";
 import { CartaoDaOs } from "@/os/CartaoDaOs";
 import { FaixaDeAusencia } from "@/os/FaixaDeAusencia";
 import { AtalhoDeExecucao, FaixaDeAssinaturas } from "@/os/FaixasDaLista";
@@ -19,8 +20,8 @@ import { useAtrasado } from "@/ui/useAtrasado";
 const STATUS_DA_LISTA: OsStatus[] = ["liberada", "pendente", "em_execucao", "encerrando", "aguardando_supervisor", "encerrada"];
 
 /**
- * A tela inicial do técnico: as OS da equipe, um status por vez, com busca pelo número da ordem e pelo título. "Puxar para
- * atualizar" traz a OS nova (não há push, por decisão do projeto).
+ * A tela inicial do técnico: as OS da equipe, um status por vez, com busca pelo número da ordem e pelo título, e no topo a previsão do
+ * tempo do expediente. "Puxar para atualizar" traz a OS nova e a previsão nova (não há push, por decisão do projeto).
  */
 export default function Lista() {
   const router = useRouter();
@@ -38,6 +39,7 @@ export default function Lista() {
   const atualizar = () => {
     void lista.refetch();
     void consultas.invalidateQueries({ queryKey: ["me"] });
+    void consultas.invalidateQueries({ queryKey: ["clima"] });
   };
 
   const cabecalho = (
@@ -45,6 +47,7 @@ export default function Lista() {
       <FaixaDeAusencia />
       <FaixaDeAssinaturas />
       <AtalhoDeExecucao />
+      <PrevisaoNaLista />
       <View style={estilos.busca}>
         <Icone nome="search" tamanho={18} cor={cores.tinta4} />
         <TextInput

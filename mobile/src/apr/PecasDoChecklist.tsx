@@ -39,13 +39,15 @@ const botaoDeResposta = (valor: Resposta, rotulo: string, icone: "checkmark" | "
 
 /**
  * O cartão da pergunta atual: o texto e os botões Sim/Não (e NA, só nos itens que o permitem). Todas as perguntas têm a mesma
- * aparência: o técnico não pode saber quais são eliminatórias.
+ * aparência: o técnico não pode saber quais são eliminatórias. A pergunta de clima ganha, logo abaixo do texto, o cartão da previsão
+ * (`acessorio`).
  */
-export function PerguntaDaApr({ numero, item, resposta, aoResponder }: { numero: number; item: ItemDoModelo; resposta?: Resposta; aoResponder: (r: Resposta) => void }) {
+export function PerguntaDaApr({ numero, item, resposta, aoResponder, acessorio }: { numero: number; item: ItemDoModelo; resposta?: Resposta; aoResponder: (r: Resposta) => void; acessorio?: React.ReactNode }) {
   return (
     <View accessibilityLabel="Pergunta atual" style={estilos.pergunta}>
       <Text style={estilos.numero}>{`Pergunta ${numero}`}</Text>
       <Text style={estilos.texto}>{item.texto}</Text>
+      {acessorio}
       <View style={estilos.respostas}>
         {botaoDeResposta("sim", "Sim", "checkmark", resposta, aoResponder)}
         {botaoDeResposta("nao", "Não", "close", resposta, aoResponder)}

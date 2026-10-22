@@ -13,8 +13,9 @@ export function referenciaNoApp(a: Alerta): { codigo: string | null; texto: stri
   return referenciaDoAlerta(a);
 }
 
-/** O ícone do aviso: o de materiais é a lista; o urgente, o triângulo; os demais, o sino. */
+/** O ícone do aviso: o do clima extremo é a tempestade; o de materiais é a lista; o urgente, o triângulo; os demais, o sino. */
 export function iconeDoAviso(a: Alerta, urgente: boolean): NomeDeIcone {
+  if (a.tipo === "clima_extremo") return "thunderstorm-outline";
   if (urgente) return "warning-outline";
   return ehDeMateriais(a) ? "list-outline" : "notifications-outline";
 }

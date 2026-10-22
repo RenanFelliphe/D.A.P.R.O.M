@@ -6,6 +6,7 @@ import { aprAprovadaDisponivel, situacaoDaApr, type AprDaOs, type ExecucaoDaOs, 
 import type { Paginacao } from "@shared/api/tipos";
 import { cliente } from "@/api/api";
 import { mensagemDoErro } from "@/api/erros";
+import { ClimaRegistradoLinha } from "@/clima/ClimaRegistradoLinha";
 import { cores, espaco, raio } from "@/tema/tema";
 import { Botao } from "@/ui/Botao";
 import { Carregando } from "@/ui/Estados";
@@ -41,6 +42,8 @@ export function HistoricoAprs({ aprs, execucoes }: { aprs: AprDaOs[]; execucoes:
             <Selo tom={aprovada ? "enc" : "blq"}>{aprovada ? "Aprovada" : "Bloqueada"}</Selo>
             <Text style={estilos.texto}>{`${dataHora(apr.concluida_em)} · ${apr.modelo.codigo} v${apr.modelo.versao}`}</Text>
             <Text style={estilos.pequeno}>{`${apr.preenchida_por.nome}${detalhe}`}</Text>
+            <ClimaRegistradoLinha momento="APR" clima={apr.clima} />
+            <ClimaRegistradoLinha momento="Encerramento" clima={execucoes.find((e) => e.apr_id === apr.id && e.resultado !== "cancelada")?.clima} />
             {aprovada
               ? apr.participantes.map((p) => (
                   <Text key={p.usuario_id} style={[estilos.pequeno, p.recusou_em ? estilos.recusa : null]}>

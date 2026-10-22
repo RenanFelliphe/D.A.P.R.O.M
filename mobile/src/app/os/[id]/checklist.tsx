@@ -10,7 +10,6 @@ import {
   estaTravada,
   faltaObservacaoNa,
   irPara,
-  montarAvaliacao,
   montarPayload,
   observar,
   removerDocumento,
@@ -32,6 +31,7 @@ import { rotuloDaOs } from "@shared/api/os-app";
 import { cliente } from "@/api/api";
 import { conexaoDoAparelho, enviarEvento } from "@/offline/app";
 import { ErroDeRede, mensagemDoErro } from "@/api/erros";
+import { adicionarFotoDoLocal, descartarFotosDoModal, exigenciaDaResposta, montarAvaliacaoComClima, montarPayloadComClima, perguntaDeClima, responderClima } from "@/apr/clima-da-apr";
 import { useColegasDaEquipe } from "@/apr/consultas";
 import { equipeDaApr } from "@/apr/equipe";
 import { AssinaturasFaltando } from "@/apr/AssinaturasFaltando";
@@ -41,6 +41,10 @@ import { useRascunhoApr } from "@/apr/rascunho";
 import { Revisao } from "@/apr/Revisao";
 import { TrocaDeModelo } from "@/apr/TrocaDeModelo";
 import { useAtualizarDepoisDoEvento } from "@/campo/useAcao";
+import { CartaoDePrevisao, EsqueletoDaPrevisao } from "@/clima/CartaoDePrevisao";
+import { JanelaDoClima } from "@/clima/JanelaDoClima";
+import { usePrevisao } from "@/clima/usePrevisao";
+import type { ExigenciaDoClima } from "@shared/api/clima";
 import { useConexao } from "@/estado/conexao";
 import { useDetalheDaOs } from "@/os/consultas";
 import { MateriaisCard } from "@/os/detalhe/Blocos";
@@ -106,6 +110,10 @@ function ChecklistDaApr({ osId, rotulo, usuario, equipe, servico }: ChecklistDaA
   const [trocando, setTrocando] = useState(false);
   const [descartando, setDescartando] = useState(false);
   const [falta, setFalta] = useState<string | null>(null);
+  /** A resposta "Sim" da pergunta de clima que espera a confirmação do aviso (a previsão aponta risco). */
+  const [aConfirmar, setAConfirmar] = useState<{ itemId: string; exigencia: Exclude<ExigenciaDoClima, "nada"> } | null>(null);
+  // A previsão das próximas horas só é buscada se o modelo tem a pergunta de clima; sem previsão, a pergunta segue sem aviso.
+  const previsao = usePrevisao("proximas_horas", Boolean(rascunho && perguntaDeClima(rascunho)));
 
   const resumo = useMemo(() => (rascunho ? resumoDe(rascunho) : null), [rascunho]);
 
@@ -148,11 +156,37 @@ function ChecklistDaApr({ osId, rotulo, usuario, equipe, servico }: ChecklistDaA
   function aoResponder(valor: Resposta) {
     if (!item) return;
     setFalta(null);
+    // A pergunta de clima: "Sim" com risco previsto pede a confirmação antes de valer (a janela abre por cima).
+    if (item.mostrar_clima) {
+      const exigencia = exigenciaDaResposta(item, valor, previsao.data);
+      if (exigencia !== "nada") {
+        setAConfirmar({ itemId: item.id, exigencia });
+        return;
+      }
+      alterar((atual) => {
+        const novo = responderClima(atual, item, valor, previsao.data);
+        return valor === "na" ? novo : avancar(novo);
+      });
+      return;
+    }
     // "NA" pede observação e fica na pergunta; as demais seguem adiante.
     alterar((atual) => {
       const novo = responder(atual, item, valor);
       return valor === "na" ? novo : avancar(novo);
     });
+  }
+
+  /** "Confirmar e continuar" na janela do clima: o "Sim" vale, com o aviso confirmado, e a previsão que a pessoa viu fica no rascunho. */
+  function confirmarClima() {
+    if (!item || !aConfirmar) return;
+    alterar((atual) => avancar(responderClima(atual, item, "sim", previsao.data, true)));
+    setAConfirmar(null);
+  }
+
+  /** "Revisar a minha resposta": o "Sim" não vale e as fotos tiradas para a janela saem do rascunho. */
+  function revisarClima() {
+    if (aConfirmar) atualizar((atual) => descartarFotosDoModal(atual, aConfirmar.itemId));
+    setAConfirmar(null);
   }
 
   /**
@@ -167,7 +201,7 @@ function ChecklistDaApr({ osId, rotulo, usuario, equipe, servico }: ChecklistDaA
     let resultado: RespostaDaAvaliacao | null = null;
     if (conexaoDoAparelho() === "online") {
       try {
-        resultado = await cliente.chamar<RespostaDaAvaliacao>("/aprs/avaliar", { corpo: montarAvaliacao({ ...r, concluidaEm }) });
+        resultado = await cliente.chamar<RespostaDaAvaliacao>("/aprs/avaliar", { corpo: montarAvaliacaoComClima({ ...r, concluidaEm }) });
       } catch (e) {
         // O sinal caiu antes de a `api` responder: segue como sem sinal. Qualquer outra recusa da `api` é lançada e aparece acima do botão.
         if (!(e instanceof ErroDeRede)) throw e;
@@ -177,7 +211,7 @@ function ChecklistDaApr({ osId, rotulo, usuario, equipe, servico }: ChecklistDaA
     const avaliacao: Avaliacao = { resultado: resultado.resultado, reprovados: resultado.reprovados.map((x) => ({ itemId: x.item_id, texto: x.texto, evidencia: x.evidencia })) };
     atualizar((atual) => ({ ...atual, concluidaEm, avaliacao }));
     if (avaliacao.resultado !== "aprovada") return;
-    const resp = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: osId, payload: montarPayload({ ...r, concluidaEm, avaliacao }) });
+    const resp = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: osId, payload: montarPayloadComClima({ ...r, concluidaEm, avaliacao }) });
     const registrada = (resp.aprs.find((a) => a.id === r.aprId) ?? resp.aprs[0])?.resultado;
     setConcluindo(true);
     descartar();
@@ -193,7 +227,7 @@ function ChecklistDaApr({ osId, rotulo, usuario, equipe, servico }: ChecklistDaA
    * aparelho não pôde perguntar.
    */
   async function registrarSemSinal(concluidaEm: string) {
-    const resp = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: osId, payload: { ...montarPayload({ ...r, concluidaEm, avaliacao: null }), assinatura_presencial: true } });
+    const resp = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: osId, payload: { ...montarPayloadComClima({ ...r, concluidaEm, avaliacao: null }), assinatura_presencial: true } });
     const registrada = (resp.aprs.find((a) => a.id === r.aprId) ?? resp.aprs[0])?.resultado;
     setConcluindo(true);
     descartar();
@@ -255,7 +289,13 @@ function ChecklistDaApr({ osId, rotulo, usuario, equipe, servico }: ChecklistDaA
         />
       ) : (
         <>
-          <PerguntaDaApr numero={indice + 1} item={item} resposta={resposta?.resposta} aoResponder={aoResponder} />
+          <PerguntaDaApr
+            numero={indice + 1}
+            item={item}
+            resposta={resposta?.resposta}
+            aoResponder={aoResponder}
+            acessorio={item.mostrar_clima ? previsao.isPending ? <EsqueletoDaPrevisao /> : previsao.data ? <CartaoDePrevisao previsao={previsao.data} titulo="Tempo nas próximas horas" /> : null : null}
+          />
           {resposta?.resposta === "na" ? <ObservacaoDoNa observacao={resposta.observacao} aoObservar={(texto) => alterar((atual) => observar(atual, item.id, texto))} /> : null}
           {falta ? <Aviso tom="al">{falta}</Aviso> : null}
           <NavegacaoDoChecklist
@@ -302,6 +342,19 @@ function ChecklistDaApr({ osId, rotulo, usuario, equipe, servico }: ChecklistDaA
             setTrocando(false);
           }}
           aoFechar={() => setTrocando(false)}
+        />
+      ) : null}
+      {aConfirmar && previsao.data && item ? (
+        <JanelaDoClima
+          previsao={previsao.data}
+          exigencia={aConfirmar.exigencia}
+          fotos={(r.fotos[aConfirmar.itemId] ?? []).map((f) => ({ id: f.id, uri: f.miniatura ?? "", capturadaEm: f.capturadaEm, comGps: f.latitude !== undefined }))}
+          aoFotoEnviada={(foto) =>
+            atualizar((atual) => adicionarFotoDoLocal(atual, aConfirmar.itemId, { id: foto.id, arquivoId: foto.arquivoId, capturadaEm: foto.capturadaEm, miniatura: foto.uri, ...(foto.latitude !== undefined && foto.longitude !== undefined ? { latitude: foto.latitude, longitude: foto.longitude } : {}) }))
+          }
+          aoRemoverFoto={(fotoId) => atualizar((atual) => removerFoto(atual, aConfirmar.itemId, fotoId))}
+          aoConfirmar={confirmarClima}
+          aoRevisar={revisarClima}
         />
       ) : null}
       <JanelaDeConfirmacao

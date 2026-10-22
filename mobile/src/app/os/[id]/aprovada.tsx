@@ -1,13 +1,14 @@
 import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { estaTravada, montarPayload, resumoDe } from "@shared/api/apr";
+import { estaTravada, resumoDe } from "@shared/api/apr";
 import { dataHora } from "@shared/api/formatar";
 import type { RespostaComPontos } from "@shared/api/gamificacao";
 import { aprDeHoje, rotuloDaOs, situacaoDaApr, type AprDaOs } from "@shared/api/os-app";
 import { execucaoJaTerminou, type Usuario } from "@shared/api/tipos";
 import { enviarEvento } from "@/offline/app";
 import { mensagemDoErro } from "@/api/erros";
+import { montarPayloadComClima } from "@/apr/clima-da-apr";
 import { useColegasDaEquipe } from "@/apr/consultas";
 import { equipeDaApr } from "@/apr/equipe";
 import { CartaoDeAssinatura, JanelaDeRecusa, type LinhaDeAssinatura } from "@/apr/AssinaturasDaApr";
@@ -139,7 +140,7 @@ function TelaDasAssinaturas({ osId, rotulo, local, usuario, equipe, registrada }
   const registrar = () =>
     executar(async () => {
       const r = pendente!;
-      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: osId, payload: montarPayload(r) });
+      const resposta = await enviarEvento({ id: r.eventoId, tipo: "apr_concluida", os_id: osId, payload: montarPayloadComClima(r) });
       const resultado = (resposta.aprs.find((a) => a.id === r.aprId) ?? resposta.aprs[0])?.resultado;
       descartar();
       void atualizarDepois();
