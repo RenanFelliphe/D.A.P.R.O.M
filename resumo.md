@@ -174,7 +174,7 @@ A Segurança do Trabalho não usa o sistema: ela define o critério de bloqueio 
 
 ### 14. Indicadores (5 dashboards)
 
-- **Geral**, **Equipes e usuários**, **OS**, **APR** e **Meus resultados**.
+- **Meus resultados** (a abertura para quem executa OS), **OS** (a abertura do admin, começa pelo que precisa de atenção), **APR** e **Equipes e usuários**.
 - Filtro de período (7 dias, 30 dias, 90 dias, 12 meses ou um mês) e de equipe, comparando com o período anterior.
 - Medem carteira de OS, atrasos, tempo de execução e de pausa (por equipe, técnico, motivo e OS), interrupções, reprogramações, locais com mais OS, preventivas em dia e atrasadas, e APRs aprovadas e bloqueadas.
 - **Precisa de atenção**: OS aguardando a assinatura do supervisor, baixa no SAP e execuções abertas há mais de 12 horas, com atalho para cada um.

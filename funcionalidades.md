@@ -100,7 +100,7 @@ Todo registro de campo passa por `POST /eventos`, que é idempotente, online e n
 | Execução | **Pronta na web e no app.** Assinatura da APR por participante, pausa e suspensão com motivo, localização, interrupção por risco, cancelamento por engano, encerramento em dois passos, execução compartilhada com pedidos e conferência, assinatura final do supervisor, PDF da OS e relatório da execução |
 | Impedimento e avisos | **Pronta.** Alertas no sino e por e-mail (por categoria, com o resumo diário), reprogramação e OS de apoio. O e-mail espera o SMTP |
 | Painel | **Pronto.** Quadro, detalhe, assinatura final do supervisor, local crítico, busca global, PDF e exportação para baixa |
-| Indicadores | **Prontos.** 5 dashboards (Geral, Equipes, OS, APR e Meus resultados), com tempo de execução e de pausa por equipe, técnico e OS |
+| Indicadores | **Prontos.** 4 dashboards (Meus resultados, OS, APR e Equipes; o Dashboard abre em Meus resultados e, para o admin, em OS), com tempo de execução e de pausa por equipe, técnico e OS |
 | Ciclo das preventivas | **Pronto.** Contagem até o próximo ciclo por plano e item, alertas de ciclo próximo e vencido e o checklist de inspeção; não cria OS |
 | Gamificação | **Pronta.** Pontos por tarefa, temporadas trimestrais, ranking, patentes de pessoa e de equipe, conquistas (inclusive a de sincronização offline) e anonimato, na web e no app |
 | Eventos e sincronização | **Pronta.** Envio idempotente, cópia da equipe (`POST /sync/pull`), tolerância à fila offline e conferência do que foi feito sem sinal; usados pela web e pelo app |
@@ -175,7 +175,8 @@ São ideias do [DesignDoc](DesignDoc.md) ("Prioridades" e "Extras"), das reuniõ
 | Pedido de conta na entrada | Time, 20/10/2026 | **Pronto** ([solicitacao-de-conta.md](base/funcionalidades/solicitacao-de-conta.md)) |
 | Controle da IA por função | Time, 20/10/2026 | **Pronto**, falta a conferência visual e a IA real ([controle-da-ia.md](base/funcionalidades/controle-da-ia.md)) |
 | Validação dos treinamentos pelos supervisores | Time, 20/10/2026 | **Pronta**, falta a conferência visual ([validacao-de-treinamento.md](base/funcionalidades/validacao-de-treinamento.md)) |
-| Mapa de calor das OS | Time, 21/10/2026 | **Pronto** na web, falta a conferência visual e rodar `pnpm demo:espalhar-gps` no banco da demo ([mapa-de-calor.md](base/funcionalidades/mapa-de-calor.md)) |
+| Validações (a página de decisões e assinaturas do supervisor) | Time, 21/10/2026 | **Pronta** na `api` e na web; falta o app e a conferência visual ([validacoes.md](base/funcionalidades/validacoes.md)) |
+| Mapa de calor das OS (destaque do dashboard de OS) | Time, 21/10/2026 | **Pronto** na web, falta a conferência visual e rodar `pnpm demo:espalhar-gps` no banco da demo ([mapa-de-calor.md](base/funcionalidades/mapa-de-calor.md)) |
 | Previsão do tempo | Time, 21/10/2026 | **Pronta** na `api`, na web e no app, falta a conferência visual e o provedor real ([previsao-do-tempo.md](base/funcionalidades/previsao-do-tempo.md)) |
 | Página de configurações | Time, 21/10/2026 | **Pronta** na `api`, na web e no app, falta a conferência visual ([configuracoes.md](base/funcionalidades/configuracoes.md)) |
 

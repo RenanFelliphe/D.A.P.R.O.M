@@ -77,7 +77,7 @@ A resposta de `POST /eventos` traz `os: [{ id, status }]` com o status novo das 
 - **`GET /os/{id}/pdf`**: o PDF da OS (a APR e a folha do SAP, como o papel); só existe depois da assinatura final do supervisor.
 - **`GET /os/{id}/relatorio-execucao`**: o relatório da execução, em PDF, gerado na hora; só o supervisor da equipe e o admin (`403` para os demais, `404` fora do escopo, `409 os_sem_execucao` sem execução finalizada).
 - **Modelos de APR**: `participantes_com_assinatura` (a folha tem a coluna "Assinatura" na tabela de participantes) vem em cada versão e é aceito ao criar a versão (`POST /modelos-apr/{codigo}/versoes`) e ao editar o rascunho.
-- **Indicadores**: a pausa por motivo (`GET /indicadores/tempo`, dashboards) traz os sete motivos mais `sem_motivo`; a pendência `sem_ciencia` do dashboard geral conta as OS `aguardando_supervisor`.
+- **Indicadores**: a pausa por motivo (`GET /indicadores/tempo`, dashboards) traz os sete motivos mais `sem_motivo`; a pendência `sem_ciencia` (hoje no topo do dashboard de OS; a aba Geral saiu em 21/10/2026) conta as OS `aguardando_supervisor`.
 - **Avisos** (sino e e-mail): `apr_para_assinar` (só no sino), `direito_de_recusa` e `lesao_ou_enfermidade` (e-mail obrigatório, categoria Segurança), `os_para_assinar` (o supervisor, categoria OS). O `os_ciencia` (executor avisado) agora diz "assinatura final do supervisor".
 
 ### 4.3 Estados da OS depois da execução

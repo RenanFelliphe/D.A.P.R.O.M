@@ -68,13 +68,13 @@
 
 ## Mapa de calor
 
-- A aba "Mapa de Calor" da seção Ordem de Serviço mostra, sobre um mapa com as ruas, onde as OS de todas as equipes
-  foram executadas no período, pelo GPS registrado no início (ou no fim) da execução. Todo mundo vê a mesma aba, cada
+- O mapa de calor é o destaque do dashboard de OS: mostra, sobre um mapa com as ruas, onde as OS de todas as equipes
+  foram executadas no período, pelo GPS registrado no início (ou no fim) da execução. Todo mundo vê o mesmo mapa, cada
   um no próprio escopo: o técnico, a própria equipe; o supervisor, as que supervisiona. [mapa_calor]
 - As OS são agrupadas em áreas de cerca de 1 km, sem a posição exata. Com a radiação ligada (o padrão), cada área
   emite um brilho que se funde com o das vizinhas, formando uma mancha maior nas regiões mais movimentadas; o
   interruptor no topo do mapa desliga a radiação e mostra só um ponto colorido por área, sem brilho. [mapa_calor]
-- Os filtros escolhem o período, a equipe e a situação atual da OS. "Áreas com mais OS", ao lado, leva o mapa até
+- O período e a equipe são os do filtro do dashboard; o mapa tem ainda a situação atual da OS (por padrão, todas). "Áreas com mais OS", ao lado, leva o mapa até
   cada uma das cinco maiores. OS sem GPS entram na contagem "Sem localização", mas não aparecem no mapa. [mapa_calor]
 
 ## Auditoria
@@ -148,8 +148,7 @@
 
 ## Dashboards
 
-- O Dashboard geral reúne a visão de OS, equipes e APR num só lugar. [dashboard_geral]
-- O dashboard de OS traz os tempos de execução (com a pausa por motivo) e a entrada de ordens. [dashboard_os]
+- O Dashboard abre no dashboard de OS, que começa pelo que precisa de atenção (OS pendentes, execuções esquecidas, assinaturas do supervisor, baixa no SAP e alertas) e traz os tempos de execução (com a pausa por motivo) e a entrada de ordens. [dashboard_os]
 - A OS só está concluída quando quem a encerrou assina o encerramento e, por último, o supervisor assina depois de ler o
   relatório da execução (um PDF à parte, que o supervisor e o admin veem no detalhe da OS). Enquanto isso a OS fica
   "encerrando" ou "aguardando o supervisor"; o PDF da OS e a baixa no SAP só valem para a OS concluída. [dashboard_os]

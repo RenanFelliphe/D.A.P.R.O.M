@@ -1,6 +1,6 @@
 # Mapa de calor das OS — implementação de 21/10/2026
 
-> Uma aba "Mapa de Calor" na seção Ordem de Serviço mostra, sobre as ruas do OpenStreetMap, onde as OS foram executadas no período, pelo GPS da execução. Todo mundo vê, cada um no próprio escopo: o técnico, a própria equipe; o supervisor, as que supervisiona; o admin, todas.
+> O mapa de calor é o destaque do dashboard de OS (`/app/dashboard/os`; foi uma aba da seção Ordem de Serviço até 21/10/2026) e mostra, sobre as ruas do OpenStreetMap, onde as OS foram executadas no período, pelo GPS da execução. Todo mundo vê, cada um no próprio escopo: o técnico, a própria equipe; o supervisor, as que supervisiona; o admin, todas.
 >
 > **Situação:** implementado na `api` e na `web` em 21/10/2026, sem migração (usa o GPS que a execução já guarda). Aberta a todos os perfis no mesmo dia (antes, só admin e supervisor). O app não tem a aba.
 
@@ -25,10 +25,10 @@
 
 ## 3. A tela
 
-- `/app/mapa-calor` (`web/src/app/app/(portal)/mapa-calor/page.tsx`), aberta a todos os perfis: o intervalo resolvido, os filtros (GET na URL), três indicadores e o mapa. Não fica em `/web` (a área de gestão, fechada para o técnico comum) porque todo mundo entra nela.
+- O mapa fica no dashboard de OS (`web/src/components/web/indicadores/MapaDoDashboard.tsx`, chamado por `.../dashboard/(secao)/os/page.tsx`), aberto a todos os perfis, logo depois do bloco "Precisa de atenção". O período e a equipe são os do filtro do painel (só o admin escolhe a equipe; supervisor e técnico veem o próprio escopo, as equipes que supervisiona somadas). O mapa acrescenta a **situação da OS**, num formulário GET que mantém período e equipe (`?status=`): por padrão `todas` (sem filtro), ou uma situação escolhida (por exemplo `encerrada`). Acima do mapa, uma linha com quantas OS têm localização (cobertura). `/app/mapa-calor` e `/web/os/mapa-calor` redirecionam para o dashboard de OS. A API (`GET /os/mapa-calor`) não mudou: o filtro é por início da execução, não pelo encerramento, então o total pode diferir do gráfico de OS encerradas.
 - `web/src/components/web/os/MapaDeCalor.tsx` carrega o Leaflet só no navegador. A radiação é uma camada própria (`criarCamadaDeRadiacao`, via `L.Layer.extend`, a mesma API que plugins como o `leaflet.heat` usam por baixo): cada ponto desenha um carimbo borrado (a sombra de um círculo invisível) com a opacidade do seu peso; onde as manchas se sobrepõem, a opacidade se acumula, e uma segunda passada troca a opacidade acumulada de cada pixel pela cor equivalente do gradiente. A primeira versão usava a biblioteca `leaflet.heat`, que conta com um `L` global (não importa o Leaflet): funcionava só depois do `next build`, nunca no ambiente de teste do usuário — por isso foi trocada por código nosso, sem essa dependência. Cada área também tem um marcador invisível (`calor-os-alvo`), por cima da radiação ou do ponto sólido, só para o clique, o toque e o teclado — com o resumo das situações na dica. A roda do mouse só dá zoom depois de um clique no mapa, para não prender a rolagem da página.
 - Ao lado, "Áreas com mais OS" lista as cinco maiores; tocar numa leva o mapa até ela (sem animação com "reduzir movimento").
-- A Vitória conhece a tela pela chave `mapa_calor` (aba `menu-mapa-calor`), nos dois manuais.
+- A Vitória conhece o mapa pela chave `mapa_calor` (leva ao dashboard de OS, item `menu-dashboard`), nos dois manuais. O ranking de locais ("Locais com mais OS encerradas") saiu do dashboard de OS: a lista "Áreas com mais OS" do mapa o substitui (o "Meus resultados" ainda tem o dele).
 
 ## 4. Dados da demonstração
 

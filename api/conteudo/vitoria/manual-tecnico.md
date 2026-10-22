@@ -35,13 +35,13 @@
 
 ## Mapa de calor
 
-- A seção Ordem de Serviço tem a aba "Mapa de Calor": um mapa com as ruas mostrando onde as OS foram executadas no
+- O dashboard de OS tem o mapa de calor: um mapa com as ruas mostrando onde as OS foram executadas no
   período, pelo GPS registrado no início (ou no fim) da execução. Você vê a sua equipe; quem supervisiona uma ou
   mais equipes vê as que supervisiona. [mapa_calor]
 - As OS são agrupadas em áreas de cerca de 1 km, sem a posição exata. Com a radiação ligada (o padrão), cada área
   emite um brilho que se funde com o das vizinhas, formando uma mancha maior nas regiões mais movimentadas; o
   interruptor no topo do mapa desliga a radiação e mostra só um ponto colorido por área, sem brilho. [mapa_calor]
-- Os filtros escolhem o período, a equipe (quando você supervisiona mais de uma) e a situação atual da OS. Ao lado do
+- O período é o do filtro do dashboard e o mapa tem ainda a situação atual da OS (por padrão, todas). Ao lado do
   mapa, "Áreas com mais OS" lista as cinco maiores; tocar numa leva o mapa até ela. [mapa_calor]
 - OS executadas sem GPS (o celular sem permissão de localização, por exemplo) entram na contagem "Sem localização",
   mas não aparecem no mapa. [mapa_calor]
@@ -170,7 +170,7 @@
 
 ## Dashboard
 
-- "Meus resultados" mostra as OS que você executou e as APR em que participou, no período escolhido. [dashboard_meus]
+- O Dashboard abre em "Meus resultados", que mostra as OS que você executou e as APR em que participou, no período escolhido. [dashboard_meus]
 - O filtro de período fica no topo: 7, 30 ou 90 dias, ou os últimos 12 meses.
 
 ## Catálogo de serviços
@@ -220,8 +220,8 @@
   para validação", com a sua assinatura, trava o rascunho e avisa os supervisores das 3 equipes que mais fazem o serviço
   (a sua equipe não valida o que você criou). Assinam 2 dos 3 e o treinamento é publicado sozinho; uma recusa, com motivo,
   volta para você ajustar e enviar de novo.
-- Quem foi escolhido para validar recebe o aviso "Treinamento para validar", e o item "Para validar" do menu mostra o que
-  espera a sua decisão. Na tela de validar você vê o treinamento com as respostas certas, pode testar o jogo, e então aprova
+- Quem foi escolhido para validar recebe o aviso "Treinamento para validar", e o item "Validações" do menu mostra o que
+  espera a sua decisão (junto com o resto: OS para assinar, sugestões de materiais, conferências e pedidos de ausência). Na tela de validar você vê o treinamento com as respostas certas, pode testar o jogo, e então aprova
   (com a sua assinatura) ou recusa (com o motivo). Você valida uma vez por treinamento.
 
 ## Gamificação
