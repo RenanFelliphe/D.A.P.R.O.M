@@ -4,7 +4,11 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
-      "env": { "EXPO_PUBLIC_API_URL": "https://d-a-p-r-o-m.onrender.com" },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.synq-os.tech",
+        "EXPO_PUBLIC_WEB_URL": "https://synq-os.tech",
+        "APP_VERSION_CODE": "3"
+      },
       "android": { "buildType": "apk" }
     }
   }

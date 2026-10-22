@@ -1,0 +1,26 @@
+# O EAS Build só precisa de mobile/ e shared/ (o app importa @shared/*; ver mobile/Dockerfile, que copia as mesmas duas pastas).
+# Com este arquivo o EAS deixa de usar o .gitignore, então o que ele ignorava está repetido aqui.
+
+# fora do app
+/api/
+/web/
+/base/
+/docs/
+/vitoria/
+/.claude/
+/.cursor/
+/.windsurf/
+/.git/
+*.zip
+
+# dependências e geração local (o EAS instala e gera de novo)
+node_modules/
+.expo/
+mobile/android/
+mobile/ios/
+mobile/apk/
+
+# segredos e chaves (os do build vêm do eas.json e das credenciais do Expo)
+.env*
+*.keystore
+*.senha

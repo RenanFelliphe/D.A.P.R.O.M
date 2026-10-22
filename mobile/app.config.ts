@@ -34,7 +34,7 @@ const config: ExpoConfig = {
   android: {
     package: "br.synqos.app",
     versionCode,
-    adaptiveIcon: { foregroundImage: "./assets/icone-adaptivo.png", backgroundColor: "#FFFFFF" },
+    adaptiveIcon: { foregroundImage: "./assets/icone-adaptivo.png", backgroundColor: "#000E36" },
     // Câmera (fotos da APR, da interrupção e do encerramento) e localização (os cinco momentos da execução).
     permissions: ["CAMERA", "ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "ACCESS_NETWORK_STATE", "POST_NOTIFICATIONS"],
     // As notificações push passam pelo FCM: o arquivo do projeto do Firebase (`google-services.json`, nunca no repositório) vem por
