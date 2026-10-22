@@ -162,12 +162,33 @@
   font-weight: 600;
 }
 
-/* O interruptor da radiação ao lado do número de áreas, no cabeçalho do mapa. */
+/* As caixas das camadas (radiação e pontos) ao lado do número de áreas, no cabeçalho do mapa. */
 .calor-os-painel-acoes {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 10px 14px;
+}
+
+.calor-os-camadas {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  align-items: center;
+  gap: 16px;
+}
+
+/* A legenda do grupo só existe para o leitor de tela. */
+.calor-os-camadas legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .calor-os-area-mapa {
@@ -189,6 +210,31 @@
   font-family: var(--sans);
 }
 
+/* Preto e branco (padrão): só o mapa-base perde a cor, para a radiação e os pontos — que ficam num painel à parte — se destacarem.
+   `data-cor` e não uma classe: o Leaflet escreve nas classes do contêiner e o React as apagaria ao renderizar de novo. */
+.calor-os-mapa[data-cor="pb"] .leaflet-tile-pane {
+  filter: grayscale(1) brightness(1.04);
+}
+
+/* A radiação e os pontos esmaecem quando o mapa se move (zoom, arrastar, voo) e voltam ao parar. A radiação é um canvas cujo
+   `opacity` o MapaDeCalor.tsx troca; os pontos são os `path` do SVG do Leaflet e seguem o `data-movendo` do contêiner. A
+   transição fica no `path`, não no `svg`: no `svg` ela apagaria a do `transform`, que o Leaflet usa no zoom animado. */
+.calor-os-mapa .leaflet-heatmap-layer,
+.calor-os-mapa .leaflet-overlay-pane svg path {
+  transition: opacity 0.3s ease;
+}
+
+.calor-os-mapa[data-movendo="1"] .leaflet-overlay-pane svg path {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calor-os-mapa .leaflet-heatmap-layer,
+  .calor-os-mapa .leaflet-overlay-pane svg path {
+    transition: none;
+  }
+}
+
 /* O alvo do clique/toque/teclado em cada área: invisível com a radiação (o brilho já é o visual) e por cima do
    ponto sólido sem ela. `outline: none` tira o foco padrão do Leaflet; o foco de verdade vai na borda arredondada. */
 .calor-os-alvo {
@@ -202,19 +248,30 @@
   outline-offset: 2px;
 }
 
+/* As cinco cores de `CORES` em MapaDeCalor.tsx: azul, verde, amarelo, laranja e vermelho. */
+.calor-os-lista b[data-intensidade="muito_baixa"],
+.calor-os-legenda i[data-intensidade="muito_baixa"] {
+  background: #2F6FE0;
+}
+
 .calor-os-lista b[data-intensidade="baixa"],
 .calor-os-legenda i[data-intensidade="baixa"] {
-  background: #E3A63B;
+  background: #34B54A;
 }
 
 .calor-os-lista b[data-intensidade="media"],
 .calor-os-legenda i[data-intensidade="media"] {
-  background: #DD6B33;
+  background: #F7D117;
 }
 
 .calor-os-lista b[data-intensidade="alta"],
 .calor-os-legenda i[data-intensidade="alta"] {
-  background: #B3362A;
+  background: #F68A1E;
+}
+
+.calor-os-lista b[data-intensidade="muito_alta"],
+.calor-os-legenda i[data-intensidade="muito_alta"] {
+  background: #D8261D;
 }
 
 .calor-os-vazio {
